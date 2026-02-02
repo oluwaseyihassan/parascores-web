@@ -1,101 +1,87 @@
 <template>
-  <header class=" border-b border-white/[0.06] sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
+  <header class="border-b border-white/10 sticky top-0 z-50 bg-[#0A0F1C]">
     <div class="max-w-7xl mx-auto px-6">
       <div class="flex items-center justify-between h-16">
         <!-- Logo -->
-        <NuxtLink to="/" class="flex items-center gap-2.5 group">
-          <div class="w-7 h-7 text-green-500 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+        <NuxtLink to="/" class="flex items-center gap-2 group">
+          <div class="w-8 h-8 bg-emerald-500 rounded flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white">
               <rect x="2" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="2"/>
               <circle cx="8" cy="12" r="2" fill="currentColor"/>
               <circle cx="16" cy="12" r="2" fill="currentColor"/>
               <path d="M12 9V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
           </div>
-          <span class="text-lg font-semibold text-white tracking-tight">Parascores</span>
+          <span class="text-lg font-bold text-white tracking-tight">PARASCORES</span>
         </NuxtLink>
 
         <!-- Desktop Navigation -->
-        <nav class="hidden md:flex items-center gap-2">
-          <UButton
-            to="/#features"
-            variant="ghost"
-            color="neutral"
-            class="text-sm"
-            @click.prevent="scrollToSection('features')"
+        <nav class="hidden lg:flex items-center gap-1">
+          <NuxtLink
+            to="/platform"
+            class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
-            Features
-          </UButton>
-          <UButton
-            to="/#pricing"
-            variant="ghost"
-            color="neutral"
-            class="text-sm"
-            @click.prevent="scrollToSection('pricing')"
+            Platform
+          </NuxtLink>
+          <NuxtLink
+            to="/widgets"
+            class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            Widget Builder
+          </NuxtLink>
+          <NuxtLink
+            to="/graphics"
+            class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            Graphics Studio
+          </NuxtLink>
+          <NuxtLink
+            to="/pricing"
+            class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
             Pricing
-          </UButton>
-          <UButton
-            to="/about"
-            variant="ghost"
-            color="neutral"
-            class="text-sm"
+          </NuxtLink>
+          <NuxtLink
+            to="/developers"
+            class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
-            About
-          </UButton>
-          <UButton
-            to="/blog"
-            variant="ghost"
-            color="neutral"
-            class="text-sm"
-          >
-            Blog
-          </UButton>
+            Developers
+          </NuxtLink>
         </nav>
 
         <!-- Auth Buttons -->
-        <div class="hidden md:flex items-center gap-3">
-          <!-- Color Mode Toggle -->
-          <UButton
-            variant="ghost"
-            color="neutral"
-            square
-            @click="toggleColorMode"
-            :icon="colorMode.value === 'dark' ? 'i-heroicons-sun' : 'i-heroicons-moon'"
-            aria-label="Toggle color mode"
-          />
-          
-          <UButton
+        <div class="hidden lg:flex items-center gap-3">
+          <NuxtLink
             to="/login"
-            variant="ghost"
-            color="neutral"
-            class="font-medium"
+            class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
-            Sign In
-          </UButton>
-          <UButton
+            Log In
+          </NuxtLink>
+          <NuxtLink
             to="/signup"
-            color="primary"
-            class="font-medium"
+            class="px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded transition-colors"
           >
-            Get Started
-          </UButton>
+            GET STARTED
+          </NuxtLink>
         </div>
 
         <!-- Mobile Menu Button -->
-        <UButton
-          variant="ghost"
-          color="neutral"
-          class="md:hidden"
-          square
+        <button
+          class="lg:hidden p-2 text-gray-400 hover:text-white transition-colors"
           @click="mobileMenuOpen = !mobileMenuOpen"
-          :icon="!mobileMenuOpen ? 'i-heroicons-bars-3' : 'i-heroicons-x-mark'"
           aria-label="Toggle menu"
-        />
+        >
+          <svg v-if="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+          <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
       </div>
     </div>
 
-    <!-- Mobile Menu Dropdown (absolute overlay) -->
+    <!-- Mobile Menu -->
     <Transition
       enter-active-class="transition-all duration-300 ease-out"
       enter-from-class="opacity-0 -translate-y-4"
@@ -104,136 +90,25 @@
       leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 -translate-y-4"
     >
-      <UCard 
-        v-if="mobileMenuOpen" 
-        class="md:hidden absolute z-50 left-0 right-0 top-full rounded-none border-t-0 border-x-0 border-b border-subtle shadow-xl"
-      >
-        <div class="max-w-7xl mx-auto">
-          <nav class="flex flex-col gap-2">
-            <UButton
-              to="/#features"
-              variant="ghost"
-              color="neutral"
-              block
-              class="justify-start text-base"
-              @click.prevent="scrollToSection('features'); mobileMenuOpen = false"
-            >
-              Features
-            </UButton>
-            <UButton
-              to="/#pricing"
-              variant="ghost"
-              color="neutral"
-              block
-              class="justify-start text-base"
-              @click.prevent="scrollToSection('pricing'); mobileMenuOpen = false"
-            >
-              Pricing
-            </UButton>
-            <UButton
-              to="/about"
-              variant="ghost"
-              color="neutral"
-              block
-              class="justify-start text-base"
-              @click="mobileMenuOpen = false"
-            >
-              About
-            </UButton>
-            <UButton
-              to="/blog"
-              variant="ghost"
-              color="neutral"
-              block
-              class="justify-start text-base"
-              @click="mobileMenuOpen = false"
-            >
-              Blog
-            </UButton>
-          </nav>
-          
-          <div class="flex flex-col gap-3 mt-6 pt-6 border-t border-subtle">
-            <!-- Color Mode Toggle (Mobile) -->
-            <UButton
-              variant="ghost"
-              color="neutral"
-              block
-              class="justify-start text-base"
-              @click="toggleColorMode"
-              :icon="colorMode.value === 'dark' ? 'i-heroicons-sun' : 'i-heroicons-moon'"
-            >
-              {{ colorMode.value === 'dark' ? 'Light Mode' : 'Dark Mode' }}
-            </UButton>
-            
-            <UButton
-              to="/login"
-              variant="ghost"
-              color="neutral"
-              block
-              class="justify-center text-base"
-              @click="mobileMenuOpen = false"
-            >
-              Sign In
-            </UButton>
-            <UButton
-              to="/signup"
-              color="primary"
-              block
-              class="justify-center text-base"
-              @click="mobileMenuOpen = false"
-            >
-              Get Started
-            </UButton>
-          </div>
+      <div v-if="mobileMenuOpen" class="lg:hidden bg-[#0A0F1C] border-t border-white/10 px-6 py-4">
+        <nav class="flex flex-col gap-2">
+          <NuxtLink to="/platform" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Platform</NuxtLink>
+          <NuxtLink to="/widgets" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Widget Builder</NuxtLink>
+          <NuxtLink to="/graphics" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Graphics Studio</NuxtLink>
+          <NuxtLink to="/pricing" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Pricing</NuxtLink>
+          <NuxtLink to="/developers" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Developers</NuxtLink>
+        </nav>
+        <div class="flex flex-col gap-2 mt-4 pt-4 border-t border-white/10">
+          <NuxtLink to="/login" class="px-4 py-2 text-center text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Log In</NuxtLink>
+          <NuxtLink to="/signup" class="px-4 py-2 text-center font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded" @click="mobileMenuOpen = false">GET STARTED</NuxtLink>
         </div>
-      </UCard>
+      </div>
     </Transition>
-
-    <!-- Backdrop overlay -->
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition duration-300 ease-out"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition duration-200 ease-in"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
-      >
-        <div 
-          v-if="mobileMenuOpen" 
-          class="fixed inset-0 bg-black/50 md:hidden"
-          @click="mobileMenuOpen = false"
-        ></div>
-      </Transition>
-    </Teleport>
   </header>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 
 const mobileMenuOpen = ref(false)
-
-// Color mode
-const colorMode = useColorMode()
-const toggleColorMode = () => {
-  colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
-}
-
-// Smooth scroll to section
-const scrollToSection = (sectionId: string) => {
-  const element = document.getElementById(sectionId)
-  if (element) {
-    element.scrollIntoView({ behavior: 'smooth' })
-  }
-}
-
-// Lock body scroll when menu is open
-watch(mobileMenuOpen, (isOpen) => {
-  if (isOpen) {
-    document.body.style.overflow = 'hidden'
-  } else {
-    document.body.style.overflow = ''
-  }
-})
 </script>
