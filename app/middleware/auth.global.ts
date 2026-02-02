@@ -13,7 +13,11 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
       await authStore.fetchUser() 
     } catch (e) {
       // If fetch fails (token expired/invalid), user stays null
+      authStore.authLoading = false
     }
+  } else {
+    // User already exists, no need to fetch
+    authStore.authLoading = false
   }
 
   const headers = useRequestHeaders(['cookie'])
@@ -39,7 +43,6 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     // Allow them to visit login/signup pages if they exist on the subdomain (optional)
     // But typically you send them to the main site login:
     if (to.path !== '/login') {
-      console.log("lol!!!")
        return navigateTo(`${protocol}://${rootHost}/login`, { external: true })
     }
   }
