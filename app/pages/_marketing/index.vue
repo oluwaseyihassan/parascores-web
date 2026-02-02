@@ -1,494 +1,746 @@
 <template>
-  <div class="overflow-hidden">
+  <div class="bg-[#0A0F1C] min-h-screen text-white">
     <!-- Hero Section -->
-    <section class="relative min-h-screen flex items-center overflow-hidden">
-      
-      <!-- Animated grid pattern -->
-      <div class="absolute inset-0 grid-pattern opacity-30"></div>
-      
-      <!-- Floating orbs -->
-      <div class="absolute top-20 left-[10%] w-72 h-72 bg-green-500/20 rounded-full blur-[100px] floating-orb"></div>
-      <div class="absolute bottom-20 right-[15%] w-96 h-96 bg-emerald-500/15 rounded-full blur-[120px] floating-orb-delayed"></div>
-      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-teal-500/10 rounded-full blur-[150px] floating-orb-slow"></div>
-      
-      <!-- Floating shapes -->
-      <div class="absolute top-32 right-[20%] w-4 h-4 bg-green-400/60 rounded-full floating-shape"></div>
-      <div class="absolute top-48 left-[25%] w-3 h-3 bg-emerald-400/40 rounded-full floating-shape-delayed"></div>
-      <div class="absolute bottom-32 left-[15%] w-5 h-5 bg-teal-400/50 rounded-full floating-shape-slow"></div>
-      <div class="absolute bottom-48 right-[30%] w-2 h-2 bg-green-300/70 rounded-full floating-shape"></div>
-      
-      <div class="relative max-w-7xl mx-auto px-6 py-32">
-        <div class="text-center max-w-4xl mx-auto">
-          <!-- Badge with pulse animation -->
-          <div 
-            ref="badgeRef"
-            class="inline-flex items-center gap-2 px-4 py-1.5 mb-8 text-sm font-medium text-green-400 bg-green-500/10 border border-green-500/20 rounded-full backdrop-blur-sm reveal-element"
-          >
-            <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-            Now in Beta — Join the waitlist
-          </div>
+    <section class="relative pt-20 pb-32 overflow-hidden">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid lg:grid-cols-2 gap-12 items-center">
+          <!-- Left Content -->
+          <div>
+            <!-- Badge -->
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 mb-8 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded">
+              <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+              V2.0 SYSTEM ONLINE
+            </div>
 
-          <!-- Main Headline with staggered reveal -->
-          <h1 
-            ref="headlineRef"
-            class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-heading tracking-tight leading-[1.1] mb-6 reveal-element delay-100"
-          >
-            Run tournaments
-            <span class="block mt-2 bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent animate-gradient-x bg-[length:200%_100%]">
-              like a pro
-            </span>
-          </h1>
+            <!-- Headline -->
+            <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6">
+              Tournaments<br />
+              Managed.<br />
+              <span class="text-emerald-400">Simply.</span>
+            </h1>
 
-          <!-- Subtitle -->
-          <p 
-            ref="subtitleRef"
-            class="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed reveal-element delay-200"
-          >
-            The all-in-one platform for organizing, managing, and scaling competitive events. 
-            From brackets to live scoring and graphics — we've got you covered.
-          </p>
+            <!-- Subtitle -->
+            <p class="text-lg text-gray-400 mb-2 max-w-md">
+              The definitive platform for esports brackets, live scoring, and player statistics.
+            </p>
+            <p class="text-lg font-medium text-white mb-8">
+              Zero latency. Pure data.
+            </p>
 
-          <!-- CTA Buttons -->
-          <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 reveal-element delay-300">
-            <UButton
-              to="/signup"
-              size="xl"
-              icon="i-heroicons-arrow-right"
-              trailing
-              color="primary"
-              class="w-full sm:w-auto px-8 py-4 text-base font-semibold shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 transition-all duration-300 btn-glow"
-            >
-              Start for free
-            </UButton>
-            <UButton
-              to="/demo"
-              size="xl"
-              icon="i-heroicons-play-circle"
-              variant="outline"
-              color="neutral"
-              class="w-full sm:w-auto px-8 py-4 text-base font-semibold hover:bg-white/5 transition-all duration-300"
-            >
-              Watch demo
-            </UButton>
-          </div>
-
-          <!-- Animated Stats -->
-          <div 
-            ref="statsRef"
-            class="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 pt-8 border-t border-white/[0.06] reveal-element delay-400"
-          >
-            <div 
-              v-for="(stat, index) in stats" 
-              :key="index"
-              class="text-center group cursor-default"
-            >
-              <div class="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-1 group-hover:text-green-400 transition-colors duration-300">
-                <span ref="statCounters" :data-target="stat.value" :data-suffix="stat.suffix">0{{ stat.suffix }}</span>
-              </div>
-              <div class="text-xs sm:text-sm text-gray-500 group-hover:text-gray-400 transition-colors">{{ stat.label }}</div>
+            <!-- CTAs -->
+            <div class="flex flex-wrap gap-4">
+              <NuxtLink
+                to="/signup"
+                class="px-6 py-3 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded transition-colors"
+              >
+                Create Tournament
+              </NuxtLink>
+              <NuxtLink
+                to="/docs"
+                class="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-white border border-white/20 hover:border-white/40 rounded transition-colors"
+              >
+                View Documentation
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                </svg>
+              </NuxtLink>
             </div>
           </div>
-        </div>
 
-        <!-- Hero Image/Mockup with 3D tilt effect -->
-        <div 
-          ref="mockupRef"
-          class="mt-20 relative perspective-1000 reveal-element delay-500"
-        >
-          <div 
-            class="relative bg-[#111111]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl shadow-black/50 mockup-card transition-transform duration-500 hover:scale-[1.02]"
-          >
-            <!-- Browser-like header -->
-            <div class="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] bg-black/20">
-              <div class="flex gap-1.5">
-                <div class="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-400 transition-colors cursor-pointer"></div>
-                <div class="w-3 h-3 rounded-full bg-yellow-500/80 hover:bg-yellow-400 transition-colors cursor-pointer"></div>
-                <div class="w-3 h-3 rounded-full bg-green-500/80 hover:bg-green-400 transition-colors cursor-pointer"></div>
-              </div>
-              <div class="flex-1 flex justify-center">
-                <div class="px-4 py-1 text-xs text-gray-500 bg-white/[0.04] rounded-md">
-                  manage.parascores.com/dashboard
-                </div>
+          <!-- Right Mockup -->
+          <div class="relative">
+            <!-- Tournament Badge -->
+            <div class="absolute -top-4 right-12 z-10 px-4 py-2 bg-[#111827] border border-emerald-500/30 rounded-lg">
+              <div class="text-xs text-gray-400">ESPL LEAGUE</div>
+              <div class="flex items-center gap-2">
+                <span class="text-emerald-400">🏆</span>
+                <span class="font-medium text-emerald-400">Summer Split '25</span>
               </div>
             </div>
-            
-            <!-- Dashboard preview content -->
-            <div class="p-6 sm:p-8">
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div 
-                  v-for="(card, i) in dashboardCards" 
-                  :key="i"
-                  class="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl hover:border-green-500/30 hover:bg-white/[0.04] transition-all duration-300"
-                  :style="{ transitionDelay: `${i * 50}ms` }"
-                >
-                  <div class="text-sm text-gray-500 mb-1">{{ card.label }}</div>
-                  <div class="text-2xl font-bold text-white">{{ card.value }}</div>
+
+            <!-- Main Dashboard Mockup -->
+            <div class="bg-[#111827] border border-white/10 rounded-lg overflow-hidden">
+              <!-- Window Controls -->
+              <div class="flex items-center gap-2 px-4 py-3 border-b border-white/10">
+                <div class="flex gap-1.5">
+                  <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                  <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                  <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                </div>
+                <div class="ml-4 px-3 py-1 text-xs text-gray-500 bg-black/30 rounded">
+                  TOURNAMENT_ID: #587215
                 </div>
               </div>
-              
-              <!-- Bracket preview -->
-              <div class="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-6 hover:border-green-500/20 transition-all duration-300">
-                <div class="flex items-center justify-between mb-4">
-                  <div class="text-sm font-medium text-white">Championship Bracket</div>
-                  <div class="px-2 py-1 text-xs font-medium text-green-400 bg-green-500/10 rounded-md flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                    Live
+
+              <!-- Dashboard Content -->
+              <div class="p-6 grid grid-cols-2 gap-4">
+                <!-- Left Panel - Match List -->
+                <div class="space-y-3">
+                  <div class="text-xs text-gray-500 mb-2">MATCH 01</div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-white">Alpha</span>
+                    <span class="font-medium text-white">3</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Beta</span>
+                    <span class="text-gray-400">1</span>
+                  </div>
+                  
+                  <div class="text-xs text-gray-500 mt-4 mb-2">MATCH 02</div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Gamma</span>
+                    <span class="text-gray-400">0</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Delta</span>
+                    <span class="text-gray-400">0</span>
                   </div>
                 </div>
-                <div class="flex gap-8 overflow-x-auto pb-2">
-                  <!-- Round 1 -->
-                  <div class="flex-shrink-0 space-y-3">
-                    <div class="text-xs text-gray-500 mb-2">Quarter Finals</div>
-                    <div class="w-40 p-2 bg-white/[0.03] border border-white/[0.08] rounded-lg hover:border-white/20 transition-all">
-                      <div class="flex justify-between text-xs"><span class="text-gray-400">Team Alpha</span><span class="text-white font-medium">3</span></div>
-                      <div class="flex justify-between text-xs mt-1"><span class="text-gray-400">Team Beta</span><span class="text-gray-500">1</span></div>
-                    </div>
-                    <div class="w-40 p-2 bg-white/[0.03] border border-white/[0.08] rounded-lg hover:border-white/20 transition-all">
-                      <div class="flex justify-between text-xs"><span class="text-gray-400">Team Gamma</span><span class="text-gray-500">2</span></div>
-                      <div class="flex justify-between text-xs mt-1"><span class="text-gray-400">Team Delta</span><span class="text-white font-medium">3</span></div>
-                    </div>
+
+                <!-- Right Panel - Live Match -->
+                <div class="bg-[#0A0F1C] border border-white/10 rounded-lg p-4">
+                  <div class="flex items-center justify-between mb-4">
+                    <span class="text-xs text-gray-500">SEMIFINAL</span>
+                    <span class="px-2 py-0.5 text-xs text-emerald-400 bg-emerald-500/20 rounded">● LIVE</span>
                   </div>
-                  <!-- Semi Finals -->
-                  <div class="flex-shrink-0 space-y-3">
-                    <div class="text-xs text-gray-500 mb-2">Semi Finals</div>
-                    <div class="w-40 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
-                      <div class="flex justify-between text-xs"><span class="text-green-400">Team Alpha</span><span class="text-white font-medium">2</span></div>
-                      <div class="flex justify-between text-xs mt-1"><span class="text-gray-400">Team Delta</span><span class="text-gray-500">1</span></div>
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between p-2 bg-emerald-500/10 border border-emerald-500/30 rounded">
+                      <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 bg-gray-700 rounded flex items-center justify-center text-xs">A</div>
+                        <span class="font-medium">ALPHA</span>
+                      </div>
+                      <span class="text-xl font-bold">3</span>
                     </div>
-                  </div>
-                  <!-- Finals -->
-                  <div class="flex-shrink-0 space-y-3">
-                    <div class="text-xs text-gray-500 mb-2">Finals</div>
-                    <div class="w-40 p-2 bg-white/[0.03] border border-dashed border-white/[0.15] rounded-lg">
-                      <div class="flex justify-between text-xs"><span class="text-gray-500">TBD</span><span class="text-gray-600">-</span></div>
-                      <div class="flex justify-between text-xs mt-1"><span class="text-gray-500">TBD</span><span class="text-gray-600">-</span></div>
+                    <div class="flex items-center justify-between p-2 bg-white/5 rounded">
+                      <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 bg-gray-700 rounded flex items-center justify-center text-xs">Ω</div>
+                        <span>OMEGA</span>
+                      </div>
+                      <span class="text-xl font-bold text-gray-400">1</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
+            <!-- Player Activity Card -->
+            <div class="absolute -bottom-8 -right-4 w-48 bg-[#111827] border border-white/10 rounded-lg p-4">
+              <div class="text-xs text-gray-500 mb-3">PLAYER ACTIVITY</div>
+              <div class="flex items-end gap-1 h-16">
+                <div class="flex-1 bg-emerald-500/30 rounded-t" style="height: 40%"></div>
+                <div class="flex-1 bg-emerald-500/30 rounded-t" style="height: 60%"></div>
+                <div class="flex-1 bg-emerald-500/30 rounded-t" style="height: 45%"></div>
+                <div class="flex-1 bg-emerald-500/30 rounded-t" style="height: 80%"></div>
+                <div class="flex-1 bg-emerald-500 rounded-t" style="height: 100%"></div>
+              </div>
+              <div class="mt-2 text-right text-emerald-400 text-sm font-medium">+24%</div>
+            </div>
           </div>
-          
-          <!-- Decorative glow under mockup -->
-          <div class="absolute -bottom-20 left-1/2 -translate-x-1/2 w-3/4 h-40 bg-green-500/20 rounded-full blur-[80px]"></div>
         </div>
       </div>
     </section>
 
     <!-- Trusted By Section -->
-    <section class="py-16 border-t border-white/[0.06] relative">
+    <section class="py-12 border-t border-white/10">
       <div class="max-w-7xl mx-auto px-6">
-        <p 
-          ref="trustedRef"
-          class="text-center text-xs font-medium text-gray-500 uppercase tracking-[0.2em] mb-10 reveal-element"
-        >
-          Trusted by organizations worldwide
+        <p class="text-center text-xs font-medium text-gray-500 uppercase tracking-[0.2em] mb-8">
+          Trusted by Elite Organizations
         </p>
-        <div class="flex flex-wrap items-center justify-center gap-x-6 sm:gap-x-12 gap-y-6 reveal-element delay-100">
-          <span 
-            v-for="(brand, i) in brands" 
-            :key="brand.name"
-            :class="brand.class"
-            class="opacity-60 hover:opacity-100 transition-all duration-300 hover:scale-110 cursor-default"
-            :style="{ transitionDelay: `${i * 50}ms` }"
-          >
-            {{ brand.name }}
-          </span>
+        <div class="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
+          <div class="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors">
+            <span class="text-xl">▲</span>
+            <span class="font-semibold tracking-wide">NEXUS</span>
+          </div>
+          <div class="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors">
+            <span class="text-xl">⚡</span>
+            <span class="font-semibold tracking-wide">HYPERION</span>
+          </div>
+          <div class="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors">
+            <span class="text-xl">✦</span>
+            <span class="font-semibold tracking-wide">STRATOS</span>
+          </div>
+          <div class="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors">
+            <span class="text-xl">◈</span>
+            <span class="font-semibold tracking-wide">VOXEL</span>
+          </div>
+          <div class="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors">
+            <span class="text-xl">⚙</span>
+            <span class="font-semibold tracking-wide">CORE</span>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Feature 1: Bracket Engine -->
-    <section id="features" class="py-24 scroll-mt-20 relative">
+    <!-- Features Intro Section -->
+    <section class="py-24">
       <div class="max-w-7xl mx-auto px-6">
-        <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          <!-- Content -->
-          <div ref="feature1Ref" class="order-2 lg:order-1">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 mb-6 text-sm font-medium text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-full reveal-element">
-              <Icon name="heroicons:puzzle-piece" class="w-4 h-4" />
-              Bracket Engine
-            </div>
-            <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-6 reveal-element delay-100">
-              Chaos-Free Scheduling.
-            </h2>
-            <p class="text-lg text-gray-400 leading-relaxed mb-8 reveal-element delay-200">
-              Forget spreadsheets. Generate round-robin, knockout, or group stage schedules in one click. Our engine handles conflict resolution and pitch allocation automatically.
-            </p>
-            <ul class="space-y-4">
-              <li 
-                v-for="(item, i) in feature1Items" 
-                :key="i"
-                class="flex items-center gap-3 reveal-element"
-                :style="{ transitionDelay: `${300 + i * 100}ms` }"
-              >
-                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <Icon name="heroicons:check" class="w-3 h-3 text-green-400" />
-                </div>
-                <span class="text-gray-300">{{ item }}</span>
-              </li>
-            </ul>
-          </div>
-          
-          <!-- Mockup -->
-          <div class="order-1 lg:order-2 relative group reveal-element">
-            <div class="relative rounded-2xl overflow-hidden shadow-2xl transform rotate-2 transition-all duration-700 ease-out group-hover:rotate-0 group-hover:scale-[1.02]">
-              <div class="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                <div class="text-gray-500 text-sm">Bracket Engine Preview</div>
-              </div>
-              <!-- Glow effect -->
-              <div class="absolute inset-0 bg-gradient-to-t from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            </div>
-            <!-- Floating accent -->
-            <div class="absolute -top-4 -right-4 w-20 h-20 bg-cyan-500/20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Feature 2: Live Control -->
-    <section class="py-24 relative">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          <!-- Mockup -->
-          <div ref="feature2Ref" class="relative group reveal-element">
-            <div class="relative rounded-2xl overflow-hidden shadow-2xl transform -rotate-2 transition-all duration-700 ease-out group-hover:rotate-0 group-hover:scale-[1.02]">
-              <div class="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                <div class="text-gray-500 text-sm">Live Control Preview</div>
-              </div>
-              <div class="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            </div>
-            <div class="absolute -bottom-4 -left-4 w-24 h-24 bg-green-500/20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
-          </div>
-
-          <!-- Content -->
-          <div>
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 mb-6 text-sm font-medium text-green-400 bg-green-500/10 border border-green-500/20 rounded-full reveal-element">
-              <Icon name="heroicons:signal" class="w-4 h-4" />
-              Live Control
-            </div>
-            <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-6 reveal-element delay-100">
-              Command Center for Match Day.
-            </h2>
-            <p class="text-lg text-gray-400 leading-relaxed mb-8 reveal-element delay-200">
-              Empower your referees and officials with a mobile-friendly control panel. Log goals, fouls, and subs in real-time, instantly updating the public view.
-            </p>
-            <ul class="space-y-4">
-              <li 
-                v-for="(item, i) in feature2Items" 
-                :key="i"
-                class="flex items-center gap-3 reveal-element"
-                :style="{ transitionDelay: `${300 + i * 100}ms` }"
-              >
-                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <Icon name="heroicons:check" class="w-3 h-3 text-green-400" />
-                </div>
-                <span class="text-gray-300">{{ item }}</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Feature 3: Graphics Studio -->
-    <section class="py-24 relative overflow-hidden">
-      <div class="relative max-w-7xl mx-auto px-6">
-        <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          <!-- Content -->
-          <div ref="feature3Ref" class="order-2 lg:order-1">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 mb-6 text-sm font-medium text-purple-400 bg-purple-500/10 border border-purple-500/20 rounded-full reveal-element">
-              <Icon name="heroicons:paint-brush" class="w-4 h-4" />
-              Graphics Studio
-            </div>
-            <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-6 reveal-element delay-100">
-              Social Media Ready. Instantly.
-            </h2>
-            <p class="text-lg text-gray-400 leading-relaxed mb-8 reveal-element delay-200">
-              Don't wait for a designer. Generate stunning match results, league tables, and player quote graphics directly from your match data with one click.
-            </p>
-            <ul class="space-y-4">
-              <li 
-                v-for="(item, i) in feature3Items" 
-                :key="i"
-                class="flex items-center gap-3 reveal-element"
-                :style="{ transitionDelay: `${300 + i * 100}ms` }"
-              >
-                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <Icon name="heroicons:check" class="w-3 h-3 text-green-400" />
-                </div>
-                <span class="text-gray-300">{{ item }}</span>
-              </li>
-            </ul>
-          </div>
-          
-          <!-- Mockup -->
-          <div class="order-1 lg:order-2 relative group reveal-element">
-            <div class="relative rounded-2xl overflow-hidden shadow-2xl transform rotate-2 transition-all duration-700 ease-out group-hover:rotate-0 group-hover:scale-[1.02]">
-              <div class="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                <div class="text-gray-500 text-sm">Graphics Studio Preview</div>
-              </div>
-              <div class="absolute inset-0 bg-gradient-to-t from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            </div>
-            <div class="absolute -top-4 -right-4 w-20 h-20 bg-purple-500/20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Testimonials Section -->
-    <section class="py-24 relative">
-      <div class="max-w-7xl mx-auto px-6">
-        <div ref="testimonialsRef" class="text-center mb-16">
-          <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-4 reveal-element">
-            Loved by Organizers
+        <!-- Section Header -->
+        <div class="max-w-xl mb-16">
+          <h2 class="text-4xl md:text-5xl font-bold mb-4">
+            Engineered for<br />
+            <span class="text-emerald-400 underline decoration-emerald-400 underline-offset-8">Competition.</span>
           </h2>
-          <p class="text-gray-400 text-lg reveal-element delay-100">
-            Join hundreds of leagues streamlining their operations.
-          </p>
         </div>
-        
-        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          <div 
-            v-for="(testimonial, index) in testimonials" 
-            :key="index"
-            class="reveal-element"
-            :style="{ transitionDelay: `${200 + index * 100}ms` }"
-          >
-            <UCard 
-              :class="[
-                'relative h-full transition-all duration-500 hover:border-green-500/30 hover:-translate-y-2 hover:shadow-xl hover:shadow-green-500/5 group',
-                index === testimonials.length - 1 ? 'sm:col-span-2 lg:col-span-1' : ''
-              ]"
-            >
-              <div class="absolute top-4 sm:top-6 right-4 sm:right-6 text-4xl sm:text-5xl font-serif text-gray-200 dark:text-gray-700 group-hover:text-green-500/30 transition-colors duration-500">"</div>
-              <p class="text-muted mb-5 sm:mb-6 leading-relaxed text-sm sm:text-base pr-6 flex-1">
-                "{{ testimonial.quote }}"
-              </p>
-              <div class="flex items-center gap-3">
-                <UAvatar 
-                  :src="testimonial.avatar" 
-                  :alt="testimonial.name" 
-                  size="md" 
-                  class="ring-2 ring-transparent group-hover:ring-green-500/50 transition-all duration-300"
-                />
-                <div>
-                  <div class="text-heading font-medium text-sm sm:text-base">{{ testimonial.name }}</div>
-                  <div class="text-xs sm:text-sm text-muted">{{ testimonial.role }}</div>
+
+        <!-- Feature Cards -->
+        <div class="grid md:grid-cols-3 gap-6">
+          <!-- Real-Time WebSocket Sync -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+            <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
+              <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Real-Time WebSocket Sync</h3>
+            <p class="text-sm text-gray-400">
+              Score updates propagate instantly to millions of connected clients. No refresh required. 15ms global latency.
+            </p>
+          </div>
+
+          <!-- Chaos-Free Scheduling -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+            <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
+              <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Chaos-Free Scheduling</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              Forget spreadsheets. Generate round-robin, knockout, or group stage schedules in one click. Our engine handles conflict resolution automatically.
+            </p>
+            <ul class="text-xs text-gray-500 space-y-1">
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Drag-and-drop fixture management
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Automatic table calculation
+              </li>
+            </ul>
+          </div>
+
+          <!-- Embeddable Live Widgets -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+            <div class="bg-[#0A0F1C] border border-white/10 rounded p-3 mb-4">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-gray-500">LIVE WIDGET</span>
+                <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+              </div>
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 bg-emerald-500 rounded"></div>
+                    <span>Team A</span>
+                  </div>
+                  <span class="text-emerald-400 font-medium">3</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 bg-red-500 rounded"></div>
+                    <span>Team B</span>
+                  </div>
+                  <span class="font-medium">2</span>
                 </div>
               </div>
-            </UCard>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Embeddable Live Widgets</h3>
+            <p class="text-sm text-gray-400">
+              Drop a single line of code to embed fully interactive brackets and score tickers on your own website.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feature Grid Section -->
+    <section class="py-24 border-t border-white/10">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid md:grid-cols-3 gap-6">
+          <!-- Headless API - Highlighted -->
+          <div class="bg-[#111827] border-2 border-emerald-500/50 rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                <span class="text-emerald-400 font-mono text-lg">&lt;/&gt;</span>
+              </div>
+              <span class="text-gray-600 text-2xl">↔</span>
+            </div>
+            <h3 class="text-lg font-semibold text-emerald-400 mb-2">Headless API</h3>
+            <p class="text-sm text-gray-400">
+              Build your own frontend. Our robust JSON API gives you full read/write access to every match, player, and stat.
+            </p>
+          </div>
+
+          <!-- Social Media Ready -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+              </div>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Social Media Ready. Instantly.</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              Don't wait for a designer. Generate stunning match results, league tables, and player quote graphics directly from your match data.
+            </p>
+            <ul class="text-xs text-gray-500 space-y-1">
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Auto-populated data templates
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Custom branding & logos
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Download in HD for <span class="text-emerald-400">Instagram/Twitter</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Match Verification -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+              </div>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Match Verification</h3>
+            <p class="text-sm text-gray-400">
+              Dispute resolution tools and screenshot verification workflows built directly into the match lobby.
+            </p>
+          </div>
+
+          <!-- Prize Payouts -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Prize Payouts</h3>
+            <p class="text-sm text-gray-400">
+              Automated prize pool distribution via Stripe Connect or PayPal. Handle entry fees securely.
+            </p>
+          </div>
+
+          <!-- Deep Analytics -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+              </div>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Deep Analytics</h3>
+            <p class="text-sm text-gray-400">
+              Player performance heatmaps, APM tracking, and historical ELO ratings generated automatically.
+            </p>
+          </div>
+
+          <!-- Role Management -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+              </div>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Role Management</h3>
+            <p class="text-sm text-gray-400">
+              Granular permissions for Admins, Referees, and Casters. Invite staff with a single link.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Embed Anywhere Section -->
+    <section class="py-24 border-t border-white/10">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid lg:grid-cols-2 gap-12 items-start">
+          <!-- Left Content -->
+          <div>
+            <h2 class="text-4xl font-bold mb-4">Embed Anywhere.</h2>
+            <p class="text-gray-400 mb-8 max-w-md">
+              Customize your tournament widget and drop it into your React, Vue, or vanilla JS app with one line of code.
+            </p>
+
+            <!-- Widget Customizer Mockup -->
+            <div class="bg-[#111827] border border-white/10 rounded-lg p-6">
+              <div class="mb-6">
+                <div class="text-xs text-gray-500 uppercase tracking-wider mb-3">Accent Color</div>
+                <div class="flex gap-2">
+                  <button class="w-8 h-8 bg-emerald-500 rounded ring-2 ring-white ring-offset-2 ring-offset-[#111827]"></button>
+                  <button class="w-8 h-8 bg-blue-500 rounded"></button>
+                  <button class="w-8 h-8 bg-red-500 rounded"></button>
+                  <button class="w-8 h-8 bg-orange-500 rounded"></button>
+                </div>
+              </div>
+
+              <div class="mb-6">
+                <div class="text-xs text-gray-500 uppercase tracking-wider mb-3">View Mode</div>
+                <div class="flex">
+                  <button class="flex-1 px-4 py-2 text-sm font-medium text-white bg-white/10 border border-white/20 rounded-l">BRACKET</button>
+                  <button class="flex-1 px-4 py-2 text-sm font-medium text-gray-400 border border-white/10 rounded-r">MATCH LIST</button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between mb-6">
+                <span class="text-sm font-medium">Show Live Indicator</span>
+                <div class="w-12 h-6 bg-emerald-500 rounded-full relative">
+                  <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+                </div>
+              </div>
+
+              <div class="bg-[#0A0F1C] rounded p-3 font-mono text-xs">
+                <div class="text-gray-500">&lt;ParaWidget</div>
+                <div class="pl-4 text-emerald-400">id="<span class="text-white">tour_4k021</span>"</div>
+                <div class="pl-4 text-emerald-400">theme="<span class="text-white">dark</span>"</div>
+                <div class="text-gray-500">/&gt;</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Widget Preview -->
+          <div class="bg-[#0A0F1C] border border-white/10 rounded-lg p-6">
+            <div class="flex items-center gap-2 text-xs text-gray-500 mb-6">
+              <span>PREVIEW_MODE:</span>
+              <span class="text-emerald-400">INTERACTIVE</span>
+            </div>
+
+            <div class="bg-[#111827] border border-white/10 rounded-lg overflow-hidden">
+              <div class="flex items-center justify-between p-4 border-b border-white/10">
+                <span class="font-medium">Summer Championship</span>
+                <span class="px-2 py-1 text-xs text-red-400 bg-red-500/20 rounded">LIVE NOW</span>
+              </div>
+              <div class="p-4 space-y-2">
+                <div class="flex items-center justify-between p-3 bg-emerald-500/10 border border-emerald-500/30 rounded">
+                  <div class="flex items-center gap-3">
+                    <div class="w-6 h-6 bg-gray-600 rounded"></div>
+                    <span>Team Liquid</span>
+                  </div>
+                  <span class="text-emerald-400 font-bold">2</span>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-white/5 rounded">
+                  <div class="flex items-center gap-3">
+                    <div class="w-6 h-6 bg-gray-600 rounded"></div>
+                    <span>Cloud9</span>
+                  </div>
+                  <span class="font-bold">0</span>
+                </div>
+              </div>
+              <div class="p-3 text-center text-xs text-gray-500 border-t border-white/10">
+                POWERED BY PARASCORES
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Graphics Studio Section -->
+    <section class="py-24 border-t border-white/10">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid lg:grid-cols-2 gap-12 items-start">
+          <!-- Left Content -->
+          <div>
+            <!-- Badge -->
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 mb-6 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded">
+              ✏️ GRAPHICS STUDIO
+            </div>
+
+            <h2 class="text-4xl font-bold mb-4">
+              Broadcast-Ready<br />
+              Visuals.
+            </h2>
+            <p class="text-gray-400 mb-8 max-w-md">
+              Generate professional post-match graphics, stream overlays, and social media assets directly from your tournament data.
+            </p>
+
+            <!-- Template Builder Mockup -->
+            <div class="bg-[#111827] border border-white/10 rounded-lg p-6">
+              <div class="mb-6">
+                <div class="text-xs text-gray-500 uppercase tracking-wider mb-3">Template</div>
+                <div class="flex">
+                  <button class="flex-1 px-4 py-2 text-sm font-medium text-white bg-emerald-500 rounded-l">VERSUS</button>
+                  <button class="flex-1 px-4 py-2 text-sm font-medium text-gray-400 bg-white/5 rounded-r">WINNER</button>
+                </div>
+              </div>
+
+              <div class="mb-6">
+                <div class="text-xs text-gray-500 uppercase tracking-wider mb-3">Match Details</div>
+                <div class="space-y-3">
+                  <div>
+                    <label class="text-xs text-gray-500">TOURNAMENT PHASE</label>
+                    <input type="text" value="GRAND FINAL" class="w-full mt-1 px-3 py-2 text-sm bg-[#0A0F1C] border border-white/10 rounded text-white" />
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="text-xs text-gray-500">TEAM A NAME</label>
+                      <input type="text" value="Team Alpha" class="w-full mt-1 px-3 py-2 text-sm bg-[#0A0F1C] border border-white/10 rounded text-white" />
+                    </div>
+                    <div>
+                      <label class="text-xs text-gray-500">SCORE A</label>
+                      <input type="text" value="3" class="w-full mt-1 px-3 py-2 text-sm bg-[#0A0F1C] border border-white/10 rounded text-white" />
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="text-xs text-gray-500">TEAM B NAME</label>
+                      <input type="text" value="Team Omega" class="w-full mt-1 px-3 py-2 text-sm bg-[#0A0F1C] border border-white/10 rounded text-white" />
+                    </div>
+                    <div>
+                      <label class="text-xs text-gray-500">SCORE B</label>
+                      <input type="text" value="1" class="w-full mt-1 px-3 py-2 text-sm bg-[#0A0F1C] border border-white/10 rounded text-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-6">
+                <div class="text-xs text-gray-500 uppercase tracking-wider mb-3">Style</div>
+                <div class="flex gap-2">
+                  <button class="w-10 h-10 bg-[#0A0F1C] border-2 border-emerald-500 rounded flex items-center justify-center">
+                    <div class="w-4 h-4 bg-white/20 rounded-sm"></div>
+                  </button>
+                  <button class="w-10 h-10 bg-[#0A0F1C] border border-white/10 rounded flex items-center justify-center">
+                    <div class="grid grid-cols-2 gap-0.5">
+                      <div class="w-1.5 h-1.5 bg-white/20 rounded-sm"></div>
+                      <div class="w-1.5 h-1.5 bg-white/20 rounded-sm"></div>
+                      <div class="w-1.5 h-1.5 bg-white/20 rounded-sm"></div>
+                      <div class="w-1.5 h-1.5 bg-white/20 rounded-sm"></div>
+                    </div>
+                  </button>
+                  <button class="w-10 h-10 bg-[#0A0F1C] border border-white/10 rounded flex items-center justify-center">
+                    <div class="w-4 h-1 bg-white/20 rounded-sm"></div>
+                  </button>
+                </div>
+              </div>
+
+              <button class="w-full px-4 py-3 text-sm font-medium text-white bg-white/10 border border-white/20 rounded hover:bg-white/20 transition-colors flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                EXPORT GRAPHIC
+              </button>
+            </div>
+          </div>
+
+          <!-- Right Graphic Preview -->
+          <div class="bg-[#0A0F1C] border border-white/10 rounded-lg p-6">
+            <div class="flex items-center justify-end gap-2 mb-6">
+              <button class="w-8 h-8 bg-white/10 rounded flex items-center justify-center hover:bg-white/20">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
+                </svg>
+              </button>
+              <button class="w-8 h-8 bg-white/10 rounded flex items-center justify-center hover:bg-white/20">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Match Graphic -->
+            <div class="bg-[#111827] rounded-lg overflow-hidden">
+              <div class="text-center py-2 text-xs font-medium text-emerald-400 bg-emerald-500/20">
+                GRAND FINAL
+              </div>
+              <div class="p-8 flex items-center justify-center gap-8">
+                <div class="text-center">
+                  <div class="w-20 h-20 bg-gray-700 rounded-lg mb-3 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                  </div>
+                  <div class="text-2xl font-bold text-emerald-400">TEAM</div>
+                  <div class="text-2xl font-bold">ALPHA</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-5xl font-bold text-emerald-400">3</div>
+                  <div class="text-sm text-gray-500">-</div>
+                  <div class="text-5xl font-bold text-gray-400">1</div>
+                  <div class="text-xs text-gray-500 mt-2">FINAL SCORE</div>
+                </div>
+                <div class="text-center">
+                  <div class="w-20 h-20 bg-gray-700 rounded-lg mb-3 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                  </div>
+                  <div class="text-2xl font-bold">TEAM</div>
+                  <div class="text-2xl font-bold">OMEGA</div>
+                </div>
+              </div>
+              <div class="flex items-center justify-center gap-2 py-3 border-t border-white/10">
+                <div class="w-5 h-5 bg-emerald-500 rounded flex items-center justify-center">
+                  <span class="text-xs font-bold">P</span>
+                </div>
+                <span class="text-xs text-gray-500">PARASCORES</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Pricing Section -->
-    <section id="pricing" class="py-24 scroll-mt-20 relative">
+    <section class="py-24 border-t border-white/10">
       <div class="max-w-7xl mx-auto px-6">
-        <div ref="pricingRef" class="text-center mb-16">
-          <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-4 reveal-element">
-            Simple, Transparent Pricing
-          </h2>
-          <p class="text-gray-400 text-lg reveal-element delay-100">
-            Start for free, upgrade as you grow.
-          </p>
+        <!-- Section Header -->
+        <div class="text-center mb-16">
+          <h2 class="text-4xl md:text-5xl font-bold mb-4">Scalable Pricing</h2>
+          <p class="text-gray-400">Start for free. Upgrade when you go pro.</p>
         </div>
-        
-        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto">
+
+        <!-- Pricing Cards -->
+        <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           <!-- Starter Plan -->
-          <div class="reveal-element delay-200">
-            <UCard class="relative h-full transition-all duration-500 hover:-translate-y-2 hover:shadow-xl group">
-              <div class="text-xs font-medium text-muted uppercase tracking-wider mb-2">Starter</div>
-              <div class="text-4xl font-bold text-heading mb-6 group-hover:text-green-400 transition-colors">Free</div>
-              <ul class="space-y-3 mb-8">
-                <li v-for="(item, i) in starterFeatures" :key="i" class="flex items-center gap-3 text-sm">
-                  <Icon :name="item.included ? 'heroicons:check' : 'heroicons:x-mark'" :class="item.included ? 'w-4 h-4 text-green-500 flex-shrink-0' : 'w-4 h-4 text-muted flex-shrink-0'" />
-                  <span :class="item.included ? 'text-body' : 'text-muted'">{{ item.text }}</span>
-                </li>
-              </ul>
-              <UButton block variant="solid" color="neutral" size="lg" class="group-hover:bg-white/10 transition-colors">Get Started</UButton>
-            </UCard>
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-8 hover:border-white/20 transition-colors">
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-400 mb-2">Starter</h3>
+              <div class="text-5xl font-bold">$0</div>
+            </div>
+            <ul class="space-y-4 mb-8">
+              <li class="flex items-center gap-3 text-sm text-gray-400">
+                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Up to 32 Participants
+              </li>
+              <li class="flex items-center gap-3 text-sm text-gray-400">
+                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Single Elimination <span class="text-yellow-400">Only</span></span>
+              </li>
+              <li class="flex items-center gap-3 text-sm text-gray-400">
+                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Basic API Access
+              </li>
+            </ul>
+            <button class="w-full px-6 py-3 text-sm font-medium text-white border border-white/20 hover:border-white/40 rounded transition-colors">
+              START FREE
+            </button>
           </div>
-          
-          <!-- Pro Plan -->
-          <div class="reveal-element delay-300 sm:col-span-2 lg:col-span-1 order-first sm:order-none lg:order-none">
-            <UCard 
-              class="relative h-full ring-2 ring-green-500 dark:ring-green-500 transition-all duration-500 hover:-translate-y-3 hover:shadow-2xl hover:shadow-green-500/20 group"
-            >
-              <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs font-semibold text-white bg-green-500 rounded-full whitespace-nowrap animate-pulse-subtle">
-                MOST POPULAR
+
+          <!-- Organizer Plan - Popular -->
+          <div class="relative bg-[#111827] border-2 border-emerald-500/50 rounded-lg p-8">
+            <!-- Popular Badge -->
+            <div class="absolute -top-3 right-4 px-3 py-1 text-xs font-medium text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 rounded">
+              MOST POPULAR
+            </div>
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-emerald-400 mb-2">Organizer</h3>
+              <div class="flex items-baseline gap-1">
+                <span class="text-5xl font-bold">$29</span>
+                <span class="text-gray-400">/mo</span>
               </div>
-              <div class="text-xs font-medium text-green-500 uppercase tracking-wider mb-2">Pro</div>
-              <div class="flex items-baseline gap-1 mb-6">
-                <span class="text-4xl font-bold text-heading">$29</span>
-                <span class="text-muted">/mo</span>
-              </div>
-              <ul class="space-y-3 mb-8">
-                <li v-for="(item, i) in proFeatures" :key="i" class="flex items-center gap-3 text-sm">
-                  <Icon name="heroicons:check" class="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span class="text-body">{{ item }}</span>
-                </li>
-              </ul>
-              <UButton block color="primary" size="lg" class="shadow-lg shadow-green-500/25 group-hover:shadow-green-500/40 transition-shadow">Start Free Trial</UButton>
-            </UCard>
+            </div>
+            <ul class="space-y-4 mb-8">
+              <li class="flex items-center gap-3 text-sm">
+                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span class="text-emerald-400">Unlimited</span> Participants
+              </li>
+              <li class="flex items-center gap-3 text-sm">
+                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span class="text-emerald-400">All</span> Bracket Formats
+              </li>
+              <li class="flex items-center gap-3 text-sm">
+                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Priority Support
+              </li>
+              <li class="flex items-center gap-3 text-sm">
+                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Custom Branding
+              </li>
+            </ul>
+            <button class="w-full px-6 py-3 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded transition-colors">
+              GET STARTED
+            </button>
           </div>
-          
-          <!-- Agency Plan -->
-          <div class="reveal-element delay-400">
-            <UCard class="relative h-full transition-all duration-500 hover:-translate-y-2 hover:shadow-xl group">
-              <div class="text-xs font-medium text-muted uppercase tracking-wider mb-2">Agency</div>
-              <div class="text-4xl font-bold text-heading mb-6 group-hover:text-green-400 transition-colors">Custom</div>
-              <ul class="space-y-3 mb-8">
-                <li v-for="(item, i) in agencyFeatures" :key="i" class="flex items-center gap-3 text-sm">
-                  <Icon name="heroicons:check" class="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span class="text-body">{{ item }}</span>
-                </li>
-              </ul>
-              <UButton block variant="solid" color="neutral" size="lg" class="group-hover:bg-white/10 transition-colors">Contact Sales</UButton>
-            </UCard>
+
+          <!-- Enterprise Plan -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-8 hover:border-white/20 transition-colors">
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-400 mb-2">Enterprise</h3>
+              <div class="text-5xl font-bold">Custom</div>
+            </div>
+            <ul class="space-y-4 mb-8">
+              <li class="flex items-center gap-3 text-sm text-gray-400">
+                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Dedicated Server Instance
+              </li>
+              <li class="flex items-center gap-3 text-sm text-gray-400">
+                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                SLA &amp; 24/7 Support
+              </li>
+              <li class="flex items-center gap-3 text-sm text-gray-400">
+                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                White-label Solution
+              </li>
+              <li class="flex items-center gap-3 text-sm text-gray-400">
+                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Anti-Cheat Integration
+              </li>
+            </ul>
+            <button class="w-full px-6 py-3 text-sm font-medium text-white border border-white/20 hover:border-white/40 rounded transition-colors">
+              CONTACT SALES
+            </button>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Final CTA Section -->
-    <section class="py-24 relative overflow-hidden">
-      <!-- Background effects -->
-      <div class="absolute inset-0">
-        <div class="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-green-500/10 rounded-full blur-[120px]"></div>
-        <div class="absolute top-0 right-1/4 w-[400px] h-[400px] bg-emerald-500/8 rounded-full blur-[100px]"></div>
-      </div>
-      
-      <div ref="ctaRef" class="relative max-w-4xl mx-auto px-6 text-center">
-        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-6 reveal-element">
+    <section class="py-24 border-t border-white/10">
+      <div class="max-w-3xl mx-auto px-6 text-center">
+        <h2 class="text-4xl md:text-5xl font-bold mb-6">
           Ready to level up your tournaments?
         </h2>
-        <p class="text-lg text-gray-400 mb-10 max-w-2xl mx-auto reveal-element delay-100">
+        <p class="text-lg text-gray-400 mb-10">
           Join thousands of organizers who trust Parascores to run their events. Start for free today.
         </p>
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 reveal-element delay-200">
-          <UButton
+        <div class="flex flex-wrap justify-center gap-4">
+          <NuxtLink
             to="/signup"
-            size="xl"
-            icon="i-heroicons-arrow-right"
-            trailing
-            color="primary"
-            class="w-full sm:w-auto px-8 py-4 text-base font-semibold shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 transition-all duration-300"
+            class="px-8 py-4 text-base font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded transition-colors"
           >
             Get started for free
-          </UButton>
-          <UButton
+          </NuxtLink>
+          <NuxtLink
             to="/contact"
-            size="xl"
-            variant="outline"
-            color="neutral"
-            class="w-full sm:w-auto px-8 py-4 text-base font-semibold hover:bg-white/5 transition-all"
+            class="px-8 py-4 text-base font-medium text-white border border-white/20 hover:border-white/40 rounded transition-colors"
           >
             Talk to sales
-          </UButton>
+          </NuxtLink>
         </div>
       </div>
     </section>
@@ -496,328 +748,5 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-
-// Data
-const stats = [
-  { value: 10, suffix: 'K+', label: 'Tournaments hosted' },
-  { value: 500, suffix: 'K+', label: 'Active players' },
-  { value: 50, suffix: '+', label: 'Countries' },
-  { value: 99.9, suffix: '%', label: 'Uptime' }
-]
-
-const dashboardCards = [
-  { label: 'Active Tournaments', value: '24' },
-  { label: 'Participants', value: '1,247' },
-  { label: 'Matches Today', value: '86' }
-]
-
-const brands = [
-  { name: 'LEAGUEOPS', class: 'text-base sm:text-xl font-semibold text-gray-600 tracking-wide' },
-  { name: 'Varsity', class: 'text-lg sm:text-2xl font-serif italic text-gray-600' },
-  { name: 'ESL', class: 'text-base sm:text-xl font-bold text-gray-600' },
-  { name: 'DRAFTKINGS', class: 'text-base sm:text-xl font-bold text-gray-600 tracking-wider' },
-  { name: 'SCOREBOARD', class: 'text-base sm:text-xl font-semibold text-gray-600 tracking-wide' }
-]
-
-const feature1Items = [
-  'Drag-and-drop fixture management',
-  'Automatic table calculation',
-  'Multi-sport support (Football, Basketball, Esports)'
-]
-
-const feature2Items = [
-  'Real-time clock synchronization',
-  'Incident dispute resolution',
-  'Live stats tracking'
-]
-
-const feature3Items = [
-  'Auto-populated data templates',
-  'Custom branding & logos',
-  'Download in HD for Instagram/Twitter'
-]
-
-const testimonials = [
-  {
-    quote: "Parascores saved us hours every weekend. The automated graphics generator is a game changer for our social media engagement.",
-    name: "Alex Johnson",
-    role: "Director, City Leagues",
-    avatar: "https://i.pravatar.cc/150?u=alex"
-  },
-  {
-    quote: "Finally, a tool that handles both our basketball and esports tournaments in one place. The UI is incredibly intuitive.",
-    name: "Sarah Chen",
-    role: "Manager, UniSports",
-    avatar: "https://i.pravatar.cc/150?u=sarah"
-  },
-  {
-    quote: "The live match control is flawless. Our referees picked it up in minutes without any training.",
-    name: "Mike Ross",
-    role: "Head Ref, Elite Cup",
-    avatar: "https://i.pravatar.cc/150?u=mike"
-  }
-]
-
-const starterFeatures = [
-  { text: '1 Tournament', included: true },
-  { text: '8 Teams Max', included: true },
-  { text: 'Basic Scheduling', included: true },
-  { text: 'Graphics Studio', included: false }
-]
-
-const proFeatures = [
-  'Unlimited Tournaments',
-  'Live Match Control',
-  'Graphics Studio',
-  'Priority Support'
-]
-
-const agencyFeatures = [
-  'Whitelabeling',
-  'API Access',
-  'Dedicated Manager',
-  'Custom Integration'
-]
-
-// Refs for scroll animations
-const statCounters = ref<HTMLElement[]>([])
-
-// Intersection Observer for reveal animations
-let observer: IntersectionObserver | null = null
-
-onMounted(() => {
-  // Setup intersection observer for reveal animations
-  observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('revealed')
-          
-          // Animate counters when stats section is visible
-          if (entry.target.closest('[data-animate-counters]')) {
-            animateCounters()
-          }
-        }
-      })
-    },
-    {
-      threshold: 0.1,
-      rootMargin: '0px 0px -50px 0px'
-    }
-  )
-
-  // Observe all reveal elements
-  document.querySelectorAll('.reveal-element').forEach((el) => {
-    observer?.observe(el)
-  })
-  
-  // Mark stats section for counter animation
-  const statsSection = document.querySelector('[class*="grid-cols-2"][class*="sm:grid-cols-4"]')
-  if (statsSection) {
-    statsSection.setAttribute('data-animate-counters', 'true')
-  }
-})
-
-onUnmounted(() => {
-  observer?.disconnect()
-})
-
-// Animate number counters
-const animateCounters = () => {
-  const counters = document.querySelectorAll('[data-target]')
-  counters.forEach((counter) => {
-    const target = parseFloat(counter.getAttribute('data-target') || '0')
-    const suffix = counter.getAttribute('data-suffix') || ''
-    const duration = 2000
-    const start = performance.now()
-    
-    const animate = (currentTime: number) => {
-      const elapsed = currentTime - start
-      const progress = Math.min(elapsed / duration, 1)
-      
-      // Easing function for smooth animation
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4)
-      const current = target * easeOutQuart
-      
-      if (target % 1 !== 0) {
-        counter.textContent = current.toFixed(1) + suffix
-      } else {
-        counter.textContent = Math.floor(current) + suffix
-      }
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate)
-      }
-    }
-    
-    requestAnimationFrame(animate)
-  })
-}
+// No additional logic needed for this static page
 </script>
-
-<style scoped>
-/* Hero gradient animation */
-.hero-gradient {
-  background: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(16, 185, 129, 0.15), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(6, 182, 212, 0.1), transparent),
-    radial-gradient(ellipse 50% 30% at 20% 80%, rgba(16, 185, 129, 0.1), transparent);
-  animation: gradient-shift 8s ease-in-out infinite alternate;
-}
-
-@keyframes gradient-shift {
-  0% {
-    opacity: 0.8;
-    transform: scale(1) translateY(0);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1.05) translateY(-10px);
-  }
-}
-
-/* Grid pattern */
-.grid-pattern {
-  background-image: 
-    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-}
-
-/* Floating animations */
-.floating-orb {
-  animation: float 6s ease-in-out infinite;
-}
-
-.floating-orb-delayed {
-  animation: float 8s ease-in-out infinite;
-  animation-delay: -2s;
-}
-
-.floating-orb-slow {
-  animation: float 10s ease-in-out infinite;
-  animation-delay: -4s;
-}
-
-.floating-shape {
-  animation: float-shape 4s ease-in-out infinite;
-}
-
-.floating-shape-delayed {
-  animation: float-shape 5s ease-in-out infinite;
-  animation-delay: -1.5s;
-}
-
-.floating-shape-slow {
-  animation: float-shape 6s ease-in-out infinite;
-  animation-delay: -3s;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0) translateX(0);
-  }
-  50% {
-    transform: translateY(-20px) translateX(10px);
-  }
-}
-
-@keyframes float-shape {
-  0%, 100% {
-    transform: translateY(0) scale(1);
-    opacity: 0.6;
-  }
-  50% {
-    transform: translateY(-15px) scale(1.1);
-    opacity: 1;
-  }
-}
-
-/* Gradient text animation */
-.animate-gradient-x {
-  animation: gradient-x 3s ease infinite;
-}
-
-@keyframes gradient-x {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-/* Button glow effect */
-.btn-glow {
-  position: relative;
-}
-
-.btn-glow::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  background: linear-gradient(45deg, #10b981, #06b6d4, #10b981);
-  border-radius: inherit;
-  opacity: 0;
-  z-index: -1;
-  filter: blur(10px);
-  transition: opacity 0.3s ease;
-}
-
-.btn-glow:hover::before {
-  opacity: 0.5;
-}
-
-/* Reveal animations */
-.reveal-element {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.reveal-element.revealed {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.delay-100 { transition-delay: 100ms; }
-.delay-200 { transition-delay: 200ms; }
-.delay-300 { transition-delay: 300ms; }
-.delay-400 { transition-delay: 400ms; }
-.delay-500 { transition-delay: 500ms; }
-
-/* Perspective for 3D effects */
-.perspective-1000 {
-  perspective: 1000px;
-}
-
-/* Subtle pulse for "Most Popular" badge */
-.animate-pulse-subtle {
-  animation: pulse-subtle 2s ease-in-out infinite;
-}
-
-@keyframes pulse-subtle {
-  0%, 100% {
-    opacity: 1;
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    opacity: 0.9;
-    transform: translateX(-50%) scale(1.02);
-  }
-}
-
-/* Mockup card subtle shadow animation */
-.mockup-card {
-  box-shadow: 
-    0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-.mockup-card:hover {
-  box-shadow: 
-    0 30px 60px -15px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(16, 185, 129, 0.2);
-}
-</style>
