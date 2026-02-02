@@ -13,6 +13,7 @@ export interface ApiResponse <T>{
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const loading = ref(false)
+  const authLoading = ref(true) // Tracks initial authentication check
 
   const isAuthenticated = computed(() => !!user.value)
 
@@ -50,7 +51,8 @@ async function signup(email: string, password: string, name: string) {
 
       return response
     } catch (error) {
-      console.log('Signup failed:', error)
+      // console.log('Signup failed:', error)
+      throw error
     } finally {
       loading.value = false
     }
@@ -71,15 +73,22 @@ async function signup(email: string, password: string, name: string) {
       console.log('Fetch user failed:', error)
     } finally {
       loading.value = false
+      authLoading.value = false
     }
   }
 
   async function googleSignup() {
     loading.value = true
     const config = useRuntimeConfig()
-    return navigateTo(config.public.API_BASE_URL + '/auth/google', {
-        external: true
-    })
+    try {
+      return navigateTo(config.public.API_BASE_URL + '/auth/google?redirect_url=http://manage.lvh.me', {
+          external: true
+      })
+    } catch (error) {
+      console.log('Google signup failed:', error)
+    } finally {
+      loading.value = false
+    }
   }
 
 
@@ -160,9 +169,32 @@ async function signup(email: string, password: string, name: string) {
     }
   }
 
+  
+  async function updateUser(updates: Partial<User>) {
+    if (!user.value?.id) return
+    
+    loading.value = true
+    try {
+      const response = await $api<ApiResponse<User>>(`/users/${user.value.id}`, {
+        method: 'PATCH',
+        body: updates,
+      })
+      if (response.data) {
+        setUser(response.data)
+      }
+      return response
+    } catch (error: any) {
+      console.log('Update user failed:', error)
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     user,
     loading,
+    authLoading,
     isAuthenticated,
     setUser,
     login,
@@ -173,6 +205,7 @@ async function signup(email: string, password: string, name: string) {
     verifyEmail,
     resendVerificationEmail,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    updateUser
   }
 })
