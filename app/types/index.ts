@@ -13,8 +13,8 @@ export enum Visibility {
 
 export enum TournamentType {
   KNOCKOUT = 'KNOCKOUT',
-  LEAGUE = 'LEAGUE',
-  ROUND_ROBIN = 'ROUND_ROBIN'
+  ROUND_ROBIN = 'ROUND_ROBIN',
+  GROUP = 'GROUP'
 }
 
 export enum ParticipantType {
@@ -36,6 +36,16 @@ export enum FixtureStatus {
   CANCELLED = 'CANCELLED'
 }
 
+export enum MatchEventType {
+  GOAL = 'GOAL',
+  OWN_GOAL = 'OWN_GOAL',
+  PENALTY = 'PENALTY',
+  YELLOW_CARD = 'YELLOW_CARD',
+  RED_CARD = 'RED_CARD',
+  SUBSTITUTION = 'SUBSTITUTION',
+  ASSIST = 'ASSIST'
+}
+
 // Models
 export interface User {
   id: string
@@ -51,6 +61,15 @@ export interface User {
   organization_name?: string | null
   organization_logo?: string | null
   organization_color?: string | null
+
+  // Email Verification
+  isEmailVerified: boolean
+  emailVerificationToken?: string | null
+  emailVerificationExpiry?: string | null
+
+  // Password Reset
+  passwordResetToken?: string | null
+  passwordResetExpiry?: string | null
 
   created_at: string
   updated_at: string
@@ -82,6 +101,14 @@ export interface Tournament {
   registrationClose?: string | null
   autoApprove: boolean
 
+  // Group config
+  numberOfGroups?: number | null
+  teamsPerGroup?: number | null
+
+  // Relations
+  groups?: Group[]
+  standings?: Standing[]
+
   start_date: string
   end_date: string
   created_at: string
@@ -98,8 +125,16 @@ export interface Participant {
   team_id?: string | null
   
   customName?: string | null
+  logoUrl?: string | null
   seed?: number | null
   status: ParticipantStatus
+  
+  groupId?: string | null
+  group?: Group | null
+  
+  matchEvents?: MatchEvent[]
+  standings?: Standing[]
+  players?: Player[]
 
   created_at: string
   updated_at: string
@@ -113,28 +148,118 @@ export interface Fixture {
   id: string
   tournament_id: string
   
+  groupId?: string | null
+  group?: Group | null
+  
   round: number
+  roundName?: string | null
   matchNumber: number
   startTime?: string | null
 
   homeTeamId?: string | null
+  homeTeamPlaceholder?: string | null
   awayTeamId?: string | null
+  awayTeamPlaceholder?: string | null
+  
+  nextFixtureId?: string | null
 
   homeScore?: number | null
   awayScore?: number | null
+  homePenaltyScore?: number | null
+  awayPenaltyScore?: number | null
   status: FixtureStatus
 
   created_at: string
   updated_at: string
 
-  // Relations
   homeTeam?: Participant | null
   awayTeam?: Participant | null
+  
+  matchEvents?: MatchEvent[]
+}
+
+export interface Group {
+  id: string
+  name: string
+  tournament_id: string
+  
+  created_at: string
+  updated_at: string
+  
+  // Relations
+  tournament?: Tournament | null
+  participants?: Participant[]
+  fixtures?: Fixture[]
+}
+
+export interface MatchEvent {
+  id: string
+  fixture_id: string
+  participant_id?: string | null
+  relatedParticipant_id?: string | null
+  playerId?: string | null
+  relatedPlayerId?: string | null
+  
+  type: MatchEventType
+  minute?: number | null
+  description?: string | null
+  metadata?: Record<string, any> | null
+  
+  created_at: string
+  updated_at: string
+  
+  // Relations
+  fixture?: Fixture | null
+  participant?: Participant | null
+  relatedParticipant?: Participant | null
+  player?: Player | null
+  relatedPlayer?: Player | null
+}
+
+export interface Standing {
+  id: string
+  tournament_id: string
+  participant_id: string
+  
+  played: number
+  wins: number
+  draws: number
+  losses: number
+  goalsFor: number
+  goalsAgainst: number
+  goalDiff: number
+  points: number
+  
+  position?: number | null
+  group?: string | null
+  
+  created_at: string
+  updated_at: string
+  
+  // Relations
+  tournament?: Tournament | null
+  participant?: Participant | null
 }
 
 export interface Team {
   id: string
   name: string
+}
+
+export interface Player {
+  id: string
+  participantId: string
+  
+  name: string
+  number?: number | null
+  position?: string | null
+  
+  created_at: string
+  updated_at: string
+  
+  // Relations
+  participant?: Participant | null
+  matchEvents?: MatchEvent[]
 }
 
 // Auth State
