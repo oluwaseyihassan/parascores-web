@@ -5,7 +5,7 @@
       <UCard class="shadow-2xl">
         <!-- Logo -->
         <div class="flex justify-center mb-2">
-          <div class="w-14 h-14 bg-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
+          <div class="w-14 h-14 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white">
               <rect x="2" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="2"/>
               <circle cx="8" cy="12" r="2" fill="currentColor"/>
@@ -17,8 +17,8 @@
 
         <!-- Loading State -->
         <div v-if="loading" class="text-center py-8">
-          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
-            <Icon name="svg-spinners:ring-resize" class="w-8 h-8 text-green-600" />
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 mb-4">
+            <Icon name="svg-spinners:ring-resize" class="w-8 h-8 text-indigo-600" />
           </div>
           <h1 class="text-2xl font-bold text-heading mb-2">Verifying Email...</h1>
           <p class="text-muted text-sm">Please wait while we verify your email address.</p>
@@ -26,8 +26,8 @@
 
         <!-- Success State -->
         <div v-else-if="verified" class="text-center py-8">
-          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
-            <Icon name="heroicons:check-circle-solid" class="w-10 h-10 text-green-600" />
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 mb-4">
+            <Icon name="heroicons:check-circle-solid" class="w-10 h-10 text-indigo-600" />
           </div>
           <h1 class="text-2xl font-bold text-heading mb-2">Email Verified!</h1>
           <p class="text-muted text-sm mb-6">Your email has been successfully verified. You can now sign in to your account.</p>
@@ -61,7 +61,7 @@
             </UButton>
             <p class="text-center text-muted text-sm">
               Need a new verification link?
-              <NuxtLink to="/signup" class="text-green-500 hover:text-green-600 dark:hover:text-green-400 font-medium transition-colors">
+              <NuxtLink to="/signup" class="text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">
                 Sign up again
               </NuxtLink>
             </p>

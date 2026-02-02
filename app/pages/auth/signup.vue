@@ -7,7 +7,7 @@
         <template v-if="signupSuccess">
           <!-- Logo -->
           <div class="flex justify-center mb-2">
-            <div class="w-14 h-14 bg-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
+            <div class="w-14 h-14 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <Icon name="heroicons:envelope-solid" class="w-8 h-8 text-white" />
             </div>
           </div>
@@ -79,7 +79,7 @@
               Wrong email?
               <button 
                 type="button"
-                class="text-green-500 hover:text-green-600 dark:hover:text-green-400 font-medium transition-colors"
+                class="text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors"
                 @click="resetForm"
               >
                 Sign up again
@@ -92,7 +92,7 @@
         <template v-else>
           <!-- Logo -->
           <div class="flex justify-center mb-2">
-            <div class="w-14 h-14 bg-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
+            <div class="w-14 h-14 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white">
                 <rect x="2" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="2"/>
                 <circle cx="8" cy="12" r="2" fill="currentColor"/>
@@ -171,9 +171,9 @@
                 />
                 <label class="text-sm text-body">
                   I agree to the 
-                  <NuxtLink to="/terms" class="text-green-500 hover:text-green-600 dark:hover:text-green-400">Terms of Service</NuxtLink>
+                  <NuxtLink to="/terms" class="text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400">Terms of Service</NuxtLink>
                   and
-                  <NuxtLink to="/privacy" class="text-green-500 hover:text-green-600 dark:hover:text-green-400">Privacy Policy</NuxtLink>
+                  <NuxtLink to="/privacy" class="text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400">Privacy Policy</NuxtLink>
                 </label>
               </div>
             </UFormField>
@@ -216,7 +216,7 @@
           <!-- Login Link -->
           <p class="text-center text-muted text-sm mt-6">
             Already have an account?
-            <NuxtLink to="/login" class="text-green-500 hover:text-green-600 dark:hover:text-green-400 font-medium transition-colors">
+            <NuxtLink to="/login" class="text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">
               Sign in
             </NuxtLink>
           </p>
@@ -280,8 +280,8 @@ const handleSignup = async (event: FormSubmitEvent<Schema>) => {
       error.value = response?.message || 'Signup failed'
     }
   } catch (err: any) {
-    console.error('Signup failed:', err?.message)
-    error.value = err.message || 'An unexpected error occurred'
+    console.error('Signup has failed:', err?.data?.message)
+    error.value = err?.data?.message || 'An unexpected error occurred'
   }
 }
 

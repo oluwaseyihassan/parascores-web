@@ -2,10 +2,10 @@
   <div class="min-h-screen flex items-center justify-center px-4 py-12 bg-page transition-colors duration-300">
     <div class="w-full max-w-md">
       <!-- Card -->
-      <UCard class="shadow-2xl" >
+      <UCard class="shadow-2xl" variant="auth">
         <!-- Logo -->
         <div class="flex justify-center mb-2">
-          <div class="w-14 h-14 bg-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
+          <div class="w-14 h-14 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white">
               <rect x="2" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="2"/>
               <circle cx="8" cy="12" r="2" fill="currentColor"/>
@@ -65,7 +65,7 @@
 
           <!-- Forgot Password -->
           <div class="flex justify-end">
-            <NuxtLink to="/forgot-password" class="text-sm text-muted hover:text-green-500 transition-colors">
+            <NuxtLink to="/forgot-password" class="text-sm text-muted hover:text-indigo-500 transition-colors">
               Forgot password?
             </NuxtLink>
           </div>
@@ -109,7 +109,7 @@
         <!-- Sign Up Link -->
         <p class="text-center text-gray-400 text-sm mt-6">
           Don't have an account?
-          <NuxtLink to="/signup" class="text-green-400 hover:text-green-300 font-medium transition-colors">
+          <NuxtLink to="/signup" class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
             Sign up
           </NuxtLink>
         </p>
