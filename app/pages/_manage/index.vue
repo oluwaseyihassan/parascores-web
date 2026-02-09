@@ -198,10 +198,10 @@ watch(loadMoreTrigger, (el) => {
               :alt="tournament.name"
               class="w-full h-full object-cover opacity-70"
             />
-            <div class="absolute inset-0 bg-black/20"></div>
+            <div class="absolute inset-0 bg-black/50"></div>
             <div class="absolute bottom-3 left-4 right-4 flex items-end justify-between">
               <div 
-                class="w-12 h-12 rounded-lg bg-white shadow-lg overflow-hidden"
+                class="w-12 h-12 rounded-lg shadow-lg overflow-hidden"
               >
                 <img :src="tournament.logoUrl || PLACEHOLDER_LOGO" :alt="tournament.name" class="w-full h-full object-cover" />
               </div>
