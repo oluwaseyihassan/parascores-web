@@ -186,7 +186,9 @@ const state = reactive<Partial<Schema>>({
 const tournamentTypes = [
   { label: 'Knockout', value: TournamentType.KNOCKOUT, description: 'Single elimination bracket' },
   { label: 'Round Robin', value: TournamentType.ROUND_ROBIN, description: 'Everyone plays everyone' },
-  { label: 'Group Stage', value: TournamentType.GROUP, description: 'Groups followed by Knockout' }
+  { label: 'Group Stage (League)', value: TournamentType.GROUP, description: 'Groups without knockout stage' },
+  { label: 'Hybrid (Group + Knockout)', value: TournamentType.HYBRID, description: 'Group Stage followed by Knockout Stage' },
+  { label: 'Friendly / Single Match', value: TournamentType.FRIENDLY, description: 'Single matches, friendly games' }
 ]
 
 const participantTypes = [
@@ -492,6 +494,14 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         </template>
 
         <div class="space-y-6">
+          <UAlert
+            icon="i-heroicons-question-mark-circle"
+            color="primary"
+            variant="subtle"
+            title="Need help choosing?"
+            description="Not sure what type of tournament to choose? Contact us let's help you choose."
+          />
+
           <UFormField label="Tournament Type" name="type" required>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
               <button
