@@ -4,14 +4,41 @@ import { storeToRefs } from 'pinia'
 const route = useRoute()
 const authStore = useAuthStore()
 const { authLoading } = storeToRefs(authStore)
+const tournamentStore = useTournamentStore()
+const { tournaments } = storeToRefs(tournamentStore)
 
-// Navigation items (Icon focused)
-const links = [
+// Fetch tournaments on mount
+onMounted(async () => {
+  if (authStore.user) {
+    await tournamentStore.fetchTournaments({ limit: 50 })
+  }
+})
+
+// Mobile links (Keep simple)
+const mobileLinks = [
   { label: 'Home', icon: 'i-heroicons-home', to: '/' },
-  { label: 'Leagues', icon: 'i-heroicons-trophy', to: '/tournaments' },
-  { label: 'Teams', icon: 'i-heroicons-user-group', to: '/teams' },
+  { label: 'Leagues', icon: 'i-heroicons-trophy', to: '/tournaments' }, // Points to list
   { label: 'Live', icon: 'i-heroicons-signal', to: '/live', activeClass: 'text-red-500 animate-pulse' }
 ]
+
+// Desktop Sidebar links (Dynamic)
+const sidebarLinks = computed(() => {
+  const base = [{ label: 'Home', icon: 'i-heroicons-home', to: '/', avatar: undefined, activeClass: undefined }]
+  
+  const tourneys = tournaments.value.map(t => ({
+    label: t.name,
+    to: `/tournaments/${t.id}`,
+    icon: 'i-heroicons-trophy',
+    avatar: t.logoUrl,
+    activeClass: undefined
+  }))
+
+  return [
+    ...base,
+    ...tourneys,
+    { label: 'Live', icon: 'i-heroicons-signal', to: '/live', activeClass: 'text-red-500 animate-pulse', avatar: undefined }
+  ]
+})
 
 const colorMode = useColorMode()
 
@@ -55,47 +82,68 @@ const profileMenuItems = computed(() => [
   [{ label: 'Log out', icon: 'i-heroicons-arrow-right-on-rectangle', onSelect: handleLogout }]
 ])
 
+const frontendUrl = process.env.FRONTEND_URL || 'http://lvh.me:3001'
+
 const handleLogout = async () => {
   await authStore.logout()
-  navigateTo('http://lvh.me:3001/login', { external: true })
+  navigateTo(`${frontendUrl}/login`, { external: true })
 }
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans selection:bg-indigo-500/30">
+  <div class="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100 font-sans selection:bg-indigo-500/30">
     <AuthLoadingOverlay :show="authLoading" />
     
     <!-- Desktop Layout -->
     <div class="hidden md:flex h-screen overflow-hidden p-4 gap-4">
 
       <!-- Desktop Sidebar -->
-      <nav class="flex flex-col justify-between w-16 bg-white/80 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-3xl shadow-xl py-4 items-center z-50">
+      <nav class="flex flex-col w-16 bg-white/80 dark:bg-white/5 dark:backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-3xl shadow-xl py-4 items-center z-50">
         
-        <div class="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-           <UIcon name="i-heroicons-bolt-solid" class="w-6 h-6 text-white" />
+        <div class="w-10 h-10 flex-shrink-0 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-4">
+           <UIcon name="i-heroicons-bolt-20-solid" class="w-6 h-6 text-white" />
         </div>
 
-        <div class="flex flex-col gap-6 w-full px-2 mt-4">
-          <NuxtLink 
-            v-for="link in links" 
+        <div class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar w-full px-2 flex flex-col gap-4">
+           <!-- Add Tournament Button -->
+          <UTooltip text="New Tournament" :popper="{ placement: 'right' }">
+            <NuxtLink
+              to="/tournaments/new"
+              class="relative group flex-shrink-0 flex items-center justify-center py-2 h-10 w-10 mx-auto rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-green-500 transition-all"
+            >
+              <UIcon name="i-heroicons-plus" class="w-6 h-6" />
+            </NuxtLink>
+          </UTooltip>
+          <UTooltip 
+            v-for="link in sidebarLinks" 
             :key="link.to" 
-            :to="link.to"
-            class="relative group flex items-center justify-center py-2 rounded-xl transition-all duration-300"
-            :class="[
-              route.path === link.to 
-                ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30' 
-                : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-indigo-500'
-            ]"
+            :text="link.label"
+            :popper="{ placement: 'right' }"
           >
-            <UIcon :name="link.icon" class="w-6 h-6" />
-            
-            <span class="absolute left-14 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-              {{ link.label }}
-            </span>
-          </NuxtLink>
+            <NuxtLink 
+              :to="link.to"
+              class="relative group flex-shrink-0 flex items-center justify-center py-2 h-10 w-10 mx-auto rounded-xl transition-all duration-300"
+              :class="[
+                route.path === link.to || (link.to !== '/' && route.path.startsWith(link.to))
+                  ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30' 
+                  : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-indigo-500'
+              ]"
+            >
+              <UAvatar 
+                v-if="link.avatar" 
+                :src="link.avatar" 
+                size="xs" 
+                class="w-6 h-6 ring-1 ring-white/20"
+                :class="route.path.startsWith(link.to) ? 'ring-2 ring-white' : ''"
+              />
+              <UIcon v-else :name="link.icon" class="w-6 h-6" />
+            </NuxtLink>
+          </UTooltip>
+
+         
         </div>
 
-        <div class="mt-auto">
+        <div class="mt-4 flex-shrink-0">
           <UDropdownMenu :items="profileMenuItems">
             <UAvatar v-if="authStore.user?.picture" :src="authStore.user?.picture" size="sm" class="cursor-pointer ring-2 ring-transparent hover:ring-indigo-500 transition-all" />
             <UAvatar v-else :text="authStore.user?.name?.charAt(0).toUpperCase()" size="sm" class="cursor-pointer ring-2 ring-transparent hover:ring-indigo-500 transition-all" />
@@ -104,7 +152,7 @@ const handleLogout = async () => {
       </nav>
 
       <!-- Desktop Main Content -->
-      <main class="flex-1 flex flex-col relative h-full rounded-3xl overflow-hidden bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 shadow-sm">
+      <main class="flex-1 flex flex-col relative h-full rounded-3xl overflow-hidden bg-white/50 dark:bg-white/5 dark:backdrop-blur-md border border-gray-200 dark:border-white/10 shadow-sm">
         <div class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
            <slot />
         </div>
@@ -116,10 +164,10 @@ const handleLogout = async () => {
     <div class="md:hidden flex flex-col h-screen">
       
       <!-- Mobile Header -->
-      <header class="flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 z-40">
+      <header class="flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-black/80 dark:backdrop-blur-xl border-b border-gray-200 dark:border-white/10 z-40">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shadow-md shadow-indigo-500/20">
-            <UIcon name="i-heroicons-bolt-solid" class="w-5 h-5 text-white" />
+            <UIcon name="i-heroicons-bolt-20-solid" class="w-5 h-5 text-white" />
           </div>
           <span class="font-bold text-lg tracking-tight">ParaScores</span>
         </div>
@@ -130,15 +178,15 @@ const handleLogout = async () => {
       </header>
 
       <!-- Mobile Main Content -->
-      <main class="flex-1 overflow-y-auto p-4 pb-24 scroll-smooth bg-gray-50 dark:bg-gray-950">
+      <main class="flex-1 overflow-y-auto p-4 pb-24 scroll-smooth bg-gray-50 dark:bg-black">
         <slot />
       </main>
 
       <!-- Mobile Bottom Navigation -->
-      <nav class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-t border-gray-200 dark:border-gray-800 px-2 py-2 z-50 safe-area-pb">
+      <nav class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-black/80 dark:backdrop-blur-xl border-t border-gray-200 dark:border-white/10 px-2 py-2 z-50 safe-area-pb">
         <div class="flex items-center justify-around">
           <NuxtLink 
-            v-for="link in links" 
+            v-for="link in mobileLinks" 
             :key="link.to" 
             :to="link.to"
             class="flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all duration-200"
