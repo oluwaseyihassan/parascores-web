@@ -7,10 +7,12 @@
     <NuxtLayout :name="layoutName">
       <NuxtPage />
     </NuxtLayout>
+    <Analytics />
   </UApp>
 </template>
 
 <script setup lang="ts">
+  import { Analytics } from '@vercel/analytics/nuxt'
   import type { LayoutKey } from '#build/types/layouts'
 const authStore = useAuthStore()
 const route = useRoute()
