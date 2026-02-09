@@ -105,6 +105,44 @@ export const useFixtureStore = defineStore('fixture', () => {
     }
   }
 
+  // Advance to knockout stage (for Hybrid tournaments)
+  async function advanceToKnockout(tournamentId: string, qualifiedParticipantIds?: string[]) {
+    generating.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<{ message: string; rounds: { round: number; roundName: string; fixtures: Fixture[] }[] }>>(`/tournaments/${tournamentId}/groups/advance`, {
+        method: 'POST',
+        body: { qualifiedParticipantIds }
+      })
+      
+      if (response.data?.rounds) {
+        // Append new knockout fixtures to existing fixtures
+        // Note: The backend might return ALL fixtures or just new ones. 
+        // Based on "reload fixtures" recommendation, maybe safer to re-fetch or append correctly.
+        // If "rounds" contains only new rounds, we should append.
+        // But usually "rounds" structure suggests complete set? 
+        // Let's assume response.data.rounds contains the *new* rounds.
+        // However, safest to just fetch all fixtures again to be sure, OR if the response contains all.
+        // Let's rely on component to re-fetch or just append.
+        // Valid strategy: add new ones.
+        const newFixtures = response.data.rounds.flatMap(r => r.fixtures)
+        
+        // Avoid duplicates just in case
+        const existingIds = new Set(fixtures.value.map(f => f.id))
+        const uniqueNewFixtures = newFixtures.filter(f => !existingIds.has(f.id))
+        
+        fixtures.value = [...fixtures.value, ...uniqueNewFixtures]
+      }
+      return response
+    } catch (err: any) {
+      error.value = err.message || 'Failed to advance to knockout stage'
+      console.error('Advance to knockout failed:', err)
+      throw err
+    } finally {
+      generating.value = false
+    }
+  }
+
   // Update a fixture (e.g., enter scores)
   async function updateFixture(id: string, updates: UpdateFixtureData) {
     loading.value = true
@@ -167,7 +205,7 @@ export const useFixtureStore = defineStore('fixture', () => {
       const response = await $api<ApiResponse<any>>(`/fixtures/${data.fixtureId}/events`, {
         method: 'POST',
         body: {
-          participant_id: data.participantId,
+          participantId: data.participantId,
           playerId: data.playerId,
           relatedPlayerId: data.relatedPlayerId,
           type: data.type,
@@ -212,5 +250,6 @@ export const useFixtureStore = defineStore('fixture', () => {
     updateFixture,
     createMatchEvent,
     clearFixtures,
+    advanceToKnockout
   }
 })
