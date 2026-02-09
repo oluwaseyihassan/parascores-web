@@ -2,7 +2,7 @@
 import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { Visibility, TournamentType, ParticipantType, ParticipantStatus, FixtureStatus } from '~/types'
-import type { Participant, Fixture } from '~/types'
+import type { Participant, Fixture, Sponsor, Social } from '~/types'
 
 definePageMeta({
   layout: 'dashboard'
@@ -13,10 +13,14 @@ const tournamentStore = useTournamentStore()
 const participantStore = useParticipantStore()
 const fixtureStore = useFixtureStore()
 const standingStore = useStandingStore()
+const sponsorStore = useSponsorStore()
+const socialStore = useSocialStore()
 const { currentTournament: tournament, loading, error } = storeToRefs(tournamentStore)
 const { participants, loading: participantsLoading } = storeToRefs(participantStore)
 const { fixtures, fixturesByRound, rounds, loading: fixturesLoading, generating } = storeToRefs(fixtureStore)
 const { standings, loading: standingsLoading } = storeToRefs(standingStore)
+const { sponsors, loading: sponsorsLoading } = storeToRefs(sponsorStore)
+const { socials, loading: socialsLoading } = storeToRefs(socialStore)
 
 // Fetch tournament, participants, and fixtures on mount
 const tournamentId = computed(() => route.params.id as string)
@@ -27,7 +31,9 @@ onMounted(async () => {
       tournamentStore.fetchTournament(tournamentId.value),
       participantStore.fetchParticipants(tournamentId.value),
       fixtureStore.fetchFixtures(tournamentId.value),
-      standingStore.fetchStandings(tournamentId.value)
+      standingStore.fetchStandings(tournamentId.value),
+      sponsorStore.fetchSponsors(tournamentId.value),
+      socialStore.fetchSocials(tournamentId.value)
     ])
   }
 })
@@ -35,7 +41,7 @@ onMounted(async () => {
 // Check if standings should be shown
 const showStandings = computed(() => {
   if (!tournament.value) return false
-  return [TournamentType.ROUND_ROBIN, TournamentType.GROUP].includes(tournament.value.type)
+  return [TournamentType.ROUND_ROBIN, TournamentType.GROUP, TournamentType.HYBRID].includes(tournament.value.type)
 })
 
 // Generate fixtures
@@ -55,7 +61,7 @@ const openGenerateModal = () => {
   generateError.value = null
   
   // If not a group or round robin tournament, proceed directly
-  if (tournament.value?.type !== TournamentType.GROUP && tournament.value?.type !== TournamentType.ROUND_ROBIN) {
+  if (tournament.value?.type !== TournamentType.GROUP && tournament.value?.type !== TournamentType.ROUND_ROBIN && tournament.value?.type !== TournamentType.HYBRID) {
     handleGenerateFixtures()
   } else {
     showGenerateModal.value = true
@@ -97,6 +103,56 @@ const handleGenerateFixtures = async () => {
     })
   } catch (err: any) {
     generateError.value = err?.data?.message || err?.message || 'Failed to generate fixtures'
+  }
+}
+
+// Advance to Knockout Stage (Hybrid)
+const showAdvanceModal = ref(false)
+const advancing = ref(false)
+const advanceError = ref<string | null>(null)
+
+const canAdvance = computed(() => {
+  if (tournament.value?.type !== TournamentType.HYBRID) return false
+  
+  // Check if group stage matches exist and are all completed
+  const groupMatches = fixtures.value.filter(f => f.groupId)
+  if (groupMatches.length === 0) return false
+  
+  const allGroupsComplete = groupMatches.every(f => f.status === FixtureStatus.COMPLETED)
+  if (!allGroupsComplete) return false
+  
+  // Check if already advanced (knockout matches exist)
+  // Assuming knockout matches have no groupId
+  const knockoutMatches = fixtures.value.filter(f => !f.groupId && f.roundName)
+  if (knockoutMatches.length > 0) return false
+  
+  return true
+})
+
+const handleAdvanceKnockout = async () => {
+  advancing.value = true
+  advanceError.value = null
+  
+  try {
+    // Assuming auto-advance for now (empty payload)
+    // Future update: Add manual selection UI in the modal
+    await fixtureStore.advanceToKnockout(tournamentId.value)
+    
+    showAdvanceModal.value = false
+    
+    // Refresh fully to be safe
+    await fixtureStore.fetchFixtures(tournamentId.value)
+    
+    useToast().add({
+      title: 'Advanced to Knockout Stage',
+      description: 'Knockout fixtures have been generated.',
+      icon: 'i-heroicons-check-circle',
+      color: 'success'
+    })
+  } catch (err: any) {
+    advanceError.value = err?.data?.message || err?.message || 'Failed to advance'
+  } finally {
+    advancing.value = false
   }
 }
 
@@ -320,7 +376,9 @@ const tournamentStatus = computed(() => {
 const typeLabels: Record<TournamentType, string> = {
   [TournamentType.KNOCKOUT]: 'Knockout',
   [TournamentType.ROUND_ROBIN]: 'Round Robin',
-  [TournamentType.GROUP]: 'Group Stage'
+  [TournamentType.GROUP]: 'Group Stage',
+  [TournamentType.HYBRID]: 'Hybrid (Group + Knockout)',
+  [TournamentType.FRIENDLY]: 'Friendly Match'
 }
 
 const participantLabels: Record<ParticipantType, string> = {
@@ -417,6 +475,212 @@ const handleMatchEnded = async () => {
   }
 }
 
+// Sponsor Management
+const showAddSponsorModal = ref(false)
+const addingSponsor = ref(false)
+const addSponsorError = ref<string | null>(null)
+
+const addSponsorSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  logoUrl: z.string().url('Must be a valid URL').optional().nullable().or(z.literal('')),
+  websiteUrl: z.string().url('Must be a valid URL').optional().nullable().or(z.literal(''))
+})
+
+type AddSponsorSchema = z.output<typeof addSponsorSchema>
+
+const addSponsorState = reactive<Partial<AddSponsorSchema>>({
+  name: '',
+  logoUrl: '',
+  websiteUrl: ''
+})
+
+// Sponsor Logo Upload State
+const sponsorLogoFileInput = ref<HTMLInputElement | null>(null)
+const sponsorLogoFile = ref<File | null>(null)
+const sponsorLogoPreview = ref<string | null>(null)
+const uploadingSponsorLogo = ref(false)
+
+const triggerSponsorLogoInput = () => {
+  sponsorLogoFileInput.value?.click()
+}
+
+const handleSponsorLogoChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  
+  if (!file.type.startsWith('image/')) {
+    addSponsorError.value = 'Please select an image file'
+    return
+  }
+  
+  if (file.size > 5 * 1024 * 1024) {
+    addSponsorError.value = 'Image must be less than 5MB'
+    return
+  }
+  
+  sponsorLogoFile.value = file
+  sponsorLogoPreview.value = URL.createObjectURL(file)
+  addSponsorError.value = null
+}
+
+const removeSponsorLogo = () => {
+  sponsorLogoFile.value = null
+  sponsorLogoPreview.value = null
+  if (sponsorLogoFileInput.value) {
+    sponsorLogoFileInput.value.value = ''
+  }
+}
+
+const openAddSponsorModal = () => {
+  addSponsorState.name = ''
+  addSponsorState.logoUrl = ''
+  addSponsorState.websiteUrl = ''
+  addSponsorState.websiteUrl = ''
+  addSponsorError.value = null
+  // Reset upload state
+  removeSponsorLogo()
+  showAddSponsorModal.value = true
+}
+
+const handleAddSponsor = async (event: FormSubmitEvent<AddSponsorSchema>) => {
+  addingSponsor.value = true
+  addSponsorError.value = null
+  
+  try {
+    let finalLogoUrl = event.data.logoUrl
+
+    // Upload logo if selected
+    if (sponsorLogoFile.value) {
+      uploadingSponsorLogo.value = true
+      try {
+        const formData = new FormData()
+        formData.append('file', sponsorLogoFile.value)
+        
+        const uploadResponse = await $api<{success: boolean, data: { url: string, publicId: string }, message: string}>('/upload/image?folder=sponsors', {
+          method: 'POST',
+          body: formData
+        })
+        
+        if (uploadResponse.data?.url) {
+          finalLogoUrl = uploadResponse.data.url
+        }
+      } finally {
+        uploadingSponsorLogo.value = false
+      }
+    }
+
+    await sponsorStore.addSponsor(tournamentId.value, {
+      name: event.data.name,
+      logoUrl: finalLogoUrl || null,
+      websiteUrl: event.data.websiteUrl || null
+    })
+    showAddSponsorModal.value = false
+    useToast().add({ title: 'Sponsor added successfully', color: 'success' })
+  } catch (err: any) {
+    addSponsorError.value = err?.data?.message || err?.message || 'Failed to add sponsor'
+  } finally {
+    addingSponsor.value = false
+  }
+}
+
+const handleRemoveSponsor = async (sponsorId: string) => {
+  if (!confirm('Are you sure you want to remove this sponsor?')) return
+  
+  try {
+    await sponsorStore.removeSponsor(tournamentId.value, sponsorId)
+    useToast().add({ title: 'Sponsor removed', color: 'success' })
+  } catch (error: any) {
+    useToast().add({ 
+      title: 'Failed to remove sponsor', 
+      description: error.message || 'Unknown error', 
+      color: 'error' 
+    })
+  }
+}
+
+// Social Management
+const showAddSocialModal = ref(false)
+const addingSocial = ref(false)
+const addSocialError = ref<string | null>(null)
+
+const platformOptions = [
+  { value: 'twitter', label: 'Twitter / X', icon: 'i-simple-icons-x', color: 'text-black dark:text-white' },
+  { value: 'instagram', label: 'Instagram', icon: 'i-simple-icons-instagram', color: 'text-pink-500' },
+  { value: 'facebook', label: 'Facebook', icon: 'i-simple-icons-facebook', color: 'text-blue-600' },
+  { value: 'youtube', label: 'YouTube', icon: 'i-simple-icons-youtube', color: 'text-red-600' },
+  { value: 'tiktok', label: 'TikTok', icon: 'i-simple-icons-tiktok', color: 'text-black dark:text-white' },
+  { value: 'discord', label: 'Discord', icon: 'i-simple-icons-discord', color: 'text-indigo-500' },
+  { value: 'twitch', label: 'Twitch', icon: 'i-simple-icons-twitch', color: 'text-purple-500' },
+  { value: 'website', label: 'Website', icon: 'i-heroicons-globe-alt', color: 'text-gray-500' }
+]
+
+const addSocialSchema = z.object({
+  platform: z.string().min(1, 'Platform is required'),
+  url: z.string().url('Must be a valid URL'),
+  handle: z.string().optional().nullable()
+})
+
+type AddSocialSchema = z.output<typeof addSocialSchema>
+
+const addSocialState = reactive<Partial<AddSocialSchema>>({
+  platform: '',
+  url: '',
+  handle: ''
+})
+
+const openAddSocialModal = () => {
+  addSocialState.platform = ''
+  addSocialState.url = ''
+  addSocialState.handle = ''
+  addSocialError.value = null
+  showAddSocialModal.value = true
+}
+
+const handleAddSocial = async (event: FormSubmitEvent<AddSocialSchema>) => {
+  addingSocial.value = true
+  addSocialError.value = null
+  
+  try {
+    await socialStore.addSocial(tournamentId.value, {
+      platform: event.data.platform,
+      url: event.data.url,
+      handle: event.data.handle || null
+    })
+    showAddSocialModal.value = false
+    useToast().add({ title: 'Social link added successfully', color: 'success' })
+  } catch (err: any) {
+    addSocialError.value = err?.data?.message || err?.message || 'Failed to add social link'
+  } finally {
+    addingSocial.value = false
+  }
+}
+
+const handleRemoveSocial = async (socialId: string) => {
+  if (!confirm('Are you sure you want to remove this social link?')) return
+  
+  try {
+    await socialStore.removeSocial(tournamentId.value, socialId)
+    useToast().add({ title: 'Social link removed', color: 'success' })
+  } catch (error: any) {
+    useToast().add({ 
+      title: 'Failed to remove social link', 
+      description: error.message || 'Unknown error', 
+      color: 'error' 
+    })
+  }
+}
+
+const getSocialIcon = (platform: string) => {
+  const option = platformOptions.find(p => p.value === platform.toLowerCase())
+  return option?.icon || 'i-heroicons-link'
+}
+
+const getSocialColor = (platform: string) => {
+  const option = platformOptions.find(p => p.value === platform.toLowerCase())
+  return option?.color || 'text-gray-500'
+}
 
 // Tab configuration
 const tabItems = computed(() => {
@@ -445,6 +709,13 @@ const tabItems = computed(() => {
       icon: 'i-heroicons-chart-bar'
     })
   }
+
+  // Always add sponsors tab
+  items.push({
+    slot: 'sponsors',
+    label: 'Sponsors',
+    icon: 'i-heroicons-building-storefront'
+  })
 
   return items
 })
@@ -490,10 +761,10 @@ const tabItems = computed(() => {
       </div>
 
       <!-- Header -->
-      <div class="flex items-start gap-4 mb-8">
+      <div class="flex flex-col items-center text-center mb-8 -mt-16 relative z-10">
         <!-- Logo -->
         <div 
-          class="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0"
+          class="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 mb-4 ring-4 ring-white dark:ring-black shadow-xl"
         >
           <img 
             :src="tournament.logoUrl || PLACEHOLDER_LOGO" 
@@ -503,9 +774,9 @@ const tabItems = computed(() => {
         </div>
 
         <!-- Title & Meta -->
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-3 mb-2">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white truncate">
+        <div class="mb-4">
+          <div class="flex items-center justify-center gap-3 mb-2">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
               {{ tournament.name }}
             </h1>
             <UBadge v-if="tournamentStatus" :color="tournamentStatus.color" variant="subtle">
@@ -513,7 +784,7 @@ const tabItems = computed(() => {
             </UBadge>
           </div>
           
-          <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+          <div class="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-500">
             <div class="flex items-center gap-1">
               <UIcon name="i-heroicons-calendar" class="w-4 h-4" />
               <span>{{ formatDate(tournament.start_date) }} - {{ formatDate(tournament.end_date) }}</span>
@@ -547,12 +818,71 @@ const tabItems = computed(() => {
             label="Graphics"
           />
           <UButton 
+            v-if="canAdvance"
+            icon="i-heroicons-forward"
+            label="Advance Stage"
+            color="primary"
+            variant="solid"
+            @click="showAdvanceModal = true"
+          />
+          <UButton 
             icon="i-heroicons-cog-6-tooth" 
             variant="ghost" 
             color="neutral"
           />
         </div>
       </div>
+      
+      <!-- Advance Modal -->
+      <UModal v-model:open="showAdvanceModal">
+        <template #content>
+          <UCard class="ring-0 shadow-none" :ui="{ root: 'divide-y divide-gray-100 dark:divide-gray-800' }">
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
+                  Advance to Knockout Stage
+                </h3>
+                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showAdvanceModal = false" />
+              </div>
+            </template>
+
+            <div class="py-4">
+              <p class="text-sm text-gray-500 mb-4">
+                The group stage is complete. Proceeding will generate the knockout bracket based on group standings.
+              </p>
+              
+              <UAlert
+                v-if="advanceError"
+                color="error"
+                variant="subtle"
+                icon="i-heroicons-exclamation-triangle"
+                :title="advanceError"
+                class="mb-4"
+              />
+              
+              <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                <h4 class="font-medium text-sm mb-2">Qualification Rules:</h4>
+                <ul class="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                  <li>Top 2 teams from each group qualify automatically</li>
+                  <li>Knockout bracket will be seeded based on group positions</li>
+                </ul>
+              </div>
+            </div>
+
+            <template #footer>
+              <div class="flex items-center justify-end gap-3">
+                <UButton color="neutral" variant="ghost" label="Cancel" @click="showAdvanceModal = false" />
+                <UButton 
+                  color="primary" 
+                  label="Confirm & Generate Bracket" 
+                  :loading="advancing"
+                  @click="handleAdvanceKnockout"
+                />
+              </div>
+            </template>
+          </UCard>
+        </template>
+      </UModal>
 
       <!-- Content Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -647,6 +977,7 @@ const tabItems = computed(() => {
                     </div>
                     <div class="flex items-center gap-2">
                       <UChip
+                        v-if="tournament?.participantType === ParticipantType.TEAM"
                         :show="!!participant.players?.length"
                         :text="participant.players?.length"
                         size="xl"
@@ -694,7 +1025,7 @@ const tabItems = computed(() => {
                 </template>
 
                 <!-- Group Stage (Multiple Tables) -->
-                <div v-if="tournament.type === 'GROUP' && Object.keys(standingStore.getStandingsByGroup).length > 0" class="space-y-6">
+                <div v-if="(tournament.type === 'GROUP' || tournament.type === 'HYBRID') && Object.keys(standingStore.getStandingsByGroup).length > 0" class="space-y-6">
                   <div v-for="(groupStandings, groupName) in standingStore.getStandingsByGroup" :key="groupName">
                     <h4 v-if="groupName !== 'default'" class="text-sm font-medium text-gray-500 mb-3 px-1">
                       {{ groupName }}
@@ -926,6 +1257,93 @@ const tabItems = computed(() => {
                 </template>
               </UCard>
             </template>
+
+            <!-- Sponsors Tab -->
+            <template #sponsors>
+              <UCard class="mt-4">
+                <template #header>
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-heroicons-building-storefront" class="w-5 h-5 text-indigo-500" />
+                      <span class="font-medium">Sponsors</span>
+                      <UBadge v-if="sponsors.length" size="sm" variant="subtle">
+                        {{ sponsors.length }}
+                      </UBadge>
+                    </div>
+                    <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSponsorModal">
+                      Add
+                    </UButton>
+                  </div>
+                </template>
+                
+                <!-- Loading -->
+                <div v-if="sponsorsLoading && !sponsors.length" class="py-8 text-center text-gray-400">
+                  <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 mx-auto mb-2 animate-spin" />
+                  <p>Loading sponsors...</p>
+                </div>
+                
+                <!-- Empty State -->
+                <div v-else-if="!sponsors.length" class="py-8 text-center text-gray-400">
+                  <UIcon name="i-heroicons-building-storefront" class="w-12 h-12 mx-auto mb-2" />
+                  <p>No sponsors yet</p>
+                  <p class="text-sm">Add sponsors to showcase on your tournament</p>
+                  <UButton 
+                    size="sm" 
+                    variant="outline" 
+                    icon="i-heroicons-plus" 
+                    class="mt-4"
+                    @click="openAddSponsorModal"
+                  >
+                    Add Sponsor
+                  </UButton>
+                </div>
+                
+                <!-- Sponsor Grid -->
+                <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div 
+                    v-for="sponsor in sponsors" 
+                    :key="sponsor.id"
+                    class="relative group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all"
+                  >
+                    <!-- Delete Button -->
+                    <button 
+                      class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-all"
+                      @click="handleRemoveSponsor(sponsor.id)"
+                      title="Remove sponsor"
+                    >
+                      <UIcon name="i-heroicons-trash" class="w-4 h-4" />
+                    </button>
+                    
+                    <!-- Logo -->
+                    <div class="w-16 h-16 mx-auto mb-3 rounded-lg bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+                      <img 
+                        v-if="sponsor.logoUrl" 
+                        :src="sponsor.logoUrl" 
+                        :alt="sponsor.name"
+                        class="w-full h-full object-contain"
+                      />
+                      <UIcon v-else name="i-heroicons-building-office-2" class="w-8 h-8 text-gray-400" />
+                    </div>
+                    
+                    <!-- Name -->
+                    <p class="text-sm font-medium text-gray-900 dark:text-white text-center truncate">
+                      {{ sponsor.name }}
+                    </p>
+                    
+                    <!-- Website -->
+                    <a 
+                      v-if="sponsor.websiteUrl" 
+                      :href="sponsor.websiteUrl" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      class="block text-xs text-indigo-500 hover:text-indigo-600 text-center mt-1 truncate"
+                    >
+                      Visit Website
+                    </a>
+                  </div>
+                </div>
+              </UCard>
+            </template>
           </UTabs>
         </div>
 
@@ -995,6 +1413,81 @@ const tabItems = computed(() => {
                 <p class="font-medium text-gray-900 dark:text-white">{{ tournament.organizer.name }}</p>
                 <p class="text-sm text-gray-500">{{ tournament.organizer.email }}</p>
               </div>
+            </div>
+          </UCard>
+
+          <!-- Sponsors Showcase -->
+          <UCard v-if="sponsors.length">
+            <template #header>
+              <div class="flex items-center gap-2">
+                <UIcon name="i-heroicons-building-storefront" class="w-5 h-5 text-indigo-500" />
+                <span class="font-medium">Sponsors</span>
+              </div>
+            </template>
+            
+            <div class="flex flex-wrap gap-3 justify-center">
+              <a 
+                v-for="sponsor in sponsors" 
+                :key="sponsor.id"
+                :href="sponsor.websiteUrl || '#'"
+                :target="sponsor.websiteUrl ? '_blank' : undefined"
+                rel="noopener noreferrer"
+                class="block w-14 h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-center overflow-hidden hover:border-indigo-300 dark:hover:border-indigo-600 transition-all"
+                :title="sponsor.name"
+              >
+                <img 
+                  v-if="sponsor.logoUrl" 
+                  :src="sponsor.logoUrl" 
+                  :alt="sponsor.name"
+                  class="w-full h-full object-contain p-1"
+                />
+                <span v-else class="text-xs font-medium text-gray-500 text-center px-1">
+                  {{ sponsor.name.substring(0, 3) }}
+                </span>
+              </a>
+            </div>
+          </UCard>
+
+          <!-- Social Links -->
+          <UCard>
+            <template #header>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-heroicons-share" class="w-5 h-5 text-indigo-500" />
+                  <span class="font-medium">Social Links</span>
+                </div>
+                <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSocialModal" />
+              </div>
+            </template>
+            
+            <div v-if="socials.length" class="flex flex-wrap gap-2">
+              <div 
+                v-for="social in socials" 
+                :key="social.id"
+                class="group relative"
+              >
+                <a 
+                  :href="social.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all"
+                  :title="social.handle || social.platform"
+                >
+                  <UIcon :name="getSocialIcon(social.platform)" class="w-4 h-4" :class="getSocialColor(social.platform)" />
+                  <span class="text-sm text-gray-700 dark:text-gray-300 capitalize">{{ social.platform }}</span>
+                </a>
+                <button 
+                  class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-xs transition-all"
+                  @click="handleRemoveSocial(social.id)"
+                  title="Remove"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div v-else class="text-center py-4 text-gray-400 text-sm">
+              <p>No social links yet</p>
+              <UButton size="xs" variant="link" @click="openAddSocialModal">Add one</UButton>
             </div>
           </UCard>
         </div>
@@ -1242,7 +1735,7 @@ const tabItems = computed(() => {
 
         <div class="space-y-4">
           <p class="text-gray-600 dark:text-gray-300">
-            <span v-if="tournament?.type === 'GROUP'">
+            <span v-if="tournament?.type === 'GROUP' || tournament?.type === 'HYBRID'">
               Configure how the group stage should be generated. You can specify the number of groups or teams per group.
             </span>
             <span v-else>
@@ -1260,7 +1753,7 @@ const tabItems = computed(() => {
           />
 
           <!-- Group Stage Config -->
-          <div v-if="tournament?.type === 'GROUP'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div v-if="tournament?.type === 'GROUP' || tournament?.type === 'HYBRID'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UFormField label="Teams Per Group" name="teamsPerGroup">
               <UInput 
                 v-model.number="generateConfig.teamsPerGroup" 
@@ -1282,7 +1775,7 @@ const tabItems = computed(() => {
           
           <!-- Double Round Robin Option -->
           <div 
-            v-if="tournament?.type === 'ROUND_ROBIN' || tournament?.type === 'GROUP'" 
+            v-if="tournament?.type === 'ROUND_ROBIN' || tournament?.type === 'GROUP' || tournament?.type === 'HYBRID'" 
             class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50"
           >
              <div>
@@ -1292,7 +1785,7 @@ const tabItems = computed(() => {
             <USwitch v-model="generateConfig.doubleRoundRobin" />
           </div>
 
-          <div v-if="tournament?.type === 'GROUP'" class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg text-sm text-gray-500">
+          <div v-if="tournament?.type === 'GROUP' || tournament?.type === 'HYBRID'" class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg text-sm text-gray-500">
             <p v-if="generateConfig.teamsPerGroup && participants.length">
               With {{ participants.length }} participants and {{ generateConfig.teamsPerGroup }} teams per group, 
               you will have roughly {{ Math.ceil(participants.length / generateConfig.teamsPerGroup) }} groups.
@@ -1333,4 +1826,200 @@ const tabItems = computed(() => {
     @fixture-updated="handleFixtureUpdated"
     @match-ended="handleMatchEnded"
   />
+
+  <!-- Add Sponsor Modal -->
+  <UModal v-model:open="showAddSponsorModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-building-storefront" class="w-5 h-5 text-indigo-500" />
+            <span class="font-semibold">Add Sponsor</span>
+          </div>
+        </template>
+
+        <UForm 
+          :schema="addSponsorSchema" 
+          :state="addSponsorState" 
+          @submit="handleAddSponsor"
+          class="space-y-4"
+        >
+          <UAlert 
+            v-if="addSponsorError" 
+            color="error" 
+            variant="subtle"
+            icon="i-heroicons-exclamation-triangle"
+            :title="addSponsorError"
+            class="mb-4"
+          />
+
+          <UFormField label="Name" name="name" required>
+            <UInput 
+              v-model="addSponsorState.name" 
+              placeholder="Sponsor name"
+              icon="i-heroicons-building-office"
+            />
+          </UFormField>
+
+          <div class="space-y-2">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Sponsor Logo</span>
+            <div class="flex items-start gap-4">
+              <input 
+                ref="sponsorLogoFileInput"
+                type="file" 
+                accept="image/*"
+                class="hidden"
+                @change="handleSponsorLogoChange"
+              />
+              
+              <button 
+                type="button"
+                class="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 group bg-gray-50 dark:bg-gray-800"
+                @click="triggerSponsorLogoInput"
+                :disabled="uploadingSponsorLogo"
+              >
+                <img 
+                  v-if="sponsorLogoPreview || addSponsorState.logoUrl" 
+                  :src="sponsorLogoPreview || addSponsorState.logoUrl || undefined" 
+                  alt="Logo preview"
+                  class="w-full h-full object-cover"
+                />
+                <div 
+                  v-else
+                  class="w-full h-full flex flex-col items-center justify-center text-gray-400 group-hover:text-indigo-500 transition-colors"
+                >
+                  <UIcon name="i-heroicons-photo" class="w-6 h-6" />
+                  <span class="text-[10px] mt-1 font-medium">Add Logo</span>
+                </div>
+                
+                <div 
+                  v-if="uploadingSponsorLogo"
+                  class="absolute inset-0 bg-black/50 flex items-center justify-center"
+                >
+                  <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 text-white animate-spin" />
+                </div>
+              </button>
+              
+              <div class="flex-1 space-y-2">
+                 <p class="text-xs text-gray-500 dark:text-gray-400">
+                   Recommended: Square image, max 5MB.
+                 </p>
+                 <UButton
+                   v-if="sponsorLogoPreview || addSponsorState.logoUrl"
+                   size="xs"
+                   variant="ghost"
+                   color="error"
+                   icon="i-heroicons-trash"
+                   label="Remove"
+                   :disabled="uploadingSponsorLogo"
+                   @click="removeSponsorLogo"
+                   class="px-0"
+                 />
+              </div>
+            </div>
+          </div>
+
+          <UFormField label="Website URL" name="websiteUrl">
+            <UInput 
+              v-model="addSponsorState.websiteUrl" 
+              placeholder="https://sponsor-website.com"
+              icon="i-heroicons-globe-alt"
+            />
+          </UFormField>
+
+          <div class="flex justify-end gap-2 pt-4">
+            <UButton 
+              label="Cancel" 
+              variant="ghost" 
+              color="neutral"
+              @click="showAddSponsorModal = false"
+            />
+            <UButton 
+              type="submit"
+              label="Add Sponsor" 
+              icon="i-heroicons-plus"
+              :loading="addingSponsor"
+            />
+          </div>
+        </UForm>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Add Social Modal -->
+  <UModal v-model:open="showAddSocialModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-share" class="w-5 h-5 text-indigo-500" />
+            <span class="font-semibold">Add Social Link</span>
+          </div>
+        </template>
+
+        <UForm 
+          :schema="addSocialSchema" 
+          :state="addSocialState" 
+          @submit="handleAddSocial"
+          class="space-y-4"
+        >
+          <UAlert 
+            v-if="addSocialError" 
+            color="error" 
+            variant="subtle"
+            icon="i-heroicons-exclamation-triangle"
+            :title="addSocialError"
+            class="mb-4"
+          />
+
+          <UFormField label="Platform" name="platform" required>
+            <USelectMenu 
+              v-model="addSocialState.platform" 
+              :items="platformOptions"
+              value-key="value"
+              placeholder="Select platform..."
+            >
+              <template #item="{ item }">
+                <div class="flex items-center gap-2">
+                  <UIcon :name="item.icon" class="w-4 h-4" :class="item.color" />
+                  <span>{{ item.label }}</span>
+                </div>
+              </template>
+            </USelectMenu>
+          </UFormField>
+
+          <UFormField label="URL" name="url" required>
+            <UInput 
+              v-model="addSocialState.url" 
+              placeholder="https://twitter.com/tournamentname"
+              icon="i-heroicons-link"
+            />
+          </UFormField>
+
+          <UFormField label="Handle (optional)" name="handle">
+            <UInput 
+              v-model="addSocialState.handle" 
+              placeholder="@tournamentname"
+              icon="i-heroicons-at-symbol"
+            />
+          </UFormField>
+
+          <div class="flex justify-end gap-2 pt-4">
+            <UButton 
+              label="Cancel" 
+              variant="ghost" 
+              color="neutral"
+              @click="showAddSocialModal = false"
+            />
+            <UButton 
+              type="submit"
+              label="Add Social Link" 
+              icon="i-heroicons-plus"
+              :loading="addingSocial"
+            />
+          </div>
+        </UForm>
+      </UCard>
+    </template>
+  </UModal>
 </template>
