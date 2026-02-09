@@ -80,7 +80,7 @@ async function signup(email: string, password: string, name: string) {
   async function googleSignup() {
     loading.value = true
     const config = useRuntimeConfig()
-    const redirect_url = config.public.DASHBOARD_URL || 'http://manage.lvh.me'
+    const redirect_url = config.public.DASHBOARD_URL || 'http://manage.lvh.me:3001'
     try {
       return navigateTo(config.public.API_BASE_URL + `/auth/google?redirect_url=${redirect_url}`, {
           external: true
