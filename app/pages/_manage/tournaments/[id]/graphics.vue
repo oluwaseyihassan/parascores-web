@@ -11,6 +11,8 @@ const tournamentId = route.params.id as string
 const fixtureStore = useFixtureStore()
 const participantStore = useParticipantStore()
 const standingStore = useStandingStore()
+const sponsorStore = useSponsorStore()
+const socialStore = useSocialStore()
 
 // State
 const tournament = ref<Tournament | null>(null)
@@ -20,8 +22,9 @@ const selectedFixtureId = ref<string | undefined>(undefined)
 const previewUrl = ref<string | null>(null)
 const generating = ref(false)
 const error = ref<string | null>(null)
-const graphicType = ref<'match' | 'standing' | 'bracket'>('match')
+const graphicType = ref<'match' | 'standing' | 'bracket' | 'matchday'>('match')
 const selectedGroup = ref<string>('all')
+const selectedRound = ref<number | undefined>(undefined)
 
 // Computed
 const selectedFixture = computed(() => 
@@ -70,14 +73,65 @@ const fixtureOptions = computed(() => {
     return {
       label: `${home} vs ${away} (${date})`,
       value: f.id,
-      description: f.status
+      description: f.status,
+      round: f.round || 1,
+      roundName: f.roundName
     }
   })
 })
+
+// Group fixtures by round for accordion display
+const fixturesByRound = computed(() => {
+  const grouped: Record<number, typeof fixtureOptions.value> = {}
+  
+  fixtureOptions.value.forEach(f => {
+    const round = f.round
+    if (!grouped[round]) {
+      grouped[round] = []
+    }
+    grouped[round].push(f)
+  })
+  
+  // Sort rounds and return as array of accordion items
+  return Object.keys(grouped)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map(round => {
+      // Use round name from the first fixture in the group if available
+      const roundName = grouped[round]?.[0]?.roundName || `Round ${round}`
+      return {
+        label: roundName,
+        value: `round-${round}`,
+        slot: `round-${round}`,
+        fixtures: grouped[round]
+      }
+    })
+})
+
+// Available rounds for matchday selector
+const roundOptions = computed(() => {
+  const rounds = [...new Set(fixtures.value.map(f => f.round || 1))].sort((a, b) => a - b)
+  return rounds.map(r => {
+      // Find a fixture in this round to get the name
+      const fixture = fixtures.value.find(f => f.round === r)
+      return { 
+          label: fixture?.roundName || `Round ${r}`, 
+          value: r 
+      }
+  })
+})
+
 // Validation for generation
 const canGenerate = computed(() => {
-  if (graphicType.value === 'standing' || graphicType.value === 'bracket') {
+  if (graphicType.value === 'standing') {
+      // Require tournament AND standings data
+      return !!tournament.value && standingStore.standings.length > 0
+  }
+  if (graphicType.value === 'bracket') {
       return !!tournament.value
+  }
+  if (graphicType.value === 'matchday') {
+      return !!tournament.value && selectedRound.value !== undefined && fixtures.value.some(f => f.round === selectedRound.value)
   }
   if (!selectedFixture.value) return false
   // Check if teams exist (at least basics)
@@ -94,8 +148,12 @@ const fetchData = async () => {
       $api<any>(`/tournaments/${tournamentId}/participants`)
     ])
 
-    // Load standings too
-    await standingStore.fetchStandings(tournamentId)
+    // Load standings, sponsors, and socials too
+    await Promise.all([
+      standingStore.fetchStandings(tournamentId),
+      sponsorStore.fetchSponsors(tournamentId),
+      socialStore.fetchSocials(tournamentId)
+    ])
 
     tournament.value = tournRes.data || tournRes
     
@@ -142,13 +200,25 @@ const generatePreview = async () => {
     let response: Blob
     
     if (graphicType.value === 'match' && selectedFixture.value) {
+        // Fetch match events for this fixture
+        let matchEvents: any[] = []
+        try {
+            const eventsRes = await $api<any>(`/fixtures/${selectedFixture.value.id}/events`)
+            matchEvents = eventsRes.data || []
+        } catch (e) {
+            console.warn('Could not fetch match events:', e)
+        }
+
         response = await $fetch<Blob>('/api/graphics/match-result', {
             method: 'POST',
             body: {
                 match: selectedFixture.value,
                 homeTeam: selectedFixture.value.homeTeam,
                 awayTeam: selectedFixture.value.awayTeam,
-                tournament: tournament.value
+                tournament: tournament.value,
+                events: matchEvents,
+                sponsors: sponsorStore.sponsors,
+                socials: socialStore.socials
             },
             responseType: 'blob'
         })
@@ -170,7 +240,24 @@ const generatePreview = async () => {
             body: {
                 tournament: tournament.value,
                 fixturesByRound,
-                rounds
+                rounds,
+                sponsors: sponsorStore.sponsors,
+                socials: socialStore.socials
+            },
+            responseType: 'blob'
+        })
+    } else if (graphicType.value === 'matchday' && selectedRound.value !== undefined) {
+        // Get fixtures for the selected round
+        const roundFixtures = fixtures.value.filter(f => f.round === selectedRound.value)
+        
+        response = await $fetch<Blob>('/api/graphics/matchday', {
+            method: 'POST',
+            body: {
+                fixtures: roundFixtures,
+                tournament: tournament.value,
+                round: selectedRound.value,
+                sponsors: sponsorStore.sponsors,
+                socials: socialStore.socials
             },
             responseType: 'blob'
         })
@@ -189,7 +276,9 @@ const generatePreview = async () => {
             body: {
                 standings: standingsData,
                 tournament: tournament.value,
-                title
+                title,
+                sponsors: sponsorStore.sponsors,
+                socials: socialStore.socials
             },
             responseType: 'blob'
         })
@@ -213,6 +302,8 @@ const downloadGraphic = () => {
   let filename = 'graphic.png'
   if (graphicType.value === 'match' && selectedFixture.value) {
       filename = `match-${selectedFixture.value.id}.png`
+  } else if (graphicType.value === 'matchday' && tournament.value && selectedRound.value) {
+      filename = `${tournament.value.name}-round-${selectedRound.value}.png`
   } else if (tournament.value) {
       const suffix = graphicType.value === 'bracket' ? 'bracket' : 'standings'
       filename = `${tournament.value.name}-${suffix}.png`
@@ -315,31 +406,45 @@ onUnmounted(() => {
                 >
                   Bracket
                 </button>
+                <button 
+                  type="button"
+                  class="flex-1 px-4 py-2 text-sm font-medium border border-l-0 rounded-r-md focus:z-10 focus:ring-2 focus:ring-indigo-500"
+                  :class="graphicType === 'matchday' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                  @click="graphicType = 'matchday'"
+                >
+                  Matchday
+                </button>
               </div>
             </div>
 
             <!-- Match List -->
             <div v-if="graphicType === 'match'" class="space-y-2 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
-              <div 
-                v-for="item in fixtureOptions" 
-                :key="item.value"
-                @click="selectedFixtureId = item.value"
-                class="p-3 rounded-lg border cursor-pointer transition-colors"
-                :class="[
-                  selectedFixtureId === item.value 
-                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' 
-                    : 'border-gray-200 dark:border-gray-800 hover:border-indigo-300 dark:hover:border-indigo-700'
-                ]"
-              >
-                <div class="flex items-center justify-between mb-1">
-                   <span class="font-medium text-sm" :class="selectedFixtureId === item.value ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-gray-100'">
-                     {{ item.label }}
-                   </span>
-                </div>
-                <div class="text-xs text-gray-500 capitalize flex justify-between">
-                  <span>{{ item.description }}</span>
-                </div>
-              </div>
+              <UAccordion :items="fixturesByRound" multiple>
+                <template v-for="roundData in fixturesByRound" :key="roundData.value" #[roundData.slot]>
+                  <div class="space-y-2 p-2">
+                    <div 
+                      v-for="item in roundData.fixtures" 
+                      :key="item.value"
+                      @click="selectedFixtureId = item.value"
+                      class="p-3 rounded-lg border cursor-pointer transition-colors"
+                      :class="[
+                        selectedFixtureId === item.value 
+                          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' 
+                          : 'border-gray-200 dark:border-gray-800 hover:border-indigo-300 dark:hover:border-indigo-700'
+                      ]"
+                    >
+                      <div class="flex items-center justify-between mb-1">
+                         <span class="font-medium text-sm" :class="selectedFixtureId === item.value ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-gray-100'">
+                           {{ item.label }}
+                         </span>
+                      </div>
+                      <div class="text-xs text-gray-500 capitalize flex justify-between">
+                        <span>{{ item.description }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </UAccordion>
               
               <div v-if="fixtureOptions.length === 0" class="text-center py-4 text-gray-500 text-sm">
                 No matches found.
@@ -375,6 +480,27 @@ onUnmounted(() => {
                </div>
                 <p class="text-sm text-gray-500">
                     Useful for knockout stages. Ensure all matches are scheduled for the best layout.
+                </p>
+            </div>
+
+            <!-- Matchday Config -->
+            <div v-else-if="graphicType === 'matchday'" class="space-y-4">
+                <UFormGroup label="Select Round">
+                    <USelect 
+                        v-model="selectedRound"
+                        :items="roundOptions"
+                        value-key="value"
+                        option-label="label"
+                        placeholder="Select a round"
+                        class="w-full"
+                    />
+                </UFormGroup>
+                <div v-if="selectedRound !== undefined" class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm">
+                    <span class="text-gray-500">Matches in {{ roundOptions.find(r => r.value === selectedRound)?.label }}:</span>
+                    <span class="font-medium ml-2">{{ fixtures.filter(f => f.round === selectedRound).length }}</span>
+                </div>
+                <p class="text-sm text-gray-500">
+                    Generate a graphic showing all matches for a specific matchday/round.
                 </p>
             </div>
           
