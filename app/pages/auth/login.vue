@@ -2,7 +2,7 @@
   <div class="min-h-screen flex items-center justify-center px-4 py-12 bg-page transition-colors duration-300">
     <div class="w-full max-w-md">
       <!-- Card -->
-      <UCard class="shadow-2xl" variant="auth">
+      <UCard class="shadow-2xl" >
         <!-- Logo -->
         <div class="flex justify-center mb-2">
           <div class="w-14 h-14 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
@@ -126,6 +126,7 @@ definePageMeta({
   path: '/login',
   layout: 'auth',
 })
+const dashboardUrl = useRuntimeConfig().public.DASHBOARD_URL
 
 const authStore = useAuthStore()
 const { loading } = storeToRefs(authStore)
@@ -164,7 +165,7 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
         // Checking auth.ts, it doesn't redirect.
         // I will add a redirect here to be safe and helpful.
         console.log('Login successful')
-        navigateTo('http://manage.lvh.me:3001', {external: true})
+        navigateTo(dashboardUrl || 'http://manage.lvh.me:3000', {external: true})
     }
   } catch (err: any) {
     console.error('Login failed:', err?.message)
