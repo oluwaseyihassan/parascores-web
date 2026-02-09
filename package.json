@@ -18,6 +18,7 @@
     "@pinia/nuxt": "^0.11.3",
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.1.18",
+    "@vercel/analytics": "^1.6.1",
     "nuxt": "^4.2.2",
     "pinia": "^3.0.4",
     "satori": "^0.19.1",
@@ -27,6 +28,8 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@iconify-json/heroicons": "^1.2.3",
+    "@iconify-json/simple-icons": "^1.2.69",
     "@types/node": "^25.0.3"
   }
 }
