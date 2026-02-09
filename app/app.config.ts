@@ -1,9 +1,12 @@
 export default defineAppConfig({
   ui: {
-    card: {
+    colors: {
+      neutral: 'neutral'
+    },
+    card: { 
       slots: {
         // Force the background here instead of in 'variants'
-        // root: 'bg-white dark:bg-[#171717] ring-1 ring-gray-200 dark:ring-gray-800 text-red-300 dark:text-gray-100', 
+        root: 'bg-white dark:backdrop-blur-xl ring-1 ring-gray-200 dark:ring-white/10', 
         // header: 'p-4 sm:px-6',
         // body: 'p-4 sm:p-6',
         // footer: 'p-4 sm:px-6'
@@ -15,7 +18,7 @@ export default defineAppConfig({
             root: '' // Leave empty so the slot style above takes over
           },
           auth: {
-            root: 'w-full max-w-md mx-auto shadow-lg bg-white dark:bg-[#171717]'
+            root: 'w-full max-w-md mx-auto shadow-lg'
           }
         }
       }
@@ -26,7 +29,7 @@ export default defineAppConfig({
       },
       variants: {
         auth: {
-          root: 'bg-white dark:bg-[#0F0F0F] ring-1 ring-gray-200 dark:ring-gray-800'
+          root: 'bg-white dark:bg-[#050505] ring-1 ring-gray-200 dark:ring-gray-800'
         }
       }
     },
@@ -37,7 +40,7 @@ export default defineAppConfig({
       },
       variants: {
         variant: {
-          green:  'bg-indigo-500 dark:bg-indigo-600 hover:bg-indigo-600 dark:hover:bg-indigo-700'  
+          green:  ''  
         },
         color: {
           // primary: 'bg-indigo-500 dark:bg-indigo-600'
