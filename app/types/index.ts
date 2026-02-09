@@ -14,7 +14,9 @@ export enum Visibility {
 export enum TournamentType {
   KNOCKOUT = 'KNOCKOUT',
   ROUND_ROBIN = 'ROUND_ROBIN',
-  GROUP = 'GROUP'
+  GROUP = 'GROUP',
+  FRIENDLY = 'FRIENDLY',
+  HYBRID = 'HYBRID'
 }
 
 export enum ParticipantType {
@@ -108,6 +110,8 @@ export interface Tournament {
   // Relations
   groups?: Group[]
   standings?: Standing[]
+  sponsors?: Sponsor[]
+  socials?: Social[]
 
   start_date: string
   end_date: string
@@ -260,6 +264,34 @@ export interface Player {
   // Relations
   participant?: Participant | null
   matchEvents?: MatchEvent[]
+}
+
+export interface Sponsor {
+  id: string
+  name: string
+  logoUrl?: string | null
+  websiteUrl?: string | null
+  tournament_id: string
+  
+  created_at: string
+  updated_at: string
+  
+  // Relations
+  tournament?: Tournament | null
+}
+
+export interface Social {
+  id: string
+  platform: string
+  url: string
+  handle?: string | null
+  tournament_id: string
+  
+  created_at: string
+  updated_at: string
+  
+  // Relations
+  tournament?: Tournament | null
 }
 
 // Auth State
