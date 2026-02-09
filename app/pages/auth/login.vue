@@ -165,7 +165,7 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
         // Checking auth.ts, it doesn't redirect.
         // I will add a redirect here to be safe and helpful.
         console.log('Login successful')
-        navigateTo(dashboardUrl || 'http://manage.lvh.me:3000', {external: true})
+        navigateTo(dashboardUrl || 'http://manage.lvh.me:3001', {external: true})
     }
   } catch (err: any) {
     console.error('Login failed:', err?.message)
