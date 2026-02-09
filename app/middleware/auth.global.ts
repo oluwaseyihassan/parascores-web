@@ -32,8 +32,8 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
 
   // 3. Dynamic Protocol & Domain Helper
   const protocol = import.meta.dev ? 'http' : 'https'
-  // Fix: Ensure we strip 'manage.' correctly to get the root domain
-  const rootHost = isApp ? host.replace('manage.', '') : host
+  // Fix: Strip both 'manage.' and 'www.' to get the true root domain
+  const rootHost = host.replace(/^(manage\.|www\.)+/i, '')
 
   // --- LOGIC ---
 
