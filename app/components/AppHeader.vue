@@ -90,7 +90,7 @@
       leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 -translate-y-4"
     >
-      <div v-if="mobileMenuOpen" class="lg:hidden bg-[#0A0F1C] border-t border-white/10 px-6 py-4">
+      <div v-if="mobileMenuOpen" class="lg:hidden bg-[#0A0F1C] border-t border-white/10 px-6 py-4 absolute w-full">
         <nav class="flex flex-col gap-2">
           <NuxtLink to="/platform" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Platform</NuxtLink>
           <NuxtLink to="/widgets" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Widget Builder</NuxtLink>
