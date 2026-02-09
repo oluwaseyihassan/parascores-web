@@ -15,9 +15,17 @@ export default defineNuxtConfig({
     "@nuxtjs/color-mode",
     "@nuxtjs/i18n"
   ],
+  icon: {
+    serverBundle: {
+      collections: ['heroicons']
+    }
+  },
   css: ["@/assets/css/main.css"],
   vite: {
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss()],
+    server: {
+      allowedHosts: ['manage.lvh.me']
+    }
   },
   colorMode: {
     classSuffix: "",
