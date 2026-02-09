@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FixtureStatus, MatchEventType } from '~/types'
+import { FixtureStatus, MatchEventType, ParticipantType } from '~/types'
 import type { Fixture, Player, MatchEvent } from '~/types'
 
 const props = withDefaults(defineProps<{
@@ -147,14 +147,6 @@ const scoringTeamPlayers = computed(() => {
   return scoringTeam.value === 'home' ? homePlayers.value : awayPlayers.value
 })
 
-const openGoalModal = (team: 'home' | 'away') => {
-  scoringTeam.value = team
-  goalData.scorerId = undefined
-  goalData.assisterId = undefined
-  goalData.minute = null
-  showGoalModal.value = true
-}
-
 const confirmGoal = async () => {
   if (!selectedFixture.value) return
   
@@ -216,6 +208,21 @@ const confirmGoal = async () => {
   } finally {
     updatingMatch.value = false
   }
+}
+
+const openGoalModal = (team: 'home' | 'away') => {
+  scoringTeam.value = team
+  goalData.scorerId = undefined
+  goalData.assisterId = undefined
+  goalData.minute = null
+  
+  // For Individual tournaments, record goal immediately without modal
+  if (props.tournament?.participantType === ParticipantType.INDIVIDUAL) {
+    confirmGoal()
+    return
+  }
+  
+  showGoalModal.value = true
 }
 
 const decrementScore = async (team: 'home' | 'away') => {
@@ -285,7 +292,7 @@ const endMatch = async () => {
   } catch (error: any) {
     useToast().add({ 
       title: 'Failed to end match', 
-      description: error.message || 'Unknown error', 
+      description: error?.data?.message || 'Unknown error', 
       color: 'error' 
     })
   } finally {
