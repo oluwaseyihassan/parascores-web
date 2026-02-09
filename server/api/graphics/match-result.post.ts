@@ -1,11 +1,12 @@
 
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
+import { getSponsorsRow, getAbsoluteFooter } from '../../utils/graphics'
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
-    const { match, homeTeam, awayTeam, tournament } = body
+    const { match, homeTeam, awayTeam, tournament, events = [], sponsors = [], socials = [] } = body
 
     if (!match || !homeTeam || !awayTeam) {
         throw createError({
@@ -19,20 +20,28 @@ export default defineEventHandler(async (event) => {
     let regularFontData: ArrayBuffer
 
     try {
-        const [boldRes, regRes] = await Promise.all([
-            fetch('https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.8/files/inter-latin-700-normal.woff'),
-            fetch('https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.8/files/inter-latin-400-normal.woff')
-        ])
-        
-        if (!boldRes.ok || !regRes.ok) throw new Error('Failed to fetch fonts')
-        
-        fontData = await boldRes.arrayBuffer()
-        regularFontData = await regRes.arrayBuffer()
+        const fetchFonts = async (cdnFn: (weight: number) => string) => {
+             const [boldRes, regRes] = await Promise.all([
+                fetch(cdnFn(700)),
+                fetch(cdnFn(400))
+            ])
+            if (!boldRes.ok || !regRes.ok) throw new Error('Failed to fetch fonts')
+            return Promise.all([boldRes.arrayBuffer(), regRes.arrayBuffer()])
+        }
+
+        try {
+            // Try jsdelivr first
+            const result = await fetchFonts(w => `https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`)
+            fontData = result[0]
+            regularFontData = result[1]
+        } catch (err) {
+            console.warn('Primary font CDN failed, trying fallback...', err)
+            // Fallback to unpkg
+            const result = await fetchFonts(w => `https://unpkg.com/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`)
+            fontData = result[0]
+            regularFontData = result[1]
+        }
     } catch (e) {
-        console.warn('Failed to load remote fonts, using fallback system font if available or erroring out safely.')
-        // In a real scenario, you'd fallback to a local file or default font.
-        // For now, let's re-throw or handle gracefully if satori needs it.
-        // Satori needs a font. Let's try a different source if valid, or just throw with better message.
         console.error('Font loading failed:', e)
         throw createError({
             statusCode: 500,
@@ -44,7 +53,14 @@ export default defineEventHandler(async (event) => {
   const homeScore = match.homeScore ?? 0
   const awayScore = match.awayScore ?? 0
   
-  const height = 630
+  // Calculate dynamic height based on number of goals
+  const goalEvents = events.filter((e: any) => e.type === 'GOAL' || e.type === 'PENALTY' || e.type === 'OWN_GOAL')
+  const homeGoalCount = goalEvents.filter((e: any) => e.participantId === homeTeam.id || e.participant_id === homeTeam.id).length
+  const awayGoalCount = goalEvents.filter((e: any) => e.participantId === awayTeam.id || e.participant_id === awayTeam.id).length
+  const maxGoals = Math.max(homeGoalCount, awayGoalCount, 0)
+  const baseHeight = 550
+  const goalRowHeight = 24
+  const height = baseHeight + (maxGoals * goalRowHeight)
   const width = 1200
 
   // Background Strategy
@@ -230,30 +246,63 @@ export default defineEventHandler(async (event) => {
                             {
                                 type: 'div',
                                 props: {
-                                    style: { display: 'flex', alignItems: 'center', gap: '40px' },
+                                    style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' },
                                     children: [
                                         {
-                                            type: 'span',
+                                            type: 'div',
                                             props: {
-                                                children: homeScore,
-                                                style: { fontSize: '96px', fontWeight: 'bold' }
+                                                style: { display: 'flex', alignItems: 'center', gap: '40px' },
+                                                children: [
+                                                    {
+                                                        type: 'span',
+                                                        props: {
+                                                            children: homeScore,
+                                                            style: { fontSize: '96px', fontWeight: 'bold' }
+                                                        }
+                                                    },
+                                                    {
+                                                        type: 'span',
+                                                        props: {
+                                                            children: '-',
+                                                            style: { fontSize: '64px', color: '#6b7280' }
+                                                        }
+                                                    },
+                                                    {
+                                                        type: 'span',
+                                                        props: {
+                                                            children: awayScore,
+                                                            style: { fontSize: '96px', fontWeight: 'bold' }
+                                                        }
+                                                    }
+                                                ]
                                             }
                                         },
-                                        {
-                                            type: 'span',
+                                        // Full Time indicator for completed matches
+                                        match.status === 'COMPLETED' ? {
+                                            type: 'div',
                                             props: {
-                                                children: '-',
-                                                style: { fontSize: '64px', color: '#6b7280' }
+                                                style: { 
+                                                    display: 'flex',
+                                                    backgroundColor: 'rgba(34, 197, 94, 0.2)', 
+                                                    border: '1px solid rgba(34, 197, 94, 0.5)',
+                                                    borderRadius: '9999px',
+                                                    padding: '8px 24px',
+                                                },
+                                                children: {
+                                                    type: 'span',
+                                                    props: {
+                                                        children: 'FULL TIME',
+                                                        style: { 
+                                                            fontSize: '18px', 
+                                                            fontWeight: 'bold', 
+                                                            color: '#22c55e',
+                                                            letterSpacing: '2px'
+                                                        }
+                                                    }
+                                                }
                                             }
-                                        },
-                                        {
-                                            type: 'span',
-                                            props: {
-                                                children: awayScore,
-                                                style: { fontSize: '96px', fontWeight: 'bold' }
-                                            }
-                                        }
-                                    ]
+                                        } : null
+                                    ].filter(Boolean)
                                 }
                             },
                             // Away Team
@@ -285,19 +334,110 @@ export default defineEventHandler(async (event) => {
                         ]
                     }
                   },
-                  // Footer
+                  // Goal Details Section
+                  (events && events.length > 0) ? {
+                    type: 'div',
+                    props: {
+                      style: {
+                        display: 'flex',
+                        width: '80%',
+                        marginTop: '24px',
+                        justifyContent: 'center',
+                        gap: '80px',
+                      },
+                      children: [
+                        // Home Team Goals
+                        {
+                          type: 'div',
+                          props: {
+                            style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: 1, maxWidth: '350px', gap: '8px' },
+                            children: events
+                              .filter((e: any) => (e.type === 'GOAL' || e.type === 'PENALTY' || e.type === 'OWN_GOAL') && (e.participantId === homeTeam.id || e.participant_id === homeTeam.id))
+                              .sort((a: any, b: any) => (a.minute || 0) - (b.minute || 0))
+                              .map((goal: any) => ({
+                                type: 'div',
+                                props: {
+                                  style: { display: 'flex', alignItems: 'center', gap: '8px' },
+                                  children: [
+                                    {
+                                      type: 'span',
+                                      props: {
+                                        children: `${goal.player?.name || 'Unknown'} ${goal.minute ? `${goal.minute}'` : ''}${goal.type === 'PENALTY' ? ' (P)' : ''}${goal.type === 'OWN_GOAL' ? ' (OG)' : ''}${goal.relatedPlayer ? ` (${goal.relatedPlayer.name})` : ''}`,
+                                        style: { fontSize: '14px', color: '#d1d5db', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+                                      }
+                                    },
+                                    {
+                                      type: 'span',
+                                      props: {
+                                        children: '●',
+                                        style: { fontSize: '16px', color: '#22c55e' }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }))
+                          }
+                        },
+                        // Away Team Goals
+                        {
+                          type: 'div',
+                          props: {
+                            style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1, maxWidth: '350px', gap: '8px' },
+                            children: events
+                              .filter((e: any) => (e.type === 'GOAL' || e.type === 'PENALTY' || e.type === 'OWN_GOAL') && (e.participantId === awayTeam.id || e.participant_id === awayTeam.id))
+                              .sort((a: any, b: any) => (a.minute || 0) - (b.minute || 0))
+                              .map((goal: any) => ({
+                                type: 'div',
+                                props: {
+                                  style: { display: 'flex', alignItems: 'center', gap: '8px' },
+                                  children: [
+                                    {
+                                      type: 'span',
+                                      props: {
+                                        children: '●',
+                                        style: { fontSize: '16px', color: '#22c55e' }
+                                      }
+                                    },
+                                    {
+                                      type: 'span',
+                                      props: {
+                                        children: `${goal.player?.name || 'Unknown'} ${goal.minute ? `${goal.minute}'` : ''}${goal.type === 'PENALTY' ? ' (P)' : ''}${goal.type === 'OWN_GOAL' ? ' (OG)' : ''}${goal.relatedPlayer ? ` (${goal.relatedPlayer.name})` : ''}`,
+                                        style: { fontSize: '14px', color: '#d1d5db', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }))
+                          }
+                        }
+                      ]
+                    }
+                  } : null,
+                  // Footer with Sponsors and Socials
                   {
                     type: 'div',
                     props: {
-                        style: { marginTop: '40px', color: '#6b7280', fontSize: '18px' },
-                        children: 'Generated by ParaScores'
+                        style: { 
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          marginTop: 'auto',
+                          paddingTop: '50px',
+                          paddingBottom: '80px',
+                          gap: '16px',
+                          width: '100%'
+                        },
+                        children: [
+                          getSponsorsRow(sponsors),
+                        ].filter(Boolean)
                     }
-                  }
-              ]
+                  },
+                  ...getAbsoluteFooter(socials)
+              ].filter(Boolean)
             }
           }
         ]
-      },
+      }
     },
     {
       width,

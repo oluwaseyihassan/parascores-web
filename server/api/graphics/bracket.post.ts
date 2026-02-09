@@ -2,18 +2,23 @@
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
 import type { Fixture, Participant } from '~/types'
+import { getSponsorsRow, getAbsoluteFooter } from '../../utils/graphics'
+
+// Social Icons Map (Simple Icons & Heroicons)
 
 // Helper types
 interface BracketBody {
     tournament: any
     fixturesByRound: Record<number, Fixture[]>
     rounds: number[]
+    sponsors?: any[]
+    socials?: any[]
 }
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody<BracketBody>(event)
-    const { tournament, fixturesByRound, rounds } = body
+    const { tournament, fixturesByRound, rounds, sponsors = [], socials = [] } = body
 
     if (!tournament || !fixturesByRound || !rounds || rounds.length === 0) {
         throw createError({
@@ -46,8 +51,9 @@ export default defineEventHandler(async (event) => {
     const matchGap = 20    // Gap between matches in round 1
     
     // Calculate total height based on Round 1 matches
+    // Calculate total height based on Round 1 matches (increased buffer for footer)
     const round1Matches = fixturesByRound[rounds[0]]?.length || 0
-    const contentHeight = Math.max(800, (round1Matches * (matchHeight + matchGap)) + 400) // +400 for header/padding
+    const contentHeight = Math.max(900, (round1Matches * (matchHeight + matchGap)) + 600) // +600 for header/padding/footer
     const contentWidth = Math.max(1200, (rounds.length * 350) + 100) // 350px per round col
 
     const height = contentHeight
@@ -313,12 +319,34 @@ export default defineEventHandler(async (event) => {
                 props: {
                     style: {
                         display: 'flex',
-                        padding: '140px 60px 60px 60px', // Top padding for header
+                        padding: '140px 60px 180px 60px', // Top padding for header, Bottom for footer
                         alignItems: 'flex-start'
                     },
                     children: columns
                 }
-            }
+            },
+            // Footer with Sponsors and Socials
+            {
+              type: 'div',
+              props: {
+                  style: { 
+                    position: 'absolute',
+                    bottom: '100px',
+                    left: '0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '16px',
+                    width: '100%'
+                  },
+                  children: [
+                    getSponsorsRow(sponsors),
+                    ].filter(Boolean)
+               }
+             },
+
+             ...getAbsoluteFooter(socials)
+
           ]
         },
       },
@@ -356,8 +384,22 @@ function getTeamName(fixture: Fixture, isHome: boolean) {
 
 function getScore(fixture: Fixture, isHome: boolean) {
     if (fixture.status !== 'COMPLETED' && fixture.status !== 'LIVE') return '-'
-    // Note: Ignoring penalties for simplicity in graphic for now unless clear visual way to show it
-    return isHome ? (fixture.homeScore ?? 0).toString() : (fixture.awayScore ?? 0).toString()
+    
+    const score = isHome ? (fixture.homeScore ?? 0) : (fixture.awayScore ?? 0)
+    const penaltyScore = isHome ? fixture.homePenaltyScore : fixture.awayPenaltyScore
+    
+    // Show penalty score if match went to penalties (scores are tied and penalty scores exist)
+    const homeScore = fixture.homeScore ?? 0
+    const awayScore = fixture.awayScore ?? 0
+    const hasPenalties = homeScore === awayScore && 
+        (fixture.homePenaltyScore !== null && fixture.homePenaltyScore !== undefined) && 
+        (fixture.awayPenaltyScore !== null && fixture.awayPenaltyScore !== undefined)
+    
+    if (hasPenalties && penaltyScore !== null && penaltyScore !== undefined) {
+        return `${score} (${penaltyScore})`
+    }
+    
+    return score.toString()
 }
 
 function getWinnerBg(fixture: Fixture, isHome: boolean) {

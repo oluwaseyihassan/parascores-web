@@ -1,11 +1,12 @@
 
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
+import { getSponsorsRow, getAbsoluteFooter } from '../../utils/graphics'
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
-    const { standings, tournament, title } = body
+    const { standings, tournament, title, sponsors = [], socials = [] } = body
 
     if (!standings || !tournament) {
         throw createError({
@@ -37,8 +38,8 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-  // Calculate height based on number of rows (approx 80px per row + 450px header/padding)
-  const calculatedHeight = 450 + (standings.length * 80)
+  // Calculate height based on number of rows (approx 80px per row + 650px header/padding/footer)
+  const calculatedHeight = 650 + (standings.length * 80)
   const height = Math.max(1200, calculatedHeight)
   const width = 1200
   
@@ -348,7 +349,27 @@ export default defineEventHandler(async (event) => {
                           },
                           children: tableRows
                       }
-                  }
+                  },
+                  // Footer with Sponsors and Socials
+                  {
+                    type: 'div',
+                    props: {
+                        style: { 
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          marginTop: 'auto',
+                          paddingTop: '50px',
+                          paddingBottom: '80px',
+                          gap: '16px',
+                          width: '100%'
+                        },
+                        children: [
+                          getSponsorsRow(sponsors),
+                        ].filter(Boolean)
+                    }
+                  },
+                  ...getAbsoluteFooter(socials)
               ]
             }
           }
