@@ -82,6 +82,13 @@ watch(loadMoreTrigger, (el) => {
 
 <template>
   <div>
+    <!-- Welcome Message -->
+    <div class="mb-6">
+      <h2 class="text-lg text-gray-500 dark:text-gray-400">
+        Welcome back, <span class="text-emerald-500 font-medium">{{ authStore.user?.name || 'there' }}</span>
+      </h2>
+    </div>
+
     <!-- Header -->
     <div class="flex items-center justify-between mb-8">
       <div>
