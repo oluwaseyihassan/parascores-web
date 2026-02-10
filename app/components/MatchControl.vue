@@ -171,21 +171,25 @@ const confirmGoal = async () => {
       awayScore: selectedFixture.value.awayScore
     })
     
-    // Create match event for the goal
-    await fixtureStore.createMatchEvent({
-      fixtureId: selectedFixture.value.id,
-      participantId: participantId,
-      playerId: goalData.scorerId,
-      relatedPlayerId: goalData.assisterId,
-      type: MatchEventType.GOAL,
-      minute: goalData.minute
-    })
+    // Create match event for the goal (skip for Individual tournaments)
+    if (props.tournament?.participantType !== ParticipantType.INDIVIDUAL) {
+      await fixtureStore.createMatchEvent({
+        fixtureId: selectedFixture.value.id,
+        participantId: participantId,
+        playerId: goalData.scorerId,
+        relatedPlayerId: goalData.assisterId,
+        type: MatchEventType.GOAL,
+        minute: goalData.minute
+      })
+    }
     
     showGoalModal.value = false
     emit('fixture-updated', selectedFixture.value)
     
-    // Refresh match events
-    await refreshMatchEvents()
+    // Refresh match events (skip for Individual tournaments)
+    if (props.tournament?.participantType !== ParticipantType.INDIVIDUAL) {
+      await refreshMatchEvents()
+    }
     
     useToast().add({ 
       title: 'Goal Recorded!', 
@@ -448,10 +452,10 @@ const downloadGraphic = async () => {
               size="sm"
               @click="closeModal"
             />
-          </div>
+        </div>
         </template>
 
-        <div v-if="selectedFixture" class="space-y-6">
+        <div v-if="selectedFixture" class="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
           <!-- Teams Display -->
           <div class="flex items-center justify-between gap-4">
             <!-- Home Team -->
@@ -610,8 +614,11 @@ const downloadGraphic = async () => {
             Loading players...
           </div>
 
-          <!-- Match Events Collapsible -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+          <!-- Match Events Collapsible (hidden for Individual tournaments) -->
+          <div 
+            v-if="tournament?.participantType !== ParticipantType.INDIVIDUAL"
+            class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden"
+          >
             <button 
               class="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               @click="showEventsCollapsible = !showEventsCollapsible"
