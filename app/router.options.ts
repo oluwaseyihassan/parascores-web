@@ -21,20 +21,21 @@ export default <RouterConfig> {
 
     // 3. Return the correct routes
     if (isAppSubdomain) {
-      // 🟢 DASHBOARD: Only show files from pages/_manage
+      // 🟢 DASHBOARD: Show _manage routes + widget routes
       return _routes
-        .filter(r => r.path.startsWith('/_manage')) 
+        .filter(r => r.path.startsWith('/_manage') || r.path.startsWith('/widget')) 
         .map(r => ({
           ...r,
           // Rewrite path: /_manage/tournaments -> /tournaments
           path: r.path.replace('/_manage', '') || '/' 
         }))
     } else {
-      // 🔵 MARKETING: Only show files from pages/_marketing
+      // 🔵 MARKETING: Show _marketing routes + auth routes + widget routes
       return _routes
         .filter(r => 
           r.path.startsWith('/_marketing') || 
           r.path.startsWith('/auth') || 
+          r.path.startsWith('/widget') ||
           r.path === '/login' || 
           r.path === '/signup' || 
           r.path === '/forgot-password' || 
