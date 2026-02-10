@@ -3,6 +3,11 @@ import { storeToRefs } from 'pinia'
 
 export default defineNuxtRouteMiddleware(async (to, from) => {
 
+  // Widget pages are public — skip all auth logic
+  if (to.path.startsWith('/widget')) {
+    return
+  }
+
   const authStore = useAuthStore()
   const { user } = storeToRefs(authStore)
   console.log("user", user.value)
