@@ -575,7 +575,7 @@
           <!-- Pro Plan - Popular -->
           <div class="relative bg-[#111827] border-2 border-emerald-500/50 rounded-lg p-8">
             <!-- Popular Badge -->
-            <div class="absolute -top-3 right-4 px-3 py-1 text-xs font-medium text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 rounded">
+            <div class="absolute -top-3 right-4 px-3 py-1 text-xs font-medium text-emerald-400 bg-[#111827] border border-emerald-500/30 rounded">
               MOST POPULAR
             </div>
             <div class="mb-8">
