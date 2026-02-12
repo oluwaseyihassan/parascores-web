@@ -13,7 +13,8 @@ export default defineNuxtConfig({
     "@nuxt/icon",
     "@pinia/nuxt",
     "@nuxtjs/color-mode",
-    "@nuxtjs/i18n"
+    "@nuxtjs/i18n",
+    "@nuxt/image",
   ],
   icon: {
     serverBundle: {
