@@ -35,15 +35,15 @@
               >
                 Start Free
               </NuxtLink>
-              <a
-                href="#pricing"
+              <NuxtLink
+                to="/explore"
                 class="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-white border border-white/20 hover:border-white/40 rounded transition-colors"
               >
-                See Pricing
+                Explore Tournaments
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                 </svg>
-              </a>
+              </NuxtLink>
             </div>
           </div>
 
