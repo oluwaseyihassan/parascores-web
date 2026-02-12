@@ -46,6 +46,47 @@ const getVisibilityIcon = (visibility: string) => {
 const PLACEHOLDER_LOGO = 'https://res.cloudinary.com/djsnerfzp/image/upload/v1769695792/parascores_logo_placeholder.png'
 const PLACEHOLDER_BANNER = 'https://res.cloudinary.com/djsnerfzp/image/upload/v1769696842/parascores_banner_placeholder.png'
 
+function getTypeBadgeStyle(type: string) {
+  switch (type) {
+    case 'KNOCKOUT': return 'bg-red-500/20 text-red-400 border-red-500/30'
+    case 'ROUND_ROBIN': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+    case 'GROUP': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+    case 'HYBRID': return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+    case 'FRIENDLY': return 'bg-green-500/20 text-green-400 border-green-500/30'
+    default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+  }
+}
+
+function getBannerGradient(type: string, index: number) {
+  const gradients: Record<string, string[]> = {
+    KNOCKOUT: [
+      'linear-gradient(135deg, #1a0a0a 0%, #4a1525 40%, #2d0a1a 100%)',
+      'linear-gradient(135deg, #1a0505 0%, #501a2a 50%, #250810 100%)',
+    ],
+    ROUND_ROBIN: [
+      'linear-gradient(135deg, #0a0e1a 0%, #152545 40%, #0a1530 100%)',
+      'linear-gradient(135deg, #050a1a 0%, #1a3050 50%, #081020 100%)',
+    ],
+    GROUP: [
+      'linear-gradient(135deg, #0f0a1a 0%, #2a1545 40%, #150a30 100%)',
+      'linear-gradient(135deg, #0a051a 0%, #301a50 50%, #100820 100%)',
+    ],
+    HYBRID: [
+      'linear-gradient(135deg, #1a0f0a 0%, #453015 40%, #301a0a 100%)',
+      'linear-gradient(135deg, #1a0a05 0%, #50381a 50%, #201008 100%)',
+    ],
+    FRIENDLY: [
+      'linear-gradient(135deg, #0a1a0f 0%, #15452a 40%, #0a3018 100%)',
+      'linear-gradient(135deg, #051a0a 0%, #1a5030 50%, #082010 100%)',
+    ],
+  }
+  const typeGradients = gradients[type] || [
+    'linear-gradient(135deg, #0a0f1c 0%, #1a2540 40%, #0d1525 100%)',
+    'linear-gradient(135deg, #0a101a 0%, #152035 50%, #0b1220 100%)',
+  ]
+  return typeGradients[index % typeGradients.length]
+}
+
 // Infinite Scroll
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
@@ -192,61 +233,102 @@ watch(loadMoreTrigger, (el) => {
     <!-- Tournaments Grid -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <NuxtLink 
-        v-for="tournament in tournaments" 
+        v-for="(tournament, index) in tournaments" 
         :key="tournament.id" 
         :to="`/tournaments/${tournament.id}`"
-        class="group"
+        class="group card-fade-in"
+        :style="{ animationDelay: `${index * 75}ms` }"
       >
-        <UCard class="h-full transition-all duration-200 hover:shadow-lg hover:border-indigo-500/50 dark:hover:border-indigo-400/50">
-          <!-- Tournament Banner/Logo -->
-          <div class="relative h-32 -mx-4 -mt-4 mb-4 rounded-t-lg overflow-hidden">
+        <div class="h-full bg-gray-900 border border-white/[0.06] rounded-xl overflow-hidden hover:border-emerald-500/40 transition-all duration-300 hover:shadow-emerald-500/5 hover:shadow-xl">
+          <!-- Banner -->
+          <div class="relative h-40 overflow-hidden">
+            <!-- Custom banner image -->
             <img 
-              :src="tournament.bannerUrl || PLACEHOLDER_BANNER" 
+              v-if="tournament.bannerUrl"
+              :src="tournament.bannerUrl" 
               :alt="tournament.name"
-              class="w-full h-full object-cover opacity-70"
+              class="w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700"
             />
-            <div class="absolute inset-0 bg-black/50"></div>
-            <div class="absolute bottom-3 left-4 right-4 flex items-end justify-between">
-              <div 
-                class="w-12 h-12 rounded-lg shadow-lg overflow-hidden"
-              >
+            <!-- Dynamic gradient background when no banner -->
+            <div
+              v-else
+              class="absolute inset-0 transition-all duration-700"
+              :style="{ background: getBannerGradient(tournament.type, index) }"
+            >
+              <!-- Decorative circles -->
+              <div class="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10 bg-white"></div>
+              <div class="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-[0.07] bg-white"></div>
+              <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-44 h-44 rounded-full opacity-[0.04] bg-white"></div>
+            </div>
+
+            <!-- Overlay gradients -->
+            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/30 to-transparent"></div>
+            <div class="absolute inset-0 bg-gradient-to-r from-gray-900/20 to-transparent"></div>
+
+            <!-- Logo -->
+            <div :class="[
+              'absolute z-10',
+              tournament.bannerUrl ? 'bottom-3 left-4' : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%]'
+            ]">
+              <div :class="[
+                'rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10',
+                tournament.bannerUrl ? 'w-10 h-10' : 'w-14 h-14'
+              ]">
                 <img :src="tournament.logoUrl || PLACEHOLDER_LOGO" :alt="tournament.name" class="w-full h-full object-cover" />
               </div>
-              <UBadge size="sm" variant="solid">
-                {{ tournament.type.replace('_', ' ') }}
-              </UBadge>
+            </div>
+
+            <!-- Type Badge (frosted glass) -->
+            <div class="absolute top-3 right-3 z-10">
+              <span :class="[
+                'px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md backdrop-blur-sm border',
+                getTypeBadgeStyle(tournament.type)
+              ]">
+                {{ tournament.type.replace(/_/g, ' ') }}
+              </span>
+            </div>
+
+            <!-- Visibility icon -->
+            <div class="absolute top-3 left-3 z-10">
+              <div class="p-1.5 bg-black/30 backdrop-blur-sm rounded-md">
+                <UIcon 
+                  :name="getVisibilityIcon(tournament.visibility)" 
+                  class="w-3.5 h-3.5 text-white/60"
+                  :title="tournament.visibility"
+                />
+              </div>
+            </div>
+
+            <!-- Sport pill -->
+            <div class="absolute bottom-3 right-4 z-10">
+              <span class="px-2 py-0.5 text-[10px] font-medium text-white/70 bg-white/10 backdrop-blur-sm rounded-full">
+                {{ tournament.sport }}
+              </span>
             </div>
           </div>
 
-          <!-- Tournament Info -->
-          <div>
-            <div class="flex items-start justify-between gap-2 mb-2">
-              <h3 class="font-semibold text-gray-900 dark:text-white group-hover:text-indigo-500 transition-colors line-clamp-1">
-                {{ tournament.name }}
-              </h3>
-              <UIcon 
-                :name="getVisibilityIcon(tournament.visibility)" 
-                class="w-4 h-4 text-gray-400 shrink-0 mt-1"
-                :title="tournament.visibility"
-              />
-            </div>
+          <!-- Info -->
+          <div class="p-5">
+            <h3 class="font-semibold text-white group-hover:text-emerald-400 transition-colors line-clamp-1 mb-1">
+              {{ tournament.name }}
+            </h3>
             
-            <p v-if="tournament.description" class="text-sm text-gray-500 line-clamp-2 mb-3">
+            <p v-if="tournament.description" class="text-xs text-gray-500 line-clamp-2 mb-3">
               {{ tournament.description }}
             </p>
 
-            <div class="flex items-center gap-4 text-xs text-gray-400">
+            <div class="flex items-center gap-4 text-[11px] text-gray-500">
               <div class="flex items-center gap-1">
                 <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5" />
                 <span>{{ formatDate(tournament.start_date) }}</span>
               </div>
-              <div class="flex items-center gap-1">
+              <div v-if="tournament.location" class="flex items-center gap-1">
                 <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5" />
-                <span>{{ tournament.location || tournament.sport }}</span>
+                <span>{{ tournament.location }}</span>
               </div>
             </div>
           </div>
-        </UCard>
+        </div>
       </NuxtLink>
     </div>
 
@@ -260,3 +342,21 @@ watch(loadMoreTrigger, (el) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.card-fade-in {
+  opacity: 0;
+  animation: cardFadeUp 0.5s ease-out forwards;
+}
+
+@keyframes cardFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
