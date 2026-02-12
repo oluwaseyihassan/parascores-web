@@ -8,7 +8,9 @@ definePageMeta({
 
 const route = useRoute()
 const tournamentId = route.params.tournamentId as string
-const theme = (route.query.theme as string) || 'dark'
+
+// Theme (injected from widget layout)
+const isDark = inject<Ref<boolean>>('widgetIsDark', ref(true))
 
 // State
 const tournament = ref<Tournament | null>(null)
@@ -82,14 +84,11 @@ const fetchData = async () => {
 
 onMounted(() => {
   fetchData()
-  // Auto-refresh every 30 seconds
-  const interval = setInterval(fetchData, 30000)
-  onUnmounted(() => clearInterval(interval))
 })
 </script>
 
 <template>
-  <div :class="theme === 'light' ? 'bg-white text-gray-900' : 'bg-gray-950 text-gray-100'" class="min-h-screen p-4">
+  <div class="p-4">
     <!-- Loading -->
     <div v-if="loading" class="flex items-center justify-center py-12">
       <div class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
@@ -104,15 +103,15 @@ onMounted(() => {
     <div v-else>
       <!-- Tournament Header -->
       <div class="flex items-center gap-3 mb-6">
-        <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0" :class="theme === 'light' ? 'bg-gray-100' : 'bg-gray-800'">
+        <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
           <img v-if="tournament?.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" />
-          <div v-else class="w-full h-full flex items-center justify-center text-sm font-bold" :class="theme === 'light' ? 'text-gray-400' : 'text-gray-500'">
+          <div v-else class="w-full h-full flex items-center justify-center text-sm font-bold" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
             {{ (tournament?.name || 'T').charAt(0) }}
           </div>
         </div>
         <div>
           <h2 class="font-bold text-lg leading-tight">{{ tournament?.name }}</h2>
-          <p class="text-xs" :class="theme === 'light' ? 'text-gray-500' : 'text-gray-400'">
+          <p class="text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
             Bracket
           </p>
         </div>
@@ -125,7 +124,7 @@ onMounted(() => {
           <div v-for="(round, roundIndex) in rounds" :key="round" class="flex flex-col">
             <!-- Round Header -->
             <div class="text-center mb-4">
-              <span class="text-xs font-semibold uppercase tracking-wider" :class="theme === 'light' ? 'text-gray-500' : 'text-gray-400'">
+              <span class="text-xs font-semibold uppercase tracking-wider" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
                 {{ getRoundName(roundIndex, rounds.length) }}
               </span>
             </div>
@@ -139,18 +138,18 @@ onMounted(() => {
                 v-for="fixture in fixturesByRound[round]" 
                 :key="fixture.id"
                 class="w-52 rounded-lg border overflow-hidden"
-                :class="theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-gray-900 border-white/10'"
+                :class="isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200 shadow-sm'"
               >
                 <!-- Home Team -->
                 <div 
                   class="flex items-center justify-between px-3 py-2 border-b"
                   :class="[
-                    theme === 'light' ? 'border-gray-100' : 'border-white/5',
+                    isDark ? 'border-white/5' : 'border-gray-100',
                     getTeamClass(fixture, true)
                   ]"
                 >
                   <div class="flex items-center gap-2 flex-1 min-w-0">
-                    <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0" :class="theme === 'light' ? 'bg-gray-200' : 'bg-gray-800'">
+                    <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
                       <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
                       <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold">
                         {{ (fixture.homeTeam?.customName || 'TBD').charAt(0) }}
@@ -160,7 +159,7 @@ onMounted(() => {
                   </div>
                   <span 
                     class="text-sm font-bold min-w-[1.5rem] text-center"
-                    :class="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE ? '' : (theme === 'light' ? 'text-gray-300' : 'text-gray-600')"
+                    :class="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE ? '' : (isDark ? 'text-gray-600' : 'text-gray-300')"
                   >
                     {{ fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE ? (fixture.homeScore ?? 0) : '-' }}
                   </span>
@@ -172,7 +171,7 @@ onMounted(() => {
                   :class="getTeamClass(fixture, false)"
                 >
                   <div class="flex items-center gap-2 flex-1 min-w-0">
-                    <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0" :class="theme === 'light' ? 'bg-gray-200' : 'bg-gray-800'">
+                    <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
                       <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
                       <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold">
                         {{ (fixture.awayTeam?.customName || 'TBD').charAt(0) }}
@@ -182,14 +181,14 @@ onMounted(() => {
                   </div>
                   <span 
                     class="text-sm font-bold min-w-[1.5rem] text-center"
-                    :class="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE ? '' : (theme === 'light' ? 'text-gray-300' : 'text-gray-600')"
+                    :class="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE ? '' : (isDark ? 'text-gray-600' : 'text-gray-300')"
                   >
                     {{ fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE ? (fixture.awayScore ?? 0) : '-' }}
                   </span>
                 </div>
 
                 <!-- Status -->
-                <div v-if="fixture.status === FixtureStatus.LIVE" class="text-center py-1" :class="theme === 'light' ? 'bg-red-50' : 'bg-red-500/10'">
+                <div v-if="fixture.status === FixtureStatus.LIVE" class="text-center py-1" :class="isDark ? 'bg-red-500/10' : 'bg-red-50'">
                   <span class="text-[10px] font-medium text-red-400">● LIVE</span>
                 </div>
               </div>
@@ -200,7 +199,7 @@ onMounted(() => {
 
       <!-- Empty state -->
       <div v-else class="text-center py-12">
-        <p class="text-sm" :class="theme === 'light' ? 'text-gray-400' : 'text-gray-500'">No bracket data available yet.</p>
+        <p class="text-sm" :class="isDark ? 'text-gray-500' : 'text-gray-400'">No bracket data available yet.</p>
       </div>
     </div>
   </div>
