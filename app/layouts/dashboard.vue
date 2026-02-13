@@ -82,7 +82,8 @@ const profileMenuItems = computed(() => [
   [{ label: 'Log out', icon: 'i-heroicons-arrow-right-on-rectangle', onSelect: handleLogout }]
 ])
 
-const frontendUrl = process.env.FRONTEND_URL || 'http://lvh.me:3001'
+const config = useRuntimeConfig()
+const frontendUrl = config.public.FRONT_END_URL
 
 const handleLogout = async () => {
   await authStore.logout()
