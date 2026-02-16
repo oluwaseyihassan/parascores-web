@@ -21,6 +21,8 @@ const loading = ref(true)
 const selectedFixtureId = ref<string | undefined>(undefined)
 const previewUrl = ref<string | null>(null)
 const generating = ref(false)
+const sharing = ref(false)
+const copying = ref(false)
 const error = ref<string | null>(null)
 const graphicType = ref<'match' | 'standing' | 'bracket' | 'matchday'>('match')
 const selectedGroup = ref<string>('all')
@@ -293,26 +295,59 @@ const generatePreview = async () => {
   }
 }
 
+const getGraphicFilename = () => {
+  if (graphicType.value === 'match' && selectedFixture.value) {
+      return `match-${selectedFixture.value.id}.png`
+  } else if (graphicType.value === 'matchday' && tournament.value && selectedRound.value) {
+      return `${tournament.value.name}-round-${selectedRound.value}.png`
+  } else if (tournament.value) {
+      const suffix = graphicType.value === 'bracket' ? 'bracket' : 'standings'
+      return `${tournament.value.name}-${suffix}.png`
+  }
+  return 'graphic.png'
+}
+
+const getPreviewBlob = async (): Promise<Blob | null> => {
+  if (!previewUrl.value) return null
+  try {
+    const response = await fetch(previewUrl.value)
+    return await response.blob()
+  } catch {
+    return null
+  }
+}
+
 const downloadGraphic = () => {
   if (!previewUrl.value) return
   
   const link = document.createElement('a')
   link.href = previewUrl.value
-  
-  let filename = 'graphic.png'
-  if (graphicType.value === 'match' && selectedFixture.value) {
-      filename = `match-${selectedFixture.value.id}.png`
-  } else if (graphicType.value === 'matchday' && tournament.value && selectedRound.value) {
-      filename = `${tournament.value.name}-round-${selectedRound.value}.png`
-  } else if (tournament.value) {
-      const suffix = graphicType.value === 'bracket' ? 'bracket' : 'standings'
-      filename = `${tournament.value.name}-${suffix}.png`
-  }
-
-  link.setAttribute('download', filename)
+  link.setAttribute('download', getGraphicFilename())
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
+}
+
+const { canShare, canCopy, shareGraphic, copyToClipboard } = useGraphicShare()
+
+const handleShare = async () => {
+  sharing.value = true
+  try {
+    const blob = await getPreviewBlob()
+    if (blob) await shareGraphic(blob, getGraphicFilename())
+  } finally {
+    sharing.value = false
+  }
+}
+
+const handleCopy = async () => {
+  copying.value = true
+  try {
+    const blob = await getPreviewBlob()
+    if (blob) await copyToClipboard(blob)
+  } finally {
+    copying.value = false
+  }
 }
 
 // Watchers
@@ -536,13 +571,32 @@ onUnmounted(() => {
           <template #header>
             <div class="flex items-center justify-between">
                <h3 class="font-semibold">Preview</h3>
-               <UButton 
-                  v-if="previewUrl"
-                  label="Download Image" 
-                  icon="i-heroicons-arrow-down-tray"
-                  color="primary"
-                  @click="downloadGraphic"
-               />
+               <div v-if="previewUrl" class="flex items-center gap-2">
+                 <UButton 
+                    v-if="canShare"
+                    label="Share" 
+                    icon="i-heroicons-share"
+                    color="primary"
+                    variant="soft"
+                    :loading="sharing"
+                    @click="handleShare"
+                 />
+                 <UButton 
+                    v-if="canCopy"
+                    label="Copy" 
+                    icon="i-heroicons-clipboard-document"
+                    color="neutral"
+                    variant="soft"
+                    :loading="copying"
+                    @click="handleCopy"
+                 />
+                 <UButton 
+                    label="Download" 
+                    icon="i-heroicons-arrow-down-tray"
+                    color="primary"
+                    @click="downloadGraphic"
+                 />
+               </div>
             </div>
           </template>
 
