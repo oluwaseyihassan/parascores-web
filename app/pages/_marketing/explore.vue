@@ -109,126 +109,99 @@
           </button>
         </div>
 
-        <!-- Tournament Grid -->
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Tournament Grid (Bento) -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-[280px]">
           <NuxtLink
             v-for="(tournament, index) in filteredTournaments"
             :key="tournament.id"
             :to="`/widget/${tournament.id}/fixtures`"
-            class="group card-fade-in"
-            :style="{ animationDelay: `${index * 75}ms` }"
+            class="group relative rounded-xl overflow-hidden card-fade-in border border-white/10 hover:border-emerald-500/50 transition-all duration-300"
+            :class="getSpanClasses(index)"
+            :style="{ animationDelay: `${index * 50}ms` }"
           >
-            <div class="bg-[#111827] border border-white/10 rounded-xl overflow-hidden hover:border-emerald-500/40 transition-all duration-300 hover:shadow-emerald-500/5 hover:shadow-xl">
-              <!-- Banner -->
-              <div class="relative h-40 overflow-hidden">
-                <!-- Custom banner image -->
-                <img
-                  v-if="tournament.bannerUrl"
-                  :src="tournament.bannerUrl"
-                  :alt="tournament.name"
-                  class="w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700"
-                />
-                <!-- Dynamic gradient background when no banner -->
-                <div
-                  v-else
-                  class="absolute inset-0 transition-all duration-700"
-                  :style="{ background: getBannerGradient(tournament.type, index) }"
-                >
-                  <!-- Decorative circles -->
-                  <div class="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10 bg-white"></div>
-                  <div class="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-[0.07] bg-white"></div>
-                  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-44 h-44 rounded-full opacity-[0.04] bg-white"></div>
-                </div>
+            <!-- Background Image/Gradient -->
+            <div class="absolute inset-0">
+              <img
+                v-if="tournament.bannerUrl"
+                :src="tournament.bannerUrl"
+                :alt="tournament.name"
+                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div
+                v-else
+                class="w-full h-full transition-transform duration-700 group-hover:scale-105"
+                :style="{ background: getBannerGradient(tournament.type, index) }"
+              >
+                <!-- Decorative circles -->
+                <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-10 bg-white blur-2xl"></div>
+                <div class="absolute -bottom-10 -left-10 w-32 h-32 rounded-full opacity-[0.07] bg-white blur-xl"></div>
+              </div>
+            </div>
 
-                <!-- Overlay gradient -->
-                <div class="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/30 to-transparent"></div>
-                <div class="absolute inset-0 bg-gradient-to-r from-[#111827]/20 to-transparent"></div>
+            <!-- Dark Gradient Overlay (Stronger for text readability) -->
+            <div class="absolute inset-0 bg-gradient-to-t from-[#050a14] via-[#050a14]/60 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-80"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-[#050a14]/60 via-transparent to-transparent opacity-60"></div>
 
-                <!-- Logo (centered for no-banner, bottom-left for custom banner) -->
-                <div :class="[
-                  'absolute z-10',
-                  tournament.bannerUrl ? 'bottom-3 left-4' : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%]'
-                ]">
-                  <div :class="[
-                    'rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10',
-                    tournament.bannerUrl ? 'w-10 h-10' : 'w-14 h-14'
-                  ]">
+            <!-- Badge (Top Right) -->
+            <div class="absolute top-4 right-4 z-10">
+              <span :class="[
+                'px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded backdrop-blur-md border border-white/10 shadow-lg',
+                getTypeBadgeClasses(tournament.type)
+              ]">
+                {{ formatType(tournament.type) }}
+              </span>
+            </div>
+
+            <!-- Content (Bottom) -->
+            <div class="absolute bottom-0 left-0 w-full p-5 z-10 flex flex-col justify-end h-full">
+              
+              <!-- Sport & Logo Row -->
+              <div class="flex items-center gap-3 mb-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                 <div class="w-6 h-6 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center overflow-hidden border border-white/20">
                     <img
-                      :src="tournament.logoUrl || PLACEHOLDER_LOGO"
+                      v-if="tournament.logoUrl"
+                      :src="tournament.logoUrl"
                       :alt="tournament.name"
                       class="w-full h-full object-cover"
                     />
-                  </div>
-                </div>
-
-                <!-- Type Badge (frosted glass) -->
-                <div class="absolute top-3 right-3 z-10">
-                  <span :class="[
-                    'px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md backdrop-blur-sm border',
-                    getTypeBadgeClasses(tournament.type)
-                  ]">
-                    {{ formatType(tournament.type) }}
-                  </span>
-                </div>
-
-                <!-- Sport pill (bottom right) -->
-                <div class="absolute bottom-3 right-4 z-10">
-                  <span class="px-2 py-0.5 text-[10px] font-medium text-white/70 bg-white/10 backdrop-blur-sm rounded-full">
-                    {{ tournament.sport }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- Info -->
-              <div class="p-5">
-                <h3 class="font-semibold text-white group-hover:text-emerald-400 transition-colors line-clamp-1 mb-1">
-                  {{ tournament.name }}
-                </h3>
-                <p v-if="tournament.description" class="text-xs text-gray-500 line-clamp-2 mb-3">
-                  {{ tournament.description }}
-                </p>
-
-                <!-- Meta -->
-                <div class="flex items-center gap-4 text-[11px] text-gray-500">
-                  <div class="flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                    {{ formatDate(tournament.start_date) }}
-                  </div>
-                  <div v-if="tournament.location" class="flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                    {{ tournament.location }}
-                  </div>
-                  <div class="flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    {{ tournament.sport }}
-                  </div>
-                </div>
-
-                <!-- Organizer -->
-                <div v-if="tournament.organizer" class="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
-                  <div class="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <span class="text-[9px] text-emerald-400 font-bold">
-                      {{ tournament.organizer.name?.charAt(0)?.toUpperCase() || '?' }}
+                    <span v-else class="text-[8px] font-bold text-white">
+                      {{ tournament.name.charAt(0).toUpperCase() }}
                     </span>
-                  </div>
-                  <span class="text-[11px] text-gray-500">by {{ tournament.organizer.name }}</span>
+                 </div>
+                 <span class="text-xs font-medium text-emerald-400 uppercase tracking-wide">
+                   {{ tournament.sport }}
+                 </span>
+              </div>
+
+              <!-- Title -->
+              <h3 class="text-xl md:text-2xl font-bold text-white leading-tight mb-2 group-hover:text-emerald-300 transition-colors line-clamp-2">
+                {{ tournament.name }}
+              </h3>
+
+              <!-- Meta Info -->
+              <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-300/90 font-medium">
+                <div class="flex items-center gap-1.5">
+                   <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 text-emerald-400" />
+                   {{ formatDate(tournament.start_date) }}
+                </div>
+                <div v-if="tournament.location" class="flex items-center gap-1.5">
+                   <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-emerald-400" />
+                   <span class="truncate max-w-[120px]">{{ tournament.location }}</span>
                 </div>
               </div>
+
+               <!-- Description (Only visible on large cards or hover) -->
+               <p v-if="tournament.description" class="mt-3 text-sm text-gray-400 line-clamp-2 opacity-0 h-0 group-hover:h-auto group-hover:opacity-100 transition-all duration-300 overflow-hidden">
+                 {{ tournament.description }}
+               </p>
             </div>
           </NuxtLink>
         </div>
 
         <!-- Load More -->
-        <div v-if="hasMore && !loading" class="flex justify-center mt-10">
+        <div v-if="hasMore && !loading" class="flex justify-center mt-12">
           <button
-            class="px-6 py-3 text-sm font-medium text-emerald-400 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/10 transition-colors"
+            class="px-8 py-3 text-sm font-semibold text-white bg-emerald-600/10 border border-emerald-500/30 rounded-full hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all duration-300 backdrop-blur-sm"
             @click="loadMore"
           >
             Load More Tournaments
@@ -236,13 +209,10 @@
         </div>
 
         <!-- Loading More Spinner -->
-        <div v-if="loading && tournaments.length > 0" class="flex justify-center mt-10">
-          <div class="flex items-center gap-2 text-gray-400">
-            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span class="text-sm">Loading more...</span>
+        <div v-if="loading && tournaments.length > 0" class="flex justify-center mt-12">
+          <div class="flex items-center gap-3 text-emerald-400/80">
+            <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 animate-spin" />
+            <span class="text-sm font-medium">Loading more...</span>
           </div>
         </div>
       </div>
@@ -270,6 +240,10 @@
 
 <script setup lang="ts">
 import type { Tournament } from '~/types'
+
+definePageMeta({
+  layout: 'explore'
+})
 
 interface PaginatedResponse<T> {
   success: boolean
@@ -423,6 +397,21 @@ function getBannerGradient(type: string, index: number) {
     'linear-gradient(135deg, #0a101a 0%, #152035 50%, #0b1220 100%)',
   ]
   return typeGradients[index % typeGradients.length]
+}
+
+// Grid Spans
+function getSpanClasses(index: number) {
+  // Pattern: Large (2x2), Normal, Normal, Wide (2x1), Normal, Normal...
+  // This is a simple repeating pattern to create visual interest
+  
+  // 4-column grid logic (Desktop)
+  const patternIndex = index % 12 // Repeat every 12 items
+  
+  if (patternIndex === 0) return 'md:col-span-2 md:row-span-2' // Big Feature
+  if (patternIndex === 6) return 'md:col-span-2' // Wide
+  if (patternIndex === 8) return 'md:row-span-2' // Tall
+  
+  return 'md:col-span-1 md:row-span-1'
 }
 
 // Fetch on mount
