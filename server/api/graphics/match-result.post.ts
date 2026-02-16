@@ -2,10 +2,11 @@
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
 import { getSponsorsRow, getAbsoluteFooter } from '../../utils/graphics'
+import { useGraphicsCache } from '../../utils/cache'
 
 export default defineEventHandler(async (event) => {
+  return useGraphicsCache(event, async (body: any) => {
   try {
-    const body = await readBody(event)
     const { match, homeTeam, awayTeam, tournament, events = [], sponsors = [], socials = [] } = body
 
     if (!match || !homeTeam || !awayTeam) {
@@ -141,7 +142,8 @@ export default defineEventHandler(async (event) => {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
+                justifyContent: 'flex-start',
+                paddingTop: '60px',
                 width: '100%',
                 height: '100%',
                 position: 'relative', // Stack on top of background
@@ -482,4 +484,5 @@ export default defineEventHandler(async (event) => {
           data: e.message
       })
   }
+  }, 'match-result')
 })

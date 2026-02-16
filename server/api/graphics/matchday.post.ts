@@ -2,10 +2,11 @@
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
 import { getSponsorsRow, getAbsoluteFooter } from '../../utils/graphics'
+import { useGraphicsCache } from '../../utils/cache'
 
 export default defineEventHandler(async (event) => {
+  return useGraphicsCache(event, async (body: any) => {
   try {
-    const body = await readBody(event)
     const { fixtures, tournament, round, sponsors = [], socials = [] } = body
 
     if (!fixtures || !tournament || round === undefined) {
@@ -412,4 +413,5 @@ export default defineEventHandler(async (event) => {
       statusMessage: err.message || 'Failed to generate matchday graphic'
     })
   }
+  }, 'matchday')
 })

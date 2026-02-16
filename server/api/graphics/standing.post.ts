@@ -2,10 +2,11 @@
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
 import { getSponsorsRow, getAbsoluteFooter } from '../../utils/graphics'
+import { useGraphicsCache } from '../../utils/cache'
 
 export default defineEventHandler(async (event) => {
+  return useGraphicsCache(event, async (body: any) => {
   try {
-    const body = await readBody(event)
     const { standings, tournament, title, sponsors = [], socials = [] } = body
 
     if (!standings || !tournament) {
@@ -419,4 +420,5 @@ export default defineEventHandler(async (event) => {
           data: e.message
       })
   }
+  }, 'standing')
 })

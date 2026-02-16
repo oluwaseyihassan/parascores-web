@@ -3,6 +3,7 @@ import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
 import type { Fixture, Participant } from '~/types'
 import { getSponsorsRow, getAbsoluteFooter } from '../../utils/graphics'
+import { useGraphicsCache } from '../../utils/cache'
 
 // Social Icons Map (Simple Icons & Heroicons)
 
@@ -16,8 +17,8 @@ interface BracketBody {
 }
 
 export default defineEventHandler(async (event) => {
+  return useGraphicsCache(event, async (body: BracketBody) => {
   try {
-    const body = await readBody<BracketBody>(event)
     const { tournament, fixturesByRound, rounds, sponsors = [], socials = [] } = body
 
     if (!tournament || !fixturesByRound || !rounds || rounds.length === 0) {
@@ -372,6 +373,7 @@ export default defineEventHandler(async (event) => {
     console.error('Bracket Generation Error:', e)
     throw createError({ statusCode: 500, statusMessage: 'Failed to generate bracket' })
   }
+  }, 'bracket')
 })
 
 // Helpers
