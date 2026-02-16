@@ -902,9 +902,12 @@ const tabItems = computed(() => {
                   {{ tournament.description }}
                 </p>
               </UCard>
-              <div v-else class="text-center py-8 text-gray-500 mt-4">
-                No description available.
-              </div>
+              <UCard v-else class="mt-4">
+                <div class="text-center py-8 text-gray-500">
+                  <UIcon name="i-heroicons-document-text" class="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                  <p>No description available.</p>
+                </div>
+              </UCard>
             </template>
 
             <!-- Participants Tab -->
