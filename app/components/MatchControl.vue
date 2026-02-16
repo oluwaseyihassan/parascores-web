@@ -383,6 +383,48 @@ const closeModal = () => {
 }
 
 const downloading = ref(false)
+const sharingMatch = ref(false)
+
+const { canShare, shareGraphic: shareGraphicFn } = useGraphicShare()
+
+const generateGraphicBlob = async (): Promise<Blob | null> => {
+  if (!selectedFixture.value || !props.tournament) return null
+  
+  try {
+    return await $fetch<Blob>('/api/graphics/match-result', {
+      method: 'POST',
+      body: {
+        match: selectedFixture.value,
+        homeTeam: selectedFixture.value.homeTeam,
+        awayTeam: selectedFixture.value.awayTeam,
+        tournament: props.tournament
+      },
+      responseType: 'blob'
+    })
+  } catch (e) {
+    console.error('Graphic generation failed', e)
+    return null
+  }
+}
+
+const handleShareGraphic = async () => {
+  sharingMatch.value = true
+  try {
+    const blob = await generateGraphicBlob()
+    if (blob) {
+      const filename = `match-${selectedFixture.value?.id || 'result'}.png`
+      await shareGraphicFn(blob, filename)
+    } else {
+      useToast().add({
+        title: 'Generation Failed',
+        description: 'Could not generate graphic for sharing.',
+        color: 'error'
+      })
+    }
+  } finally {
+    sharingMatch.value = false
+  }
+}
 
 const downloadGraphic = async () => {
   if (!selectedFixture.value || !props.tournament) return
@@ -709,11 +751,21 @@ const downloadGraphic = async () => {
               @click="endMatch"
             />
             <UButton 
+              v-if="canShare"
+              label="Share" 
+              icon="i-heroicons-share" 
+              variant="soft"
+              color="primary"
+              class="ml-auto"
+              :loading="sharingMatch"
+              @click="handleShareGraphic"
+            />
+            <UButton 
               label="Export" 
               icon="i-heroicons-arrow-down-tray" 
               variant="outline"
               color="neutral"
-              class="ml-auto"
+              :class="{ 'ml-auto': !canShare }"
               :loading="downloading"
               @click="downloadGraphic"
             />
