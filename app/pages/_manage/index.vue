@@ -9,6 +9,9 @@ const tournamentStore = useTournamentStore()
 const authStore = useAuthStore()
 const { tournaments, loading, pagination, hasMore, totalCount } = storeToRefs(tournamentStore)
 
+// View mode state
+const viewMode = useCookie<'grid' | 'list'>('tournament-view-mode', { default: () => 'grid' })
+
 // Fetch tournaments on mount
 onMounted(async () => {
   await tournamentStore.fetchTournaments()
@@ -48,12 +51,12 @@ const PLACEHOLDER_BANNER = 'https://res.cloudinary.com/djsnerfzp/image/upload/v1
 
 function getTypeBadgeStyle(type: string) {
   switch (type) {
-    case 'KNOCKOUT': return 'bg-red-500/20 text-red-400 border-red-500/30'
-    case 'ROUND_ROBIN': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-    case 'GROUP': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-    case 'HYBRID': return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-    case 'FRIENDLY': return 'bg-green-500/20 text-green-400 border-green-500/30'
-    default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+    case 'KNOCKOUT': return 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30'
+    case 'ROUND_ROBIN': return 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30'
+    case 'GROUP': return 'bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-500/30'
+    case 'HYBRID': return 'bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/30'
+    case 'FRIENDLY': return 'bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 dark:text-gray-400 border-gray-500/30'
   }
 }
 
@@ -131,18 +134,38 @@ watch(loadMoreTrigger, (el) => {
     </div>
 
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">My Tournaments</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white sm:truncate">My Tournaments</h1>
         <p class="text-gray-500">Manage your leagues, cups, and competitions</p>
       </div>
-      <UButton 
-        label="Create Tournament" 
-        icon="i-heroicons-plus"
-        color="primary" 
-        size="lg"
-        to="/tournaments/new"
-      />
+      <div class="flex items-center gap-3 self-start md:self-auto">
+        <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <UButton 
+            icon="i-heroicons-squares-2x2" 
+            color="neutral" 
+            variant="ghost" 
+            size="xs" 
+            :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': viewMode === 'grid' }"
+            @click="viewMode = 'grid'" 
+          />
+          <UButton 
+            icon="i-heroicons-list-bullet" 
+            color="neutral" 
+            variant="ghost" 
+            size="xs"
+            :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': viewMode === 'list' }"
+            @click="viewMode = 'list'" 
+          />
+        </div>
+        <UButton 
+          label="Create Tournament" 
+          icon="i-heroicons-plus"
+          color="primary" 
+          size="lg"
+          to="/tournaments/new"
+        />
+      </div>
     </div>
 
     <!-- Stats Cards -->
@@ -230,18 +253,20 @@ watch(loadMoreTrigger, (el) => {
       />
     </UCard>
 
-    <!-- Tournaments Grid -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <NuxtLink 
-        v-for="(tournament, index) in tournaments" 
+    <!-- Tournaments View -->
+    <div v-else>
+      <!-- Grid View -->
+      <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <NuxtLink 
+          v-for="(tournament, index) in tournaments" 
         :key="tournament.id" 
         :to="`/tournaments/${tournament.id}`"
         class="group card-fade-in"
         :style="{ animationDelay: `${index * 75}ms` }"
       >
-        <div class="h-full bg-gray-900 border border-white/[0.06] rounded-xl overflow-hidden hover:border-emerald-500/40 transition-all duration-300 hover:shadow-emerald-500/5 hover:shadow-xl">
-          <!-- Banner -->
-          <div class="relative h-40 overflow-hidden">
+        <div class="h-full bg-gray-50 dark:bg-gray-900 border border-gray-200/80 dark:border-white/[0.06] rounded-xl overflow-hidden shadow-sm hover:border-emerald-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5 flex flex-col">
+          <!-- Banner (Reduced Height) -->
+          <div class="relative h-24 overflow-hidden flex-shrink-0">
             <!-- Custom banner image -->
             <img 
               v-if="tournament.bannerUrl"
@@ -258,78 +283,129 @@ watch(loadMoreTrigger, (el) => {
               <!-- Decorative circles -->
               <div class="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10 bg-white"></div>
               <div class="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-[0.07] bg-white"></div>
-              <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-44 h-44 rounded-full opacity-[0.04] bg-white"></div>
             </div>
 
             <!-- Overlay gradients -->
-            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/30 to-transparent"></div>
-            <div class="absolute inset-0 bg-gradient-to-r from-gray-900/20 to-transparent"></div>
-
-            <!-- Logo -->
-            <div :class="[
-              'absolute z-10',
-              tournament.bannerUrl ? 'bottom-3 left-4' : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%]'
-            ]">
-              <div :class="[
-                'rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10',
-                tournament.bannerUrl ? 'w-10 h-10' : 'w-14 h-14'
-              ]">
-                <img :src="tournament.logoUrl || PLACEHOLDER_LOGO" :alt="tournament.name" class="w-full h-full object-cover" />
-              </div>
-            </div>
-
-            <!-- Type Badge (frosted glass) -->
-            <div class="absolute top-3 right-3 z-10">
-              <span :class="[
-                'px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md backdrop-blur-sm border',
-                getTypeBadgeStyle(tournament.type)
-              ]">
-                {{ tournament.type.replace(/_/g, ' ') }}
-              </span>
-            </div>
-
-            <!-- Visibility icon -->
-            <div class="absolute top-3 left-3 z-10">
-              <div class="p-1.5 bg-black/30 backdrop-blur-sm rounded-md">
+            <div class="absolute inset-0 bg-gradient-to-t from-gray-50 dark:from-gray-900 via-gray-900/10 dark:via-gray-900/30 to-transparent"></div>
+            
+            <!-- Visibility icon (Top Left) -->
+            <div class="absolute top-2 left-2 z-10">
+              <div class="p-1 bg-black/30 backdrop-blur-sm rounded-md">
                 <UIcon 
                   :name="getVisibilityIcon(tournament.visibility)" 
-                  class="w-3.5 h-3.5 text-white/60"
+                  class="w-3 h-3 text-white/70"
                   :title="tournament.visibility"
                 />
               </div>
             </div>
 
-            <!-- Sport pill -->
-            <div class="absolute bottom-3 right-4 z-10">
-              <span class="px-2 py-0.5 text-[10px] font-medium text-white/70 bg-white/10 backdrop-blur-sm rounded-full">
+            <!-- Sport pill (Top Right) -->
+            <div class="absolute top-2 right-2 z-10">
+              <span class="px-1.5 py-0.5 text-[10px] font-medium text-white/80 bg-black/30 backdrop-blur-sm rounded-md">
                 {{ tournament.sport }}
               </span>
             </div>
           </div>
 
-          <!-- Info -->
-          <div class="p-5">
-            <h3 class="font-semibold text-white group-hover:text-emerald-400 transition-colors line-clamp-1 mb-1">
-              {{ tournament.name }}
-            </h3>
-            
-            <p v-if="tournament.description" class="text-xs text-gray-500 line-clamp-2 mb-3">
-              {{ tournament.description }}
-            </p>
+          <!-- Content Area -->
+          <div class="px-4 pb-4 flex gap-3 flex-1">
+            <!-- Logo (Overlapping Banner) -->
+            <div class="-mt-8 relative z-10 flex-shrink-0">
+              <div class="w-14 h-14 rounded-xl overflow-hidden shadow-lg ring-4 ring-gray-50 dark:ring-gray-900 bg-gray-50 dark:bg-gray-800">
+                <img :src="tournament.logoUrl || PLACEHOLDER_LOGO" :alt="tournament.name" class="w-full h-full object-cover" />
+              </div>
+            </div>
 
-            <div class="flex items-center gap-4 text-[11px] text-gray-500">
+            <!-- Info -->
+            <div class="pt-2 flex-1 min-w-0 flex flex-col gap-1">
+              <!-- Header: Name & Badge -->
+              <div class="flex justify-between items-start gap-2">
+                <h3 class="font-semibold text-sm text-gray-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
+                  {{ tournament.name }}
+                </h3>
+                <span :class="[
+                  'flex-shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border',
+                  getTypeBadgeStyle(tournament.type)
+                ]">
+                  {{ tournament.type.replace(/_/g, ' ') }}
+                </span>
+              </div>
+              
+              <!-- Description (Optional, keep if space allows or remove for compactness - let's keep it really short or remove. User said "metadata to the right". I'll keep metadata and maybe drop description or clamp it to 1 line) -->
+               <!-- I'll omit description for maximum compactness as implied by "Hybrid List/Grid", or keep it very subtle. Let's skip description to save vertical space as requested. -->
+
+              <!-- Metadata -->
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                <div class="flex items-center gap-1">
+                  <UIcon name="i-heroicons-calendar" class="w-3 h-3" />
+                  <span>{{ formatDate(tournament.start_date) }}</span>
+                </div>
+                <div v-if="tournament.location" class="flex items-center gap-1">
+                  <UIcon name="i-heroicons-map-pin" class="w-3 h-3" />
+                  <span class="truncate max-w-[100px]">{{ tournament.location }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </NuxtLink>
+      </div>
+
+      <!-- List View -->
+      <div v-else-if="viewMode === 'list'" class="flex flex-col gap-3">
+        <NuxtLink 
+          v-for="(tournament, index) in tournaments" 
+          :key="tournament.id" 
+          :to="`/tournaments/${tournament.id}`"
+          class="group card-fade-in flex items-center gap-4 p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl hover:border-emerald-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5"
+          :style="{ animationDelay: `${index * 50}ms` }"
+        >
+          <!-- Logo -->
+          <UAvatar 
+            :src="tournament.logoUrl || PLACEHOLDER_LOGO" 
+            :alt="tournament.name"
+            size="md"
+            class="ring-1 ring-gray-200 dark:ring-gray-800"
+          />
+
+          <!-- Info -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">
+                {{ tournament.name }}
+              </h3>
+              <span :class="[
+                'flex-shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border',
+                getTypeBadgeStyle(tournament.type)
+              ]">
+                {{ tournament.type.replace(/_/g, ' ') }}
+              </span>
+            </div>
+            
+            <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
               <div class="flex items-center gap-1">
                 <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5" />
                 <span>{{ formatDate(tournament.start_date) }}</span>
               </div>
               <div v-if="tournament.location" class="flex items-center gap-1">
                 <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5" />
-                <span>{{ tournament.location }}</span>
+                <span class="truncate max-w-[150px]">{{ tournament.location }}</span>
               </div>
             </div>
           </div>
-        </div>
-      </NuxtLink>
+
+          <!-- Status/Icon -->
+          <div class="flex items-center gap-3">
+             <div class="bg-gray-100 dark:bg-gray-800 p-1.5 rounded-lg">
+                <UIcon 
+                  :name="getVisibilityIcon(tournament.visibility)" 
+                  class="w-4 h-4 text-gray-500" 
+                />
+             </div>
+             <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors" />
+          </div>
+        </NuxtLink>
+      </div>
     </div>
 
 
