@@ -469,6 +469,8 @@ const handleFixtureUpdated = (fixture: Fixture) => {
 }
 
 const handleMatchEnded = async () => {
+  // Refresh fixtures so the bracket updates immediately (e.g., winner advances)
+  await fixtureStore.fetchFixtures(tournamentId.value)
   // Refresh standings if applicable
   if (showStandings.value) {
     await standingStore.fetchStandings(tournamentId.value)
