@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { Fixture } from '../types'
+import { FixtureStage } from '../types'
 import type { ApiResponse } from './auth'
 
 export interface UpdateFixtureData {
@@ -51,6 +52,85 @@ export const useFixtureStore = defineStore('fixture', () => {
     })
     return names
   })
+
+  // Stage-aware getters for hybrid tournaments
+  const groupStageFixtures = computed(() =>
+    fixtures.value.filter(f => f.stage === FixtureStage.GROUP_STAGE)
+  )
+
+  const knockoutFixtures = computed(() =>
+    fixtures.value.filter(f => f.stage === FixtureStage.KNOCKOUT)
+  )
+
+  const knockoutFixturesByRound = computed(() => {
+    const grouped: Record<number, Fixture[]> = {}
+    knockoutFixtures.value.forEach(fixture => {
+      if (!grouped[fixture.round]) {
+        grouped[fixture.round] = []
+      }
+      grouped[fixture.round]!.push(fixture)
+    })
+    Object.values(grouped).forEach(roundFixtures => {
+      roundFixtures.sort((a, b) => a.matchNumber - b.matchNumber)
+    })
+    return grouped
+  })
+
+  const knockoutRounds = computed(() =>
+    Object.keys(knockoutFixturesByRound.value)
+      .map(Number)
+      .sort((a, b) => a - b)
+  )
+
+  const groupStageFixturesByRound = computed(() => {
+    const grouped: Record<number, Fixture[]> = {}
+    groupStageFixtures.value.forEach(fixture => {
+      if (!grouped[fixture.round]) {
+        grouped[fixture.round] = []
+      }
+      grouped[fixture.round]!.push(fixture)
+    })
+    Object.values(grouped).forEach(roundFixtures => {
+      roundFixtures.sort((a, b) => a.matchNumber - b.matchNumber)
+    })
+    return grouped
+  })
+
+  const groupStageRounds = computed(() =>
+    Object.keys(groupStageFixturesByRound.value)
+      .map(Number)
+      .sort((a, b) => a - b)
+  )
+
+  // Knockout-specific round display names (avoids collision with group stage rounds)
+  const knockoutRoundNames = computed(() => {
+    const names: Record<number, string> = {}
+    knockoutFixtures.value.forEach(fixture => {
+      if (!names[fixture.round]) {
+        names[fixture.round] = fixture.roundName || `Round ${fixture.round}`
+      }
+    })
+    return names
+  })
+
+  function getKnockoutRoundDisplayName(round: number): string {
+    return knockoutRoundNames.value[round] || `Round ${round}`
+  }
+
+  // Group-stage-specific round display names
+  const groupStageRoundNames = computed(() => {
+    const names: Record<number, string> = {}
+    groupStageFixtures.value.forEach(fixture => {
+      if (!names[fixture.round]) {
+        names[fixture.round] = fixture.roundName || `Matchday ${fixture.round}`
+      }
+    })
+    return names
+  })
+
+  function getGroupStageRoundDisplayName(round: number): string {
+    return groupStageRoundNames.value[round] || `Matchday ${round}`
+  }
 
   // Helper function to get round display name
   function getRoundDisplayName(round: number): string {
@@ -241,8 +321,18 @@ export const useFixtureStore = defineStore('fixture', () => {
     fixturesByRound,
     rounds,
     roundNames,
+    groupStageFixtures,
+    knockoutFixtures,
+    knockoutFixturesByRound,
+    knockoutRounds,
+    groupStageFixturesByRound,
+    groupStageRounds,
+    knockoutRoundNames,
+    groupStageRoundNames,
     // Helper functions
     getRoundDisplayName,
+    getKnockoutRoundDisplayName,
+    getGroupStageRoundDisplayName,
     // Actions
     fetchFixtures,
     fetchLiveFixtures,
