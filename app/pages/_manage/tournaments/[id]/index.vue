@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import { Visibility, TournamentType, ParticipantType, ParticipantStatus, FixtureStatus } from '~/types'
+import { Visibility, TournamentType, ParticipantType, ParticipantStatus, FixtureStatus, FixtureStage } from '~/types'
 import type { Participant, Fixture, Sponsor, Social } from '~/types'
 
 definePageMeta({
@@ -17,7 +17,7 @@ const sponsorStore = useSponsorStore()
 const socialStore = useSocialStore()
 const { currentTournament: tournament, loading, error } = storeToRefs(tournamentStore)
 const { participants, loading: participantsLoading } = storeToRefs(participantStore)
-const { fixtures, fixturesByRound, rounds, loading: fixturesLoading, generating } = storeToRefs(fixtureStore)
+const { fixtures, fixturesByRound, rounds, knockoutFixturesByRound, knockoutRounds, groupStageFixturesByRound, groupStageRounds, loading: fixturesLoading, generating } = storeToRefs(fixtureStore)
 const { standings, loading: standingsLoading } = storeToRefs(standingStore)
 const { sponsors, loading: sponsorsLoading } = storeToRefs(sponsorStore)
 const { socials, loading: socialsLoading } = storeToRefs(socialStore)
@@ -115,15 +115,14 @@ const canAdvance = computed(() => {
   if (tournament.value?.type !== TournamentType.HYBRID) return false
   
   // Check if group stage matches exist and are all completed
-  const groupMatches = fixtures.value.filter(f => f.groupId)
+  const groupMatches = fixtures.value.filter(f => f.stage === FixtureStage.GROUP_STAGE)
   if (groupMatches.length === 0) return false
   
   const allGroupsComplete = groupMatches.every(f => f.status === FixtureStatus.COMPLETED)
   if (!allGroupsComplete) return false
   
   // Check if already advanced (knockout matches exist)
-  // Assuming knockout matches have no groupId
-  const knockoutMatches = fixtures.value.filter(f => !f.groupId && f.roundName)
+  const knockoutMatches = fixtures.value.filter(f => f.stage === FixtureStage.KNOCKOUT)
   if (knockoutMatches.length > 0) return false
   
   return true
@@ -405,6 +404,37 @@ const accordionItems = computed(() => {
     const live = roundFixtures.filter(f => f.status === FixtureStatus.LIVE).length
     
     let label = fixtureStore.getRoundDisplayName(round)
+    
+    let stats = ''
+    const parts = []
+    if (live > 0) parts.push(`🔴 ${live} Live`)
+    if (completed > 0) parts.push(`${completed}/${total} Completed`)
+    else if (total > 0) parts.push(`${total} Scheduled`)
+    
+    if (parts.length > 0) {
+      stats = `(${parts.join(' • ')})`
+    }
+    
+    return {
+      label,
+      stats,
+      fixtures: roundFixtures,
+      defaultOpen: true,
+      color: 'neutral' as const,
+      variant: 'soft' as const
+    }
+  })
+})
+
+// Group-stage-only accordion items (for hybrid tournaments)
+const groupStageAccordionItems = computed(() => {
+  return groupStageRounds.value.map(round => {
+    const roundFixtures = groupStageFixturesByRound.value[round] || []
+    const total = roundFixtures.length
+    const completed = roundFixtures.filter(f => f.status === FixtureStatus.COMPLETED).length
+    const live = roundFixtures.filter(f => f.status === FixtureStatus.LIVE).length
+    
+    let label = fixtureStore.getGroupStageRoundDisplayName(round)
     
     let stats = ''
     const parts = []
@@ -1123,6 +1153,155 @@ const tabItems = computed(() => {
                     @start-match="startMatch"
                     @control-match="openMatchControl"
                   />
+                  
+                  <!-- Hybrid: Group stage list + Knockout bracket -->
+                  <template v-else-if="tournament?.type === TournamentType.HYBRID">
+                    <!-- Group Stage Fixtures (accordion list) -->
+                    <div class="space-y-6">
+                      <UAccordion 
+                        :items="groupStageAccordionItems" 
+                        class="mb-4 w-full"
+                        :ui="{ 
+                          item: 'p-0',
+                          trigger: 'p-4'
+                        }"
+                        multiple
+                        :default-open="true"
+                      >
+                        <template #default="{ item, open }">
+                          <UButton 
+                            :color="item.color" 
+                            :variant="item.variant"
+                            class="mb-2 w-full justify-between rounded"
+                          >
+                            <div class="flex items-center gap-2 truncate">
+                              <span class="font-medium text-gray-900 dark:text-white">{{ item.label }}</span>
+                              <span v-if="item.stats" class="text-sm font-normal text-gray-500 dark:text-gray-400">
+                                {{ item.stats }}
+                              </span>
+                            </div>
+
+                            <template #trailing>
+                              <UIcon 
+                                name="i-heroicons-chevron-down" 
+                                class="w-5 h-5 ms-auto transform transition-transform duration-200" 
+                                :class="[open && '-rotate-180']" 
+                              />
+                            </template>
+                          </UButton>
+                        </template>
+                        
+                        <template #content="{ item }">
+                          <div class="space-y-2 p-4 pt-2">
+                             <div 
+                              v-for="fixture in item.fixtures" 
+                              :key="fixture.id"
+                              class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+                            >
+                              <div class="flex-1">
+                                <div class="flex items-center gap-2 text-sm">
+                                  <div class="flex items-center gap-2 w-1/3 justify-end">
+                                    <span class="font-medium text-gray-900 dark:text-white truncate">
+                                      {{ fixture.homeTeam?.customName || 'TBD' }}
+                                    </span>
+                                    <div class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
+                                      <img 
+                                        v-if="fixture.homeTeam?.logoUrl" 
+                                        :src="fixture.homeTeam.logoUrl" 
+                                        class="w-full h-full object-cover"
+                                      />
+                                      <span v-else class="text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                                        {{ (fixture.homeTeam?.customName || 'T').charAt(0).toUpperCase() }}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  
+                                  <span class="text-gray-400 px-2">vs</span>
+                                  
+                                  <div class="flex items-center gap-2 w-1/3 justify-start">
+                                    <div class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
+                                      <img 
+                                        v-if="fixture.awayTeam?.logoUrl" 
+                                        :src="fixture.awayTeam.logoUrl" 
+                                        class="w-full h-full object-cover"
+                                      />
+                                      <span v-else class="text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                                        {{ (fixture.awayTeam?.customName || 'T').charAt(0).toUpperCase() }}
+                                      </span>
+                                    </div>
+                                    <span class="font-medium text-gray-900 dark:text-white truncate">
+                                      {{ fixture.awayTeam?.customName || 'TBD' }}
+                                    </span>
+                                  </div>
+                                </div>
+                                <p v-if="fixture.startTime" class="text-xs text-gray-500 mt-1">
+                                  {{ new Date(fixture.startTime).toLocaleDateString() }}
+                                </p>
+                              </div>
+                              
+                              <div 
+                                v-if="fixture.status === 'COMPLETED' || fixture.status === 'LIVE'"
+                                class="flex items-center gap-2 px-3"
+                              >
+                                <span class="text-lg font-bold text-gray-900 dark:text-white">
+                                  {{ fixture.homeScore ?? 0 }}
+                                </span>
+                                <span class="text-gray-400">-</span>
+                                <span class="text-lg font-bold text-gray-900 dark:text-white">
+                                  {{ fixture.awayScore ?? 0 }}
+                                </span>
+                              </div>
+                              
+                              <div class="flex items-center gap-2">
+                                <UButton 
+                                  v-if="fixture.status === 'SCHEDULED' && fixture.homeTeamId && fixture.awayTeamId"
+                                  size="xs" 
+                                  color="success" 
+                                  variant="soft"
+                                  icon="i-heroicons-play"
+                                  :loading="updatingMatch"
+                                  @click.stop="startMatch(fixture)"
+                                >
+                                  Start
+                                </UButton>
+                                
+                                <UButton 
+                                  v-if="fixture.status === 'LIVE'"
+                                  size="xs" 
+                                  color="warning" 
+                                  variant="soft"
+                                  icon="i-heroicons-adjustments-horizontal"
+                                  @click.stop="openMatchControl(fixture)"
+                                >
+                                  Control
+                                </UButton>
+                                
+                                <UBadge :color="fixtureStatusColors[fixture.status]" variant="subtle" size="sm">
+                                  {{ fixture.status }}
+                                </UBadge>
+                              </div>
+                            </div>
+                          </div>
+                        </template>
+                      </UAccordion>
+                    </div>
+
+                    <!-- Knockout Bracket (shown after advancement) -->
+                    <div v-if="knockoutRounds.length > 0" class="mt-6">
+                      <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                        <UIcon name="i-heroicons-trophy" class="w-4 h-4 text-amber-500" />
+                        Knockout Stage
+                      </h4>
+                      <KnockoutBracket
+                        :fixtures-by-round="knockoutFixturesByRound"
+                        :rounds="knockoutRounds"
+                        :get-round-display-name="fixtureStore.getKnockoutRoundDisplayName"
+                        :updating-match="updatingMatch"
+                        @start-match="startMatch"
+                        @control-match="openMatchControl"
+                      />
+                    </div>
+                  </template>
                   
                   <!-- List view for other tournament types (League, Round Robin) -->
                   <div v-else class="space-y-6">
