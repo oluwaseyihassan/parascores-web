@@ -38,6 +38,11 @@ export enum FixtureStatus {
   CANCELLED = 'CANCELLED'
 }
 
+export enum FixtureStage {
+  GROUP_STAGE = 'GROUP_STAGE',
+  KNOCKOUT = 'KNOCKOUT'
+}
+
 export enum MatchEventType {
   GOAL = 'GOAL',
   OWN_GOAL = 'OWN_GOAL',
@@ -172,6 +177,7 @@ export interface Fixture {
   homePenaltyScore?: number | null
   awayPenaltyScore?: number | null
   status: FixtureStatus
+  stage?: FixtureStage | null
 
   created_at: string
   updated_at: string
