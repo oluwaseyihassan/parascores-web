@@ -110,6 +110,8 @@ const handleGenerateFixtures = async () => {
 const showAdvanceModal = ref(false)
 const advancing = ref(false)
 const advanceError = ref<string | null>(null)
+const manualSelection = ref(false)
+const selectedParticipantIds = ref<string[]>([])
 
 const canAdvance = computed(() => {
   if (tournament.value?.type !== TournamentType.HYBRID) return false
@@ -128,14 +130,37 @@ const canAdvance = computed(() => {
   return true
 })
 
+const toggleParticipant = (id: string) => {
+  const idx = selectedParticipantIds.value.indexOf(id)
+  if (idx === -1) {
+    selectedParticipantIds.value.push(id)
+  } else {
+    selectedParticipantIds.value.splice(idx, 1)
+  }
+}
+
+const openAdvanceModal = () => {
+  manualSelection.value = false
+  selectedParticipantIds.value = []
+  advanceError.value = null
+  showAdvanceModal.value = true
+}
+
 const handleAdvanceKnockout = async () => {
   advancing.value = true
   advanceError.value = null
   
   try {
-    // Assuming auto-advance for now (empty payload)
-    // Future update: Add manual selection UI in the modal
-    await fixtureStore.advanceToKnockout(tournamentId.value)
+    if (manualSelection.value) {
+      if (selectedParticipantIds.value.length < 2) {
+        advanceError.value = 'Please select at least 2 teams to advance.'
+        advancing.value = false
+        return
+      }
+      await fixtureStore.advanceToKnockout(tournamentId.value, selectedParticipantIds.value)
+    } else {
+      await fixtureStore.advanceToKnockout(tournamentId.value)
+    }
     
     showAdvanceModal.value = false
     
@@ -849,14 +874,7 @@ const tabItems = computed(() => {
             :to="`/tournaments/${tournament.id}/graphics`"
             label="Graphics"
           />
-          <UButton 
-            v-if="canAdvance"
-            icon="i-heroicons-forward"
-            label="Advance Stage"
-            color="primary"
-            variant="solid"
-            @click="showAdvanceModal = true"
-          />
+
           <UButton 
             icon="i-heroicons-cog-6-tooth" 
             variant="ghost" 
@@ -866,7 +884,7 @@ const tabItems = computed(() => {
       </div>
       
       <!-- Advance Modal -->
-      <UModal v-model:open="showAdvanceModal">
+      <UModal v-model:open="showAdvanceModal" :ui="{ content: 'sm:max-w-lg' }">
         <template #content>
           <UCard class="ring-0 shadow-none" :ui="{ root: 'divide-y divide-gray-100 dark:divide-gray-800' }">
             <template #header>
@@ -880,7 +898,7 @@ const tabItems = computed(() => {
 
             <div class="py-4">
               <p class="text-sm text-gray-500 mb-4">
-                The group stage is complete. Proceeding will generate the knockout bracket based on group standings.
+                The group stage is complete. Choose how to select teams for the knockout bracket.
               </p>
               
               <UAlert
@@ -891,8 +909,94 @@ const tabItems = computed(() => {
                 :title="advanceError"
                 class="mb-4"
               />
-              
-              <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+
+              <!-- Selection Mode Toggle -->
+              <div class="flex items-center gap-3 mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+                <USwitch v-model="manualSelection" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900 dark:text-white">
+                    {{ manualSelection ? 'Manual Selection' : 'Auto-Select' }}
+                  </p>
+                  <p class="text-xs text-gray-500">
+                    {{ manualSelection 
+                      ? 'Pick which teams advance to the knockout stage' 
+                      : 'Top 2 teams from each group qualify automatically' 
+                    }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Manual Selection: Team list grouped by standings -->
+              <div v-if="manualSelection">
+                <div class="space-y-4 max-h-80 overflow-y-auto">
+                  <div v-for="(groupStandings, groupName) in standingStore.getStandingsByGroup" :key="groupName">
+                    <h4 v-if="groupName !== 'default'" class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
+                      {{ groupName }}
+                    </h4>
+                    <div class="space-y-1">
+                      <button
+                        v-for="standing in groupStandings"
+                        :key="standing.participant_id"
+                        type="button"
+                        class="w-full flex items-center gap-3 p-2.5 rounded-lg border transition-all text-left"
+                        :class="selectedParticipantIds.includes(standing.participant_id)
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/30'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        "
+                        @click="toggleParticipant(standing.participant_id)"
+                      >
+                        <!-- Checkbox indicator -->
+                        <div 
+                          class="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors"
+                          :class="selectedParticipantIds.includes(standing.participant_id)
+                            ? 'border-primary-500 bg-primary-500'
+                            : 'border-gray-300 dark:border-gray-600'
+                          "
+                        >
+                          <UIcon 
+                            v-if="selectedParticipantIds.includes(standing.participant_id)" 
+                            name="i-heroicons-check" 
+                            class="w-3.5 h-3.5 text-white" 
+                          />
+                        </div>
+
+                        <!-- Position -->
+                        <span class="text-xs font-bold text-gray-400 w-5 text-center">{{ standing.position }}</span>
+
+                        <!-- Team logo -->
+                        <div class="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
+                          <img 
+                            v-if="standing.participant?.logoUrl" 
+                            :src="standing.participant.logoUrl" 
+                            class="w-full h-full object-cover"
+                          />
+                          <span v-else class="text-[10px] font-medium text-gray-500">
+                            {{ (standing.participant?.customName || 'T').charAt(0).toUpperCase() }}
+                          </span>
+                        </div>
+
+                        <!-- Team name + stats -->
+                        <div class="flex-1 min-w-0">
+                          <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {{ standing.participant?.customName || 'Unknown' }}
+                          </p>
+                          <p class="text-xs text-gray-500">
+                            {{ standing.points }} pts · {{ standing.played }}P · {{ standing.wins }}W {{ standing.draws }}D {{ standing.losses }}L
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Selection count (fixed below scroll area) -->
+                <p class="text-xs text-gray-500 text-center pt-2 border-t border-gray-100 dark:border-gray-800">
+                  {{ selectedParticipantIds.length }} team{{ selectedParticipantIds.length !== 1 ? 's' : '' }} selected
+                </p>
+              </div>
+
+              <!-- Auto mode info -->
+              <div v-else class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                 <h4 class="font-medium text-sm mb-2">Qualification Rules:</h4>
                 <ul class="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1">
                   <li>Top 2 teams from each group qualify automatically</li>
@@ -906,8 +1010,9 @@ const tabItems = computed(() => {
                 <UButton color="neutral" variant="ghost" label="Cancel" @click="showAdvanceModal = false" />
                 <UButton 
                   color="primary" 
-                  label="Confirm & Generate Bracket" 
+                  :label="manualSelection ? `Advance ${selectedParticipantIds.length} Teams` : 'Confirm & Generate Bracket'"
                   :loading="advancing"
+                  :disabled="manualSelection && selectedParticipantIds.length < 2"
                   @click="handleAdvanceKnockout"
                 />
               </div>
@@ -1284,6 +1389,29 @@ const tabItems = computed(() => {
                           </div>
                         </template>
                       </UAccordion>
+                    </div>
+
+                    <!-- Advance to Knockout CTA -->
+                    <div 
+                      v-if="canAdvance" 
+                      class="mt-4 flex items-center justify-between gap-4 p-4 rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50/50 dark:bg-primary-950/20"
+                    >
+                      <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center">
+                          <UIcon name="i-heroicons-check-circle" class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                        </div>
+                        <div>
+                          <p class="text-sm font-medium text-gray-900 dark:text-white">All group stage matches completed</p>
+                          <p class="text-xs text-gray-500">Ready to generate the knockout bracket</p>
+                        </div>
+                      </div>
+                      <UButton 
+                        icon="i-heroicons-forward"
+                        label="Advance Stage"
+                        color="primary"
+                        variant="solid"
+                        @click="openAdvanceModal"
+                      />
                     </div>
 
                     <!-- Knockout Bracket (shown after advancement) -->
