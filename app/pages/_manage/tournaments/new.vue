@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import { TournamentType, ParticipantType, Visibility } from '~/types'
+import { TournamentType, ParticipantType, Visibility, type Tournament } from '~/types'
 import { CalendarDate, type DateValue } from '@internationalized/date'
 
 definePageMeta({
@@ -108,6 +108,14 @@ const removeBanner = () => {
   }
 }
 
+// Custom name availability check
+const checkingName = ref(false)
+const nameAvailable = ref<boolean | null>(null)
+const nameCheckError = ref<string | null>(null)
+let nameCheckTimeout: ReturnType<typeof setTimeout> | null = null
+
+const nameFormatRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
 // Date values for calendar (using shallowRef to preserve class instance types)
 const startDate = shallowRef<DateValue | null>(null)
 const endDate = shallowRef<DateValue | null>(null)
@@ -151,6 +159,12 @@ watch(endDate, (val) => {
 // Form schema
 const schema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters'),
+  customName: z.string()
+    .min(3, 'Custom URL must be at least 3 characters')
+    .max(60, 'Custom URL must be at most 60 characters')
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Only lowercase letters, numbers, and hyphens allowed (e.g. my-tournament-2026)')
+    .optional()
+    .or(z.literal('')),
   description: z.string().optional(),
   sport: z.string().min(1, 'Sport is required'),
   type: z.nativeEnum(TournamentType),
@@ -169,6 +183,7 @@ type Schema = z.output<typeof schema>
 // Form state
 const state = reactive<Partial<Schema>>({
   name: '',
+  customName: '',
   description: '',
   sport: '',
   type: TournamentType.ROUND_ROBIN,
@@ -180,6 +195,48 @@ const state = reactive<Partial<Schema>>({
   end_date: '',
   maxParticipants: null,
   autoApprove: true
+})
+
+// Watch for custom name changes (must be after state declaration)
+watch(() => state.customName, (val) => {
+  // Reset state
+  nameAvailable.value = null
+  nameCheckError.value = null
+
+  if (nameCheckTimeout) clearTimeout(nameCheckTimeout)
+
+  if (!val || val.length < 3) {
+    checkingName.value = false
+    return
+  }
+
+  if (!nameFormatRegex.test(val)) {
+    checkingName.value = false
+    return
+  }
+
+  checkingName.value = true
+
+  nameCheckTimeout = setTimeout(async () => {
+    try {
+      const res = await $api<{ data: { available: boolean } }>(`/tournaments/check-name/${val}`, {
+        method: 'GET',
+      })
+      // Only update if the value hasn't changed while we were fetching
+      if (state.customName === val) {
+        nameAvailable.value = res.data.available
+      }
+    } catch (err: any) {
+      if (state.customName === val) {
+        nameCheckError.value = 'Could not check availability'
+        nameAvailable.value = null
+      }
+    } finally {
+      if (state.customName === val) {
+        checkingName.value = false
+      }
+    }
+  }, 500)
 })
 
 // Options
@@ -266,10 +323,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     
     const response = await tournamentStore.createTournament({
       ...event.data,
+      customName: event.data.customName || undefined,
       logoUrl,
       bannerUrl,
       scoringRules: {} // Default empty scoring rules
-    })
+    } as Partial<Tournament>)
     
     if (response?.data) {
       await navigateTo(`/tournaments/${response.data.id}`)
@@ -451,6 +509,42 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               size="lg"
               class="w-full"
             />
+          </UFormField>
+
+          <UFormField label="Custom URL (optional)" name="customName" hint="Used in your public tournament link">
+            <div class="relative">
+              <UInput 
+                v-model="state.customName" 
+                placeholder="e.g. premier-league-2026"
+                icon="i-heroicons-link"
+                class="w-full"
+                :trailing-icon="checkingName ? 'i-heroicons-arrow-path' : nameAvailable === true ? 'i-heroicons-check-circle' : nameAvailable === false ? 'i-heroicons-x-circle' : undefined"
+                :color="nameAvailable === false ? 'error' : nameAvailable === true ? 'success' : undefined"
+              />
+            </div>
+            <template #description>
+              <span v-if="checkingName" class="text-xs text-gray-400 flex items-center gap-1">
+                <UIcon name="i-heroicons-arrow-path" class="w-3 h-3 animate-spin" />
+                Checking availability...
+              </span>
+              <span v-else-if="nameAvailable === true" class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                <UIcon name="i-heroicons-check-circle" class="w-3 h-3" />
+                Available! Your tournament will be at: <span class="font-medium">parascores.com/tournaments/{{ state.customName }}</span>
+              </span>
+              <span v-else-if="nameAvailable === false" class="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                <UIcon name="i-heroicons-x-circle" class="w-3 h-3" />
+                This custom URL is already taken. Try another one.
+              </span>
+              <span v-else-if="nameCheckError" class="text-xs text-amber-600 dark:text-amber-400">
+                {{ nameCheckError }}
+              </span>
+              <span v-else-if="state.customName" class="text-xs text-gray-500">
+                Your tournament will be accessible at: <span class="font-medium text-indigo-500">parascores.com/tournaments/{{ state.customName }}</span>
+              </span>
+              <span v-else class="text-xs text-gray-400">
+                Lowercase letters, numbers, and hyphens only
+              </span>
+            </template>
           </UFormField>
 
           <UFormField label="Description" name="description">
