@@ -85,6 +85,7 @@ export interface User {
 export interface Tournament {
   id: string
   name: string
+  customName?: string | null
   description?: string | null
 
   // Branding
