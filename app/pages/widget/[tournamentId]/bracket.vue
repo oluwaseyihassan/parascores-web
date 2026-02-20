@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tournament, Fixture } from '~/types'
-import { FixtureStatus } from '~/types'
+import { FixtureStatus, FixtureStage, TournamentType } from '~/types'
 
 definePageMeta({
   layout: 'widget'
@@ -23,9 +23,15 @@ const rounds = ref<number[]>([])
 const fixturesByRound = ref<Record<number, Fixture[]>>({})
 
 const buildBracket = () => {
+  // For hybrid tournaments, only show knockout-stage fixtures
+  let bracketFixtures = fixtures.value
+  if (tournament.value?.type === TournamentType.HYBRID) {
+    bracketFixtures = fixtures.value.filter(f => f.stage === FixtureStage.KNOCKOUT)
+  }
+
   // Group fixtures by round
   const grouped: Record<number, Fixture[]> = {}
-  for (const fixture of fixtures.value) {
+  for (const fixture of bracketFixtures) {
     const round = fixture.round || 1
     if (!grouped[round]) grouped[round] = []
     grouped[round].push(fixture)
@@ -35,10 +41,25 @@ const buildBracket = () => {
   const sortedRounds = Object.keys(grouped).map(Number).sort((a, b) => a - b)
   rounds.value = sortedRounds
   fixturesByRound.value = grouped
+
+  // Build round name lookup from fixture data
+  for (const fixture of bracketFixtures) {
+    const round = fixture.round || 1
+    if (!roundNameMap.value[round] && fixture.roundName) {
+      roundNameMap.value[round] = fixture.roundName
+    }
+  }
 }
 
-// Get round name based on total rounds and current round
+// Round name lookup (from fixture data)
+const roundNameMap = ref<Record<number, string>>({})
+
+// Get round name: prefer fixture's roundName, then fallback to calculated
 const getRoundName = (roundIndex: number, totalRounds: number) => {
+  const round = rounds.value[roundIndex]
+  if (round !== undefined && roundNameMap.value[round]) {
+    return roundNameMap.value[round]
+  }
   const remaining = totalRounds - roundIndex
   switch (remaining) {
     case 1: return 'Final'
@@ -72,7 +93,15 @@ const fetchData = async () => {
       $api<any>(`/tournaments/${tournamentId}/fixtures`)
     ])
     tournament.value = tournamentRes.data
-    fixtures.value = fixturesRes.data || []
+    // Handle API response: may be { rounds: [...] } or flat array
+    const fixturesData = fixturesRes.data
+    if (fixturesData?.rounds) {
+      fixtures.value = fixturesData.rounds.flatMap((r: any) => r.fixtures || [])
+    } else if (Array.isArray(fixturesData)) {
+      fixtures.value = fixturesData
+    } else {
+      fixtures.value = []
+    }
     buildBracket()
   } catch (e: any) {
     error.value = e.message || 'Failed to load bracket'
