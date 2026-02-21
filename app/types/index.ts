@@ -151,6 +151,7 @@ export interface Participant {
   
   // Relations (optional/loaded)
   user?: User | null
+  team?: Team | null
   tournament?: Tournament | null
 }
 
