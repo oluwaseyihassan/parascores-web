@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import type { Fixture } from '../types'
-import { FixtureStage } from '../types'
+import { FixtureStage, FixtureStatus } from '../types'
 import type { ApiResponse } from './auth'
 
 export interface UpdateFixtureData {
@@ -18,6 +18,29 @@ export const useFixtureStore = defineStore('fixture', () => {
   const loading = ref(false)
   const generating = ref(false)
   const error = ref<string | null>(null)
+
+  // Listen to SSE updates
+  if (typeof window !== 'undefined') {
+    window.addEventListener('live-match-update', (e: Event) => {
+      const customEvent = e as CustomEvent
+      const { type, data } = customEvent.detail
+
+      if (type === 'fixture_updated') {
+        const fixtureIdx = fixtures.value.findIndex(f => f.id === data.id)
+        if (fixtureIdx !== -1) fixtures.value[fixtureIdx] = { ...fixtures.value[fixtureIdx], ...data }
+        
+        const liveIdx = liveFixtures.value.findIndex(f => f.id === data.id)
+        if (liveIdx !== -1) {
+          liveFixtures.value[liveIdx] = { ...liveFixtures.value[liveIdx], ...data }
+          if (data.status !== FixtureStatus.LIVE) {
+            liveFixtures.value.splice(liveIdx, 1) // Remove if no longer live
+          }
+        } else if (data.status === FixtureStatus.LIVE) {
+          liveFixtures.value.push(data) // Add if newly live
+        }
+      }
+    })
+  }
 
   // Group fixtures by round
   const fixturesByRound = computed(() => {
@@ -303,6 +326,50 @@ export const useFixtureStore = defineStore('fixture', () => {
     }
   }
 
+  // Update a match event
+  async function updateMatchEvent(eventId: string, data: {
+    participantId?: string
+    playerId?: string | null
+    relatedPlayerId?: string | null
+    type?: string
+    minute?: number | null
+    description?: string | null
+  }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<any>>(`/fixtures/events/${eventId}`, {
+        method: 'PATCH',
+        body: data,
+      })
+      return response
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update match event'
+      console.error('Update match event failed:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Delete a match event
+  async function deleteMatchEvent(eventId: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<any>>(`/fixtures/events/${eventId}`, {
+        method: 'DELETE',
+      })
+      return response
+    } catch (err: any) {
+      error.value = err.message || 'Failed to delete match event'
+      console.error('Delete match event failed:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Clear fixtures
   function clearFixtures() {
     fixtures.value = []
@@ -339,6 +406,8 @@ export const useFixtureStore = defineStore('fixture', () => {
     generateFixtures,
     updateFixture,
     createMatchEvent,
+    updateMatchEvent,
+    deleteMatchEvent,
     clearFixtures,
     advanceToKnockout
   }
