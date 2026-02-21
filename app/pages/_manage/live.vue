@@ -9,26 +9,15 @@ definePageMeta({
 const fixtureStore = useFixtureStore()
 const { liveFixtures, loading, error } = storeToRefs(fixtureStore)
 
+// Trigger connection to live stream SSE
+useLiveStream()
+
 // Fetch live fixtures on mount
 onMounted(async () => {
   await fixtureStore.fetchLiveFixtures()
 })
 
-// Refresh interval for live data
-let refreshInterval: ReturnType<typeof setInterval> | null = null
 
-onMounted(() => {
-  // Auto-refresh every 30 seconds
-  refreshInterval = setInterval(() => {
-    fixtureStore.fetchLiveFixtures()
-  }, 30000)
-})
-
-onUnmounted(() => {
-  if (refreshInterval) {
-    clearInterval(refreshInterval)
-  }
-})
 
 // Group fixtures by tournament
 const fixturesByTournament = computed(() => {
@@ -167,48 +156,48 @@ const handleMatchEnded = async () => {
           <div 
             v-for="fixture in group.fixtures" 
             :key="fixture.id"
-            class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+            class="flex flex-col lg:flex-row items-center justify-between p-3 sm:p-4 gap-3 lg:gap-0 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
             @click="openMatchControl(fixture)"
           >
             <!-- Match Info -->
-            <div class="flex items-center gap-6 flex-1">
+            <div class="flex items-center gap-2 sm:gap-6 w-full lg:flex-1 min-w-0">
               <!-- Home Team -->
-              <div class="flex items-center gap-3 flex-1 justify-end">
+              <div class="flex items-center gap-2 sm:gap-3 flex-1 justify-end min-w-0">
                 <span class="font-medium text-gray-900 dark:text-white text-right truncate">
                   {{ fixture.homeTeam?.customName || 'Home' }}
                 </span>
-                <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0">
                   <img 
                     v-if="fixture.homeTeam?.logoUrl" 
                     :src="fixture.homeTeam.logoUrl" 
                     class="w-full h-full object-cover"
                   />
-                  <span v-else class="text-sm font-bold text-gray-600 dark:text-gray-300">
+                  <span v-else class="text-xs sm:text-sm font-bold text-gray-600 dark:text-gray-300">
                     {{ (fixture.homeTeam?.customName || 'H').charAt(0).toUpperCase() }}
                   </span>
                 </div>
               </div>
 
               <!-- Score -->
-              <div class="flex items-center gap-3 px-4">
-                <span class="text-2xl font-bold text-gray-900 dark:text-white min-w-[2rem] text-center">
+              <div class="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 shrink-0">
+                <span class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white min-w-[1.5rem] sm:min-w-[2rem] text-center">
                   {{ fixture.homeScore ?? 0 }}
                 </span>
-                <span class="text-gray-400 text-lg">-</span>
-                <span class="text-2xl font-bold text-gray-900 dark:text-white min-w-[2rem] text-center">
+                <span class="text-gray-400 text-base sm:text-lg">-</span>
+                <span class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white min-w-[1.5rem] sm:min-w-[2rem] text-center">
                   {{ fixture.awayScore ?? 0 }}
                 </span>
               </div>
 
               <!-- Away Team -->
-              <div class="flex items-center gap-3 flex-1">
-                <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0">
+              <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0">
                   <img 
                     v-if="fixture.awayTeam?.logoUrl" 
                     :src="fixture.awayTeam.logoUrl" 
                     class="w-full h-full object-cover"
                   />
-                  <span v-else class="text-sm font-bold text-gray-600 dark:text-gray-300">
+                  <span v-else class="text-xs sm:text-sm font-bold text-gray-600 dark:text-gray-300">
                     {{ (fixture.awayTeam?.customName || 'A').charAt(0).toUpperCase() }}
                   </span>
                 </div>
@@ -219,7 +208,7 @@ const handleMatchEnded = async () => {
             </div>
 
             <!-- Live Badge & Control -->
-            <div class="flex items-center gap-3 ml-4">
+            <div class="flex items-center justify-between lg:justify-end gap-3 w-full lg:w-auto mt-2 lg:mt-0 lg:ml-4 pt-3 lg:pt-0 border-t border-gray-200 dark:border-gray-700 lg:border-t-0 shrink-0">
               <UBadge color="warning" variant="soft" class="animate-pulse">
                 <span class="flex items-center gap-1">
                   <span class="w-2 h-2 bg-red-500 rounded-full"></span>
@@ -232,7 +221,8 @@ const handleMatchEnded = async () => {
                 variant="soft"
                 icon="i-heroicons-adjustments-horizontal"
               >
-                Control
+                <span class="hidden sm:inline">Control</span>
+                <span class="sm:hidden">Control Match</span>
               </UButton>
             </div>
           </div>
