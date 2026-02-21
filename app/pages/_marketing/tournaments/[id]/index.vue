@@ -9,13 +9,33 @@ definePageMeta({
 const route = useRoute()
 const tournamentId = route.params.id as string
 
+// Theme (injected from widget layout)
+const isDark = inject<Ref<boolean>>('widgetIsDark', ref(true))
+
 // State
 const tournament = ref<Tournament | null>(null)
 const fixtures = ref<Fixture[]>([])
 const standings = ref<Standing[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-const activeTab = ref<'fixtures' | 'standings' | 'bracket'>('fixtures')
+const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info'>('fixtures')
+
+// Establish Live Stream connection to receive realtime push notifications
+useLiveStream()
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('live-match-update', (e: Event) => {
+    const customEvent = e as CustomEvent
+    const { type, data } = customEvent.detail
+
+    if (type === 'fixture_updated') {
+      const targetIdx = fixtures.value.findIndex((f) => f.id === data.id)
+      if (targetIdx !== -1) {
+        fixtures.value[targetIdx] = { ...fixtures.value[targetIdx], ...data }
+      }
+    }
+  })
+}
 
 // Fetch data
 async function fetchData() {
@@ -255,63 +275,38 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
             Back to Explore
           </NuxtLink>
 
-          <div class="flex items-start gap-5">
+          <div class="flex flex-col items-center text-center">
             <!-- Logo -->
-            <div class="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden bg-white/10 backdrop-blur-md border border-white/20 flex-shrink-0 shadow-xl">
+            <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden bg-white/10 backdrop-blur-md border border-white/20 flex-shrink-0 shadow-xl mb-4">
               <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" />
-              <span v-else class="flex items-center justify-center w-full h-full text-2xl font-bold text-white/60">
+              <span v-else class="flex items-center justify-center w-full h-full text-3xl font-bold text-white/60">
                 {{ tournament.name.charAt(0).toUpperCase() }}
               </span>
             </div>
 
-            <div class="flex-1 min-w-0">
+            <div class="max-w-2xl mx-auto flex flex-col items-center">
               <!-- Type Badge -->
-              <span :class="['px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded border mb-2 inline-block', getTypeBadgeClasses(tournament.type)]">
+              <span :class="['px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded border mb-3 inline-block', getTypeBadgeClasses(tournament.type)]">
                 {{ formatType(tournament.type) }}
               </span>
 
               <!-- Name -->
-              <h1 class="text-2xl md:text-4xl font-bold text-white leading-tight mb-2">
+              <h1 class="text-3xl md:text-5xl font-bold leading-tight mb-4" :class="isDark ? 'text-white' : 'text-gray-900'">
                 {{ tournament.name }}
               </h1>
 
-              <!-- Meta -->
-              <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-400">
-                <div class="flex items-center gap-1.5">
-                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  {{ formatDate(tournament.start_date) }} — {{ formatDate(tournament.end_date) }}
-                </div>
-                <div v-if="tournament.location" class="flex items-center gap-1.5">
-                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {{ tournament.location }}
-                </div>
-                <div class="flex items-center gap-1.5">
-                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  {{ tournament.sport }}
-                </div>
-                <div v-if="hasLiveFixtures" class="flex items-center gap-1.5 text-red-400">
-                  <span class="w-2 h-2 bg-red-400 rounded-full animate-pulse"></span>
-                  Live Now
-                </div>
+              <!-- Live Indicator (Optional, can keep it here if live) -->
+              <div v-if="hasLiveFixtures" class="flex items-center gap-1.5 text-red-400 text-sm font-semibold">
+                <span class="w-2 h-2 bg-red-400 rounded-full animate-pulse"></span>
+                Live Now
               </div>
-
-              <p v-if="tournament.description" class="text-sm text-gray-500 mt-3 max-w-2xl line-clamp-2">
-                {{ tournament.description }}
-              </p>
             </div>
           </div>
         </div>
       </section>
 
       <!-- Tabs -->
-      <section class="border-b border-white/10 sticky top-0 z-20 bg-[#0A0F1C]/95 backdrop-blur-md">
+      <section class="border-b sticky top-0 z-20 backdrop-blur-md transition-colors" :class="isDark ? 'border-white/10 bg-gray-950/95' : 'border-gray-200 bg-gray-50/95'">
         <div class="max-w-5xl mx-auto px-6">
           <nav class="flex gap-1 -mb-px">
             <button
@@ -350,12 +345,23 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
             >
               Bracket
             </button>
+            <button
+              @click="activeTab = 'info'"
+              :class="[
+                'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
+                activeTab === 'info'
+                  ? 'text-emerald-400 border-emerald-400'
+                  : 'text-gray-500 border-transparent hover:text-gray-300 hover:border-white/20'
+              ]"
+            >
+              Info
+            </button>
           </nav>
         </div>
       </section>
 
       <!-- Tab Content -->
-      <section class="max-w-5xl mx-auto px-6 py-8">
+      <section class="max-w-5xl mx-auto px-4 py-8">
 
         <!-- ====== FIXTURES TAB ====== -->
         <div v-if="activeTab === 'fixtures'">
@@ -369,12 +375,12 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
               <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Group Stage</span>
             </div>
 
-            <div v-for="round in sortedRounds" :key="round" class="bg-[#111827] border border-white/[0.08] rounded-xl overflow-hidden">
+            <div v-for="round in sortedRounds" :key="round" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'" class="border rounded-xl overflow-hidden transition-colors">
               <!-- Round Header -->
               <button
                 @click="toggleRound(round)"
                 class="w-full flex items-center justify-between px-5 py-3 cursor-pointer select-none border-b"
-                :class="collapsedRounds.has(round) ? 'border-transparent' : 'border-white/[0.06]'"
+                :class="collapsedRounds.has(round) ? 'border-transparent' : (isDark ? 'border-white/[0.06]' : 'border-gray-100')"
               >
                 <h3 class="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
                   {{ fixturesByRound[round]?.name }}
@@ -395,14 +401,14 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
                   :key="fixture.id"
                   :to="`/tournaments/${tournamentId}/fixture/${fixture.id}`"
                   class="fixture-row flex items-center px-5 py-3.5"
-                  :class="{ 'border-t border-white/[0.06]': i > 0 }"
+                  :class="{ [isDark ? 'border-t border-white/[0.06]' : 'border-t border-gray-100']: i > 0 }"
                 >
                   <!-- Home -->
                   <div class="flex-1 flex items-center justify-end gap-2.5 min-w-0">
-                    <span class="text-[13px] font-medium text-gray-200 truncate text-right">
+                    <span class="text-[13px] font-medium truncate text-right" :class="isDark ? 'text-gray-200' : 'text-gray-800'">
                       {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                     </span>
-                    <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-white/10">
+                    <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
                       <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
                       <span v-else class="flex items-center justify-center w-full h-full text-[10px] font-bold text-gray-500">
                         {{ (fixture.homeTeam?.customName || 'H').charAt(0) }}
@@ -414,9 +420,9 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
                   <div class="w-24 flex-shrink-0 flex flex-col items-center justify-center mx-3">
                     <template v-if="fixture.status === FixtureStatus.LIVE">
                       <div class="flex items-center gap-1.5">
-                        <span class="text-base font-bold text-white">{{ fixture.homeScore ?? 0 }}</span>
+                        <span class="text-base font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">{{ fixture.homeScore ?? 0 }}</span>
                         <span class="text-[10px] text-gray-600">-</span>
-                        <span class="text-base font-bold text-white">{{ fixture.awayScore ?? 0 }}</span>
+                        <span class="text-base font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">{{ fixture.awayScore ?? 0 }}</span>
                       </div>
                       <span class="text-[9px] font-semibold text-red-400 mt-0.5 flex items-center gap-1">
                         <span class="w-1 h-1 bg-red-400 rounded-full animate-pulse"></span>
@@ -425,9 +431,9 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
                     </template>
                     <template v-else-if="fixture.status === FixtureStatus.COMPLETED">
                       <div class="flex items-center gap-1.5">
-                        <span class="text-base font-bold text-white">{{ fixture.homeScore ?? 0 }}</span>
+                        <span class="text-base font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">{{ fixture.homeScore ?? 0 }}</span>
                         <span class="text-[10px] text-gray-600">-</span>
-                        <span class="text-base font-bold text-white">{{ fixture.awayScore ?? 0 }}</span>
+                        <span class="text-base font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">{{ fixture.awayScore ?? 0 }}</span>
                       </div>
                       <span class="text-[9px] font-medium text-gray-500 mt-0.5">FT</span>
                     </template>
@@ -444,13 +450,13 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
 
                   <!-- Away -->
                   <div class="flex-1 flex items-center gap-2.5 min-w-0">
-                    <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-white/10">
+                    <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
                       <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
                       <span v-else class="flex items-center justify-center w-full h-full text-[10px] font-bold text-gray-500">
                         {{ (fixture.awayTeam?.customName || 'A').charAt(0) }}
                       </span>
                     </div>
-                    <span class="text-[13px] font-medium text-gray-200 truncate">
+                    <span class="text-[13px] font-medium truncate" :class="isDark ? 'text-gray-200' : 'text-gray-800'">
                       {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                     </span>
                   </div>
@@ -470,11 +476,11 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
                 <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Knockout Stage</span>
               </div>
 
-              <div v-for="round in knockoutRounds" :key="'ko-' + round" class="bg-[#111827] border border-white/[0.08] rounded-xl overflow-hidden">
+              <div v-for="round in knockoutRounds" :key="'ko-' + round" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'" class="border rounded-xl overflow-hidden transition-colors">
                 <button
                   @click="toggleRound(round + 1000)"
                   class="w-full flex items-center justify-between px-5 py-3 cursor-pointer select-none border-b"
-                  :class="collapsedRounds.has(round + 1000) ? 'border-transparent' : 'border-white/[0.06]'"
+                  :class="collapsedRounds.has(round + 1000) ? 'border-transparent' : (isDark ? 'border-white/[0.06]' : 'border-gray-100')"
                 >
                   <h3 class="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
                     {{ knockoutByRound[round]?.name }}
@@ -493,48 +499,55 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
                     v-for="(fixture, i) in knockoutByRound[round]?.fixtures"
                     :key="fixture.id"
                     :to="`/tournaments/${tournamentId}/fixture/${fixture.id}`"
-                    class="fixture-row flex items-center px-5 py-3.5"
-                    :class="{ 'border-t border-white/[0.06]': i > 0 }"
+                    class="fixture-row flex items-center px-4 md:px-5 py-3 md:py-3.5 transition-colors group"
+                    :class="{ [isDark ? 'border-t border-white/[0.06] hover:bg-white/[0.02]' : 'border-t border-gray-100 hover:bg-gray-50']: i > 0, [isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50']: i === 0 }"
                   >
-                    <div class="flex-1 flex items-center justify-end gap-2.5 min-w-0">
-                      <span class="text-[13px] font-medium text-gray-200 truncate text-right">{{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}</span>
-                      <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-white/10">
-                        <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
-                        <span v-else class="flex items-center justify-center w-full h-full text-[10px] font-bold text-gray-500">{{ (fixture.homeTeam?.customName || 'H').charAt(0) }}</span>
+                    <!-- Home Team -->
+                    <div class="flex-1 flex items-center justify-end gap-2.5 min-w-0 pr-2 md:pr-4">
+                      <span class="text-[12px] md:text-[13px] font-medium truncate text-right transition-colors" :class="isDark ? 'text-gray-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'">{{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}</span>
+                      <div class="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden flex-shrink-0" :class="isDark ? 'bg-white/10' : 'bg-gray-100 ring-1 ring-gray-200'">
+                        <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
+                        <span v-else class="flex items-center justify-center w-full h-full text-[9px] md:text-[10px] font-bold text-gray-500">{{ (fixture.homeTeam?.customName || 'H').charAt(0) }}</span>
                       </div>
                     </div>
-                    <div class="w-24 flex-shrink-0 flex flex-col items-center justify-center mx-3">
+
+                    <!-- Center Score / Time -->
+                    <div class="w-[72px] md:w-24 flex-shrink-0 flex flex-col items-center justify-center mx-1 md:mx-3">
                       <template v-if="fixture.status === FixtureStatus.LIVE">
-                        <div class="flex items-center gap-1.5">
-                          <span class="text-base font-bold text-white">{{ fixture.homeScore ?? 0 }}</span>
-                          <span class="text-[10px] text-gray-600">-</span>
-                          <span class="text-base font-bold text-white">{{ fixture.awayScore ?? 0 }}</span>
+                        <div class="flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-md">
+                          <span class="text-[14px] md:text-base font-bold text-red-400">{{ fixture.homeScore ?? 0 }}</span>
+                          <span class="text-[9px] md:text-[10px] text-red-400/50">-</span>
+                          <span class="text-[14px] md:text-base font-bold text-red-400">{{ fixture.awayScore ?? 0 }}</span>
                         </div>
-                        <span class="text-[9px] font-semibold text-red-400 mt-0.5 flex items-center gap-1">
-                          <span class="w-1 h-1 bg-red-400 rounded-full animate-pulse"></span>LIVE
+                        <span class="text-[9px] font-semibold text-red-500 mt-1 flex items-center gap-1">
+                          <span class="w-1 h-1 bg-red-400 rounded-full animate-pulse shadow-[0_0_4px_rgba(248,113,113,0.5)]"></span>
                         </span>
                       </template>
                       <template v-else-if="fixture.status === FixtureStatus.COMPLETED">
-                        <div class="flex items-center gap-1.5">
-                          <span class="text-base font-bold text-white">{{ fixture.homeScore ?? 0 }}</span>
-                          <span class="text-[10px] text-gray-600">-</span>
-                          <span class="text-base font-bold text-white">{{ fixture.awayScore ?? 0 }}</span>
+                        <div class="flex items-center justify-center gap-1.5 md:gap-2">
+                          <span class="text-[14px] md:text-base font-bold transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">{{ fixture.homeScore ?? 0 }}</span>
+                          <span class="text-[9px] md:text-[10px] text-gray-500">-</span>
+                          <span class="text-[14px] md:text-base font-bold transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">{{ fixture.awayScore ?? 0 }}</span>
                         </div>
-                        <span class="text-[9px] font-medium text-gray-500 mt-0.5">FT</span>
+                        <span class="text-[9px] md:text-[10px] font-medium text-gray-500 mt-0.5">FT</span>
                       </template>
                       <template v-else>
-                        <span v-if="fixture.startTime" class="text-[13px] font-semibold text-gray-300">{{ formatTime(fixture.startTime) }}</span>
+                        <span v-if="fixture.startTime" class="text-[12px] md:text-[13px] font-semibold transition-colors" :class="isDark ? 'text-gray-300 group-hover:text-white' : 'text-gray-600 group-hover:text-gray-900'">{{ formatTime(fixture.startTime) }}</span>
                         <span v-else class="text-[11px] font-medium text-gray-500">vs</span>
                       </template>
                     </div>
-                    <div class="flex-1 flex items-center gap-2.5 min-w-0">
-                      <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-white/10">
-                        <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
-                        <span v-else class="flex items-center justify-center w-full h-full text-[10px] font-bold text-gray-500">{{ (fixture.awayTeam?.customName || 'A').charAt(0) }}</span>
+
+                    <!-- Away Team -->
+                    <div class="flex-1 flex items-center justify-start gap-2.5 min-w-0 pl-2 md:pl-4">
+                      <div class="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden flex-shrink-0" :class="isDark ? 'bg-white/10' : 'bg-gray-100 ring-1 ring-gray-200'">
+                        <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
+                        <span v-else class="flex items-center justify-center w-full h-full text-[9px] md:text-[10px] font-bold text-gray-500">{{ (fixture.awayTeam?.customName || 'A').charAt(0) }}</span>
                       </div>
-                      <span class="text-[13px] font-medium text-gray-200 truncate">{{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}</span>
+                      <span class="text-[12px] md:text-[13px] font-medium truncate text-left transition-colors" :class="isDark ? 'text-gray-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'">{{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}</span>
                     </div>
-                    <svg class="w-4 h-4 text-gray-600 ml-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+                    <!-- Right Arrow (Hidden on small screens) -->
+                    <svg class="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-600 ml-2 md:ml-3 flex-shrink-0 hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>
                   </NuxtLink>
@@ -554,10 +567,10 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
               <h4 v-if="groupName !== 'default'" class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
                 {{ groupName }}
               </h4>
-              <div class="bg-[#111827] border border-white/[0.08] rounded-xl overflow-hidden">
+              <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'" class="border rounded-xl overflow-hidden transition-colors">
                 <table class="w-full text-sm">
                   <thead>
-                    <tr class="border-b border-white/[0.06]">
+                    <tr class="border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                       <th class="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 w-8">#</th>
                       <th class="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Team</th>
                       <th class="text-center px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 hidden sm:table-cell">P</th>
@@ -572,7 +585,7 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
                     <tr 
                       v-for="standing in groupStandings" 
                       :key="standing.id"
-                      class="border-t border-white/[0.04] hover:bg-white/[0.02] transition-colors"
+                      class="border-t transition-colors" :class="isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-gray-100 hover:bg-gray-50'"
                     >
                       <td class="px-4 py-3 text-xs font-bold text-gray-500">{{ standing.position }}</td>
                       <td class="px-4 py-3">
@@ -583,7 +596,7 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
                               {{ (standing.participant?.customName || 'T').charAt(0) }}
                             </span>
                           </div>
-                          <span class="text-[13px] font-medium text-gray-200 truncate">{{ standing.participant?.customName || 'Unknown' }}</span>
+                          <span class="text-[13px] font-medium truncate" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ standing.participant?.customName || 'Unknown' }}</span>
                         </div>
                       </td>
                       <td class="text-center px-2 py-3 text-[13px] text-gray-400 hidden sm:table-cell">{{ standing.played }}</td>
@@ -593,7 +606,7 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
                       <td class="text-center px-2 py-3 text-[13px] hidden md:table-cell" :class="standing.goalDiff > 0 ? 'text-emerald-400' : standing.goalDiff < 0 ? 'text-red-400' : 'text-gray-500'">
                         {{ standing.goalDiff > 0 ? '+' : '' }}{{ standing.goalDiff }}
                       </td>
-                      <td class="text-center px-4 py-3 text-[13px] font-bold text-white">{{ standing.points }}</td>
+                      <td class="text-center px-4 py-3 text-[13px] font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">{{ standing.points }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -626,21 +639,21 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
                     v-for="fixture in bracketByRound[round]"
                     :key="fixture.id"
                     :to="`/tournaments/${tournamentId}/fixture/${fixture.id}`"
-                    class="w-56 rounded-xl border bg-[#111827] border-white/[0.08] overflow-hidden hover:border-emerald-500/30 transition-all group"
+                    class="w-56 rounded-xl border overflow-hidden hover:border-emerald-500/30 transition-all group" :class="isDark ? 'bg-gray-900 border-white/[0.08]' : 'bg-white border-gray-200 shadow-sm'"
                   >
                     <!-- Home -->
                     <div 
-                      class="flex items-center justify-between px-3.5 py-2.5 border-b border-white/[0.06]"
-                      :class="getTeamClass(fixture, true)"
+                      class="flex items-center justify-between px-3.5 py-2.5 border-b transition-colors" 
+                      :class="[isDark ? 'border-white/[0.06]' : 'border-gray-100', getTeamClass(fixture, true)]"
                     >
                       <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 bg-white/10">
+                        <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 transition-colors" :class="isDark ? 'bg-white/10' : 'bg-gray-100'">
                           <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
                           <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-gray-500">
                             {{ (fixture.homeTeam?.customName || 'TBD').charAt(0) }}
                           </span>
                         </div>
-                        <span class="text-xs text-gray-200 truncate">{{ fixture.homeTeam?.customName || 'TBD' }}</span>
+                        <span class="text-xs truncate transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ fixture.homeTeam?.customName || 'TBD' }}</span>
                       </div>
                       <span 
                         class="text-sm font-bold min-w-[1.5rem] text-center"
@@ -652,13 +665,13 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
                     <!-- Away -->
                     <div class="flex items-center justify-between px-3.5 py-2.5" :class="getTeamClass(fixture, false)">
                       <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 bg-white/10">
+                        <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 transition-colors" :class="isDark ? 'bg-white/10' : 'bg-gray-100'">
                           <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
                           <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-gray-500">
                             {{ (fixture.awayTeam?.customName || 'TBD').charAt(0) }}
                           </span>
                         </div>
-                        <span class="text-xs text-gray-200 truncate">{{ fixture.awayTeam?.customName || 'TBD' }}</span>
+                        <span class="text-xs truncate transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ fixture.awayTeam?.customName || 'TBD' }}</span>
                       </div>
                       <span 
                         class="text-sm font-bold min-w-[1.5rem] text-center"
@@ -678,6 +691,45 @@ function getTeamClass(fixture: Fixture, isHome: boolean) {
           </div>
         </div>
 
+        <!-- ====== INFO TAB ====== -->
+        <div v-else-if="activeTab === 'info'" class="">
+          <div class="flex flex-col gap-6">
+            <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
+              <div class="px-5 py-3.5 border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+                <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400">Tournament Info</h3>
+              </div>
+              <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
+                <div class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Dates</span>
+                  <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ formatDate(tournament.start_date) }} — {{ formatDate(tournament.end_date) }}</span>
+                </div>
+                <div class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Sport</span>
+                  <span class="text-sm transition-colors capitalize" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ tournament.sport }}</span>
+                </div>
+                <div class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Type</span>
+                  <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ formatType(tournament.type) }}</span>
+                </div>
+                <div v-if="tournament.location" class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Location</span>
+                  <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ tournament.location }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="tournament.description" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
+              <div class="px-5 py-3.5 border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+                <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400">About</h3>
+              </div>
+              <div class="p-5">
+                <p class="text-sm leading-relaxed whitespace-pre-line" :class="isDark ? 'text-gray-300' : 'text-gray-600'">
+                  {{ tournament.description }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   </div>
