@@ -19,6 +19,23 @@ const fixtures = ref<Fixture[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
+// Connect to Live Stream SSE for the widget
+useLiveStream()
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('live-match-update', (e: Event) => {
+    const customEvent = e as CustomEvent
+    const { type, data } = customEvent.detail
+
+    if (type === 'fixture_updated') {
+      const targetIdx = fixtures.value.findIndex((f) => f.id === data.id)
+      if (targetIdx !== -1) {
+        fixtures.value[targetIdx] = { ...fixtures.value[targetIdx], ...data }
+      }
+    }
+  })
+}
+
 // Fetch data
 const fetchData = async () => {
   loading.value = true
