@@ -41,6 +41,41 @@ const goalData = reactive({
   minute: null as number | null
 })
 
+// Edit event modal
+const showEditEventModal = ref(false)
+const eventBeingEdited = ref<MatchEvent | null>(null)
+const editEventData = reactive({
+  minute: null as number | null,
+  playerId: undefined as string | undefined,
+  relatedPlayerId: undefined as string | undefined,
+})
+
+// Watchers for mutual exclusion between scorer and assister
+watch(() => goalData.scorerId, (newId) => {
+  if (newId && newId === goalData.assisterId) {
+    goalData.assisterId = undefined
+  }
+})
+
+watch(() => goalData.assisterId, (newId) => {
+  if (newId && newId === goalData.scorerId) {
+    goalData.scorerId = undefined
+  }
+})
+
+watch(() => editEventData.playerId, (newId) => {
+  if (newId && newId === editEventData.relatedPlayerId) {
+    editEventData.relatedPlayerId = undefined
+  }
+})
+
+watch(() => editEventData.relatedPlayerId, (newId) => {
+  if (newId && newId === editEventData.playerId) {
+    editEventData.playerId = undefined
+  }
+})
+
+
 // Fixture status colors
 const fixtureStatusColors: Record<FixtureStatus, 'info' | 'success' | 'warning' | 'neutral'> = {
   [FixtureStatus.SCHEDULED]: 'info',
@@ -229,6 +264,109 @@ const openGoalModal = (team: 'home' | 'away') => {
   showGoalModal.value = true
 }
 
+const openEditEventModal = (event: MatchEvent) => {
+  eventBeingEdited.value = event
+  editEventData.minute = event.minute ?? null
+  editEventData.playerId = event.playerId || undefined
+  editEventData.relatedPlayerId = event.relatedPlayerId || undefined
+  showEditEventModal.value = true
+}
+
+const showDeleteEventModal = ref(false)
+const eventBeingDeleted = ref<MatchEvent | null>(null)
+
+const confirmEditEvent = async () => {
+  if (!eventBeingEdited.value) return
+  updatingMatch.value = true
+  try {
+    await fixtureStore.updateMatchEvent(eventBeingEdited.value.id, {
+      minute: editEventData.minute,
+      playerId: editEventData.playerId,
+      relatedPlayerId: editEventData.relatedPlayerId
+    })
+    showEditEventModal.value = false
+    await refreshMatchEvents()
+    useToast().add({ title: 'Event Updated', color: 'success' })
+  } catch (e: any) {
+    useToast().add({ title: 'Failed to update event', description: e.message, color: 'error' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const openDeleteEventModal = (event: MatchEvent) => {
+  eventBeingDeleted.value = event
+  showDeleteEventModal.value = true
+}
+
+const confirmDeleteEvent = async () => {
+  if (!eventBeingDeleted.value) return
+  
+  const event = eventBeingDeleted.value
+  loadingEvents.value = true
+  try {
+    await fixtureStore.deleteMatchEvent(event.id)
+    
+    // Update local score if it was a goal 
+    if (event.type === MatchEventType.GOAL && selectedFixture.value) {
+      if (event.participant_id === selectedFixture.value.homeTeamId) {
+        selectedFixture.value.homeScore = Math.max(0, (selectedFixture.value.homeScore ?? 0) - 1)
+      } else if (event.participant_id === selectedFixture.value.awayTeamId) {
+        selectedFixture.value.awayScore = Math.max(0, (selectedFixture.value.awayScore ?? 0) - 1)
+      }
+      await fixtureStore.updateFixture(selectedFixture.value.id, {
+        homeScore: selectedFixture.value.homeScore,
+        awayScore: selectedFixture.value.awayScore
+      })
+      emit('fixture-updated', selectedFixture.value)
+    }
+    
+    await refreshMatchEvents()
+    showDeleteEventModal.value = false
+    eventBeingDeleted.value = null
+    useToast().add({ title: 'Event Deleted', color: 'success' })
+  } catch (e: any) {
+    useToast().add({ title: 'Failed to delete event', description: e.message, color: 'error' })
+  } finally {
+    loadingEvents.value = false
+  }
+}
+
+const editEventTeamPlayers = computed(() => {
+  if (!eventBeingEdited.value || !selectedFixture.value) return []
+  return eventBeingEdited.value.participant_id === selectedFixture.value.homeTeamId 
+    ? homePlayers.value 
+    : awayPlayers.value
+})
+
+const editEventPlayerOptions = computed(() => {
+  return editEventTeamPlayers.value.map(p => ({
+    label: `${p.number ? `#${p.number} ` : ''}${p.name}`,
+    value: p.id
+  }))
+})
+
+const editEventRelatedPlayerOptions = computed(() => {
+  return editEventTeamPlayers.value.map(p => ({
+    label: `${p.number ? `#${p.number} ` : ''}${p.name}`,
+    value: p.id,
+    disabled: p.id === editEventData.playerId
+  }))
+})
+
+const getEventActionItems = (event: MatchEvent) => [
+  [{
+    label: 'Edit',
+    icon: 'i-heroicons-pencil',
+    onSelect: () => openEditEventModal(event)
+  }],
+  [{
+    label: 'Delete',
+    icon: 'i-heroicons-trash',
+    onSelect: () => openDeleteEventModal(event)
+  }]
+]
+
 const decrementScore = async (team: 'home' | 'away') => {
   if (!selectedFixture.value) return
   
@@ -313,12 +451,11 @@ const scorerOptions = computed(() => {
 })
 
 const assisterOptions = computed(() => {
-  return scoringTeamPlayers.value
-    .filter(p => p.id !== goalData.scorerId)
-    .map(p => ({
-      label: `${p.number ? `#${p.number} ` : ''}${p.name}`,
-      value: p.id
-    }))
+  return scoringTeamPlayers.value.map(p => ({
+    label: `${p.number ? `#${p.number} ` : ''}${p.name}`,
+    value: p.id,
+    disabled: p.id === goalData.scorerId
+  }))
 })
 
 // Event helper functions
@@ -555,6 +692,7 @@ const downloadGraphic = async () => {
                 {{ selectedFixture.homeScore ?? 0 }}
               </span>
               <UButton 
+                v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
                 icon="i-heroicons-minus" 
                 size="lg" 
                 color="neutral" 
@@ -582,6 +720,7 @@ const downloadGraphic = async () => {
                 {{ selectedFixture.awayScore ?? 0 }}
               </span>
               <UButton 
+                v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
                 icon="i-heroicons-minus" 
                 size="lg" 
                 color="neutral" 
@@ -690,27 +829,35 @@ const downloadGraphic = async () => {
                 No events recorded yet
               </div>
               
-              <!-- Events List -->
-              <div v-else class="space-y-2 max-h-48 overflow-y-auto">
+              <div v-else class="space-y-3 max-h-48 overflow-y-auto">
                 <div 
                   v-for="event in matchEvents" 
                   :key="event.id"
-                  class="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/30"
+                  class="flex items-start gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/30"
                 >
-                  <UIcon 
-                    :name="getEventIcon(event.type)" 
-                    :class="['w-5 h-5', getEventColor(event.type)]"
-                  />
+                  <div class="mt-0.5">
+                    <span class="text-lg flex-shrink-0 flex items-center justify-center">
+                      <IconsSoccerBallIcon v-if="event.type === 'GOAL' || event.type === 'OWN_GOAL'" class="w-6 h-6 text-green-500" />
+                      <IconsAssistIcon v-else-if="event.type === 'ASSIST'" class="w-6 h-6 text-cyan-500" />
+                      <UIcon 
+                        v-else
+                        :name="getEventIcon(event.type)" 
+                        :class="['w-5 h-5', getEventColor(event.type)]"
+                      />
+                    </span>
+                  </div>
+                  
                   <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                      <span class="font-medium text-sm text-gray-900 dark:text-white">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="text-sm font-bold tracking-wide uppercase text-gray-900 dark:text-white">
                         {{ event.type.replace('_', ' ') }}
                       </span>
-                      <span v-if="event.minute" class="text-xs text-gray-500">
+                      <span v-if="event.minute" class="text-sm font-medium text-gray-500 tabular-nums">
                         {{ event.minute }}'
                       </span>
                     </div>
-                    <div class="text-xs text-gray-500 truncate">
+                    
+                    <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
                       <span v-if="getTeamName(event.participant_id)">
                         {{ getTeamName(event.participant_id) }}
                       </span>
@@ -720,7 +867,12 @@ const downloadGraphic = async () => {
                       <span v-if="getPlayerName(event.relatedPlayerId)">
                         (assist: {{ getPlayerName(event.relatedPlayerId) }})
                       </span>
-                    </div>
+                    </p>
+                  </div>
+                  <div class="flex-shrink-0">
+                    <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'end' }">
+                      <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="sm" />
+                    </UDropdownMenu>
                   </div>
                 </div>
               </div>
@@ -861,6 +1013,134 @@ const downloadGraphic = async () => {
               color="success"
               :loading="updatingMatch"
               @click="confirmGoal"
+            />
+          </div>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Edit Event Modal -->
+  <UModal v-model:open="showEditEventModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-pencil" class="w-5 h-5 text-primary-500" />
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                Edit Event
+              </h3>
+            </div>
+            <UButton 
+              icon="i-heroicons-x-mark" 
+              variant="ghost" 
+              color="neutral" 
+              size="sm"
+              @click="showEditEventModal = false"
+            />
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <!-- Minute -->
+          <UFormField label="Minute (optional)">
+            <UInput 
+              v-model.number="editEventData.minute" 
+              type="number" 
+              placeholder="e.g. 45"
+              icon="i-heroicons-clock"
+              :min="0"
+              :max="120"
+            />
+          </UFormField>
+
+          <!-- Scorer/Player -->
+          <UFormField label="Player">
+            <USelect
+              v-model="editEventData.playerId"
+              :items="editEventPlayerOptions"
+              placeholder="Select player..."
+              value-key="value"
+              class="w-full"
+            />
+          </UFormField>
+
+          <!-- Assister/Related -->
+          <UFormField label="Related Player / Assist (optional)">
+            <USelect
+              v-model="editEventData.relatedPlayerId"
+              :items="editEventRelatedPlayerOptions"
+              placeholder="Select related player..."
+              value-key="value"
+              :disabled="!editEventData.playerId"
+              class="w-full"
+            />
+          </UFormField>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-3 pt-2">
+            <UButton 
+              label="Cancel" 
+              variant="ghost" 
+              color="neutral"
+              @click="showEditEventModal = false"
+            />
+            <UButton 
+              label="Save Changes" 
+              icon="i-heroicons-check"
+              color="primary"
+              :loading="updatingMatch"
+              @click="confirmEditEvent"
+            />
+          </div>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Delete Event Confirmation Modal -->
+  <UModal v-model:open="showDeleteEventModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-error-500" />
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                Delete Event
+              </h3>
+            </div>
+            <UButton 
+              icon="i-heroicons-x-mark" 
+              variant="ghost" 
+              color="neutral" 
+              size="sm"
+              @click="showDeleteEventModal = false"
+            />
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <p class="text-gray-600 dark:text-gray-300">
+            Are you sure you want to delete this event? This action cannot be undone. 
+            If this is a goal event, the score will be updated accordingly.
+          </p>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
+            <UButton 
+              label="Cancel" 
+              variant="ghost" 
+              color="neutral"
+              @click="showDeleteEventModal = false"
+            />
+            <UButton 
+              label="Delete Event" 
+              icon="i-heroicons-trash"
+              color="error"
+              :loading="loadingEvents"
+              @click="confirmDeleteEvent"
             />
           </div>
         </div>
