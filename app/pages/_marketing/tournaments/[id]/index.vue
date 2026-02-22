@@ -44,7 +44,7 @@ async function fetchData() {
   try {
     const [tournamentRes, fixturesRes, standingsRes] = await Promise.all([
       $publicApi<any>(`/tournaments/${tournamentId}`),
-      $publicApi<any>(`/tournaments/${tournamentId}/fixtures`).catch(() => null),
+      $publicApi<any>(`/fixtures/tournaments/${tournamentId}`).catch(() => null),
       $publicApi<any>(`/tournaments/${tournamentId}/standings`).catch(() => null)
     ])
     

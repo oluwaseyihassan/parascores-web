@@ -24,7 +24,7 @@ export const useParticipantStore = defineStore('participant', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<Participant[]>>(`/tournaments/${tournamentId}/participants`, {
+      const response = await $api<ApiResponse<Participant[]>>(`/participants/tournaments/${tournamentId}`, {
         method: 'GET',
       })
       if (response.data) {
@@ -45,7 +45,7 @@ export const useParticipantStore = defineStore('participant', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<Participant>>(`/tournaments/${tournamentId}/participants`, {
+      const response = await $api<ApiResponse<Participant>>(`/participants/tournaments/${tournamentId}`, {
         method: 'POST',
         body: data,
       })
@@ -110,7 +110,7 @@ export const useParticipantStore = defineStore('participant', () => {
   async function fetchPlayers(tournamentId: string, participantId: string) {
     // We don't set global loading here to avoid full page spinner when just opening a modal
     try {
-      const response = await $api<ApiResponse<any[]>>(`/tournaments/${tournamentId}/participants/${participantId}/players`, {
+      const response = await $api<ApiResponse<any[]>>(`/participants/${participantId}/players`, {
         method: 'GET',
       })
       if (response.data) {
@@ -131,7 +131,7 @@ export const useParticipantStore = defineStore('participant', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<any>>(`/tournaments/${tournamentId}/participants/${participantId}/players`, {
+      const response = await $api<ApiResponse<any>>(`/participants/${participantId}/players`, {
         method: 'POST',
         body: data,
       })

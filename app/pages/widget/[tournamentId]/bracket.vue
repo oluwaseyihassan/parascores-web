@@ -90,7 +90,7 @@ const fetchData = async () => {
   try {
     const [tournamentRes, fixturesRes] = await Promise.all([
       $api<any>(`/tournaments/${tournamentId}`),
-      $api<any>(`/tournaments/${tournamentId}/fixtures`)
+      $api<any>(`/fixtures/tournaments/${tournamentId}`)
     ])
     tournament.value = tournamentRes.data
     // Handle API response: may be { rounds: [...] } or flat array

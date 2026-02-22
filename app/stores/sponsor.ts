@@ -18,7 +18,7 @@ export const useSponsorStore = defineStore('sponsor', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<Sponsor[]>>(`/tournaments/${tournamentId}/sponsors`, {
+      const response = await $api<ApiResponse<Sponsor[]>>(`/sponsors/tournaments/${tournamentId}`, {
         method: 'GET',
       })
       if (response.data) {
@@ -39,7 +39,7 @@ export const useSponsorStore = defineStore('sponsor', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<Sponsor>>(`/tournaments/${tournamentId}/sponsors`, {
+      const response = await $api<ApiResponse<Sponsor>>(`/sponsors/tournaments/${tournamentId}`, {
         method: 'POST',
         body: data,
       })
@@ -61,7 +61,7 @@ export const useSponsorStore = defineStore('sponsor', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<Sponsor>>(`/tournaments/${tournamentId}/sponsors/${sponsorId}`, {
+      const response = await $api<ApiResponse<Sponsor>>(`/sponsors/${sponsorId}`, {
         method: 'PATCH',
         body: updates,
       })
@@ -86,7 +86,7 @@ export const useSponsorStore = defineStore('sponsor', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<null>>(`/tournaments/${tournamentId}/sponsors/${sponsorId}`, {
+      const response = await $api<ApiResponse<null>>(`/sponsors/${sponsorId}`, {
         method: 'DELETE',
       })
       sponsors.value = sponsors.value.filter(s => s.id !== sponsorId)

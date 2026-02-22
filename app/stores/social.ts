@@ -18,7 +18,7 @@ export const useSocialStore = defineStore('social', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<Social[]>>(`/tournaments/${tournamentId}/socials`, {
+      const response = await $api<ApiResponse<Social[]>>(`/socials/tournaments/${tournamentId}`, {
         method: 'GET',
       })
       if (response.data) {
@@ -39,7 +39,7 @@ export const useSocialStore = defineStore('social', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<Social>>(`/tournaments/${tournamentId}/socials`, {
+      const response = await $api<ApiResponse<Social>>(`/socials/tournaments/${tournamentId}`, {
         method: 'POST',
         body: data,
       })
@@ -61,7 +61,7 @@ export const useSocialStore = defineStore('social', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<Social>>(`/tournaments/${tournamentId}/socials/${socialId}`, {
+      const response = await $api<ApiResponse<Social>>(`/socials/${socialId}`, {
         method: 'PATCH',
         body: updates,
       })
@@ -86,7 +86,7 @@ export const useSocialStore = defineStore('social', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<null>>(`/tournaments/${tournamentId}/socials/${socialId}`, {
+      const response = await $api<ApiResponse<null>>(`/socials/${socialId}`, {
         method: 'DELETE',
       })
       socials.value = socials.value.filter(s => s.id !== socialId)

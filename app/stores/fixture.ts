@@ -165,7 +165,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<{ rounds: { round: number; roundName: string; fixtures: Fixture[] }[] }>>(`/tournaments/${tournamentId}/fixtures`, {
+      const response = await $api<ApiResponse<{ rounds: { round: number; roundName: string; fixtures: Fixture[] }[] }>>(`/fixtures/tournaments/${tournamentId}`, {
         method: 'GET',
       })
       if (response.data && response.data.rounds) {
@@ -190,7 +190,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     generating.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<{ message: string; rounds: { round: number; roundName: string; fixtures: Fixture[] }[] }>>(`/tournaments/${tournamentId}/fixtures/generate`, {
+      const response = await $api<ApiResponse<{ message: string; rounds: { round: number; roundName: string; fixtures: Fixture[] }[] }>>(`/fixtures/tournaments/${tournamentId}/generate`, {
         method: 'POST',
         body: options,
       })
@@ -213,7 +213,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     generating.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<{ message: string; rounds: { round: number; roundName: string; fixtures: Fixture[] }[] }>>(`/tournaments/${tournamentId}/groups/advance`, {
+      const response = await $api<ApiResponse<{ message: string; rounds: { round: number; roundName: string; fixtures: Fixture[] }[] }>>(`/fixtures/tournaments/${tournamentId}/groups/advance`, {
         method: 'POST',
         body: { qualifiedParticipantIds }
       })
