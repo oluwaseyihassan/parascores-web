@@ -109,91 +109,60 @@
           </button>
         </div>
 
-        <!-- Tournament Grid (Bento) -->
-        <div v-else class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-[280px]">
+        <!-- Tournament Grid -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <NuxtLink
             v-for="(tournament, index) in filteredTournaments"
             :key="tournament.id"
             :to="`/tournaments/${tournament.customName || tournament.id}`"
-            class="group relative rounded-xl overflow-hidden card-fade-in border border-white/10 hover:border-emerald-500/50 transition-all duration-300"
-            :class="getSpanClasses(index)"
+            class="group bg-[#111827] border border-white/10 rounded-xl p-5 hover:border-emerald-500/50 transition-all duration-300 card-fade-in flex flex-col"
             :style="{ animationDelay: `${index * 50}ms` }"
           >
-            <!-- Background Image/Gradient -->
-            <div class="absolute inset-0">
-              <img
-                v-if="tournament.bannerUrl"
-                :src="tournament.bannerUrl"
-                :alt="tournament.name"
-                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div
-                v-else
-                class="w-full h-full transition-transform duration-700 group-hover:scale-105"
-                :style="{ background: getBannerGradient(tournament.type, index) }"
-              >
-                <!-- Decorative circles -->
-                <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-10 bg-white blur-2xl"></div>
-                <div class="absolute -bottom-10 -left-10 w-32 h-32 rounded-full opacity-[0.07] bg-white blur-xl"></div>
+            <!-- Header Row: Sport, Logo, Type Badge -->
+            <div class="flex items-start justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0">
+                  <img
+                    v-if="tournament.logoUrl"
+                    :src="tournament.logoUrl"
+                    :alt="tournament.name"
+                    class="w-full h-full object-cover"
+                  />
+                  <span v-else class="text-sm font-bold text-white">
+                    {{ tournament.name.charAt(0).toUpperCase() }}
+                  </span>
+                </div>
+                <div>
+                  <span class="text-xs font-medium text-emerald-400 uppercase tracking-wide">
+                    {{ tournament.sport }}
+                  </span>
+                </div>
               </div>
-            </div>
-
-            <!-- Dark Gradient Overlay (Stronger for text readability) -->
-            <div class="absolute inset-0 bg-gradient-to-t from-[#050a14] via-[#050a14]/60 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-80"></div>
-            <div class="absolute inset-0 bg-gradient-to-b from-[#050a14]/60 via-transparent to-transparent opacity-60"></div>
-
-            <!-- Badge (Top Right) -->
-            <div class="absolute top-4 right-4 z-10">
               <span :class="[
-                'px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded backdrop-blur-md border border-white/10 shadow-lg',
+                'px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded border',
                 getTypeBadgeClasses(tournament.type)
               ]">
                 {{ formatType(tournament.type) }}
               </span>
             </div>
 
-            <!-- Content (Bottom) -->
-            <div class="absolute bottom-0 left-0 w-full p-5 z-10 flex flex-col justify-end h-full">
-              
-              <!-- Sport & Logo Row -->
-              <div class="flex items-center gap-3 mb-2 opacity-80 group-hover:opacity-100 transition-opacity">
-                 <div class="w-6 h-6 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center overflow-hidden border border-white/20">
-                    <img
-                      v-if="tournament.logoUrl"
-                      :src="tournament.logoUrl"
-                      :alt="tournament.name"
-                      class="w-full h-full object-cover"
-                    />
-                    <span v-else class="text-[8px] font-bold text-white">
-                      {{ tournament.name.charAt(0).toUpperCase() }}
-                    </span>
-                 </div>
-                 <span class="text-xs font-medium text-emerald-400 uppercase tracking-wide">
-                   {{ tournament.sport }}
-                 </span>
-              </div>
-
-              <!-- Title -->
-              <h3 class="text-xl md:text-2xl font-bold text-white leading-tight mb-2 group-hover:text-emerald-300 transition-colors line-clamp-2">
+            <!-- Title & Desc -->
+            <div class="flex-1">
+              <h3 class="text-lg font-bold text-white leading-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
                 {{ tournament.name }}
               </h3>
+            </div>
 
-              <!-- Meta Info -->
-              <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-300/90 font-medium">
-                <div class="flex items-center gap-1.5">
-                   <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 text-emerald-400" />
-                   {{ formatDate(tournament.start_date) }}
-                </div>
-                <div v-if="tournament.location" class="flex items-center gap-1.5">
-                   <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-emerald-400" />
-                   <span class="truncate max-w-[120px]">{{ tournament.location }}</span>
-                </div>
+            <!-- Meta Info (Footer) -->
+            <div class="mt-4 pt-4 border-t border-white/5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-400 font-medium">
+              <div class="flex items-center gap-1.5">
+                 <UIcon name="i-heroicons-calendar" class="w-4 h-4 text-gray-500" />
+                 {{ formatDate(tournament.start_date) }}
               </div>
-
-               <!-- Description (Only visible on large cards or hover) -->
-               <p v-if="tournament.description" class="mt-3 text-sm text-gray-400 line-clamp-2 opacity-0 h-0 group-hover:h-auto group-hover:opacity-100 transition-all duration-300 overflow-hidden">
-                 {{ tournament.description }}
-               </p>
+              <div v-if="tournament.location" class="flex items-center gap-1.5">
+                 <UIcon name="i-heroicons-map-pin" class="w-4 h-4 text-gray-500" />
+                 <span class="truncate max-w-[150px]">{{ tournament.location }}</span>
+              </div>
             </div>
           </NuxtLink>
         </div>
@@ -367,51 +336,6 @@ function getTypeBadgeClasses(type: string) {
     case 'FRIENDLY': return 'bg-green-500/20 text-green-400 border-green-500/30'
     default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
   }
-}
-
-function getBannerGradient(type: string, index: number) {
-  const gradients: Record<string, string[]> = {
-    KNOCKOUT: [
-      'linear-gradient(135deg, #1a0a0a 0%, #4a1525 40%, #2d0a1a 100%)',
-      'linear-gradient(135deg, #1a0505 0%, #501a2a 50%, #250810 100%)',
-    ],
-    ROUND_ROBIN: [
-      'linear-gradient(135deg, #0a0e1a 0%, #152545 40%, #0a1530 100%)',
-      'linear-gradient(135deg, #050a1a 0%, #1a3050 50%, #081020 100%)',
-    ],
-    GROUP: [
-      'linear-gradient(135deg, #0f0a1a 0%, #2a1545 40%, #150a30 100%)',
-      'linear-gradient(135deg, #0a051a 0%, #301a50 50%, #100820 100%)',
-    ],
-    HYBRID: [
-      'linear-gradient(135deg, #1a0f0a 0%, #453015 40%, #301a0a 100%)',
-      'linear-gradient(135deg, #1a0a05 0%, #50381a 50%, #201008 100%)',
-    ],
-    FRIENDLY: [
-      'linear-gradient(135deg, #0a1a0f 0%, #15452a 40%, #0a3018 100%)',
-      'linear-gradient(135deg, #051a0a 0%, #1a5030 50%, #082010 100%)',
-    ],
-  }
-  const typeGradients = gradients[type] || [
-    'linear-gradient(135deg, #0a0f1c 0%, #1a2540 40%, #0d1525 100%)',
-    'linear-gradient(135deg, #0a101a 0%, #152035 50%, #0b1220 100%)',
-  ]
-  return typeGradients[index % typeGradients.length]
-}
-
-// Grid Spans
-function getSpanClasses(index: number) {
-  // Pattern: Large (2x2), Normal, Normal, Wide (2x1), Normal, Normal...
-  // This is a simple repeating pattern to create visual interest
-  
-  // 4-column grid logic (Desktop)
-  const patternIndex = index % 12 // Repeat every 12 items
-  
-  if (patternIndex === 0) return 'md:col-span-2 md:row-span-2' // Big Feature
-  if (patternIndex === 6) return 'md:col-span-2' // Wide
-  if (patternIndex === 8) return 'md:row-span-2' // Tall
-  
-  return 'md:col-span-1 md:row-span-1'
 }
 
 // Fetch on mount
