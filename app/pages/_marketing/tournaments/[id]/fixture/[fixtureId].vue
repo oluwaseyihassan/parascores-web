@@ -166,22 +166,40 @@ const timelineEvents = computed(() => {
   let homeScore = 0
   let awayScore = 0
   const mapped = events.value.map(event => {
-    let currentScoreStr = ''
+    let currentHomeScore = homeScore
+    let currentAwayScore = awayScore
+    let scoringTeam: 'home' | 'away' | null = null
+    
     if (event.type === 'GOAL' || event.type === 'OWN_GOAL') {
       const isHomeEvent = event.participant_id === fixture.value?.homeTeamId
       // For own goal, the scoring team is the OPPOSITE of the participant who scored it
       if (event.type === 'OWN_GOAL') {
-          if (isHomeEvent) awayScore++
-          else homeScore++
+          if (isHomeEvent) {
+            awayScore++
+            scoringTeam = 'away'
+          } else {
+            homeScore++
+            scoringTeam = 'home'
+          }
       } else {
-          if (isHomeEvent) homeScore++
-          else awayScore++
+          if (isHomeEvent) {
+            homeScore++
+            scoringTeam = 'home'
+          } else {
+            awayScore++
+            scoringTeam = 'away'
+          }
       }
-      currentScoreStr = `${homeScore} - ${awayScore}`
+      currentHomeScore = homeScore
+      currentAwayScore = awayScore
     }
+    
     return {
       ...event,
-      scoreAtTime: currentScoreStr
+      scoreAtTime: (event.type === 'GOAL' || event.type === 'OWN_GOAL') ? `${currentHomeScore} - ${currentAwayScore}` : '',
+      currentHomeScore,
+      currentAwayScore,
+      scoringTeam
     }
   })
   
@@ -366,11 +384,12 @@ const isHomeEvent = (event: any) => {
               
               <!-- Center Line (Removed) -->
 
-              <div class="w-full flex flex-col gap-6 relative z-10">
+              <div class="w-full flex flex-col relative z-10">
                 <div 
                   v-for="(event, index) in timelineEvents" 
                   :key="event.id"
-                  class="flex w-full items-center group transition-opacity duration-300"
+                  class="flex w-full items-center group transition-opacity duration-300 py-4 border-b last:border-b-0"
+                  :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'"
                 >
                   <!-- Left Side (Home) -->
                   <div class="flex-1 flex justify-start md:justify-end text-right md:w-1/2 min-w-0" :class="isHomeEvent(event) ? 'order-2 md:order-1' : 'hidden md:flex order-1'">
@@ -399,8 +418,8 @@ const isHomeEvent = (event: any) => {
                               <span v-else class="break-words min-w-0 text-left md:text-right">{{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}</span>
                               
                               <!-- Score after goal -->
-                              <span v-if="(event.type === 'GOAL' || event.type === 'OWN_GOAL') && event.scoreAtTime" class="text-emerald-500">
-                                ({{ event.scoreAtTime }})
+                              <span v-if="(event.type === 'GOAL' || event.type === 'OWN_GOAL') && event.scoreAtTime" class="text-gray-500 ml-1">
+                                (<span :class="event.scoringTeam === 'home' ? 'text-emerald-500' : ''">{{ event.currentHomeScore }}</span> - <span :class="event.scoringTeam === 'away' ? 'text-emerald-500' : ''">{{ event.currentAwayScore }}</span>)
                               </span>
                             </p>
                             
@@ -424,11 +443,11 @@ const isHomeEvent = (event: any) => {
                   </div>
 
                   <!-- Center Minute Bubble -->
-                  <div class="flex-shrink-0 w-8 md:w-12 flex justify-center relative md:mx-0"
-                       :class="isHomeEvent(event) ? 'order-1 md:order-2 mr-2 md:mr-3' : 'order-2 md:order-2 ml-2 md:ml-3'">
+                  <div class="flex-shrink-0 md:w-12 flex justify-center items-center relative md:mx-0"
+                       :class="isHomeEvent(event) ? 'order-1 md:order-2 w-8 mr-2 md:mr-0' : 'order-2 md:order-2 w-8 ml-2 md:ml-0'">
                     <div 
-                      class="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] md:text-[11px] font-bold z-10 transition-colors shadow-sm"
-                      :class="isDark ? 'bg-white/10 text-gray-300 ring-1 ring-white/20' : 'bg-gray-100 text-gray-600 ring-1 ring-gray-200'"
+                      class="flex items-center justify-center text-[12px] md:text-[11px] font-bold z-10 transition-colors md:rounded-full md:w-8 md:h-8 md:shadow-sm"
+                      :class="isDark ? 'text-gray-400 md:bg-white/10 md:text-gray-300 md:ring-1 md:ring-white/20' : 'text-gray-500 md:bg-gray-100 md:text-gray-600 md:ring-1 md:ring-gray-200'"
                     >
                       <span v-if="event.minute != null">{{ event.minute }}'</span>
                       <span v-else class="text-[10px] md:text-xs">
@@ -464,8 +483,8 @@ const isHomeEvent = (event: any) => {
                               <span v-else class="break-words min-w-0 text-right md:text-left">{{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}</span>
                               
                               <!-- Score after goal -->
-                              <span v-if="(event.type === 'GOAL' || event.type === 'OWN_GOAL') && event.scoreAtTime" class="text-emerald-500">
-                                ({{ event.scoreAtTime }})
+                              <span v-if="(event.type === 'GOAL' || event.type === 'OWN_GOAL') && event.scoreAtTime" class="text-gray-500 ml-1">
+                                (<span :class="event.scoringTeam === 'home' ? 'text-emerald-500' : ''">{{ event.currentHomeScore }}</span> - <span :class="event.scoringTeam === 'away' ? 'text-emerald-500' : ''">{{ event.currentAwayScore }}</span>)
                               </span>
                             </p>
                             
