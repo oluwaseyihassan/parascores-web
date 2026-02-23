@@ -31,6 +31,7 @@ const matchEvents = ref<MatchEvent[]>([])
 const loadingEvents = ref(false)
 const showEventsCollapsible = ref(true)
 const showPenaltyCollapsible = ref(true)
+const errorMessage = ref<string | null>(null)
 
 // Goal scoring modal
 const showGoalModal = ref(false)
@@ -94,10 +95,12 @@ watch(() => props.fixture, async (newFixture) => {
 
 watch(() => props.open, async (isOpen) => {
   if (isOpen && props.fixture) {
+    errorMessage.value = null
     selectedFixture.value = { ...props.fixture }
     await loadMatchData(props.fixture)
   } else if (!isOpen) {
     // Reset state when closing
+    errorMessage.value = null
     matchEvents.value = []
     homePlayers.value = []
     awayPlayers.value = []
@@ -114,14 +117,17 @@ const loadMatchData = async (fixture: Fixture) => {
     
     if (fixture.homeTeamId) {
       promises.push(
-        $api<any>(`/tournaments/${fixture.tournament_id}/participants/${fixture.homeTeamId}/players`)
+        $api<any>(`/participants/${fixture.homeTeamId}/players`)
           .then(res => { homePlayers.value = res.data || [] })
+          .catch(e => { console.error('Error fetching home players:', e); homePlayers.value = [] })
       )
     }
+
     if (fixture.awayTeamId) {
       promises.push(
-        $api<any>(`/tournaments/${fixture.tournament_id}/participants/${fixture.awayTeamId}/players`)
+        $api<any>(`/participants/${fixture.awayTeamId}/players`)
           .then(res => { awayPlayers.value = res.data || [] })
+          .catch(e => { console.error('Error fetching away players:', e); awayPlayers.value = [] })
       )
     }
     
@@ -432,9 +438,10 @@ const endMatch = async () => {
       color: 'success' 
     })
   } catch (error: any) {
+    errorMessage.value = error?.data?.message || error?.message || 'Unknown error'
     useToast().add({ 
       title: 'Failed to end match', 
-      description: error?.data?.message || 'Unknown error', 
+      description: errorMessage.value || undefined,
       color: 'error' 
     })
   } finally {
@@ -635,6 +642,15 @@ const downloadGraphic = async () => {
         </template>
 
         <div v-if="selectedFixture" class="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+          <!-- Error Alert -->
+          <UAlert
+            v-if="errorMessage"
+            icon="i-heroicons-exclamation-triangle"
+            color="error"
+            variant="soft"
+            :title="errorMessage"
+          />
+
           <!-- Teams Display -->
           <div class="flex items-center justify-between gap-4">
             <!-- Home Team -->
