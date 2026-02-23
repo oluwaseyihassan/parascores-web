@@ -103,7 +103,7 @@ const handleMatchEnded = async () => {
 
     <!-- Error State -->
     <UAlert 
-      v-else-if="error" 
+      v-else-if="error && liveFixtures.length === 0" 
       color="error" 
       variant="subtle"
       icon="i-heroicons-exclamation-triangle"
