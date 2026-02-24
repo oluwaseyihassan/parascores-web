@@ -146,8 +146,8 @@ const fetchData = async () => {
   try {
     const [tournRes, fixRes, partRes] = await Promise.all([
       $api<any>(`/tournaments/${tournamentId}`),
-      $api<any>(`/tournaments/${tournamentId}/fixtures`),
-      $api<any>(`/tournaments/${tournamentId}/participants`)
+      $api<any>(`/fixtures/tournaments/${tournamentId}`),
+      $api<any>(`/participants/tournaments/${tournamentId}`)
     ])
 
     // Load standings, sponsors, and socials too
