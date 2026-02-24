@@ -213,21 +213,48 @@
         </div>
 
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <!-- Live Scoring -->
-          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+          <!-- Real-Time Updates (SSE) -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-emerald-500/50 transition-colors">
             <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
               <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
               </svg>
             </div>
-            <h3 class="text-lg font-semibold mb-2">Live Scoring</h3>
+            <h3 class="text-lg font-semibold mb-2">Real-Time Updates</h3>
             <p class="text-sm text-gray-400 mb-4">
-              Update scores in real-time. Track goals, cards, and substitutions as they happen.
+              Powered by Server-Sent Events (SSE). Fans see goals and score changes with zero delay. No refreshing needed.
             </p>
             <ul class="text-xs text-gray-500 space-y-1">
               <li class="flex items-center gap-2">
                 <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
-                Start/End match controls
+                Zero-delay live scores
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Instant event notifications
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Live match clock
+              </li>
+            </ul>
+          </div>
+
+          <!-- Advanced Match Control -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-emerald-500/50 transition-colors">
+            <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
+              <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Advanced Match Control</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              Full control over every game. Track goals, cards, and easily edit or delete events if mistakes happen.
+            </p>
+            <ul class="text-xs text-gray-500 space-y-1">
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Edit and delete match events
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
@@ -235,13 +262,13 @@
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
-                Match events timeline
+                Start/End match states
               </li>
             </ul>
           </div>
 
           <!-- Automatic Standings -->
-          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-emerald-500/50 transition-colors">
             <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
               <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
@@ -268,7 +295,7 @@
           </div>
 
           <!-- Team Management -->
-          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-emerald-500/50 transition-colors">
             <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
               <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
@@ -328,8 +355,62 @@
             </ul>
           </div>
 
+          <!-- Custom URLs -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-emerald-500/50 transition-colors">
+            <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
+              <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Custom URLs</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              Claim your unique tournament slug. Share a clean, professional link that's easy to remember.
+            </p>
+            <ul class="text-xs text-gray-500 space-y-1">
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                parascores.com/your-league
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Unique custom names
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Professional branding
+              </li>
+            </ul>
+          </div>
+
+          <!-- Embeddable Widgets -->
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-emerald-500/50 transition-colors">
+            <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
+              <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Embeddable Widgets</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              Showcase standings and fixtures directly on your own website. Seamlessly matches your aesthetic.
+            </p>
+            <ul class="text-xs text-gray-500 space-y-1">
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Standings widgets
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Fixtures widgets
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                Responsive design
+              </li>
+            </ul>
+          </div>
+
           <!-- Sponsors -->
-          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-emerald-500/50 transition-colors">
             <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
               <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
@@ -356,7 +437,7 @@
           </div>
 
           <!-- Social Links -->
-          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-colors">
+          <div class="bg-[#111827] border border-white/10 rounded-lg p-6 hover:border-emerald-500/50 transition-colors">
             <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
               <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
