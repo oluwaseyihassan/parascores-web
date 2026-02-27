@@ -1,5 +1,5 @@
 <template>
-  <UApp>
+  <UApp :toaster="{ position: 'top-center' }">
     <!-- <div class="fixed top-0 left-0 z-100 bg-black text-white p-4 opacity-90">
       <p>Is Logged In? {{ !!authStore.user }}</p>
       <pre>{{ authStore.user?.name }}</pre>
