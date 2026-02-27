@@ -16,31 +16,44 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    // Fetch fonts
+    // Fetch fonts (Inter + Roboto Mono for scores)
     let fontData: ArrayBuffer
     let regularFontData: ArrayBuffer
+    let monoFontData: ArrayBuffer
 
     try {
-        const fetchFonts = async (cdnFn: (weight: number) => string) => {
-             const [boldRes, regRes] = await Promise.all([
-                fetch(cdnFn(700)),
-                fetch(cdnFn(400))
+        const fetchFont = async (url: string) => {
+            const res = await fetch(url)
+            if (!res.ok) throw new Error(`Failed to fetch font: ${url}`)
+            return res.arrayBuffer()
+        }
+
+        const fetchFonts = async (cdnFn: (weight: number) => string, monoCdnFn: (weight: number) => string) => {
+            const [bold, reg, mono] = await Promise.all([
+                fetchFont(cdnFn(700)),
+                fetchFont(cdnFn(400)),
+                fetchFont(monoCdnFn(700))
             ])
-            if (!boldRes.ok || !regRes.ok) throw new Error('Failed to fetch fonts')
-            return Promise.all([boldRes.arrayBuffer(), regRes.arrayBuffer()])
+            return [bold, reg, mono]
         }
 
         try {
-            // Try jsdelivr first
-            const result = await fetchFonts(w => `https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`)
+            const result = await fetchFonts(
+                w => `https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`,
+                w => `https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@5.0.8/files/roboto-mono-latin-${w}-normal.woff`
+            )
             fontData = result[0]
             regularFontData = result[1]
+            monoFontData = result[2]
         } catch (err) {
             console.warn('Primary font CDN failed, trying fallback...', err)
-            // Fallback to unpkg
-            const result = await fetchFonts(w => `https://unpkg.com/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`)
+            const result = await fetchFonts(
+                w => `https://unpkg.com/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`,
+                w => `https://unpkg.com/@fontsource/roboto-mono@5.0.8/files/roboto-mono-latin-${w}-normal.woff`
+            )
             fontData = result[0]
             regularFontData = result[1]
+            monoFontData = result[2]
         }
     } catch (e) {
         console.error('Font loading failed:', e)
@@ -50,11 +63,12 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    // Calculate dimensions - accommodates any number of matches
+    // Calculate dimensions
     const width = 1200
-    const baseHeight = 500 // Increased for footer
-    const fixtureRowHeight = 100
-    const height = baseHeight + (fixtures.length * fixtureRowHeight)
+    const headerHeight = 220
+    const fixtureRowHeight = 90
+    const footerHeight = 160
+    const height = headerHeight + (fixtures.length * fixtureRowHeight) + footerHeight
 
     // Background layers
     const backgroundLayers = []
@@ -105,8 +119,23 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    // Get round display name from fixtures (e.g. "Semi-Final") or fallback to "Round X"
-    const roundDisplayName = fixtures[0]?.roundName || `Round ${round}`
+    // Round display name
+    const roundDisplayName = fixtures[0]?.roundName || `Matchday ${round}`
+
+    // Calculate date range
+    const matchDates = fixtures
+        .filter((f: any) => f.startTime)
+        .map((f: any) => new Date(f.startTime))
+        .sort((a: Date, b: Date) => a.getTime() - b.getTime())
+
+    let dateDisplay = ''
+    if (matchDates.length > 0) {
+        const firstDate = matchDates[0]
+        const lastDate = matchDates[matchDates.length - 1]
+        const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        const sameDay = firstDate.toDateString() === lastDate.toDateString()
+        dateDisplay = sameDay ? fmt(firstDate) : `${fmt(firstDate)} - ${fmt(lastDate)}`
+    }
 
     // Generate fixture rows
     const fixtureRows = fixtures.map((fixture: any, index: number) => {
@@ -114,9 +143,91 @@ export default defineEventHandler(async (event) => {
         const awayTeam = fixture.awayTeam
         const isCompleted = fixture.status === 'COMPLETED'
         const isLive = fixture.status === 'LIVE'
+        const hasScore = isCompleted || isLive
         const matchTime = fixture.startTime 
             ? new Date(fixture.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
             : 'TBD'
+
+        // Score or time center element
+        const centerContent = hasScore ? {
+            type: 'div',
+            props: {
+                style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' },
+                children: [
+                    {
+                        type: 'div',
+                        props: {
+                            style: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
+                            children: [
+                                {
+                                    type: 'span',
+                                    props: {
+                                        children: String(fixture.homeScore ?? 0),
+                                        style: { fontSize: '28px', fontWeight: 'bold', color: 'white', fontFamily: 'Roboto Mono' }
+                                    }
+                                },
+                                {
+                                    type: 'span',
+                                    props: {
+                                        children: '-',
+                                        style: { fontSize: '22px', color: '#6b7280', padding: '0 10px', fontFamily: 'Roboto Mono' }
+                                    }
+                                },
+                                {
+                                    type: 'span',
+                                    props: {
+                                        children: String(fixture.awayScore ?? 0),
+                                        style: { fontSize: '28px', fontWeight: 'bold', color: 'white', fontFamily: 'Roboto Mono' }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    // Status badge
+                    isLive ? {
+                        type: 'div',
+                        props: {
+                            style: { 
+                                display: 'flex',
+                                backgroundColor: 'rgba(239, 68, 68, 0.15)', 
+                                borderRadius: '9999px',
+                                padding: '2px 10px',
+                            },
+                            children: [{
+                                type: 'span',
+                                props: {
+                                    children: 'LIVE',
+                                    style: { fontSize: '11px', fontWeight: 'bold', color: '#ef4444', letterSpacing: '1px' }
+                                }
+                            }]
+                        }
+                    } : {
+                        type: 'div',
+                        props: {
+                            style: { 
+                                display: 'flex',
+                                backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                                borderRadius: '9999px',
+                                padding: '2px 10px',
+                            },
+                            children: [{
+                                type: 'span',
+                                props: {
+                                    children: 'FT',
+                                    style: { fontSize: '11px', fontWeight: 'bold', color: '#22c55e', letterSpacing: '1px' }
+                                }
+                            }]
+                        }
+                    }
+                ].filter(Boolean)
+            }
+        } : {
+            type: 'span',
+            props: {
+                children: matchTime,
+                style: { fontSize: '18px', fontWeight: 600, color: '#9ca3af', fontFamily: 'Roboto Mono' }
+            }
+        }
 
         return {
             type: 'div',
@@ -125,31 +236,31 @@ export default defineEventHandler(async (event) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '24px 40px',
-                    borderBottom: index < fixtures.length - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none',
-                    gap: '32px'
+                    padding: '18px 48px',
+                    borderBottom: index < fixtures.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                    gap: '24px'
                 },
                 children: [
                     // Home Team
                     {
                         type: 'div',
                         props: {
-                            style: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px', width: '350px' },
+                            style: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px', width: '380px' },
                             children: [
                                 {
                                     type: 'span',
                                     props: {
                                         children: homeTeam?.customName || 'TBD',
-                                        style: { fontSize: '24px', fontWeight: 600, color: 'white', textAlign: 'right', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+                                        style: { fontSize: '22px', fontWeight: 600, color: 'white', textAlign: 'right', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
                                     }
                                 },
                                 homeTeam?.logoUrl ? {
                                     type: 'img',
-                                    props: { src: homeTeam.logoUrl, width: 50, height: 50, style: { objectFit: 'contain' } }
+                                    props: { src: homeTeam.logoUrl, width: 44, height: 44, style: { objectFit: 'contain' } }
                                 } : {
                                     type: 'div',
                                     props: {
-                                        style: { width: 50, height: 50, borderRadius: '25px', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold', color: 'white' },
+                                        style: { width: 44, height: 44, borderRadius: '22px', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold', color: 'white' },
                                         children: (homeTeam?.customName || 'H').charAt(0).toUpperCase()
                                     }
                                 }
@@ -162,101 +273,26 @@ export default defineEventHandler(async (event) => {
                         props: {
                             style: { 
                                 display: 'flex', 
-                                flexDirection: 'column', 
                                 alignItems: 'center', 
                                 justifyContent: 'center',
-                                width: '140px',
-                                gap: '4px'
+                                width: '160px',
                             },
-                            children: [
-                                isCompleted || isLive ? {
-                                    type: 'div',
-                                    props: {
-                                        style: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
-                                        children: [
-                                            {
-                                                type: 'div',
-                                                props: {
-                                                    children: String(fixture.homeScore ?? 0),
-                                                    style: { fontSize: '32px', fontWeight: 'bold', color: 'white', width: '50px', display: 'flex', justifyContent: 'flex-end' }
-                                                }
-                                            },
-                                            {
-                                                type: 'span',
-                                                props: {
-                                                    children: '-',
-                                                    style: { fontSize: '24px', color: '#6b7280', padding: '0 8px' }
-                                                }
-                                            },
-                                            {
-                                                type: 'div',
-                                                props: {
-                                                    children: String(fixture.awayScore ?? 0),
-                                                    style: { fontSize: '32px', fontWeight: 'bold', color: 'white', width: '50px', display: 'flex', justifyContent: 'flex-start' }
-                                                }
-                                            }
-                                        ]
-                                    }
-                                } : {
-                                    type: 'span',
-                                    props: {
-                                        children: matchTime,
-                                        style: { fontSize: '20px', fontWeight: 600, color: '#9ca3af' }
-                                    }
-                                },
-                                isLive ? {
-                                    type: 'div',
-                                    props: {
-                                        style: { 
-                                            display: 'flex',
-                                            backgroundColor: 'rgba(239, 68, 68, 0.2)', 
-                                            border: '1px solid rgba(239, 68, 68, 0.5)',
-                                            borderRadius: '9999px',
-                                            padding: '4px 12px',
-                                        },
-                                        children: [{
-                                            type: 'span',
-                                            props: {
-                                                children: 'LIVE',
-                                                style: { fontSize: '12px', fontWeight: 'bold', color: '#ef4444', textTransform: 'uppercase' }
-                                            }
-                                        }]
-                                    }
-                                } : isCompleted ? {
-                                    type: 'div',
-                                    props: {
-                                        style: { 
-                                            display: 'flex',
-                                            backgroundColor: 'rgba(34, 197, 94, 0.2)', 
-                                            border: '1px solid rgba(34, 197, 94, 0.5)',
-                                            borderRadius: '9999px',
-                                            padding: '4px 12px',
-                                        },
-                                        children: [{
-                                            type: 'span',
-                                            props: {
-                                                children: 'FT',
-                                                style: { fontSize: '12px', fontWeight: 'bold', color: '#22c55e', textTransform: 'uppercase' }
-                                            }
-                                        }]
-                                    }
-                                } : null
-                            ].filter(Boolean)
+                            children: [centerContent]
                         }
                     },
                     // Away Team
                     {
                         type: 'div',
                         props: {
-                            style: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '16px', width: '350px' },
+                            style: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '16px', width: '380px' },
                             children: [
                                 awayTeam?.logoUrl ? {
                                     type: 'img',
-                                    props: { src: awayTeam.logoUrl, width: 50, height: 50, style: { objectFit: 'contain' } }
+                                    props: { src: awayTeam.logoUrl, width: 44, height: 44, style: { objectFit: 'contain' } }
                                 } : {
                                     type: 'div',
                                     props: {
-                                        style: { width: 50, height: 50, borderRadius: '25px', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold', color: 'white' },
+                                        style: { width: 44, height: 44, borderRadius: '22px', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold', color: 'white' },
                                         children: (awayTeam?.customName || 'A').charAt(0).toUpperCase()
                                     }
                                 },
@@ -264,7 +300,7 @@ export default defineEventHandler(async (event) => {
                                     type: 'span',
                                     props: {
                                         children: awayTeam?.customName || 'TBD',
-                                        style: { fontSize: '24px', fontWeight: 600, color: 'white', textAlign: 'left', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+                                        style: { fontSize: '22px', fontWeight: 600, color: 'white', textAlign: 'left', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
                                     }
                                 }
                             ]
@@ -302,31 +338,63 @@ export default defineEventHandler(async (event) => {
                   height: '100%',
                   position: 'relative',
                   color: 'white',
-                  padding: '40px',
+                  padding: '40px 48px',
                 },
                 children: [
                     // Header
                     {
                       type: 'div',
                       props: {
-                          style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginBottom: '24px' },
+                          style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginBottom: '32px' },
                           children: [
-                              tournament.logoUrl ? {
-                                  type: 'img',
-                                  props: { src: tournament.logoUrl, width: 60, height: 60, style: { objectFit: 'contain' } }
-                              } : null,
+                              // Tournament logo + name row
                               {
-                                  type: 'span',
+                                  type: 'div',
                                   props: {
-                                      children: tournament.name || 'Tournament',
-                                      style: { fontSize: '28px', fontWeight: 'bold', textAlign: 'center' }
+                                      style: { display: 'flex', alignItems: 'center', gap: '16px' },
+                                      children: [
+                                          tournament.logoUrl ? {
+                                              type: 'img',
+                                              props: { src: tournament.logoUrl, width: 56, height: 56, style: { objectFit: 'contain', borderRadius: '8px' } }
+                                          } : null,
+                                          {
+                                              type: 'span',
+                                              props: {
+                                                  children: tournament.name || 'Tournament',
+                                                  style: { fontSize: '32px', fontWeight: 'bold', textAlign: 'center' }
+                                              }
+                                          }
+                                      ].filter(Boolean)
                                   }
                               },
+                              // Round name + date on same line
                               {
-                                  type: 'span',
+                                  type: 'div',
                                   props: {
-                                      children: roundDisplayName,
-                                      style: { fontSize: '20px', color: '#9ca3af' }
+                                      style: { display: 'flex', alignItems: 'center', gap: '12px' },
+                                      children: [
+                                          {
+                                              type: 'span',
+                                              props: {
+                                                  children: roundDisplayName,
+                                                  style: { fontSize: '22px', color: '#9ca3af', fontWeight: 500 }
+                                              }
+                                          },
+                                          dateDisplay ? {
+                                              type: 'span',
+                                              props: {
+                                                  children: '·',
+                                                  style: { fontSize: '22px', color: '#4b5563' }
+                                              }
+                                          } : null,
+                                          dateDisplay ? {
+                                              type: 'span',
+                                              props: {
+                                                  children: dateDisplay,
+                                                  style: { fontSize: '18px', color: '#6b7280', fontWeight: 400 }
+                                              }
+                                          } : null
+                                      ].filter(Boolean)
                                   }
                               }
                           ].filter(Boolean)
@@ -340,14 +408,15 @@ export default defineEventHandler(async (event) => {
                                 display: 'flex', 
                                 flexDirection: 'column', 
                                 width: '100%',
-                                backgroundColor: 'rgba(0,0,0,0.3)',
-                                borderRadius: '16px',
+                                backgroundColor: 'rgba(255,255,255,0.03)',
+                                borderRadius: '20px',
+                                border: '1px solid rgba(255,255,255,0.06)',
                                 overflow: 'hidden'
                             },
                             children: fixtureRows
                         }
                     },
-                    // Footer with Sponsors and Socials
+                    // Footer with Sponsors
                     {
                       type: 'div',
                       props: {
@@ -387,6 +456,12 @@ export default defineEventHandler(async (event) => {
             name: 'Inter',
             data: regularFontData,
             weight: 400,
+            style: 'normal',
+          },
+          {
+            name: 'Roboto Mono',
+            data: monoFontData,
+            weight: 700,
             style: 'normal',
           },
         ],

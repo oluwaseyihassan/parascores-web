@@ -16,31 +16,44 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    // Fetch font (Inter) with fallback
+    // Fetch fonts (Inter + Roboto Mono for scores)
     let fontData: ArrayBuffer
     let regularFontData: ArrayBuffer
+    let monoFontData: ArrayBuffer
 
     try {
-        const fetchFonts = async (cdnFn: (weight: number) => string) => {
-             const [boldRes, regRes] = await Promise.all([
-                fetch(cdnFn(700)),
-                fetch(cdnFn(400))
+        const fetchFont = async (url: string) => {
+            const res = await fetch(url)
+            if (!res.ok) throw new Error(`Failed to fetch font: ${url}`)
+            return res.arrayBuffer()
+        }
+
+        const fetchFonts = async (cdnFn: (weight: number) => string, monoCdnFn: (weight: number) => string) => {
+            const [bold, reg, mono] = await Promise.all([
+                fetchFont(cdnFn(700)),
+                fetchFont(cdnFn(400)),
+                fetchFont(monoCdnFn(700))
             ])
-            if (!boldRes.ok || !regRes.ok) throw new Error('Failed to fetch fonts')
-            return Promise.all([boldRes.arrayBuffer(), regRes.arrayBuffer()])
+            return [bold, reg, mono]
         }
 
         try {
-            // Try jsdelivr first
-            const result = await fetchFonts(w => `https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`)
+            const result = await fetchFonts(
+                w => `https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`,
+                w => `https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@5.0.8/files/roboto-mono-latin-${w}-normal.woff`
+            )
             fontData = result[0]
             regularFontData = result[1]
+            monoFontData = result[2]
         } catch (err) {
             console.warn('Primary font CDN failed, trying fallback...', err)
-            // Fallback to unpkg
-            const result = await fetchFonts(w => `https://unpkg.com/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`)
+            const result = await fetchFonts(
+                w => `https://unpkg.com/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`,
+                w => `https://unpkg.com/@fontsource/roboto-mono@5.0.8/files/roboto-mono-latin-${w}-normal.woff`
+            )
             fontData = result[0]
             regularFontData = result[1]
+            monoFontData = result[2]
         }
     } catch (e) {
         console.error('Font loading failed:', e)
@@ -171,8 +184,8 @@ export default defineEventHandler(async (event) => {
                                         type: 'img',
                                         props: {
                                             src: tournament.logoUrl,
-                                            width: 40,
-                                            height: 40,
+                                            width: 56,
+                                            height: 56,
                                             style: { borderRadius: '8px' }
                                         }
                                     } : null,
@@ -180,7 +193,7 @@ export default defineEventHandler(async (event) => {
                                         type: 'span',
                                         props: {
                                             children: tournament.name,
-                                            style: { fontSize: '24px', color: '#e5e7eb', fontWeight: 600 } // gray-200
+                                            style: { fontSize: '32px', color: '#e5e7eb', fontWeight: 600 } // gray-200
                                         }
                                     }
                                 ]
@@ -210,7 +223,7 @@ export default defineEventHandler(async (event) => {
                         style: {
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'space-between',
+                            justifyContent: 'center',
                             width: '80%',
                             padding: '40px',
                             backgroundColor: 'rgba(255,255,255,0.05)',
@@ -259,21 +272,21 @@ export default defineEventHandler(async (event) => {
                                                         type: 'span',
                                                         props: {
                                                             children: homeScore,
-                                                            style: { fontSize: '96px', fontWeight: 'bold' }
+                                                            style: { fontSize: '96px', fontWeight: 'bold', fontFamily: 'Roboto Mono' }
                                                         }
                                                     },
                                                     {
                                                         type: 'span',
                                                         props: {
                                                             children: '-',
-                                                            style: { fontSize: '64px', color: '#6b7280' }
+                                                            style: { fontSize: '64px', color: '#6b7280', fontFamily: 'Roboto Mono' }
                                                         }
                                                     },
                                                     {
                                                         type: 'span',
                                                         props: {
                                                             children: awayScore,
-                                                            style: { fontSize: '96px', fontWeight: 'bold' }
+                                                            style: { fontSize: '96px', fontWeight: 'bold', fontFamily: 'Roboto Mono' }
                                                         }
                                                     }
                                                 ]
@@ -345,69 +358,40 @@ export default defineEventHandler(async (event) => {
                         width: '80%',
                         marginTop: '24px',
                         justifyContent: 'center',
+                        alignItems: 'flex-start',
                         gap: '80px',
                       },
                       children: [
-                        // Home Team Goals
+                        // Home Team Goals (right-aligned)
                         {
                           type: 'div',
                           props: {
-                            style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: 1, maxWidth: '350px', gap: '8px' },
+                            style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: 1, maxWidth: '350px', gap: '6px' },
                             children: events
                               .filter((e: any) => (e.type === 'GOAL' || e.type === 'PENALTY' || e.type === 'OWN_GOAL') && (e.participantId === homeTeam.id || e.participant_id === homeTeam.id))
                               .sort((a: any, b: any) => (a.minute || 0) - (b.minute || 0))
                               .map((goal: any) => ({
-                                type: 'div',
+                                type: 'span',
                                 props: {
-                                  style: { display: 'flex', alignItems: 'center', gap: '8px' },
-                                  children: [
-                                    {
-                                      type: 'span',
-                                      props: {
-                                        children: `${goal.player?.name || 'Unknown'} ${goal.minute ? `${goal.minute}'` : ''}${goal.type === 'PENALTY' ? ' (P)' : ''}${goal.type === 'OWN_GOAL' ? ' (OG)' : ''}${goal.relatedPlayer ? ` (${goal.relatedPlayer.name})` : ''}`,
-                                        style: { fontSize: '14px', color: '#d1d5db', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
-                                      }
-                                    },
-                                    {
-                                      type: 'span',
-                                      props: {
-                                        children: '●',
-                                        style: { fontSize: '16px', color: '#22c55e' }
-                                      }
-                                    }
-                                  ]
+                                  children: `${goal.player?.name || 'Unknown'} ${goal.minute ? `${goal.minute}'` : ''}${goal.type === 'PENALTY' ? ' (P)' : ''}${goal.type === 'OWN_GOAL' ? ' (OG)' : ''}${goal.relatedPlayer ? ` (${goal.relatedPlayer.name})` : ''}`,
+                                  style: { fontSize: '14px', color: '#d1d5db', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '20px' }
                                 }
                               }))
                           }
                         },
-                        // Away Team Goals
+                        // Away Team Goals (left-aligned)
                         {
                           type: 'div',
                           props: {
-                            style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1, maxWidth: '350px', gap: '8px' },
+                            style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1, maxWidth: '350px', gap: '6px' },
                             children: events
                               .filter((e: any) => (e.type === 'GOAL' || e.type === 'PENALTY' || e.type === 'OWN_GOAL') && (e.participantId === awayTeam.id || e.participant_id === awayTeam.id))
                               .sort((a: any, b: any) => (a.minute || 0) - (b.minute || 0))
                               .map((goal: any) => ({
-                                type: 'div',
+                                type: 'span',
                                 props: {
-                                  style: { display: 'flex', alignItems: 'center', gap: '8px' },
-                                  children: [
-                                    {
-                                      type: 'span',
-                                      props: {
-                                        children: '●',
-                                        style: { fontSize: '16px', color: '#22c55e' }
-                                      }
-                                    },
-                                    {
-                                      type: 'span',
-                                      props: {
-                                        children: `${goal.player?.name || 'Unknown'} ${goal.minute ? `${goal.minute}'` : ''}${goal.type === 'PENALTY' ? ' (P)' : ''}${goal.type === 'OWN_GOAL' ? ' (OG)' : ''}${goal.relatedPlayer ? ` (${goal.relatedPlayer.name})` : ''}`,
-                                        style: { fontSize: '14px', color: '#d1d5db', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
-                                      }
-                                    }
-                                  ]
+                                  children: `${goal.player?.name || 'Unknown'} ${goal.minute ? `${goal.minute}'` : ''}${goal.type === 'PENALTY' ? ' (P)' : ''}${goal.type === 'OWN_GOAL' ? ' (OG)' : ''}${goal.relatedPlayer ? ` (${goal.relatedPlayer.name})` : ''}`,
+                                  style: { fontSize: '14px', color: '#d1d5db', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '20px' }
                                 }
                               }))
                           }
@@ -455,6 +439,12 @@ export default defineEventHandler(async (event) => {
           name: 'Inter',
           data: regularFontData,
           weight: 400,
+          style: 'normal',
+        },
+        {
+          name: 'Roboto Mono',
+          data: monoFontData,
+          weight: 700,
           style: 'normal',
         },
       ],

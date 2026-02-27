@@ -12,6 +12,33 @@ export const SOCIAL_ICONS: Record<string, string> = {
     'website': 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
 }
 
+export const getFootballIcon = (size = 16, fillColor = '#22c55e', patternColor = 'white') => ({
+    type: 'svg',
+    props: {
+        width: size,
+        height: size,
+        viewBox: '0 0 24 24',
+        children: [
+            {
+                type: 'circle',
+                props: {
+                    cx: '12',
+                    cy: '12',
+                    r: '10',
+                    fill: fillColor
+                }
+            },
+            {
+                type: 'path',
+                props: {
+                    d: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 3.3l1.35-.95c1.82.56 3.37 1.76 4.38 3.34l-.39 1.34-1.35.46L13 6.7V5.3zm-3.35-.95L11 5.3v1.4L7.01 9.49l-1.35-.46-.39-1.34a9.985 9.985 0 014.38-3.34zM7.08 17.11l-1.14.1A9.89 9.89 0 013.5 13.5l.6-1.27 1.33-.19 3.06 3.06-.5 1.61-.91.4zm6.19 2.73c-.89.27-1.83.16-2.27.16-.44 0-1.38.11-2.27-.16l-.7-1.21.54-1.74h4.86l.54 1.74-.7 1.21zm2.39-2.83l-.91-.4-.5-1.61 3.06-3.06 1.33.19.6 1.27a9.89 9.89 0 01-2.44 3.71l-1.14-.1z',
+                    fill: patternColor
+                }
+            }
+        ]
+    }
+})
+
 export const getSponsorsRow = (sponsors: any[]) => {
     if (!sponsors || sponsors.length === 0) return null
 
@@ -141,7 +168,7 @@ export const getAbsoluteFooter = (socials: any[]) => {
                         type: 'span',
                         props: {
                             children: 'ParaScores',
-                            style: { fontSize: '14px', color: 'white', fontWeight: 700 }
+                            style: { fontSize: '20px', color: 'white', fontWeight: 700 }
                         }
                     }
                 ]
