@@ -253,42 +253,100 @@ const newPlayer = reactive({
   number: null as number | null,
   position: 'FWD'
 })
-const positions = ['GK', 'DEF', 'MID', 'FWD']
+const editingPlayerId = ref<string | null>(null)
+const deletingPlayerId = ref<string | null>(null)
+
+const positions = ['GK', 'DEF', 'MID', 'FWD', 'COACH']
 
 const openManagePlayers = async (participant: Participant) => {
   selectedParticipant.value = participant
-  newPlayer.name = ''
-  newPlayer.number = null
-  newPlayer.position = 'FWD'
   showManagePlayersModal.value = true
-  
-  // Fetch players on open
-  try {
-    await participantStore.fetchPlayers(tournamentId.value, participant.id)
-  } catch (e) {
-    // Silent fail or toast
+  // Fetch players if not loaded
+  if (!participant.players?.length) {
+    try {
+      // Assuming 'loading' ref is defined elsewhere, or define it here if needed
+      // const loading = ref(false)
+      // loading.value = true
+      await participantStore.fetchPlayers(tournamentId.value, participant.id)
+    } finally {
+      // loading.value = false
+    }
   }
+  cancelEditPlayer() // Reset form and editing state
 }
 
 const handleAddPlayer = async () => {
   if (!selectedParticipant.value || !newPlayer.name) return
   
+  // Assuming 'loading' ref is defined elsewhere, or define it here if needed
+  // const loading = ref(false)
+  // loading.value = true
   try {
-    await participantStore.addPlayer(tournamentId.value, selectedParticipant.value.id, {
-      name: newPlayer.name,
-      number: newPlayer.number,
-      position: newPlayer.position
+    if (editingPlayerId.value) {
+      await participantStore.updatePlayer(selectedParticipant.value.id, editingPlayerId.value, { ...newPlayer })
+      useToast().add({ title: 'Player updated successfully', color: 'success' })
+      cancelEditPlayer()
+    } else {
+      await participantStore.addPlayer(tournamentId.value, selectedParticipant.value.id, { ...newPlayer })
+      useToast().add({ title: 'Player added successfully', color: 'success' })
+      // Reset form
+      newPlayer.name = ''
+      newPlayer.number = null
+      newPlayer.position = 'FWD'
+    }
+  } catch (error: any) {
+    useToast().add({ 
+      title: editingPlayerId.value ? 'Failed to update player' : 'Failed to add player', 
+      description: error.message || 'Unknown error', 
+      color: 'error' 
     })
-    
-    // Reset form
-    newPlayer.name = ''
-    newPlayer.number = null
-    newPlayer.position = 'FWD'
-    
-    useToast().add({ title: 'Player added successfully', color: 'success' })
-  } catch (error) {
-    // Error handled by store
+  } finally {
+    // loading.value = false
   }
+}
+
+const startEditPlayer = (player: any) => {
+  editingPlayerId.value = player.id
+  newPlayer.name = player.name
+  newPlayer.number = player.number || null
+  newPlayer.position = player.position || 'FWD'
+}
+
+const cancelEditPlayer = () => {
+  editingPlayerId.value = null
+  newPlayer.name = ''
+  newPlayer.number = null
+  newPlayer.position = 'FWD'
+}
+
+const handleDeletePlayer = async (playerId: string) => {
+  if (!selectedParticipant.value) return
+  
+  // Assuming 'openConfirmModal' is defined elsewhere, or define it here if needed
+  // const openConfirmModal = ({ title, description, confirmLabel, color, onConfirm }) => { /* ... */ }
+  openConfirmModal({
+    title: 'Delete Player',
+    description: 'Are you sure you want to remove this player from the team?',
+    confirmLabel: 'Delete',
+    color: 'error',
+    onConfirm: async () => {
+      deletingPlayerId.value = playerId
+      try {
+        await participantStore.removePlayer(selectedParticipant.value!.id, playerId)
+        useToast().add({ title: 'Player removed successfully', color: 'success' })
+        
+        if (editingPlayerId.value === playerId) cancelEditPlayer()
+      } catch (error: any) {
+        useToast().add({ 
+          title: 'Failed to remove player', 
+          description: error.message || 'Unknown error', 
+          color: 'error' 
+        })
+      } finally {
+        deletingPlayerId.value = null
+      }
+    }
+  })
 }
 
 const removeParticipant = async (participantId: string) => {
@@ -642,19 +700,25 @@ const handleAddSponsor = async (event: FormSubmitEvent<AddSponsorSchema>) => {
   }
 }
 
-const handleRemoveSponsor = async (sponsorId: string) => {
-  if (!confirm('Are you sure you want to remove this sponsor?')) return
-  
-  try {
-    await sponsorStore.removeSponsor(tournamentId.value, sponsorId)
-    useToast().add({ title: 'Sponsor removed', color: 'success' })
-  } catch (error: any) {
-    useToast().add({ 
-      title: 'Failed to remove sponsor', 
-      description: error.message || 'Unknown error', 
-      color: 'error' 
-    })
-  }
+const handleRemoveSponsor = (sponsorId: string) => {
+  openConfirmModal({
+    title: 'Remove Sponsor',
+    description: 'Are you sure you want to remove this sponsor?',
+    confirmLabel: 'Remove',
+    color: 'error',
+    onConfirm: async () => {
+      try {
+        await sponsorStore.removeSponsor(tournamentId.value, sponsorId)
+        useToast().add({ title: 'Sponsor removed', color: 'success' })
+      } catch (error: any) {
+        useToast().add({ 
+          title: 'Failed to remove sponsor', 
+          description: error.message || 'Unknown error', 
+          color: 'error' 
+        })
+      }
+    }
+  })
 }
 
 // Social Management
@@ -714,19 +778,25 @@ const handleAddSocial = async (event: FormSubmitEvent<AddSocialSchema>) => {
   }
 }
 
-const handleRemoveSocial = async (socialId: string) => {
-  if (!confirm('Are you sure you want to remove this social link?')) return
-  
-  try {
-    await socialStore.removeSocial(tournamentId.value, socialId)
-    useToast().add({ title: 'Social link removed', color: 'success' })
-  } catch (error: any) {
-    useToast().add({ 
-      title: 'Failed to remove social link', 
-      description: error.message || 'Unknown error', 
-      color: 'error' 
-    })
-  }
+const handleRemoveSocial = (socialId: string) => {
+  openConfirmModal({
+    title: 'Remove Social Link',
+    description: 'Are you sure you want to remove this social link?',
+    confirmLabel: 'Remove',
+    color: 'error',
+    onConfirm: async () => {
+      try {
+        await socialStore.removeSocial(tournamentId.value, socialId)
+        useToast().add({ title: 'Social link removed', color: 'success' })
+      } catch (error: any) {
+        useToast().add({ 
+          title: 'Failed to remove social link', 
+          description: error.message || 'Unknown error', 
+          color: 'error' 
+        })
+      }
+    }
+  })
 }
 
 const getSocialIcon = (platform: string) => {
@@ -767,15 +837,54 @@ const tabItems = computed(() => {
     })
   }
 
-  // Always add sponsors tab
+
+
+  // Add settings tab
   items.push({
-    slot: 'sponsors',
-    label: 'Sponsors',
-    icon: 'i-heroicons-building-storefront'
+    slot: 'settings',
+    label: 'Settings',
+    icon: 'i-heroicons-cog-6-tooth'
   })
 
   return items
 })
+
+// Shared Confirmation Modal State
+const confirmModalState = reactive({
+  isOpen: false,
+  title: '',
+  description: '',
+  confirmLabel: 'Confirm',
+  cancelLabel: 'Cancel',
+  color: 'primary' as 'primary' | 'error' | 'warning',
+  onConfirm: async () => {},
+  loading: false
+})
+
+const openConfirmModal = (options: {
+  title: string
+  description: string
+  confirmLabel?: string
+  cancelLabel?: string
+  color?: 'primary' | 'error' | 'warning'
+  onConfirm: () => Promise<void> | void
+}) => {
+  confirmModalState.title = options.title
+  confirmModalState.description = options.description
+  confirmModalState.confirmLabel = options.confirmLabel || 'Confirm'
+  confirmModalState.cancelLabel = options.cancelLabel || 'Cancel'
+  confirmModalState.color = options.color || 'primary'
+  confirmModalState.onConfirm = async () => {
+    confirmModalState.loading = true
+    try {
+      await options.onConfirm()
+    } finally {
+      confirmModalState.loading = false
+      confirmModalState.isOpen = false
+    }
+  }
+  confirmModalState.isOpen = true
+}
 </script>
 
 <template>
@@ -860,25 +969,11 @@ const tabItems = computed(() => {
         <!-- Actions -->
         <div class="flex gap-2">
           <UButton 
-            icon="i-heroicons-pencil-square" 
-            variant="outline" 
-            color="neutral"
-            :to="`/tournaments/${tournament.id}/edit`"
-          >
-            Edit
-          </UButton>
-          <UButton 
             icon="i-heroicons-photo" 
             variant="outline" 
             color="neutral"
             :to="`/tournaments/${tournament.id}/graphics`"
             label="Graphics"
-          />
-
-          <UButton 
-            icon="i-heroicons-cog-6-tooth" 
-            variant="ghost" 
-            color="neutral"
           />
         </div>
       </div>
@@ -1371,7 +1466,7 @@ const tabItems = computed(() => {
                                 </UButton>
                                 
                                 <UButton 
-                                  v-if="fixture.status === 'LIVE'"
+                                  v-if="fixture.status === 'LIVE' || fixture.status === 'COMPLETED'"
                                   size="xs" 
                                   color="warning" 
                                   variant="soft"
@@ -1570,89 +1665,21 @@ const tabItems = computed(() => {
               </UCard>
             </template>
 
-            <!-- Sponsors Tab -->
-            <template #sponsors>
+
+
+            <!-- Settings Tab -->
+            <template #settings>
               <UCard class="mt-4">
                 <template #header>
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                      <UIcon name="i-heroicons-building-storefront" class="w-5 h-5 text-indigo-500" />
-                      <span class="font-medium">Sponsors</span>
-                      <UBadge v-if="sponsors.length" size="sm" variant="subtle">
-                        {{ sponsors.length }}
-                      </UBadge>
+                      <UIcon name="i-heroicons-cog-6-tooth" class="w-5 h-5 text-indigo-500" />
+                      <span class="font-medium">Tournament Settings</span>
                     </div>
-                    <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSponsorModal">
-                      Add
-                    </UButton>
                   </div>
                 </template>
-                
-                <!-- Loading -->
-                <div v-if="sponsorsLoading && !sponsors.length" class="py-8 text-center text-gray-400">
-                  <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 mx-auto mb-2 animate-spin" />
-                  <p>Loading sponsors...</p>
-                </div>
-                
-                <!-- Empty State -->
-                <div v-else-if="!sponsors.length" class="py-8 text-center text-gray-400">
-                  <UIcon name="i-heroicons-building-storefront" class="w-12 h-12 mx-auto mb-2" />
-                  <p>No sponsors yet</p>
-                  <p class="text-sm">Add sponsors to showcase on your tournament</p>
-                  <UButton 
-                    size="sm" 
-                    variant="outline" 
-                    icon="i-heroicons-plus" 
-                    class="mt-4"
-                    @click="openAddSponsorModal"
-                  >
-                    Add Sponsor
-                  </UButton>
-                </div>
-                
-                <!-- Sponsor Grid -->
-                <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <div 
-                    v-for="sponsor in sponsors" 
-                    :key="sponsor.id"
-                    class="relative group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all"
-                  >
-                    <!-- Delete Button -->
-                    <button 
-                      class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-all"
-                      @click="handleRemoveSponsor(sponsor.id)"
-                      title="Remove sponsor"
-                    >
-                      <UIcon name="i-heroicons-trash" class="w-4 h-4" />
-                    </button>
-                    
-                    <!-- Logo -->
-                    <div class="w-16 h-16 mx-auto mb-3 rounded-lg bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
-                      <img 
-                        v-if="sponsor.logoUrl" 
-                        :src="sponsor.logoUrl" 
-                        :alt="sponsor.name"
-                        class="w-full h-full object-contain"
-                      />
-                      <UIcon v-else name="i-heroicons-building-office-2" class="w-8 h-8 text-gray-400" />
-                    </div>
-                    
-                    <!-- Name -->
-                    <p class="text-sm font-medium text-gray-900 dark:text-white text-center truncate">
-                      {{ sponsor.name }}
-                    </p>
-                    
-                    <!-- Website -->
-                    <a 
-                      v-if="sponsor.websiteUrl" 
-                      :href="sponsor.websiteUrl" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      class="block text-xs text-indigo-500 hover:text-indigo-600 text-center mt-1 truncate"
-                    >
-                      Visit Website
-                    </a>
-                  </div>
+                <div class="p-2">
+                  <TournamentSettings :tournament="tournament" />
                 </div>
               </UCard>
             </template>
@@ -1728,35 +1755,71 @@ const tabItems = computed(() => {
             </div>
           </UCard>
 
-          <!-- Sponsors Showcase -->
-          <UCard v-if="sponsors.length">
+          <!-- Sponsors -->
+          <UCard>
             <template #header>
-              <div class="flex items-center gap-2">
-                <UIcon name="i-heroicons-building-storefront" class="w-5 h-5 text-indigo-500" />
-                <span class="font-medium">Sponsors</span>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-heroicons-building-storefront" class="w-5 h-5 text-indigo-500" />
+                  <span class="font-medium">Sponsors</span>
+                  <UBadge v-if="sponsors.length" size="sm" variant="subtle">
+                    {{ sponsors.length }}
+                  </UBadge>
+                </div>
+                <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSponsorModal" />
               </div>
             </template>
             
-            <div class="flex flex-wrap gap-3 justify-center">
-              <a 
+            <!-- Loading -->
+            <div v-if="sponsorsLoading && !sponsors.length" class="py-8 text-center text-gray-400">
+              <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 mx-auto mb-2 animate-spin" />
+              <p>Loading sponsors...</p>
+            </div>
+            
+            <!-- Empty State -->
+            <div v-else-if="!sponsors.length" class="text-center py-4 text-gray-400 text-sm">
+              <p>No sponsors yet</p>
+              <UButton size="xs" variant="link" @click="openAddSponsorModal">Add one</UButton>
+            </div>
+            
+            <!-- Sponsor List -->
+            <div v-else class="flex flex-col gap-2">
+              <div 
                 v-for="sponsor in sponsors" 
                 :key="sponsor.id"
-                :href="sponsor.websiteUrl || '#'"
-                :target="sponsor.websiteUrl ? '_blank' : undefined"
-                rel="noopener noreferrer"
-                class="block w-14 h-14 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-center overflow-hidden hover:border-indigo-300 dark:hover:border-indigo-600 transition-all"
-                :title="sponsor.name"
+                class="group relative"
               >
-                <img 
-                  v-if="sponsor.logoUrl" 
-                  :src="sponsor.logoUrl" 
-                  :alt="sponsor.name"
-                  class="w-full h-full object-contain p-1"
-                />
-                <span v-else class="text-xs font-medium text-gray-500 text-center px-1">
-                  {{ sponsor.name.substring(0, 3) }}
-                </span>
-              </a>
+                <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all w-full">
+                  <div class="w-8 h-8 rounded-md bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden shrink-0">
+                    <img 
+                      v-if="sponsor.logoUrl" 
+                      :src="sponsor.logoUrl" 
+                      :alt="sponsor.name"
+                      class="w-full h-full object-contain p-0.5"
+                    />
+                    <UIcon v-else name="i-heroicons-building-office-2" class="w-4 h-4 text-gray-400" />
+                  </div>
+                  <div class="flex flex-col overflow-hidden min-w-0 flex-1">
+                    <span class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ sponsor.name }}</span>
+                    <a 
+                      v-if="sponsor.websiteUrl" 
+                      :href="sponsor.websiteUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-xs text-indigo-500 hover:text-indigo-600 truncate"
+                    >
+                      {{ sponsor.websiteUrl.replace(/^https?:\/\//, '') }}
+                    </a>
+                  </div>
+                </div>
+                <button 
+                  class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-xs transition-all z-10"
+                  @click="handleRemoveSponsor(sponsor.id)"
+                  title="Remove"
+                >
+                  ×
+                </button>
+              </div>
             </div>
           </UCard>
 
@@ -1854,9 +1917,19 @@ const tabItems = computed(() => {
             </div>
             <UButton 
               type="submit" 
-              icon="i-heroicons-plus" 
+              :icon="editingPlayerId ? 'i-heroicons-check' : 'i-heroicons-plus'"
+              :color="editingPlayerId ? 'primary' : 'primary'"
               :disabled="!newPlayer.name"
               :loading="loading"
+            />
+            <UButton 
+              v-if="editingPlayerId"
+              type="button"
+              icon="i-heroicons-x-mark"
+              color="neutral"
+              variant="soft"
+              @click="cancelEditPlayer"
+              title="Cancel Edit"
             />
           </form>
 
@@ -1871,7 +1944,7 @@ const tabItems = computed(() => {
               <div 
                 v-for="player in selectedParticipant.players" 
                 :key="player.id"
-                class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
+                class="group flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
               >
                 <div class="flex items-center gap-3">
                   <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-medium text-xs">
@@ -1885,6 +1958,23 @@ const tabItems = computed(() => {
                       {{ player.position }}
                     </p>
                   </div>
+                </div>
+                <div class="flex items-center">
+                  <UDropdownMenu 
+                    :items="[[
+                      { label: 'Edit', icon: 'i-heroicons-pencil-square', onSelect: () => startEditPlayer(player) },
+                      { label: 'Delete', icon: 'i-heroicons-trash', onSelect: () => handleDeletePlayer(player.id), class: 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' }
+                    ]]"
+                    :content="{ align: 'end' }"
+                  >
+                    <UButton 
+                      color="neutral" 
+                      variant="ghost" 
+                      icon="i-heroicons-ellipsis-vertical"
+                      :loading="deletingPlayerId === player.id"
+                      class="opacity-70 flex-shrink-0"
+                    />
+                  </UDropdownMenu>
                 </div>
               </div>
             </div>
@@ -2331,6 +2421,48 @@ const tabItems = computed(() => {
             />
           </div>
         </UForm>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Generic Confirmation Modal -->
+  <UModal v-model:open="confirmModalState.isOpen" :ui="{ content: 'sm:max-w-md' }">
+    <template #content>
+      <UCard :ui="{ root: 'divide-y divide-gray-100 dark:divide-gray-800' }">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white flex items-center gap-2">
+              <UIcon :name="confirmModalState.color === 'error' ? 'i-heroicons-exclamation-triangle' : 'i-heroicons-information-circle'" 
+                class="w-5 h-5" :class="confirmModalState.color === 'error' ? 'text-red-500' : 'text-blue-500'" />
+              {{ confirmModalState.title }}
+            </h3>
+            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="confirmModalState.isOpen = false" />
+          </div>
+        </template>
+
+        <div class="py-4">
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            {{ confirmModalState.description }}
+          </p>
+        </div>
+
+        <template #footer>
+          <div class="flex items-center justify-end gap-3">
+            <UButton 
+              color="neutral" 
+              variant="ghost" 
+              :label="confirmModalState.cancelLabel" 
+              @click="confirmModalState.isOpen = false" 
+              :disabled="confirmModalState.loading"
+            />
+            <UButton 
+              :color="confirmModalState.color" 
+              :label="confirmModalState.confirmLabel"
+              :loading="confirmModalState.loading"
+              @click="confirmModalState.onConfirm"
+            />
+          </div>
+        </template>
       </UCard>
     </template>
   </UModal>
