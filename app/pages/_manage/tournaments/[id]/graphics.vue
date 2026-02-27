@@ -205,7 +205,7 @@ const generatePreview = async () => {
         // Fetch match events for this fixture
         let matchEvents: any[] = []
         try {
-            const eventsRes = await $api<any>(`/fixtures/${selectedFixture.value.id}/events`)
+            const eventsRes = await $api<any>(`/match-events/fixture/${selectedFixture.value.id}`)
             matchEvents = eventsRes.data || []
         } catch (e) {
             console.warn('Could not fetch match events:', e)
