@@ -117,7 +117,7 @@ const loadMatchData = async (fixture: Fixture) => {
     
     if (fixture.homeTeamId) {
       promises.push(
-        $api<any>(`/participants/${fixture.homeTeamId}/players`)
+        $api<any>(`/players?participantId=${fixture.homeTeamId}`)
           .then(res => { homePlayers.value = res.data || [] })
           .catch(e => { console.error('Error fetching home players:', e); homePlayers.value = [] })
       )
@@ -125,7 +125,7 @@ const loadMatchData = async (fixture: Fixture) => {
 
     if (fixture.awayTeamId) {
       promises.push(
-        $api<any>(`/participants/${fixture.awayTeamId}/players`)
+        $api<any>(`/players?participantId=${fixture.awayTeamId}`)
           .then(res => { awayPlayers.value = res.data || [] })
           .catch(e => { console.error('Error fetching away players:', e); awayPlayers.value = [] })
       )
@@ -133,7 +133,7 @@ const loadMatchData = async (fixture: Fixture) => {
     
     // Fetch match events
     promises.push(
-      $api<any>(`/fixtures/${fixture.id}/events`)
+      $api<any>(`/match-events/fixture/${fixture.id}`)
         .then(res => { matchEvents.value = res.data || [] })
         .catch(() => { matchEvents.value = [] })
     )
@@ -513,7 +513,7 @@ const refreshMatchEvents = async () => {
   if (!selectedFixture.value) return
   loadingEvents.value = true
   try {
-    const res = await $api<any>(`/fixtures/${selectedFixture.value.id}/events`)
+    const res = await $api<any>(`/match-events/fixture/${selectedFixture.value.id}`)
     matchEvents.value = res.data || []
   } catch (e) {
     console.error('Failed to refresh events:', e)
@@ -700,7 +700,7 @@ const downloadGraphic = async () => {
                 size="lg" 
                 color="primary" 
                 variant="soft"
-                :disabled="selectedFixture.status !== 'LIVE' || loadingPlayers"
+                :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
                 :loading="updatingMatch"
                 @click="openGoalModal('home')"
               />
@@ -713,7 +713,7 @@ const downloadGraphic = async () => {
                 size="lg" 
                 color="neutral" 
                 variant="soft"
-                :disabled="selectedFixture.status !== 'LIVE' || (selectedFixture.homeScore ?? 0) <= 0"
+                :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || (selectedFixture.homeScore ?? 0) <= 0"
                 :loading="updatingMatch"
                 @click="decrementScore('home')"
               />
@@ -728,7 +728,7 @@ const downloadGraphic = async () => {
                 size="lg" 
                 color="primary" 
                 variant="soft"
-                :disabled="selectedFixture.status !== 'LIVE' || loadingPlayers"
+                :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
                 :loading="updatingMatch"
                 @click="openGoalModal('away')"
               />
@@ -741,7 +741,7 @@ const downloadGraphic = async () => {
                 size="lg" 
                 color="neutral" 
                 variant="soft"
-                :disabled="selectedFixture.status !== 'LIVE' || (selectedFixture.awayScore ?? 0) <= 0"
+                :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || (selectedFixture.awayScore ?? 0) <= 0"
                 :loading="updatingMatch"
                 @click="decrementScore('away')"
               />
@@ -750,7 +750,7 @@ const downloadGraphic = async () => {
 
           <!-- Penalty Shootout Controls (only if drawn and live) -->
           <div 
-            v-if="selectedFixture.status === 'LIVE' && (selectedFixture.homeScore ?? 0) === (selectedFixture.awayScore ?? 0)" 
+            v-if="['LIVE', 'COMPLETED'].includes(selectedFixture.status) && (selectedFixture.homeScore ?? 0) === (selectedFixture.awayScore ?? 0)" 
             class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden"
           >
             <button 
