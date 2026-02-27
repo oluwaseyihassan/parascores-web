@@ -533,9 +533,9 @@ const isHomeEvent = (event: any) => {
             </div>
             <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
               <template v-if="fixture.homeTeam?.players?.length">
-                <div v-for="player in fixture.homeTeam.players" :key="player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                <div v-for="player in fixture.homeTeam.players" :key="player.id" class="flex items-center flex-wrap px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
                   <span v-if="player.number" class="w-8 flex-shrink-0 text-sm font-bold text-gray-500">{{ player.number }}</span>
-                  <span class="text-sm font-medium transition-colors truncate" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ player.name }}</span>
+                  <span class="text-sm font-medium transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ player.name }}</span>
                   <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white">
                     <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
                       <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
@@ -567,9 +567,9 @@ const isHomeEvent = (event: any) => {
             </div>
             <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
               <template v-if="fixture.awayTeam?.players?.length">
-                <div v-for="player in fixture.awayTeam.players" :key="player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                <div v-for="player in fixture.awayTeam.players" :key="player.id" class="flex items-center flex-wrap px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
                   <span v-if="player.number" class="w-8 flex-shrink-0 text-sm font-bold text-gray-500">{{ player.number }}</span>
-                  <span class="text-sm font-medium transition-colors truncate" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ player.name }}</span>
+                  <span class="text-sm font-medium transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ player.name }}</span>
                   <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white">
                     <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
                       <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
