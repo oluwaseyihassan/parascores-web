@@ -45,7 +45,7 @@ const fetchData = async () => {
   try {
     const [tournamentRes, standingsRes] = await Promise.all([
       $api<any>(`/tournaments/${tournamentId}`),
-      $api<any>(`/tournaments/${tournamentId}/standings`)
+      $api<any>(`/standings/tournament/${tournamentId}`)
     ])
     tournament.value = tournamentRes.data
     // Handle both direct array and nested { standings: [...] } response
