@@ -193,9 +193,9 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
                     Start
                   </UButton>
                   
-                  <!-- Control Match Button (for LIVE) -->
+                  <!-- Control Match Button (for LIVE or COMPLETED) -->
                   <UButton 
-                    v-if="fixture.status === FixtureStatus.LIVE"
+                    v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED"
                     size="xs" 
                     color="warning" 
                     variant="soft"
