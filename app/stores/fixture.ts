@@ -305,7 +305,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<any>>(`/fixtures/${data.fixtureId}/events`, {
+      const response = await $api<ApiResponse<any>>(`/match-events/fixture/${data.fixtureId}`, {
         method: 'POST',
         body: {
           participantId: data.participantId,
@@ -338,7 +338,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<any>>(`/fixtures/events/${eventId}`, {
+      const response = await $api<ApiResponse<any>>(`/match-events/${eventId}`, {
         method: 'PATCH',
         body: data,
       })
@@ -357,7 +357,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<any>>(`/fixtures/events/${eventId}`, {
+      const response = await $api<ApiResponse<any>>(`/match-events/${eventId}`, {
         method: 'DELETE',
       })
       return response
