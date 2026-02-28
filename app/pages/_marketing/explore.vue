@@ -114,7 +114,7 @@
           <NuxtLink
             v-for="(tournament, index) in filteredTournaments"
             :key="tournament.id"
-            :to="`/tournaments/${tournament.customName || tournament.id}`"
+            :to="`/t/${tournament.customName || tournament.id}`"
             class="group bg-[#111827] border border-white/10 rounded-xl p-5 hover:border-emerald-500/50 transition-all duration-300 card-fade-in flex flex-col"
             :style="{ animationDelay: `${index * 50}ms` }"
           >
