@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tournament, Fixture, Standing, Participant } from '~/types'
+import type { Tournament, Fixture, Standing, Participant, Sponsor, Social } from '~/types'
 import { TournamentType, FixtureStatus, FixtureStage, ParticipantType } from '~/types'
 
 definePageMeta({
@@ -17,6 +17,8 @@ const tournament = ref<Tournament | null>(null)
 const fixtures = ref<Fixture[]>([])
 const standings = ref<Standing[]>([])
 const participants = ref<Participant[]>([])
+const sponsors = ref<Sponsor[]>([])
+const socials = ref<Social[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 import MarketingFixtureDetails from '~/components/marketing/FixtureDetails.vue'
@@ -49,11 +51,13 @@ async function fetchData() {
   loading.value = true
   error.value = null
   try {
-    const [tournamentRes, fixturesRes, standingsRes, participantsRes] = await Promise.all([
+    const [tournamentRes, fixturesRes, standingsRes, participantsRes, sponsorsRes, socialsRes] = await Promise.all([
       $publicApi<any>(`/tournaments/${tournamentId}`),
       $publicApi<any>(`/fixtures/tournaments/${tournamentId}`).catch(() => null),
       $publicApi<any>(`/standings/tournament/${tournamentId}`).catch(() => null),
-      $publicApi<any>(`/participants/tournaments/${tournamentId}`).catch(() => null)
+      $publicApi<any>(`/participants/tournaments/${tournamentId}`).catch(() => null),
+      $publicApi<any>(`/sponsors/tournaments/${tournamentId}`).catch(() => null),
+      $publicApi<any>(`/socials/tournaments/${tournamentId}`).catch(() => null)
     ])
     
     tournament.value = tournamentRes?.data || tournamentRes
@@ -86,6 +90,26 @@ async function fetchData() {
       participants.value = participantsData.participants
     } else {
       participants.value = []
+    }
+    
+    // Handle sponsors
+    const sponsorsData = sponsorsRes?.data || sponsorsRes
+    if (Array.isArray(sponsorsData)) {
+      sponsors.value = sponsorsData
+    } else if (sponsorsData?.sponsors) {
+      sponsors.value = sponsorsData.sponsors
+    } else {
+      sponsors.value = []
+    }
+    
+    // Handle socials
+    const socialsData = socialsRes?.data || socialsRes
+    if (Array.isArray(socialsData)) {
+      socials.value = socialsData
+    } else if (socialsData?.socials) {
+      socials.value = socialsData.socials
+    } else {
+      socials.value = []
     }
   } catch (e: any) {
     error.value = e.message || 'Failed to load tournament'
@@ -862,14 +886,60 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
               </div>
             </div>
 
-            <div v-if="tournament.description" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
-              <div class="px-5 py-3.5 border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+            <div v-if="tournament.description || (socials && socials.length > 0)" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
+              <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                 <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400">About</h3>
+                
+                <!-- Socials in Header -->
+                <div v-if="socials && socials.length > 0" class="flex items-center gap-3">
+                  <a
+                    v-for="social in socials"
+                    :key="social.id"
+                    :href="social.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-gray-400 hover:text-emerald-400 transition-colors tooltip"
+                    :title="social.handle || social.platform"
+                  >
+                    <UIcon v-if="social.platform === 'twitter'" name="i-simple-icons-x" class="w-4 h-4" />
+                    <UIcon v-else-if="social.platform === 'instagram'" name="i-simple-icons-instagram" class="w-4 h-4" />
+                    <UIcon v-else-if="social.platform === 'facebook'" name="i-simple-icons-facebook" class="w-4 h-4" />
+                    <UIcon v-else-if="social.platform === 'youtube'" name="i-simple-icons-youtube" class="w-4 h-4" />
+                    <UIcon v-else-if="social.platform === 'tiktok'" name="i-simple-icons-tiktok" class="w-4 h-4" />
+                    <UIcon v-else-if="social.platform === 'discord'" name="i-simple-icons-discord" class="w-4 h-4" />
+                    <UIcon v-else-if="social.platform === 'twitch'" name="i-simple-icons-twitch" class="w-4 h-4" />
+                    <UIcon v-else name="i-heroicons-globe-alt" class="w-4 h-4" />
+                  </a>
+                </div>
               </div>
-              <div class="p-5">
+              <div v-if="tournament.description" class="p-5">
                 <p class="text-sm leading-relaxed whitespace-pre-line" :class="isDark ? 'text-gray-300' : 'text-gray-600'">
                   {{ tournament.description }}
                 </p>
+              </div>
+            </div>
+
+            <div v-if="sponsors && sponsors.length > 0" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden mt-6">
+              <div class="px-5 py-3.5 border-b transition-colors flex items-center gap-2" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+                <UIcon name="i-heroicons-building-office-2" class="w-4 h-4 text-gray-400" />
+                <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400">Sponsors</h3>
+              </div>
+              <div class="p-8 flex flex-wrap justify-center items-center gap-8 sm:gap-12 md:gap-16">
+                <template v-for="sponsor in sponsors" :key="sponsor.id">
+                  <component
+                    :is="sponsor.websiteUrl ? 'a' : 'div'"
+                    :href="sponsor.websiteUrl || undefined"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="group flex flex-col items-center justify-center transition-transform duration-300"
+                    :class="[sponsor.websiteUrl ? 'cursor-pointer hover:scale-105' : '']"
+                  >
+                    <div class="h-16 sm:h-20 lg:h-24 max-w-[160px] sm:max-w-[200px] flex items-center justify-center mb-0">
+                      <img v-if="sponsor.logoUrl" :src="sponsor.logoUrl" :alt="sponsor.name" class="w-full h-full object-contain filter " :class="isDark ? 'brightness-90 group-hover:brightness-100 transition-all' : ''" />
+                      <span v-else class="text-xl font-bold text-gray-400">{{ sponsor.name }}</span>
+                    </div>
+                  </component>
+                </template>
               </div>
             </div>
           </div>
