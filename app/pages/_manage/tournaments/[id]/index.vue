@@ -44,6 +44,35 @@ const showStandings = computed(() => {
   return [TournamentType.ROUND_ROBIN, TournamentType.GROUP, TournamentType.HYBRID].includes(tournament.value.type)
 })
 
+// Delete Tournament logic
+const deletingTournament = ref(false)
+
+const handleDeleteTournament = () => {
+  openConfirmModal({
+    title: 'Delete Tournament',
+    description: 'Are you absolutely sure you want to delete this tournament? This action cannot be undone and all data will be lost.',
+    confirmLabel: 'Delete Tournament',
+    color: 'error',
+    onConfirm: async () => {
+      deletingTournament.value = true
+      try {
+        await tournamentStore.deleteTournament(tournamentId.value)
+        useToast().add({ title: 'Tournament deleted successfully', color: 'success' })
+        const router = useRouter()
+        router.push('/')
+      } catch (err: any) {
+        useToast().add({ 
+          title: 'Failed to delete tournament', 
+          description: err.message || 'Unknown error', 
+          color: 'error' 
+        })
+      } finally {
+        deletingTournament.value = false
+      }
+    }
+  })
+}
+
 // Generate fixtures
 const generateError = ref<string | null>(null)
 const showGenerateModal = ref(false)
@@ -267,7 +296,8 @@ const openManagePlayers = async (participant: Participant) => {
       // Assuming 'loading' ref is defined elsewhere, or define it here if needed
       // const loading = ref(false)
       // loading.value = true
-      await participantStore.fetchPlayers(tournamentId.value, participant.id)
+      const players = await participantStore.fetchParticipantPlayers(participant.id)
+      participant.players = players
     } finally {
       // loading.value = false
     }
@@ -1680,6 +1710,30 @@ const openConfirmModal = (options: {
                 </template>
                 <div class="p-2">
                   <TournamentSettings :tournament="tournament" />
+                  
+                  <UCard class="mt-8 border-red-200 dark:border-red-900/50" :ui="{ header: 'bg-red-50 dark:bg-red-900/20' }">
+                    <template #header>
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-red-500" />
+                        <span class="font-medium text-red-600 dark:text-red-400">Danger Zone</span>
+                      </div>
+                    </template>
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-white">Delete this tournament</h4>
+                        <p class="text-sm text-gray-500 mt-1">
+                          Once you delete a tournament, there is no going back. Please be certain.
+                        </p>
+                      </div>
+                      <UButton 
+                        color="error" 
+                        variant="soft" 
+                        label="Delete Tournament" 
+                        :loading="deletingTournament"
+                        @click="handleDeleteTournament" 
+                      />
+                    </div>
+                  </UCard>
                 </div>
               </UCard>
             </template>
