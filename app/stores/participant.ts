@@ -106,23 +106,36 @@ export const useParticipantStore = defineStore('participant', () => {
     }
   }
 
-  // Fetch players for a participant
-  async function fetchPlayers(tournamentId: string, participantId: string) {
-    // We don't set global loading here to avoid full page spinner when just opening a modal
+  // // Fetch players for a participant
+  // async function fetchPlayers(tournamentId: string, participantId: string) {
+  //   // We don't set global loading here to avoid full page spinner when just opening a modal
+  //   try {
+  //     const response = await $api<ApiResponse<any[]>>(`/players?participantId=${participantId}`, {
+  //       method: 'GET',
+  //     })
+  //     if (response.data) {
+  //       const index = participants.value.findIndex(p => p.id === participantId)
+  //       if (index !== -1 && participants.value[index]) {
+  //         participants.value[index]!.players = response.data
+  //       }
+  //     }
+  //     return response
+  //   } catch (err: any) {
+  //     console.error('Fetch players failed:', err)
+  //     throw err
+  //   }
+  // }
+
+  // Fetch players for a participant independently
+  async function fetchParticipantPlayers(participantId: string) {
     try {
-      const response = await $api<ApiResponse<any[]>>(`/players?participantId=${participantId}`, {
+      const response = await $api<ApiResponse<any[]>>(`/players/participant/${participantId}`, {
         method: 'GET',
       })
-      if (response.data) {
-        const index = participants.value.findIndex(p => p.id === participantId)
-        if (index !== -1 && participants.value[index]) {
-          participants.value[index]!.players = response.data
-        }
-      }
-      return response
+      return response.data || []
     } catch (err: any) {
-      console.error('Fetch players failed:', err)
-      throw err
+      console.error('Fetch participant players failed:', err)
+      return []
     }
   }
 
@@ -226,7 +239,8 @@ export const useParticipantStore = defineStore('participant', () => {
     addPlayer,
     updatePlayer,
     removePlayer,
-    fetchPlayers,
+    // fetchPlayers,
+    fetchParticipantPlayers,
     clearParticipants,
   }
 })
