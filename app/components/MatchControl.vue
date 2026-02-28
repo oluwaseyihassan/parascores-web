@@ -20,6 +20,7 @@ const emit = defineEmits<{
 
 const fixtureStore = useFixtureStore()
 const standingStore = useStandingStore()
+const participantStore = useParticipantStore()
 
 // Local state
 const selectedFixture = ref<Fixture | null>(null)
@@ -117,16 +118,16 @@ const loadMatchData = async (fixture: Fixture) => {
     
     if (fixture.homeTeamId) {
       promises.push(
-        $api<any>(`/players?participantId=${fixture.homeTeamId}`)
-          .then(res => { homePlayers.value = res.data || [] })
+        participantStore.fetchParticipantPlayers(fixture.homeTeamId)
+          .then(players => { homePlayers.value = players })
           .catch(e => { console.error('Error fetching home players:', e); homePlayers.value = [] })
       )
     }
 
     if (fixture.awayTeamId) {
       promises.push(
-        $api<any>(`/players?participantId=${fixture.awayTeamId}`)
-          .then(res => { awayPlayers.value = res.data || [] })
+        participantStore.fetchParticipantPlayers(fixture.awayTeamId)
+          .then(players => { awayPlayers.value = players })
           .catch(e => { console.error('Error fetching away players:', e); awayPlayers.value = [] })
       )
     }
