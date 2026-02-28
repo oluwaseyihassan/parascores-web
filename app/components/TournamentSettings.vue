@@ -514,7 +514,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               </span>
               <span v-else-if="nameAvailable === true" class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                 <UIcon name="i-heroicons-check-circle" class="w-3 h-3" />
-                Available! Your tournament is at: <span class="font-medium">parascores.com/tournaments/{{ state.customName }}</span>
+                Available! Your tournament is at: <span class="font-medium">parascores.com/t/{{ state.customName }}</span>
               </span>
               <span v-else-if="nameAvailable === false" class="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
                 <UIcon name="i-heroicons-x-circle" class="w-3 h-3" />
