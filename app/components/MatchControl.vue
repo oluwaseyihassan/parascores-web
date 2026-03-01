@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { FixtureStatus, MatchEventType, ParticipantType } from '~/types'
 import type { Fixture, Player, MatchEvent } from '~/types'
+import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
 
 const props = withDefaults(defineProps<{
   fixture: Fixture | null
@@ -25,6 +26,10 @@ const participantStore = useParticipantStore()
 // Local state
 const selectedFixture = ref<Fixture | null>(null)
 const updatingMatch = ref(false)
+const matchTime = ref<string>('') // Used for fallback/comparison
+const matchDateVal = shallowRef<DateValue | null>(null)
+const matchTimeVal = ref<string>('12:00')
+const updatingTime = ref(false)
 const homePlayers = ref<Player[]>([])
 const awayPlayers = ref<Player[]>([])
 const loadingPlayers = ref(false)
@@ -98,6 +103,27 @@ watch(() => props.open, async (isOpen) => {
   if (isOpen && props.fixture) {
     errorMessage.value = null
     selectedFixture.value = { ...props.fixture }
+    if (props.fixture.startTime) {
+      // Format correctly for native comparison
+      const date = new Date(props.fixture.startTime)
+      const tzOffset = date.getTimezoneOffset() * 60000 
+      const localISOTime = (new Date(date.getTime() - tzOffset)).toISOString().slice(0,16)
+      matchTime.value = localISOTime
+      
+      const isoParts = date.toISOString().split('T')
+      if (isoParts[0]) {
+        matchDateVal.value = parseDate(isoParts[0])
+      }
+      
+      const hours = String(date.getHours()).padStart(2, '0')
+      const mins = String(date.getMinutes()).padStart(2, '0')
+      matchTimeVal.value = `${hours}:${mins}`
+      
+    } else {
+      matchTime.value = ''
+      matchDateVal.value = null
+      matchTimeVal.value = '12:00'
+    }
     await loadMatchData(props.fixture)
   } else if (!isOpen) {
     // Reset state when closing
@@ -182,6 +208,97 @@ const startMatch = async () => {
     })
   } finally {
     updatingMatch.value = false
+  }
+}
+
+const formatDateDisplay = (date: DateValue | null) => {
+  if (!date) return 'Select date'
+  return new Date(date.year, date.month - 1, date.day).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
+
+const parseDateString = (dateStr: string | null | undefined): DateValue | undefined => {
+  if (!dateStr) return undefined
+  try {
+    const datePart = dateStr.split('T')[0]
+    if (!datePart) return undefined
+    return parseDate(datePart)
+  } catch (e) {
+    console.warn('Failed to parse date:', dateStr)
+    return undefined
+  }
+}
+
+const tournamentMinDate = computed(() => {
+  if (!props.tournament) return undefined
+  return parseDateString(props.tournament.start_date)
+})
+
+const tournamentMaxDate = computed(() => {
+  if (!props.tournament) return undefined
+  return parseDateString(props.tournament.end_date)
+})
+
+const isUpdateDisabled = computed(() => {
+  if (!matchDateVal.value || !matchTimeVal.value) return true
+  if (!selectedFixture.value) return true
+  
+  const selectedYear = matchDateVal.value.year
+  const selectedMonth = matchDateVal.value.month - 1
+  const selectedDay = matchDateVal.value.day
+  const [h, m] = matchTimeVal.value.split(':').map(Number)
+  
+  const newDate = new Date(selectedYear, selectedMonth, selectedDay, h, m)
+  
+  if (selectedFixture.value.startTime) {
+    return new Date(selectedFixture.value.startTime).toISOString() === newDate.toISOString()
+  }
+  return false
+})
+
+const updateMatchTime = async () => {
+  if (!selectedFixture.value || !matchDateVal.value || !matchTimeVal.value) return
+  
+  updatingTime.value = true
+  try {
+    const selectedYear = matchDateVal.value.year
+    const selectedMonth = matchDateVal.value.month - 1
+    const selectedDay = matchDateVal.value.day
+    const [h, m] = matchTimeVal.value.split(':').map(Number)
+    
+    const newDate = new Date(selectedYear, selectedMonth, selectedDay, h, m)
+    const newIso = newDate.toISOString()
+    
+    await fixtureStore.updateFixture(selectedFixture.value.id, {
+      startTime: newIso
+    })
+    
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      startTime: newIso
+    }
+    matchTime.value = newIso
+    
+    emit('fixture-updated', selectedFixture.value)
+    
+    useToast().add({ 
+      title: 'Time Updated', 
+      description: 'The match schedule has been updated.',
+      icon: 'i-heroicons-calendar',
+      color: 'success' 
+    })
+  } catch (error: any) {
+    useToast().add({ 
+      title: 'Failed to update time', 
+      description: error.message || 'Unknown error', 
+      color: 'error' 
+    })
+  } finally {
+    updatingTime.value = false
   }
 }
 
@@ -689,6 +806,62 @@ const downloadGraphic = async () => {
               <p class="font-medium text-gray-900 dark:text-white truncate">
                 {{ selectedFixture.awayTeam?.customName || 'Away Team' }}
               </p>
+            </div>
+          </div>
+
+          <!-- Match Schedule -->
+          <div v-if="selectedFixture.status === 'SCHEDULED'" class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+              Match Time
+            </label>
+            <div class="flex items-center gap-3">
+              <div class="flex-1 flex gap-2">
+                <!-- Date Picker -->
+                <UPopover class="flex-1">
+                  <UButton 
+                    variant="outline" 
+                    color="neutral"
+                    icon="i-heroicons-calendar"
+                    class="w-full justify-start h-10 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm"
+                    :class="!matchDateVal && 'text-gray-400'"
+                    :disabled="updatingTime"
+                  >
+                    {{ formatDateDisplay(matchDateVal) }}
+                  </UButton>
+                  <template #content>
+                    <UCalendar 
+                      v-model="matchDateVal" 
+                      :min-value="tournamentMinDate"
+                      :max-value="tournamentMaxDate"
+                    />
+                  </template>
+                </UPopover>
+                
+                <!-- Time Input -->
+                <div class="relative w-32">
+                  <UInput 
+                    type="time" 
+                    v-model="matchTimeVal"
+                    class="w-full h-10"
+                    size="md"
+                    :disabled="updatingTime"
+                  />
+                  <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
+                    <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+              <UButton 
+                color="primary" 
+                variant="solid" 
+                size="md"
+                :loading="updatingTime"
+                :disabled="isUpdateDisabled"
+                @click="updateMatchTime"
+                class="min-w-[80px] h-10 justify-center shadow-sm"
+              >
+                Update
+              </UButton>
             </div>
           </div>
 
