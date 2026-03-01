@@ -22,11 +22,14 @@ const socials = ref<Social[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 import MarketingFixtureDetails from '~/components/marketing/FixtureDetails.vue'
+import MarketingTeamDetails from '~/components/marketing/TeamDetails.vue'
 const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants'>('fixtures')
 const selectedFixtureId = ref<string | null>(null)
+const selectedParticipantId = ref<string | null>(null)
 
 watch(activeTab, () => {
   selectedFixtureId.value = null
+  selectedParticipantId.value = null
 })
 
 // Establish Live Stream connection to receive realtime push notifications
@@ -438,7 +441,15 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
           />
         </div>
 
-        <div v-show="!selectedFixtureId" class="animate-in fade-in duration-300">
+        <div v-else-if="selectedParticipantId" class="animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <MarketingTeamDetails 
+            :tournamentId="tournamentId" 
+            :participantId="selectedParticipantId" 
+            @back="selectedParticipantId = null" 
+          />
+        </div>
+
+        <div v-show="!selectedFixtureId && !selectedParticipantId" class="animate-in fade-in duration-300">
           <!-- ====== FIXTURES TAB ====== -->
           <div v-if="activeTab === 'fixtures'">
             <div v-if="fixtures.length === 0" class="text-center py-16">
@@ -697,7 +708,8 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
                     <tr 
                       v-for="standing in groupStandings" 
                       :key="standing.id"
-                      class="border-t transition-colors" :class="isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-gray-100 hover:bg-gray-50'"
+                      @click="selectedParticipantId = standing.participant_id"
+                      class="border-t transition-colors cursor-pointer" :class="isDark ? 'border-white/[0.04] hover:bg-white/[0.04]' : 'border-gray-100 hover:bg-gray-100'"
                     >
                       <td class="px-4 py-3 text-xs font-bold text-gray-500">{{ standing.position }}</td>
                       <td class="px-4 py-3">
@@ -810,11 +822,13 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
             <p class="text-sm text-gray-500">No {{ participantsTabName.toLowerCase() }} available yet.</p>
           </div>
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div
+            <button
               v-for="participant in participants"
               :key="participant.id"
-              :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'"
-              class="border rounded-xl p-4 flex flex-col gap-4 transition-colors hover:border-emerald-500/30 group"
+              type="button"
+              @click="selectedParticipantId = participant.id"
+              :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] hover:bg-white/[0.02]' : 'bg-white shadow-sm border-gray-100 hover:bg-gray-50'"
+              class="border rounded-xl p-4 flex flex-col gap-4 transition-colors hover:border-emerald-500/30 group text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             >
               <div class="flex items-center gap-4">
                 <div class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 transition-colors" :class="isDark ? 'bg-white/10' : 'bg-gray-100'">
@@ -829,33 +843,7 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
                   </h4>
                 </div>
               </div>
-
-              <!-- Players List -->
-              <div v-if="participant.players && participant.players.length > 0" class="mt-2 pt-3 border-t transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-                <h5 class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Players</h5>
-                <div class="space-y-1.5 flex flex-col">
-                  <div
-                    v-for="player in participant.players"
-                    :key="player.id"
-                    class="flex items-center justify-between py-1 px-2 rounded-lg transition-colors"
-                    :class="isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-gray-50'"
-                  >
-                    <div class="flex items-center gap-2">
-                      <div v-if="player.number != null" class="w-5 h-5 flex items-center justify-center rounded bg-gray-500/10 text-xs font-bold text-gray-500">
-                        {{ player.number }}
-                      </div>
-                      <span class="text-sm font-medium" :class="isDark ? 'text-gray-300' : 'text-gray-700'">{{ player.name }}</span>
-                    </div>
-                    <div v-if="player.position" class="text-[10px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider bg-gray-500/10 text-gray-500">
-                      {{ player.position }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div v-else class="mt-2 pt-3 border-t transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-                <p class="text-[12px] text-gray-500 italic">No players available</p>
-              </div>
-            </div>
+            </button>
           </div>
         </div>
 
