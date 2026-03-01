@@ -48,32 +48,19 @@ export default defineEventHandler(async (event) => {
     }
 
     // Dimensions
-    const matchHeight = 80 // Height of a single match card
-    const matchGap = 20    // Gap between matches in round 1
+    const matchHeight = 140 // Height of a single match card
+    const matchGap = 40    // Gap between matches in round 1
+    const cardWidth = 400
+    const colWidth = cardWidth + 100 // column width including gap to next column
     
     // Calculate total height based on Round 1 matches
     // Calculate total height based on Round 1 matches (increased buffer for footer)
     const round1Matches = fixturesByRound[rounds[0]]?.length || 0
-    const contentHeight = Math.max(900, (round1Matches * (matchHeight + matchGap)) + 600) // +600 for header/padding/footer
-    const contentWidth = Math.max(1200, (rounds.length * 350) + 100) // 350px per round col
+    const contentHeight = Math.max(1080, (round1Matches * (matchHeight + matchGap)) + 600) // +600 for header/padding/footer
+    const contentWidth = Math.max(1600, (rounds.length * colWidth) + 100)
 
     const height = contentHeight
     const width = contentWidth
-
-    // Helpers for tree layout
-    const getMatchVerticalPos = (roundIndex: number, matchIndex: number) => {
-        // This calculates the center Y position of a match in the grid
-        // Round 0: 0, 1, 2, 3... spaced by gap
-        // Round 1: centered between (0,1), (2,3)...
-        const span = Math.pow(2, roundIndex)
-        // For visual calculation in pixels:
-        // Position = (Start Offset) + (Index * Stride)
-        // Stride = (MatchHeight + Gap) * 2^roundIndex
-        // Offset = ?
-        // Simpler approach: Just use flexbox with spacers? 
-        // Satori flexbox is robust. Let's try to simulate the grid using nested flex columns.
-        return 0
-    }
 
     // Background Layers
     const backgroundLayers = []
@@ -86,7 +73,7 @@ export default defineEventHandler(async (event) => {
               height: height,
               style: {
                   position: 'absolute',
-                  top: 0, 0: 0,
+                  top: 0, left: 0,
                   width: '100%',
                   height: '100%',
                   objectFit: 'cover',
@@ -119,27 +106,6 @@ export default defineEventHandler(async (event) => {
             const home = fixture.homeTeam
             const away = fixture.awayTeam
             
-            // Calculate spacing for this round
-            // Round 1 (rIndex 0): gap is 1 unit
-            // Round 2 (rIndex 1): gap scales
-            // Actually, best way in Flex is to use `justify-content: space-around` for the column if we treat the whole height as fixed?
-            // No, the height grows.
-            // Absolute positioning is easiest for trees in Satori if we know the math.
-            // Let's rely on margins.
-            
-            // Math:
-            // R0 Spacing: 20px. 
-            // Top Margin R0: 0. 
-            // R1 Spacing: (80 + 20) * 2 - 80 = 120px? 
-            // Better: use empty spacer blocks or just margin-bottom.
-            
-            // Let's try a computed margin approach.
-            // Base gap = 20.
-            // Round 0 matches are [Card] [20px] [Card] [20px]...
-            // Round 1 matches are centered relative to R0 pairs.
-            // Indent top: (MatchHeight + Gap) * (2^rIndex - 1) / 2 ?
-            // Gap between: (MatchHeight + Gap) * 2^rIndex - MatchHeight
-            
             const unit = matchHeight + matchGap
             const power = Math.pow(2, rIndex)
             const marginTop = mIndex === 0 ? (unit * (power - 1)) / 2 : 0
@@ -148,6 +114,13 @@ export default defineEventHandler(async (event) => {
             // Connector
             let connector = null
             if (rIndex < rounds.length - 1) {
+                // To connect two cards perfectly:
+                // unit = matchHeight + matchGap
+                // The vertical gap between the top card's bottom and the bottom card's top in a pair is: 
+                // `unit * Math.pow(2, rIndex) - matchHeight`
+                // BUT, we want the line to start from the vertical center of the card.
+                // The absolute distance between vertical centers of paired matches is `unit * Math.pow(2, rIndex)`.
+                // Ergo, each half-connector must cover exactly HALF that distance vertically.
                 const offset = (unit * Math.pow(2, rIndex)) / 2
                 const isTop = mIndex % 2 === 0
                 
@@ -156,28 +129,28 @@ export default defineEventHandler(async (event) => {
                     props: {
                         style: {
                             position: 'absolute',
-                            right: '-40px',
-                            width: '40px',
-                            height: `${offset}px`,
-                            [isTop ? 'top' : 'bottom']: '40px',
+                            right: '-50px',
+                            width: '50px',
+                            height: `${offset + 1.5}px`,
+                            [isTop ? 'top' : 'bottom']: `${matchHeight / 2 - 1.5}px`,
                             display: 'flex'
                         },
                         children: [
                             {
                                 type: 'svg',
                                 props: {
-                                    width: 40,
-                                    height: offset,
-                                    viewBox: `0 0 40 ${offset}`,
+                                    width: 50,
+                                    height: offset + 1.5,
+                                    viewBox: `0 0 50 ${offset + 1.5}`,
                                     children: [
                                         {
                                             type: 'path',
                                             props: {
                                                 d: isTop 
-                                                    ? `M0,0 H20 V${offset} H40`
-                                                    : `M0,${offset} H20 V0 H40`,
+                                                    ? `M0,1.5 H25 V${offset + 1.5} H50`
+                                                    : `M0,${offset} H25 V0 H50`,
                                                 stroke: '#6b7280',
-                                                strokeWidth: 2,
+                                                strokeWidth: 3,
                                                 fill: 'none'
                                             }
                                         }
@@ -195,7 +168,7 @@ export default defineEventHandler(async (event) => {
                     style: {
                         position: 'relative',
                         display: 'flex',
-                        width: '280px',
+                        width: `${cardWidth}px`,
                         height: `${matchHeight}px`,
                         marginTop: `${marginTop}px`,
                         marginBottom: `${marginBottom}px`
@@ -210,8 +183,8 @@ export default defineEventHandler(async (event) => {
                                     width: '100%',
                                     height: '100%',
                                     backgroundColor: '#1f2937', 
-                                    border: '1px solid #374151',
-                                    borderRadius: '8px',
+                                    border: '2px solid #374151',
+                                    borderRadius: '12px',
                                     overflow: 'hidden'
                                 },
                                 children: [
@@ -219,10 +192,10 @@ export default defineEventHandler(async (event) => {
                                     {
                                         type: 'div',
                                         props: {
-                                            style: { flex: 1, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid #374151', backgroundColor: getWinnerBg(fixture, true) },
+                                            style: { flex: 1, display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: '2px solid #374151', backgroundColor: getWinnerBg(fixture, true) },
                                             children: [
-                                                { type: 'span', props: { style: { flex: 1, fontSize: '14px', fontWeight: 600, color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }, children: getTeamName(fixture, true) } },
-                                                { type: 'span', props: { style: { fontSize: '14px', fontWeight: 700, color: 'white' }, children: getScore(fixture, true) } }
+                                                { type: 'span', props: { style: { flex: 1, fontSize: '24px', fontWeight: 600, color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }, children: getTeamName(fixture, true) } },
+                                                { type: 'span', props: { style: { fontSize: '28px', fontWeight: 700, color: 'white' }, children: getScore(fixture, true) } }
                                             ]
                                         }
                                     },
@@ -230,10 +203,10 @@ export default defineEventHandler(async (event) => {
                                     {
                                         type: 'div',
                                         props: {
-                                            style: { flex: 1, display: 'flex', alignItems: 'center', padding: '0 12px', backgroundColor: getWinnerBg(fixture, false) },
+                                            style: { flex: 1, display: 'flex', alignItems: 'center', padding: '0 20px', backgroundColor: getWinnerBg(fixture, false) },
                                             children: [
-                                                { type: 'span', props: { style: { flex: 1, fontSize: '14px', fontWeight: 600, color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }, children: getTeamName(fixture, false) } },
-                                                { type: 'span', props: { style: { fontSize: '14px', fontWeight: 700, color: 'white' }, children: getScore(fixture, false) } }
+                                                { type: 'span', props: { style: { flex: 1, fontSize: '24px', fontWeight: 600, color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }, children: getTeamName(fixture, false) } },
+                                                { type: 'span', props: { style: { fontSize: '28px', fontWeight: 700, color: 'white' }, children: getScore(fixture, false) } }
                                             ]
                                         }
                                     }
@@ -252,14 +225,14 @@ export default defineEventHandler(async (event) => {
                 style: {
                     display: 'flex',
                     flexDirection: 'column',
-                    marginRight: rIndex < rounds.length - 1 ? '40px' : '0' // Gap between columns
+                    marginRight: rIndex < rounds.length - 1 ? '100px' : '0' // Gap between columns
                 },
                 children: [
                             // Round Header
                             {
                                 type: 'div',
                                 props: {
-                                    style: { display: 'flex', justifyContent: 'center', width: '100%', textAlign: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '20px' },
+                                    style: { display: 'flex', justifyContent: 'center', width: '100%', textAlign: 'center', color: '#9ca3af', fontSize: '20px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '30px', letterSpacing: '0.05em' },
                                     children: (fixtures[0] as any)?.roundName || getRoundLabel(rIndex, rounds.length)
                                 }
                             },
