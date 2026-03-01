@@ -529,7 +529,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               </span>
               <span v-else-if="nameAvailable === true" class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                 <UIcon name="i-heroicons-check-circle" class="w-3 h-3" />
-                Available! Your tournament will be at: <span class="font-medium">parascores.com/tournaments/{{ state.customName }}</span>
+                Available! Your tournament will be at: <span class="font-medium">parascores.com/t/{{ state.customName }}</span>
               </span>
               <span v-else-if="nameAvailable === false" class="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
                 <UIcon name="i-heroicons-x-circle" class="w-3 h-3" />
@@ -539,7 +539,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 {{ nameCheckError }}
               </span>
               <span v-else-if="state.customName" class="text-xs text-gray-500">
-                Your tournament will be accessible at: <span class="font-medium text-indigo-500">parascores.com/tournaments/{{ state.customName }}</span>
+                Your tournament will be accessible at: <span class="font-medium text-indigo-500">parascores.com/t/{{ state.customName }}</span>
               </span>
               <span v-else class="text-xs text-gray-400">
                 Lowercase letters, numbers, and hyphens only
