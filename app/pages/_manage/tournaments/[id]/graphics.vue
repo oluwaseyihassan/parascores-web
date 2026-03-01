@@ -229,7 +229,11 @@ const generatePreview = async () => {
         const roundsSet = new Set<number>()
         const fixturesByRound: Record<number, Fixture[]> = {}
         
-        fixtures.value.forEach(f => {
+        const bracketFixtures = tournament.value.type === 'HYBRID'
+            ? fixtures.value.filter(f => f.stage === 'KNOCKOUT')
+            : fixtures.value
+
+        bracketFixtures.forEach(f => {
             roundsSet.add(f.round)
             if (!fixturesByRound[f.round]) fixturesByRound[f.round] = []
             fixturesByRound[f.round]?.push(f)
@@ -424,7 +428,7 @@ onUnmounted(() => {
                   Match Result
                 </button>
                 <button 
-                  v-if="tournament && ['ROUND_ROBIN', 'GROUP'].includes(tournament.type)"
+                  v-if="tournament && ['ROUND_ROBIN', 'GROUP', 'HYBRID'].includes(tournament.type)"
                   type="button"
                   class="flex-1 px-4 py-2 text-sm font-medium border-t border-b focus:z-10 focus:ring-2 focus:ring-indigo-500"
                   :class="graphicType === 'standing' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
@@ -433,7 +437,7 @@ onUnmounted(() => {
                   Standings
                 </button>
                 <button 
-                  v-if="tournament && tournament.type === 'KNOCKOUT'"
+                  v-if="tournament && ['KNOCKOUT', 'HYBRID'].includes(tournament.type)"
                   type="button"
                   class="flex-1 px-4 py-2 text-sm font-medium border border-l-0 rounded-r-md focus:z-10 focus:ring-2 focus:ring-indigo-500"
                   :class="graphicType === 'bracket' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
