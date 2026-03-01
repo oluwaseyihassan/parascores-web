@@ -1496,6 +1496,17 @@ const openConfirmModal = (options: {
                                 </UButton>
                                 
                                 <UButton 
+                                  v-if="fixture.status === 'SCHEDULED'"
+                                  size="xs" 
+                                  color="neutral" 
+                                  variant="soft"
+                                  icon="i-heroicons-pencil"
+                                  @click.stop="openMatchControl(fixture)"
+                                >
+                                  Edit
+                                </UButton>
+                                
+                                <UButton 
                                   v-if="fixture.status === 'LIVE' || fixture.status === 'COMPLETED'"
                                   size="xs" 
                                   color="warning" 
@@ -1667,6 +1678,17 @@ const openConfirmModal = (options: {
                                 @click.stop="startMatch(fixture)"
                               >
                                 Start
+                              </UButton>
+
+                              <UButton 
+                                v-if="fixture.status === 'SCHEDULED'"
+                                size="xs" 
+                                color="neutral" 
+                                variant="soft"
+                                icon="i-heroicons-pencil"
+                                @click.stop="openMatchControl(fixture)"
+                              >
+                                Edit
                               </UButton>
                               
                               <!-- Control Match Button (for LIVE) -->
