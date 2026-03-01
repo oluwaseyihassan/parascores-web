@@ -72,7 +72,8 @@ export default defineEventHandler(async (event) => {
   const homeGoalCount = goalEvents.filter((e: any) => e.participantId === homeTeam.id || e.participant_id === homeTeam.id).length
   const awayGoalCount = goalEvents.filter((e: any) => e.participantId === awayTeam.id || e.participant_id === awayTeam.id).length
   const maxGoals = Math.max(homeGoalCount, awayGoalCount, 0)
-  const baseHeight = 550
+  // Ensure enough base height to fit the scorecard AND full footer (sponsors + socials)
+  const baseHeight = 650
   const goalRowHeight = 24
   const height = baseHeight + (maxGoals * goalRowHeight)
   const width = 1200
@@ -156,7 +157,7 @@ export default defineEventHandler(async (event) => {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'flex-start',
-                paddingTop: '60px',
+                paddingTop: '60px', // Restore top padding for balance
                 width: '100%',
                 height: '100%',
                 position: 'relative', // Stack on top of background
@@ -171,7 +172,7 @@ export default defineEventHandler(async (event) => {
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        marginBottom: '40px',
+                        marginBottom: '40px', // Restore padding
                         gap: '8px', 
                       },
                       children: [
@@ -225,7 +226,7 @@ export default defineEventHandler(async (event) => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             width: '80%',
-                            padding: '40px',
+                            padding: '30px', // Slightly tighten inner card padding
                             backgroundColor: 'rgba(255,255,255,0.05)',
                             borderRadius: '24px',
                             border: '1px solid rgba(255,255,255,0.1)'
@@ -408,8 +409,8 @@ export default defineEventHandler(async (event) => {
                           flexDirection: 'column',
                           alignItems: 'center',
                           marginTop: 'auto',
-                          paddingTop: '50px',
-                          paddingBottom: '80px',
+                          paddingTop: '50px', 
+                          paddingBottom: '80px', 
                           gap: '16px',
                           width: '100%'
                         },
