@@ -40,8 +40,7 @@ export default defineEventHandler(async (event) => {
     }
 
   // Calculate height based on number of rows (approx 80px per row + 650px header/padding/footer)
-  const calculatedHeight = 650 + (standings.length * 80)
-  const height = Math.max(1200, calculatedHeight)
+  const height = 650 + (standings.length * 80)
   const width = 1200
   
   // Background Strategy
