@@ -54,6 +54,24 @@ async function fetchData() {
 
 onMounted(fetchData)
 
+// Realtime Updates
+useLiveStream()
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('live-match-update', (e: Event) => {
+    const customEvent = e as CustomEvent
+    const { type, data } = customEvent.detail
+
+    if (type === 'fixture_updated') {
+      const targetIdx = participantFixtures.value.findIndex((f) => f.id === data.id)
+      if (targetIdx !== -1) {
+        // If it's pertinent to this team, update it
+        participantFixtures.value[targetIdx] = { ...participantFixtures.value[targetIdx], ...data }
+      }
+    }
+  })
+}
+
 // SEO
 watchEffect(() => {
   if (participant.value && tournament.value) {
@@ -73,6 +91,21 @@ function formatTime(dateStr?: string | null) {
 function formatFullDate(dateStr?: string | null) {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+function getScoreBadgeClass(match: Fixture) {
+  if (match.status !== 'COMPLETED') return 'bg-white/5 text-white'
+  
+  const isHome = match.homeTeamId === props.participantId
+  const isAway = match.awayTeamId === props.participantId
+  
+  if (!isHome && !isAway) return 'bg-white/5 text-white'
+  
+  const myScore = isHome ? (match.homeScore ?? 0) : (match.awayScore ?? 0)
+  const oppScore = isHome ? (match.awayScore ?? 0) : (match.homeScore ?? 0)
+  
+  if (myScore > oppScore) return 'bg-emerald-600 text-white'
+  if (myScore < oppScore) return 'bg-red-500 text-white'
+  return 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
 }
 </script>
 
@@ -213,7 +246,7 @@ function formatFullDate(dateStr?: string | null) {
                   <!-- Score -->
                   <div class="flex-shrink-0 w-16 text-center">
                     <template v-if="match.status === 'COMPLETED' || match.status === 'LIVE'">
-                      <div class="inline-flex px-3 py-1 bg-white/5 rounded min-w-[50px] justify-center text-sm font-bold tracking-widest text-white">
+                      <div class="inline-flex px-3 py-1 rounded min-w-[50px] justify-center text-sm font-bold tracking-widest" :class="getScoreBadgeClass(match)">
                          {{ match.homeScore ?? 0 }} - {{ match.awayScore ?? 0 }}
                       </div>
                     </template>
