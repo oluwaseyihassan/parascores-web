@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { Visibility, TournamentType, ParticipantType, ParticipantStatus, FixtureStatus, FixtureStage } from '~/types'
 import type { Participant, Fixture, Sponsor, Social } from '~/types'
+import * as xlsx from 'xlsx'
 
 definePageMeta({
   layout: 'dashboard'
@@ -284,6 +285,78 @@ const newPlayer = reactive({
 })
 const editingPlayerId = ref<string | null>(null)
 const deletingPlayerId = ref<string | null>(null)
+
+// Excel Upload
+const uploadingExcel = ref(false)
+const excelFileInput = ref<HTMLInputElement | null>(null)
+
+const triggerExcelUpload = () => {
+  if (excelFileInput.value) excelFileInput.value.click()
+}
+
+const handleExcelUpload = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file || !selectedParticipant.value) return
+
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    if (!selectedParticipant.value) return
+    try {
+      uploadingExcel.value = true
+      const data = new Uint8Array(e.target?.result as ArrayBuffer)
+      const workbook = xlsx.read(data, { type: 'array' })
+      const firstSheetName = workbook.SheetNames[0]
+      if (!firstSheetName) throw new Error('No sheets found in Excel file')
+      const worksheet = workbook.Sheets[firstSheetName]
+      if (!worksheet) throw new Error('Worksheet not found in the Excel file')
+      const jsonData = xlsx.utils.sheet_to_json<any>(worksheet)
+      
+      const players = jsonData.map(row => {
+        // Find keys defensively
+        const keys = Object.keys(row)
+        const nameKey = keys.find(k => k.toLowerCase().trim() === 'name' || k.toLowerCase().trim() === 'player')
+        const numberKey = keys.find(k => k.toLowerCase().trim() === 'number' || k.toLowerCase().trim() === '#')
+        const positionKey = keys.find(k => k.toLowerCase().trim() === 'position' || k.toLowerCase().trim() === 'pos')
+
+        return {
+          name: nameKey ? String(row[nameKey]).trim() : '',
+          number: numberKey ? parseInt(row[numberKey]) || null : null,
+          position: positionKey ? String(row[positionKey]).trim().toUpperCase() : 'FWD'
+        }
+      }).filter(p => p.name)
+
+      if (players.length > 0) {
+        await participantStore.addPlayersBulk(selectedParticipant.value.id, { players })
+        useToast().add({ title: `Added ${players.length} players successfully`, color: 'success' })
+        
+        // fetch updated list
+        const updatedPlayers = await participantStore.fetchParticipantPlayers(selectedParticipant.value.id)
+        selectedParticipant.value.players = updatedPlayers
+      } else {
+        useToast().add({ title: 'No valid players found in Excel', color: 'error' })
+      }
+    } catch (err: any) {
+      console.error('Excel parse error:', err)
+      useToast().add({ title: 'Failed to parse Excel file', description: err.message, color: 'error' })
+    } finally {
+      uploadingExcel.value = false
+      if (excelFileInput.value) excelFileInput.value.value = ''
+    }
+  }
+  reader.readAsArrayBuffer(file)
+}
+
+const downloadExcelTemplate = () => {
+  const wsData = [
+    ['Name', 'Number', 'Position'],
+    ['John Doe', '9', 'FWD'],
+    ['Jane Smith', '1', 'GK']
+  ]
+  const ws = xlsx.utils.aoa_to_sheet(wsData)
+  const wb = xlsx.utils.book_new()
+  xlsx.utils.book_append_sheet(wb, ws, 'Players')
+  xlsx.writeFile(wb, 'Parascores_Player_Upload_Template.xlsx')
+}
 
 const positions = ['GK', 'DEF', 'MID', 'FWD', 'COACH']
 
@@ -1963,17 +2036,53 @@ const openConfirmModal = (options: {
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
               Manage Players - {{ selectedParticipant?.customName }}
             </h3>
-            <UButton 
-              icon="i-heroicons-x-mark" 
-              variant="ghost" 
-              color="neutral" 
-              size="sm"
-              @click="showManagePlayersModal = false"
-            />
+            <div class="flex items-center gap-2">
+              <input 
+                ref="excelFileInput"
+                type="file" 
+                accept=".xlsx, .xls, .csv"
+                class="hidden"
+                @change="handleExcelUpload"
+              />
+              <UButton
+                variant="ghost"
+                color="primary"
+                size="sm"
+                icon="i-heroicons-arrow-down-tray"
+                @click="downloadExcelTemplate"
+                label="Template"
+                title="Download Excel Template"
+              />
+              <UButton
+                variant="soft"
+                color="primary"
+                size="sm"
+                icon="i-heroicons-document-arrow-up"
+                :loading="uploadingExcel"
+                @click="triggerExcelUpload"
+                label="Upload Excel"
+              />
+              <UButton 
+                icon="i-heroicons-x-mark" 
+                variant="ghost" 
+                color="neutral" 
+                size="sm"
+                @click="showManagePlayersModal = false"
+              />
+            </div>
           </div>
         </template>
 
         <div class="space-y-6">
+          <!-- Excel Upload Instructions -->
+          <UAlert
+            icon="i-heroicons-information-circle"
+            title="Bulk Upload Instructions"
+            description="Upload an Excel (.xlsx, .xls) or .csv file to add players in bulk. The file must contain a 'Name' column. You can optionally include 'Number' and 'Position' (GK, DEF, MID, FWD, COACH) columns."
+            color="info"
+            variant="soft"
+          />
+
           <!-- Add Player Form -->
           <form @submit.prevent="handleAddPlayer" class="flex items-end gap-3">
             <div class="flex-1">
