@@ -528,7 +528,7 @@ const isHomeEvent = (event: any) => {
           </div>
           
           <!-- No Events Message -->
-          <div v-else-if="isCompleted || isLive" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl px-5 py-12 flex flex-col items-center justify-center">
+          <div v-else :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl px-5 py-12 flex flex-col items-center justify-center">
             <UIcon name="i-heroicons-clipboard-document-list" class="w-10 h-10 text-gray-400 mb-3 opacity-50" />
             <p class="text-sm font-medium text-gray-500">No match events recorded yet.</p>
           </div>
