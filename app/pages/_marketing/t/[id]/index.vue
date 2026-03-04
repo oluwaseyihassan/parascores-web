@@ -365,8 +365,8 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
 
       <!-- Tabs -->
       <section class="border-b sticky top-0 z-20 backdrop-blur-md transition-colors" :class="isDark ? 'border-white/10 bg-gray-950/95' : 'border-gray-200 bg-gray-50/95'">
-        <div class="max-w-5xl mx-auto px-6">
-          <nav class="flex gap-1 -mb-px">
+        <div class="w-full">
+          <nav class="flex gap-1 -mb-px overflow-x-auto hide-scrollbar whitespace-nowrap px-6 md:justify-center md:px-0 max-w-5xl mx-auto">
             <button
               @click="activeTab = 'fixtures'"
               :class="[
@@ -685,52 +685,58 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
           <div v-if="standings.length === 0" class="text-center py-16">
             <p class="text-sm text-gray-500">No standings available yet.</p>
           </div>
-          <div v-else class="space-y-6">
+          <div v-else class="space-y-6 max-w-4xl mx-auto">
             <div v-for="(groupStandings, groupName) in standingsByGroup" :key="groupName">
-              <h4 v-if="groupName !== 'default'" class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
-                {{ groupName }}
-              </h4>
-              <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'" class="border rounded-xl overflow-hidden transition-colors">
+              <div class="flex items-center justify-between mb-3 px-1">
+                <h4 v-if="groupName !== 'default'" class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  {{ groupName }}
+                </h4>
+              </div>
+              <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'" class="border rounded-xl overflow-x-auto transition-colors">
                 <table class="w-full text-sm">
                   <thead>
                     <tr class="border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-                      <th class="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 w-8">#</th>
-                      <th class="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Team</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 hidden sm:table-cell">P</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 hidden sm:table-cell">W</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 hidden sm:table-cell">D</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 hidden sm:table-cell">L</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 hidden md:table-cell">GD</th>
-                      <th class="text-center px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Pts</th>
+                      <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 sticky left-0 z-20" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white'">#</th>
+                      <th class="text-left w-[170px] md:w-auto min-w-[170px] px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white'">Team</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">P</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">W</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">D</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">L</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">GF</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">GA</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">GD</th>
+                      <th class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Pts</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr 
-                      v-for="standing in groupStandings" 
+                      v-for="(standing, index) in groupStandings" 
                       :key="standing.id"
                       @click="selectedParticipantId = standing.participant_id"
                       class="border-t transition-colors cursor-pointer" :class="isDark ? 'border-white/[0.04] hover:bg-white/[0.04]' : 'border-gray-100 hover:bg-gray-100'"
                     >
-                      <td class="px-4 py-3 text-xs font-bold text-gray-500">{{ standing.position }}</td>
-                      <td class="px-4 py-3">
-                        <div class="flex items-center gap-2.5">
-                          <div class="w-6 h-6 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
+                      <td class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[13px] font-bold text-gray-500 sticky left-0 z-10" :class="[isDark ? 'bg-[#1a1a1a]' : 'bg-white']">{{ standing.position || index + 1 }}</td>
+                      <td class="text-left w-[170px] md:w-auto min-w-[170px] px-3 py-3 sticky left-[32px] md:left-[40px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none" :class="[isDark ? 'bg-[#1a1a1a]' : 'bg-white']">
+                        <div class="flex items-center gap-2 md:gap-2.5">
+                          <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
                             <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
-                            <span v-else class="flex items-center justify-center w-full h-full text-[9px] font-bold text-gray-500">
+                            <span v-else class="flex items-center justify-center w-full h-full text-[8px] md:text-[9px] font-bold text-gray-500">
                               {{ (standing.participant?.customName || 'T').charAt(0) }}
                             </span>
                           </div>
-                          <span class="text-[13px] font-medium truncate" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ standing.participant?.customName || 'Unknown' }}</span>
+                          <span class="text-[12px] md:text-[13px] font-medium truncate" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ standing.participant?.customName || 'Unknown' }}</span>
                         </div>
                       </td>
-                      <td class="text-center px-2 py-3 text-[13px] text-gray-400 hidden sm:table-cell">{{ standing.played }}</td>
-                      <td class="text-center px-2 py-3 text-[13px] text-gray-400 hidden sm:table-cell">{{ standing.wins }}</td>
-                      <td class="text-center px-2 py-3 text-[13px] text-gray-400 hidden sm:table-cell">{{ standing.draws }}</td>
-                      <td class="text-center px-2 py-3 text-[13px] text-gray-400 hidden sm:table-cell">{{ standing.losses }}</td>
-                      <td class="text-center px-2 py-3 text-[13px] hidden md:table-cell" :class="standing.goalDiff > 0 ? 'text-emerald-400' : standing.goalDiff < 0 ? 'text-red-400' : 'text-gray-500'">
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.played }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.wins }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.draws }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.losses }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsFor }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsAgainst }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px]" :class="standing.goalDiff > 0 ? 'text-emerald-400' : standing.goalDiff < 0 ? 'text-red-400' : 'text-gray-500'">
                         {{ standing.goalDiff > 0 ? '+' : '' }}{{ standing.goalDiff }}
                       </td>
-                      <td class="text-center px-4 py-3 text-[13px] font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">{{ standing.points }}</td>
+                      <td class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[12px] md:text-[13px] font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">{{ standing.points }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -850,30 +856,9 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
         <!-- ====== INFO TAB ====== -->
         <div v-else-if="activeTab === 'info'" class="">
           <div class="flex flex-col gap-6">
-            <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
-              <div class="px-5 py-3.5 border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-                <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400">Tournament Info</h3>
-              </div>
-              <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
-                <div class="flex items-center justify-between px-5 py-3">
-                  <span class="text-sm text-gray-500">Dates</span>
-                  <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ formatDate(tournament.start_date) }} — {{ formatDate(tournament.end_date) }}</span>
-                </div>
-                <div class="flex items-center justify-between px-5 py-3">
-                  <span class="text-sm text-gray-500">Sport</span>
-                  <span class="text-sm transition-colors capitalize" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ tournament.sport }}</span>
-                </div>
-                <div class="flex items-center justify-between px-5 py-3">
-                  <span class="text-sm text-gray-500">Type</span>
-                  <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ formatType(tournament.type) }}</span>
-                </div>
-                <div v-if="tournament.location" class="flex items-center justify-between px-5 py-3">
-                  <span class="text-sm text-gray-500">Location</span>
-                  <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ tournament.location }}</span>
-                </div>
-              </div>
-            </div>
 
+
+            <!-- About Section (First) -->
             <div v-if="tournament.description || (socials && socials.length > 0)" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
               <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                 <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400">About</h3>
@@ -889,8 +874,8 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
                     class="text-gray-400 hover:text-emerald-400 transition-colors tooltip"
                     :title="social.handle || social.platform"
                   >
-                    <UIcon v-if="social.platform === 'twitter'" name="i-simple-icons-x" class="w-4 h-4" />
-                    <UIcon v-else-if="social.platform === 'instagram'" name="i-simple-icons-instagram" class="w-4 h-4" />
+                    <SocialsTwitterIcon v-if="social.platform === 'twitter'" class="w-4 h-4" />
+                    <SocialsInstagramIcon v-else-if="social.platform === 'instagram'" class="w-4 h-4" />
                     <UIcon v-else-if="social.platform === 'facebook'" name="i-simple-icons-facebook" class="w-4 h-4" />
                     <UIcon v-else-if="social.platform === 'youtube'" name="i-simple-icons-youtube" class="w-4 h-4" />
                     <UIcon v-else-if="social.platform === 'tiktok'" name="i-simple-icons-tiktok" class="w-4 h-4" />
@@ -928,6 +913,31 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
                     </div>
                   </component>
                 </template>
+              </div>
+            </div>
+
+            <!-- Tournament Info (Last) -->
+            <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden mt-6">
+              <div class="px-5 py-3.5 border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+                <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400">Tournament Info</h3>
+              </div>
+              <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
+                <div class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Dates</span>
+                  <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ formatDate(tournament.start_date) }} — {{ formatDate(tournament.end_date) }}</span>
+                </div>
+                <div class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Sport</span>
+                  <span class="text-sm transition-colors capitalize" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ tournament.sport }}</span>
+                </div>
+                <div class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Type</span>
+                  <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ formatType(tournament.type) }}</span>
+                </div>
+                <div v-if="tournament.location" class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Location</span>
+                  <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ tournament.location }}</span>
+                </div>
               </div>
             </div>
           </div>
