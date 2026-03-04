@@ -527,6 +527,103 @@ const handleAddParticipant = async (event: FormSubmitEvent<AddParticipantSchema>
   }
 }
 
+// Edit Participant Modal
+const showEditModal = ref(false)
+const editingParticipant = ref(false)
+const editParticipantError = ref<string | null>(null)
+const editingParticipantId = ref<string | null>(null)
+
+const editParticipantState = reactive({
+  customName: '',
+  logoUrl: null as string | null
+})
+
+const editLogoFileInput = ref<HTMLInputElement | null>(null)
+const editLogoFile = ref<File | null>(null)
+const editLogoPreview = ref<string | null>(null)
+
+const triggerEditLogoInput = () => {
+  editLogoFileInput.value?.click()
+}
+
+const handleEditLogoChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    editParticipantError.value = 'Please select an image file'
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    editParticipantError.value = 'Image must be less than 5MB'
+    return
+  }
+  
+  editParticipantError.value = null
+  editLogoFile.value = file
+  editLogoPreview.value = URL.createObjectURL(file)
+}
+
+const removeEditLogo = () => {
+  editLogoFile.value = null
+  editLogoPreview.value = null
+  editParticipantState.logoUrl = null
+  if (editLogoFileInput.value) {
+    editLogoFileInput.value.value = ''
+  }
+}
+
+const openEditParticipantModal = (participant: Participant) => {
+  editingParticipantId.value = participant.id
+  editParticipantState.customName = participant.customName || ''
+  editParticipantState.logoUrl = participant.logoUrl || null
+  editParticipantError.value = null
+  
+  editLogoFile.value = null
+  editLogoPreview.value = participant.logoUrl || null // preview existing logo
+  
+  showEditModal.value = true
+}
+
+const handleEditParticipant = async () => {
+  if (!editingParticipantId.value) return
+  
+  editingParticipant.value = true
+  editParticipantError.value = null
+  
+  try {
+    let finalLogoUrl = editParticipantState.logoUrl
+    
+    // Upload new logo if selected
+    if (editLogoFile.value) {
+      const formData = new FormData()
+      formData.append('file', editLogoFile.value)
+      
+      const uploadResponse = await $api<{success: boolean, data: { url: string }, message: string}>('/upload/image?folder=participants', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (uploadResponse.data?.url) {
+        finalLogoUrl = uploadResponse.data.url
+      }
+    }
+    
+    await participantStore.updateParticipant(editingParticipantId.value, {
+      customName: editParticipantState.customName,
+      logoUrl: finalLogoUrl
+    })
+    
+    useToast().add({ title: 'Participant updated successfully', color: 'success' })
+    showEditModal.value = false
+  } catch (err: any) {
+    editParticipantError.value = err?.data?.message || err?.message || 'Failed to update participant'
+  } finally {
+    editingParticipant.value = false
+  }
+}
+
 // Status badge colors
 const statusColors: Record<ParticipantStatus, 'success' | 'warning' | 'error' | 'neutral'> = {
   [ParticipantStatus.CONFIRMED]: 'success',
@@ -1223,7 +1320,11 @@ const openConfirmModal = (options: {
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Main Content -->
         <div class="lg:col-span-2">
-          <UTabs :items="tabItems" class="w-full">
+          <UTabs 
+            :items="tabItems" 
+            class="w-full"
+            :ui="{ list: 'overflow-x-auto flex-nowrap sm:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' }"
+          >
             <!-- Overview Tab -->
             <template #overview>
               <UCard v-if="tournament.description" class="mt-4">
@@ -1241,6 +1342,55 @@ const openConfirmModal = (options: {
                 <div class="text-center py-8 text-gray-500">
                   <UIcon name="i-heroicons-document-text" class="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
                   <p>No description available.</p>
+                </div>
+              </UCard>
+
+              <!-- Tournament Details (Mobile/Main flow) -->
+              <UCard class="mt-4">
+                <template #header>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-indigo-500" />
+                    <span class="font-medium">Details</span>
+                  </div>
+                </template>
+                
+                <div class="space-y-4">
+                  <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                    <span class="text-sm text-gray-500">Sport</span>
+                    <span class="font-medium capitalize">{{ tournament.sport.toLowerCase() }}</span>
+                  </div>
+                  
+                  <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                    <span class="text-sm text-gray-500">Format</span>
+                    <span class="font-medium">
+                      {{ tournament.type === TournamentType.ROUND_ROBIN ? 'Round Robin (League)' : 
+                         tournament.type === TournamentType.KNOCKOUT ? 'Knockout (Single Elimination)' : 
+                         tournament.type === TournamentType.GROUP ? 'Group Stage' :
+                         'Hybrid (Group + Knockout)' }}
+                    </span>
+                  </div>
+                  
+                  <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                    <span class="text-sm text-gray-500">Participants</span>
+                    <span class="font-medium capitalize">{{ tournament.participantType.toLowerCase() }}s</span>
+                  </div>
+                  
+                  <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                    <span class="text-sm text-gray-500">Max Size</span>
+                    <span class="font-medium">{{ tournament.maxParticipants || 'Unlimited' }}</span>
+                  </div>
+                  
+                  <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                    <span class="text-sm text-gray-500">Timezone</span>
+                    <span class="font-medium text-sm">{{ tournament.timezone || 'UTC' }}</span>
+                  </div>
+                  
+                  <div class="flex justify-between items-center py-2">
+                    <span class="text-sm text-gray-500">Auto-approve</span>
+                    <UBadge :color="tournament.autoApprove ? 'success' : 'neutral'" variant="subtle" size="sm">
+                      {{ tournament.autoApprove ? 'Yes' : 'No' }}
+                    </UBadge>
+                  </div>
                 </div>
               </UCard>
             </template>
@@ -1290,10 +1440,10 @@ const openConfirmModal = (options: {
                   <div 
                     v-for="participant in participants" 
                     :key="participant.id"
-                    class="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 py-3 first:pt-0 last:pb-0"
                   >
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                      <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
                         <img 
                           v-if="participant.logoUrl" 
                           :src="participant.logoUrl" 
@@ -1304,16 +1454,26 @@ const openConfirmModal = (options: {
                           {{ participant.seed || '-' }}
                         </span>
                       </div>
-                      <div>
-                        <p class="font-medium text-gray-900 dark:text-white">
-                          {{ participant.customName || 'Unnamed' }}
-                        </p>
-                        <p class="text-xs text-gray-500">
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 mb-0.5">
+                          <p class="font-medium text-gray-900 dark:text-white truncate">
+                            {{ participant.customName || 'Unnamed' }}
+                          </p>
+                          <span 
+                            v-if="participant.seed" 
+                            class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 shrink-0"
+                            title="Seed Ranking"
+                          >
+                            #{{ participant.seed }}
+                          </span>
+                        </div>
+                        <p class="text-xs text-gray-500 truncate">
                           Added {{ new Date(participant.created_at).toLocaleDateString() }}
                         </p>
                       </div>
                     </div>
-                    <div class="flex items-center gap-2">
+                    
+                    <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
                       <UChip
                         v-if="tournament?.participantType === ParticipantType.TEAM"
                         :show="!!participant.players?.length"
@@ -1331,15 +1491,21 @@ const openConfirmModal = (options: {
                           title="Manage Players"
                         />
                       </UChip>
-                      <UButton 
-                        size="xs" 
-                        color="error" 
-                        variant="ghost" 
-                        icon="i-heroicons-trash"
-                        :loading="loading"
-                        @click="removeParticipant(participant.id)"
-                        title="Remove Participant"
-                      />
+                      <UDropdownMenu 
+                        :items="[[
+                          { label: 'Edit', icon: 'i-heroicons-pencil-square', onSelect: () => openEditParticipantModal(participant) },
+                          { label: 'Delete', icon: 'i-heroicons-trash', onSelect: () => removeParticipant(participant.id), class: 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' }
+                        ]]"
+                        :content="{ align: 'end' }"
+                      >
+                        <UButton 
+                          color="neutral" 
+                          variant="ghost" 
+                          icon="i-heroicons-ellipsis-vertical"
+                          :loading="loading"
+                          class="opacity-70 flex-shrink-0"
+                        />
+                      </UDropdownMenu>
                       <UBadge :color="statusColors[participant.status]" variant="subtle" size="sm">
                         {{ participant.status }}
                       </UBadge>
@@ -1465,33 +1631,20 @@ const openConfirmModal = (options: {
                         :items="groupStageAccordionItems" 
                         class="mb-4 w-full"
                         :ui="{ 
-                          item: 'p-0',
-                          trigger: 'p-4'
+                          item: 'p-0 mb-4 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 transition-colors rounded-lg overflow-hidden',
+                          trigger: 'p-4 w-full flex items-center justify-between',
+                          label: 'w-full flex-1 min-w-0'
                         }"
                         multiple
                         :default-open="true"
                       >
                         <template #default="{ item, open }">
-                          <UButton 
-                            :color="item.color" 
-                            :variant="item.variant"
-                            class="mb-2 w-full justify-between rounded"
-                          >
-                            <div class="flex items-center gap-2 truncate">
-                              <span class="font-medium text-gray-900 dark:text-white">{{ item.label }}</span>
-                              <span v-if="item.stats" class="text-sm font-normal text-gray-500 dark:text-gray-400">
-                                {{ item.stats }}
-                              </span>
-                            </div>
-
-                            <template #trailing>
-                              <UIcon 
-                                name="i-heroicons-chevron-down" 
-                                class="w-5 h-5 ms-auto transform transition-transform duration-200" 
-                                :class="[open && '-rotate-180']" 
-                              />
-                            </template>
-                          </UButton>
+                          <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0 flex-1 text-left w-full">
+                            <span class="font-medium text-gray-900 dark:text-white whitespace-normal break-words">{{ item.label }}</span>
+                            <span v-if="item.stats" class="text-xs sm:text-sm font-normal text-gray-500 dark:text-gray-400 shrink-0">
+                              {{ item.stats }}
+                            </span>
+                          </div>
                         </template>
                         
                         <template #content="{ item }">
@@ -1499,11 +1652,11 @@ const openConfirmModal = (options: {
                              <div 
                               v-for="fixture in item.fixtures" 
                               :key="fixture.id"
-                              class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+                              class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
                             >
-                              <div class="flex-1">
-                                <div class="flex items-center gap-2 text-sm">
-                                  <div class="flex items-center gap-2 w-1/3 justify-end">
+                              <div class="w-full sm:flex-1 sm:w-auto">
+                                <div class="flex items-center gap-2 text-sm min-w-0">
+                                  <div class="flex items-center gap-2 flex-1 min-w-0 justify-end">
                                     <span class="font-medium text-gray-900 dark:text-white truncate">
                                       {{ fixture.homeTeam?.customName || 'TBD' }}
                                     </span>
@@ -1519,9 +1672,9 @@ const openConfirmModal = (options: {
                                     </div>
                                   </div>
                                   
-                                  <span class="text-gray-400 px-2">vs</span>
+                                  <span class="text-gray-400 px-2 shrink-0">vs</span>
                                   
-                                  <div class="flex items-center gap-2 w-1/3 justify-start">
+                                  <div class="flex items-center gap-2 flex-1 min-w-0 justify-start">
                                     <div class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
                                       <img 
                                         v-if="fixture.awayTeam?.logoUrl" 
@@ -1555,7 +1708,7 @@ const openConfirmModal = (options: {
                                 </span>
                               </div>
                               
-                              <div class="flex items-center gap-2">
+                              <div class="flex items-center justify-end w-full sm:w-auto shrink-0 gap-2 mt-1 sm:mt-0">
                                 <UButton 
                                   v-if="fixture.status === 'SCHEDULED' && fixture.homeTeamId && fixture.awayTeamId"
                                   size="xs" 
@@ -1837,44 +1990,7 @@ const openConfirmModal = (options: {
 
         <!-- Sidebar -->
         <div class="space-y-6">
-          <!-- Quick Info -->
-          <UCard>
-            <template #header>
-              <div class="flex items-center gap-2">
-                <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-indigo-500" />
-                <span class="font-medium">Details</span>
-              </div>
-            </template>
-            
-            <div class="space-y-4">
-              <div class="flex justify-between">
-                <span class="text-gray-500">Sport</span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ tournament.sport }}</span>
-              </div>
-              <div class="flex justify-between border-t border-gray-100 dark:border-gray-800 pt-4">
-                <span class="text-gray-500">Format</span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ typeLabels[tournament.type] }}</span>
-              </div>
-              <div class="flex justify-between border-t border-gray-100 dark:border-gray-800 pt-4">
-                <span class="text-gray-500">Participants</span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ participantLabels[tournament.participantType] }}</span>
-              </div>
-              <div v-if="tournament.maxParticipants" class="flex justify-between border-t border-gray-100 dark:border-gray-800 pt-4">
-                <span class="text-gray-500">Max Size</span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ tournament.maxParticipants }}</span>
-              </div>
-              <div class="flex justify-between border-t border-gray-100 dark:border-gray-800 pt-4">
-                <span class="text-gray-500">Timezone</span>
-                <span class="font-medium text-gray-900 dark:text-white text-sm">{{ tournament.timezone }}</span>
-              </div>
-              <div class="flex justify-between border-t border-gray-100 dark:border-gray-800 pt-4">
-                <span class="text-gray-500">Auto-approve</span>
-                <UBadge :color="tournament.autoApprove ? 'success' : 'neutral'" variant="subtle">
-                  {{ tournament.autoApprove ? 'Yes' : 'No' }}
-                </UBadge>
-              </div>
-            </div>
-          </UCard>
+
 
           <!-- Organizer -->
           <UCard v-if="tournament.organizer">
@@ -1939,14 +2055,14 @@ const openConfirmModal = (options: {
                 class="group relative"
               >
                 <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all w-full">
-                  <div class="w-8 h-8 rounded-md bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden shrink-0">
+                  <div class="h-8 max-w-20 flex flex-col justify-center shrink-0">
                     <img 
                       v-if="sponsor.logoUrl" 
                       :src="sponsor.logoUrl" 
                       :alt="sponsor.name"
-                      class="w-full h-full object-contain p-0.5"
+                      class="max-h-full max-w-full object-contain"
                     />
-                    <UIcon v-else name="i-heroicons-building-office-2" class="w-4 h-4 text-gray-400" />
+                    <UIcon v-else name="i-heroicons-building-office-2" class="w-5 h-5 text-gray-400" />
                   </div>
                   <div class="flex flex-col overflow-hidden min-w-0 flex-1">
                     <span class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ sponsor.name }}</span>
@@ -2037,31 +2153,6 @@ const openConfirmModal = (options: {
               Manage Players - {{ selectedParticipant?.customName }}
             </h3>
             <div class="flex items-center gap-2">
-              <input 
-                ref="excelFileInput"
-                type="file" 
-                accept=".xlsx, .xls, .csv"
-                class="hidden"
-                @change="handleExcelUpload"
-              />
-              <UButton
-                variant="ghost"
-                color="primary"
-                size="sm"
-                icon="i-heroicons-arrow-down-tray"
-                @click="downloadExcelTemplate"
-                label="Template"
-                title="Download Excel Template"
-              />
-              <UButton
-                variant="soft"
-                color="primary"
-                size="sm"
-                icon="i-heroicons-document-arrow-up"
-                :loading="uploadingExcel"
-                @click="triggerExcelUpload"
-                label="Upload Excel"
-              />
               <UButton 
                 icon="i-heroicons-x-mark" 
                 variant="ghost" 
@@ -2073,15 +2164,49 @@ const openConfirmModal = (options: {
           </div>
         </template>
 
-        <div class="space-y-6">
+        <div class="space-y-6 max-h-[70vh] overflow-y-auto px-1 py-1 pr-3">
           <!-- Excel Upload Instructions -->
           <UAlert
             icon="i-heroicons-information-circle"
             title="Bulk Upload Instructions"
-            description="Upload an Excel (.xlsx, .xls) or .csv file to add players in bulk. The file must contain a 'Name' column. You can optionally include 'Number' and 'Position' (GK, DEF, MID, FWD, COACH) columns."
             color="info"
             variant="soft"
-          />
+          >
+            <template #description>
+              <div class="flex flex-col items-start gap-3 mt-1">
+                <span class="text-sm">
+                  Download our pre-formatted template or upload your own Excel/CSV file to add players in bulk. Only the 'Name' column is required; you can optionally include 'Number' and 'Position'.
+                </span>
+                <div class="flex flex-wrap items-center gap-3 w-full">
+                  <UButton
+                    color="info"
+                    variant="solid"
+                    size="sm"
+                    icon="i-heroicons-arrow-down-tray"
+                    label="Get Template"
+                    @click="downloadExcelTemplate"
+                  />
+                  
+                  <input 
+                    ref="excelFileInput"
+                    type="file" 
+                    accept=".xlsx, .xls, .csv"
+                    class="hidden"
+                    @change="handleExcelUpload"
+                  />
+                  <UButton
+                    variant="soft"
+                    color="primary"
+                    size="sm"
+                    icon="i-heroicons-document-arrow-up"
+                    :loading="uploadingExcel"
+                    @click="triggerExcelUpload"
+                    label="Upload Excel"
+                  />
+                </div>
+              </div>
+            </template>
+          </UAlert>
 
           <!-- Add Player Form -->
           <form @submit.prevent="handleAddPlayer" class="flex items-end gap-3">
@@ -2225,7 +2350,7 @@ const openConfirmModal = (options: {
                 v-if="logoPreview" 
                 :src="logoPreview" 
                 alt="Logo preview"
-                class="w-full h-full object-cover"
+                class="w-full h-full object-contain p-1"
               />
               <div 
                 v-else
@@ -2294,6 +2419,126 @@ const openConfirmModal = (options: {
               label="Add Participant" 
               icon="i-heroicons-plus"
               :loading="addingParticipant"
+            />
+          </div>
+        </UForm>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Edit Participant Modal -->
+  <UModal v-model:open="showEditModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+              Edit Participant
+            </h3>
+            <UButton 
+              icon="i-heroicons-x-mark" 
+              variant="ghost" 
+              color="neutral" 
+              size="sm"
+              @click="showEditModal = false"
+            />
+          </div>
+        </template>
+
+        <UAlert 
+          v-if="editParticipantError" 
+          color="error" 
+          variant="subtle"
+          icon="i-heroicons-exclamation-triangle"
+          :title="editParticipantError"
+          class="mb-4"
+          :close-button="{ icon: 'i-heroicons-x-mark', color: 'error', variant: 'link' }"
+          @close="editParticipantError = null"
+        />
+
+        <UForm 
+          :state="editParticipantState" 
+          @submit="handleEditParticipant"
+          class="space-y-4"
+        >
+          <!-- Logo Upload -->
+          <div class="flex items-center gap-4">
+            <input 
+              ref="editLogoFileInput"
+              type="file" 
+              accept="image/*"
+              class="hidden"
+              @change="handleEditLogoChange"
+            />
+            
+            <button 
+              type="button"
+              class="relative w-16 h-16 rounded-full overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 group shrink-0"
+              @click="triggerEditLogoInput"
+            >
+              <img 
+                v-if="editLogoPreview" 
+                :src="editLogoPreview" 
+                alt="Logo preview"
+                class="w-full h-full object-contain p-1"
+              />
+              <div 
+                v-else
+                class="w-full h-full flex flex-col items-center justify-center text-gray-400 group-hover:text-indigo-500 transition-colors"
+              >
+                <UIcon name="i-heroicons-camera" class="w-6 h-6" />
+              </div>
+            </button>
+            
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ tournament?.participantType === 'TEAM' ? 'Team Logo' : 'Photo' }}
+              </p>
+              <div class="flex items-center gap-2 mt-1">
+                 <UButton
+                  size="xs"
+                  variant="ghost"
+                  color="primary"
+                  @click="triggerEditLogoInput"
+                >
+                  {{ editLogoPreview ? 'Change' : 'Upload' }}
+                </UButton>
+                <UButton
+                  v-if="editLogoPreview"
+                  size="xs"
+                  variant="ghost"
+                  color="error"
+                  @click="removeEditLogo"
+                >
+                  Remove
+                </UButton>
+              </div>
+            </div>
+          </div>
+          <UFormField 
+            :label="tournament?.participantType === 'TEAM' ? 'Team Name' : 'Participant Name'" 
+            name="customName" 
+            required
+          >
+            <UInput 
+              v-model="editParticipantState.customName" 
+              class="w-full"
+            />
+          </UFormField>
+
+          <div class="flex justify-end gap-3 pt-4">
+            <UButton 
+              label="Cancel" 
+              variant="ghost" 
+              color="neutral"
+              @click="showEditModal = false"
+            />
+            <UButton 
+              type="submit"
+              label="Save Changes" 
+              icon="i-heroicons-check"
+              :loading="editingParticipant"
+              :disabled="!editParticipantState.customName"
             />
           </div>
         </UForm>
@@ -2461,7 +2706,7 @@ const openConfirmModal = (options: {
               
               <button 
                 type="button"
-                class="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 group bg-gray-50 dark:bg-gray-800"
+                class="relative h-20 min-w-20 max-w-40 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 group bg-gray-50 dark:bg-gray-800"
                 @click="triggerSponsorLogoInput"
                 :disabled="uploadingSponsorLogo"
               >
@@ -2469,14 +2714,14 @@ const openConfirmModal = (options: {
                   v-if="sponsorLogoPreview || addSponsorState.logoUrl" 
                   :src="sponsorLogoPreview || addSponsorState.logoUrl || undefined" 
                   alt="Logo preview"
-                  class="w-full h-full object-cover"
+                  class="h-full w-auto object-contain mx-auto p-1"
                 />
                 <div 
                   v-else
-                  class="w-full h-full flex flex-col items-center justify-center text-gray-400 group-hover:text-indigo-500 transition-colors"
+                  class="w-full h-full flex flex-col items-center justify-center text-gray-400 group-hover:text-indigo-500 transition-colors px-2"
                 >
                   <UIcon name="i-heroicons-photo" class="w-6 h-6" />
-                  <span class="text-[10px] mt-1 font-medium">Add Logo</span>
+                  <span class="text-[10px] mt-1 font-medium whitespace-nowrap">Add Logo</span>
                 </div>
                 
                 <div 
@@ -2489,7 +2734,7 @@ const openConfirmModal = (options: {
               
               <div class="flex-1 space-y-2">
                  <p class="text-xs text-gray-500 dark:text-gray-400">
-                   Recommended: Square image, max 5MB.
+                   Max 5MB.
                  </p>
                  <UButton
                    v-if="sponsorLogoPreview || addSponsorState.logoUrl"
