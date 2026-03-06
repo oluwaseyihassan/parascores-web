@@ -41,20 +41,22 @@ const fetchData = async () => {
   loading.value = true
   error.value = null
   try {
-    const [tournamentRes, fixturesRes] = await Promise.all([
-      $api<any>(`/tournaments/${tournamentId}`),
-      $api<any>(`/fixtures/tournaments/${tournamentId}`)
-    ])
+    const tournamentRes = await $api<any>(`/tournaments/${tournamentId}`)
     tournament.value = tournamentRes.data
-    // Handle API response: may be { rounds: [...] } or flat array
-    const fixturesData = fixturesRes.data
-    let allFixtures: Fixture[] = []
-    if (fixturesData?.rounds) {
-      allFixtures = fixturesData.rounds.flatMap((r: any) => r.fixtures || [])
-    } else if (Array.isArray(fixturesData)) {
-      allFixtures = fixturesData
+    
+    if (tournament.value?.id) {
+      const fixturesRes = await $api<any>(`/fixtures/tournaments/${tournament.value.id}`)
+      
+      // Handle API response: may be { rounds: [...] } or flat array
+      const fixturesData = fixturesRes.data
+      let allFixtures: Fixture[] = []
+      if (fixturesData?.rounds) {
+        allFixtures = fixturesData.rounds.flatMap((r: any) => r.fixtures || [])
+      } else if (Array.isArray(fixturesData)) {
+        allFixtures = fixturesData
+      }
+      fixtures.value = allFixtures.slice(0, limit)
     }
-    fixtures.value = allFixtures.slice(0, limit)
   } catch (e: any) {
     error.value = e.message || 'Failed to load tournament data'
     console.error('Widget error:', e)
