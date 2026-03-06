@@ -330,7 +330,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     } as Partial<Tournament>)
     
     if (response?.data) {
-      await navigateTo(`/tournaments/${response.data.id}`)
+      const urlId = response.data.customName || response.data.id
+      await navigateTo(`/tournaments/${urlId}`)
     }
   } catch (err: any) {
     error.value = err?.data?.message || err?.message || 'Failed to create tournament'
