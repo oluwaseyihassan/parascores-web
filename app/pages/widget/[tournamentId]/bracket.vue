@@ -88,21 +88,22 @@ const fetchData = async () => {
   loading.value = true
   error.value = null
   try {
-    const [tournamentRes, fixturesRes] = await Promise.all([
-      $api<any>(`/tournaments/${tournamentId}`),
-      $api<any>(`/fixtures/tournaments/${tournamentId}`)
-    ])
+    const tournamentRes = await $api<any>(`/tournaments/${tournamentId}`)
     tournament.value = tournamentRes.data
-    // Handle API response: may be { rounds: [...] } or flat array
-    const fixturesData = fixturesRes.data
-    if (fixturesData?.rounds) {
-      fixtures.value = fixturesData.rounds.flatMap((r: any) => r.fixtures || [])
-    } else if (Array.isArray(fixturesData)) {
-      fixtures.value = fixturesData
-    } else {
-      fixtures.value = []
+    
+    if (tournament.value?.id) {
+      const fixturesRes = await $api<any>(`/fixtures/tournaments/${tournament.value.id}`)
+      // Handle API response: may be { rounds: [...] } or flat array
+      const fixturesData = fixturesRes.data
+      if (fixturesData?.rounds) {
+        fixtures.value = fixturesData.rounds.flatMap((r: any) => r.fixtures || [])
+      } else if (Array.isArray(fixturesData)) {
+        fixtures.value = fixturesData
+      } else {
+        fixtures.value = []
+      }
+      buildBracket()
     }
-    buildBracket()
   } catch (e: any) {
     error.value = e.message || 'Failed to load bracket'
     console.error('Widget error:', e)
