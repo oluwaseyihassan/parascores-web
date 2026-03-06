@@ -43,14 +43,17 @@ const fetchData = async () => {
   loading.value = true
   error.value = null
   try {
-    const [tournamentRes, standingsRes] = await Promise.all([
-      $api<any>(`/tournaments/${tournamentId}`),
-      $api<any>(`/standings/tournament/${tournamentId}`)
-    ])
+    // 1. Fetch tournament by ID or customName first
+    const tournamentRes = await $api<any>(`/tournaments/${tournamentId}`)
     tournament.value = tournamentRes.data
-    // Handle both direct array and nested { standings: [...] } response
-    const standingsData = standingsRes.data as any
-    standings.value = Array.isArray(standingsData) ? standingsData : (standingsData?.standings || [])
+    
+    // 2. Fetch standings using the internal ID we just got
+    if (tournament.value?.id) {
+      const standingsRes = await $api<any>(`/standings/tournament/${tournament.value.id}`)
+      // Handle both direct array and nested { standings: [...] } response
+      const standingsData = standingsRes.data as any
+      standings.value = Array.isArray(standingsData) ? standingsData : (standingsData?.standings || [])
+    }
   } catch (e: any) {
     error.value = e.message || 'Failed to load standings'
     console.error('Widget error:', e)
