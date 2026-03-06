@@ -201,7 +201,7 @@ watch(selectedTournamentId, () => {
             <!-- Theme -->
             <div>
               <label class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">Theme</label>
-              <div class="flex gap-2">
+              <div class="flex gap-2 flex-wrap">
                 <button
                   class="flex-1 py-2 px-3 text-sm rounded-lg border transition-all"
                   :class="widgetTheme === 'dark' 
@@ -243,8 +243,8 @@ watch(selectedTournamentId, () => {
             <UIcon name="i-heroicons-code-bracket" class="w-4 h-4 text-indigo-500" />
             Embed Code
           </h3>
-          <div class="relative">
-            <pre class="text-xs p-3 rounded-lg overflow-x-auto font-mono bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10">{{ embedCode }}</pre>
+          <div class="relative w-full overflow-hidden">
+            <pre class="text-xs w-full p-3 rounded-lg overflow-x-auto whitespace-pre-wrap break-all font-mono bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10">{{ embedCode }}</pre>
             <button
               class="absolute top-2 right-2 px-3 py-1 text-xs font-medium rounded-md transition-colors"
               :class="copied 
@@ -274,9 +274,9 @@ watch(selectedTournamentId, () => {
             </div>
           </div>
 
-          <div v-else class="flex items-center justify-center">
+          <div v-else class="flex flex-col items-center justify-center overflow-x-auto p-2">
             <div 
-              class="rounded-xl overflow-hidden border shadow-lg"
+              class="rounded-xl overflow-hidden border shadow-lg max-w-full"
               :class="widgetTheme === 'dark' ? 'border-white/10' : 'border-gray-200'"
               :style="{ width: Math.min(widgetWidth, 500) + 'px', height: widgetHeight + 'px' }"
             >
