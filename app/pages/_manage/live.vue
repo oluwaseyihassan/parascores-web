@@ -20,14 +20,15 @@ onMounted(async () => {
 
 
 // Group fixtures by tournament
-const fixturesByTournament = computed(() => {
-  const grouped: Record<string, { tournamentName: string; fixtures: Fixture[] }> = {}
+const fixturesByTournament = computed((): Record<string, { tournamentName: string; customName?: string; fixtures: Fixture[] }> => {
+  const grouped: Record<string, { tournamentName: string; customName?: string; fixtures: Fixture[] }> = {}
   
   liveFixtures.value.forEach(fixture => {
     const tournamentId = fixture.tournament_id
     if (!grouped[tournamentId]) {
       grouped[tournamentId] = {
         tournamentName: (fixture as any).tournament?.name || 'Tournament',
+        customName: (fixture as any).tournament?.customName,
         fixtures: []
       }
     }
@@ -141,7 +142,7 @@ const handleMatchEnded = async () => {
           <div class="flex items-center gap-2">
             <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-indigo-500" />
             <NuxtLink 
-              :to="`/tournaments/${tournamentId}`"
+              :to="`/tournaments/${group.customName || tournamentId}`"
               class="font-medium text-gray-900 dark:text-white hover:text-indigo-500 transition-colors"
             >
               {{ group.tournamentName }}
