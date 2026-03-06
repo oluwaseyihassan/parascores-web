@@ -260,7 +260,7 @@ watch(loadMoreTrigger, (el) => {
         <NuxtLink 
           v-for="(tournament, index) in tournaments" 
           :key="tournament.id" 
-          :to="`/tournaments/${tournament.id}`"
+          :to="`/tournaments/${tournament.customName || tournament.id}`"
           class="group card-fade-in bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl p-5 hover:border-emerald-500/50 transition-all duration-300 hover:shadow-lg dark:hover:shadow-emerald-500/10 flex flex-col"
           :style="{ animationDelay: `${index * 75}ms` }"
         >
@@ -335,7 +335,7 @@ watch(loadMoreTrigger, (el) => {
         <NuxtLink 
           v-for="(tournament, index) in tournaments" 
           :key="tournament.id" 
-          :to="`/tournaments/${tournament.id}`"
+          :to="`/tournaments/${tournament.customName || tournament.id}`"
           class="group card-fade-in flex items-center gap-4 p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl hover:border-emerald-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5"
           :style="{ animationDelay: `${index * 50}ms` }"
         >
