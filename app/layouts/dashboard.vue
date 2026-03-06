@@ -27,7 +27,7 @@ const sidebarLinks = computed(() => {
   
   const tourneys = tournaments.value.map(t => ({
     label: t.name,
-    to: `/tournaments/${t.id}`,
+    to: `/tournaments/${t.customName || t.id}`,
     icon: 'i-heroicons-trophy',
     avatar: t.logoUrl,
     activeClass: undefined
