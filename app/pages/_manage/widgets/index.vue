@@ -18,12 +18,33 @@ const widgetWidth = ref(400)
 const widgetHeight = ref(600)
 const copied = ref(false)
 
+const route = useRoute()
+const toast = useToast()
+
 // Fetch tournaments
 onMounted(async () => {
   if (tournaments.value.length === 0) {
     await tournamentStore.fetchTournaments({ limit: 50 })
   }
-  // Auto-select first tournament
+  
+  // Auto-select tournament from query parameter or default to first
+  const queryTournament = (route.query.t || route.query.tournament) as string | undefined
+  if (queryTournament) {
+    const matched = tournaments.value.find(t => t.id === queryTournament || t.customName === queryTournament)
+    if (matched) {
+      selectedTournamentId.value = matched.id
+    } else {
+      // Invalid query param provided
+      toast.add({
+        id: 'invalid-tournament-query',
+        title: 'Tournament Not Found',
+        description: 'The requested tournament link was invalid. Defaulting to your first tournament.',
+        color: 'error',
+        icon: 'i-heroicons-exclamation-triangle'
+      })
+    }
+  }
+  
   if (tournaments.value.length > 0 && !selectedTournamentId.value) {
     selectedTournamentId.value = tournaments.value[0]?.id ?? ''
   }
@@ -70,11 +91,13 @@ const widgetBaseUrl = computed(() => {
 })
 
 const widgetUrl = computed(() => {
-  if (!selectedTournamentId.value) return ''
+  if (!selectedTournamentId.value || !selectedTournament.value) return ''
+  const urlId = selectedTournament.value.customName || selectedTournament.value.id
+  
   const params = new URLSearchParams()
   if (widgetTheme.value !== 'dark') params.set('theme', widgetTheme.value)
   const queryString = params.toString()
-  return `${widgetBaseUrl.value}/widget/${selectedTournamentId.value}/${selectedWidgetType.value}${queryString ? '?' + queryString : ''}`
+  return `${widgetBaseUrl.value}/widget/${urlId}/${selectedWidgetType.value}${queryString ? '?' + queryString : ''}`
 })
 
 // Generate embed code
