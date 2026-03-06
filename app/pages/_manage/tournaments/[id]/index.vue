@@ -1091,7 +1091,10 @@ const openConfirmModal = (options: {
 const showQRCodeModal = ref(false)
 const appConfig = useRuntimeConfig()
 const publicTournamentUrl = computed(() => {
-  const baseUrl = appConfig.public.siteUrl || (import.meta.client ? window.location.origin : 'https://parascores.com')
+  const host = import.meta.client ? window.location.host.replace(/^manage\./, '') : 'parascores.com'
+  const protocol = import.meta.dev ? 'http' : 'https'
+  const baseUrl = appConfig.public.siteUrl || `${protocol}://${host}`
+  
   const urlId = tournament.value?.customName || tournamentId.value
   return `${baseUrl}/t/${urlId}`
 })
