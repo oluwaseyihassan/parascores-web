@@ -697,7 +697,7 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
                   <thead>
                     <tr class="border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                       <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 sticky left-0 z-20" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white'">#</th>
-                      <th class="text-left w-[170px] md:w-auto min-w-[170px] px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white'">Team</th>
+                      <th class="text-left w-1/2 px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white'">Team</th>
                       <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">P</th>
                       <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">W</th>
                       <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">D</th>
@@ -724,7 +724,7 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
                               {{ (standing.participant?.customName || 'T').charAt(0) }}
                             </span>
                           </div>
-                          <span class="text-[12px] md:text-[13px] font-medium truncate" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ standing.participant?.customName || 'Unknown' }}</span>
+                          <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px]" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ standing.participant?.customName || 'Unknown' }}</span>
                         </div>
                       </td>
                       <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.played }}</td>
