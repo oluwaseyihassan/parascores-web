@@ -4,6 +4,7 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 import { Visibility, TournamentType, ParticipantType, ParticipantStatus, FixtureStatus, FixtureStage } from '~/types'
 import type { Participant, Fixture, Sponsor, Social } from '~/types'
 import * as xlsx from 'xlsx'
+import QrcodeVue from 'qrcode.vue'
 
 definePageMeta({
   layout: 'dashboard'
@@ -1085,6 +1086,67 @@ const openConfirmModal = (options: {
   }
   confirmModalState.isOpen = true
 }
+
+// QR Code Feature
+const showQRCodeModal = ref(false)
+const appConfig = useRuntimeConfig()
+const publicTournamentUrl = computed(() => {
+  const baseUrl = appConfig.public.siteUrl || (import.meta.client ? window.location.origin : 'https://parascores.com')
+  const urlId = tournament.value?.customName || tournamentId.value
+  return `${baseUrl}/t/${urlId}`
+})
+
+const downloadQRCode = () => {
+  if (!import.meta.client) return
+  
+  // Find the canvas element
+  const canvas = document.querySelector('.qr-code-canvas canvas') as HTMLCanvasElement
+  if (!canvas) {
+    useToast().add({ title: 'Error generating QR code', color: 'error' })
+    return
+  }
+  
+  // Download as PNG
+  const link = document.createElement('a')
+  const fileName = tournament.value?.name?.replace(/\s+/g, '-').toLowerCase() || 'tournament'
+  link.download = `${fileName}-qr-code.png`
+  link.href = canvas.toDataURL('image/png')
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+const copyTournamentLink = async () => {
+  if (!import.meta.client) return
+  
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(publicTournamentUrl.value)
+      useToast().add({ title: 'Link copied to clipboard', color: 'success' })
+    } else {
+      // Fallback for non-secure contexts (like local network testing)
+      const textArea = document.createElement('textarea')
+      textArea.value = publicTournamentUrl.value
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-999999px'
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      
+      const successful = document.execCommand('copy')
+      document.body.removeChild(textArea)
+      
+      if (successful) {
+        useToast().add({ title: 'Link copied to clipboard', color: 'success' })
+      } else {
+        useToast().add({ title: 'Failed to copy link', color: 'error' })
+      }
+    }
+  } catch (err) {
+    useToast().add({ title: 'Failed to copy link', description: String(err), color: 'error' })
+  }
+}
+
 </script>
 
 <template>
@@ -1169,15 +1231,88 @@ const openConfirmModal = (options: {
         <!-- Actions -->
         <div class="flex gap-2">
           <UButton 
+            icon="i-heroicons-qr-code" 
+            variant="outline" 
+            color="neutral"
+            @click="showQRCodeModal = true"
+            label="QR Code"
+          />
+          <UButton 
             icon="i-heroicons-photo" 
             variant="outline" 
             color="neutral"
             :to="`/tournaments/${tournament.id}/graphics`"
             label="Graphics"
           />
+          <UButton 
+            icon="i-heroicons-code-bracket" 
+            variant="outline" 
+            color="neutral"
+            :to="`/widgets?t=${tournament.customName || tournament.id}`"
+            label="Widgets"
+          />
         </div>
       </div>
       
+      <!-- QR Code Modal -->
+      <UModal v-model:open="showQRCodeModal" :ui="{ content: 'sm:max-w-md' }">
+        <template #content>
+          <UCard class="ring-0 shadow-none" :ui="{ root: 'divide-y divide-gray-100 dark:divide-gray-800' }">
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
+                  Tournament QR Code
+                </h3>
+                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showQRCodeModal = false" />
+              </div>
+            </template>
+
+            <div class="py-6 flex flex-col items-center">
+              <p class="text-sm text-gray-500 mb-6 text-center px-4">
+                Scan this code to visit the public tournament page. Export it for use on promotional flyers and banners.
+              </p>
+              
+              <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-100 mb-6 inline-flex justify-center items-center qr-code-canvas">
+                <QrcodeVue 
+                  :value="publicTournamentUrl" 
+                  :size="200" 
+                  level="H" 
+                  render-as="canvas" 
+                  :margin="2"
+                  foreground="#000000"
+                />
+              </div>
+
+              <div class="w-full max-w-[280px] space-y-4">
+                <UButton 
+                  block 
+                  color="primary" 
+                  icon="i-heroicons-arrow-down-tray" 
+                  @click="downloadQRCode"
+                >
+                  Download PNG
+                </UButton>
+                
+                <div class="relative w-full">
+                  <div class="flex items-center w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <span class="text-xs text-gray-500 truncate flex-1 select-all mr-2">
+                      {{ publicTournamentUrl }}
+                    </span>
+                    <UButton
+                      color="neutral"
+                      variant="ghost"
+                      icon="i-heroicons-clipboard-document"
+                      size="xs"
+                      @click="copyTournamentLink"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </UCard>
+        </template>
+      </UModal>
+
       <!-- Advance Modal -->
       <UModal v-model:open="showAdvanceModal" :ui="{ content: 'sm:max-w-lg' }">
         <template #content>
@@ -1316,10 +1451,10 @@ const openConfirmModal = (options: {
         </template>
       </UModal>
 
-      <!-- Content Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Content Container -->
+      <div class="max-w-4xl mx-auto w-full">
         <!-- Main Content -->
-        <div class="lg:col-span-2">
+        <div class="w-full">
           <UTabs 
             :items="tabItems" 
             class="w-full"
@@ -1345,54 +1480,200 @@ const openConfirmModal = (options: {
                 </div>
               </UCard>
 
-              <!-- Tournament Details (Mobile/Main flow) -->
-              <UCard class="mt-4">
-                <template #header>
-                  <div class="flex items-center gap-2">
-                    <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-indigo-500" />
-                    <span class="font-medium">Details</span>
+              <!-- Details, Organizer, Sponsors & Socials Grid -->
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+                <!-- Tournament Details (Mobile/Main flow) -->
+                <UCard class="lg:col-span-2 border border-gray-100 dark:border-gray-800 shadow-sm transition-all h-fit">
+                  <template #header>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-indigo-500" />
+                      <span class="font-medium">Details</span>
+                    </div>
+                  </template>
+                  
+                  <div class="space-y-4">
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-sm text-gray-500">Sport</span>
+                      <span class="font-medium capitalize">{{ tournament.sport.toLowerCase() }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-sm text-gray-500">Format</span>
+                      <span class="font-medium">
+                        {{ tournament.type === TournamentType.ROUND_ROBIN ? 'Round Robin' : 
+                           tournament.type === TournamentType.KNOCKOUT ? 'Knockout' : 
+                           tournament.type === TournamentType.GROUP ? 'Group Stage' :
+                           'Hybrid (Groups + Knockout)' }}
+                      </span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-sm text-gray-500">Participants</span>
+                      <span class="font-medium capitalize">{{ tournament.participantType.toLowerCase() }}s</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-sm text-gray-500">Max Size</span>
+                      <span class="font-medium">{{ tournament.maxParticipants || 'Unlimited' }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-sm text-gray-500">Timezone</span>
+                      <span class="font-medium text-sm">{{ tournament.timezone || 'UTC' }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-sm text-gray-500">Auto-approve</span>
+                      <UBadge :color="tournament.autoApprove ? 'success' : 'neutral'" variant="subtle" size="sm">
+                        {{ tournament.autoApprove ? 'Yes' : 'No' }}
+                      </UBadge>
+                    </div>
                   </div>
-                </template>
+                </UCard>
                 
-                <div class="space-y-4">
-                  <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                    <span class="text-sm text-gray-500">Sport</span>
-                    <span class="font-medium capitalize">{{ tournament.sport.toLowerCase() }}</span>
-                  </div>
-                  
-                  <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                    <span class="text-sm text-gray-500">Format</span>
-                    <span class="font-medium">
-                      {{ tournament.type === TournamentType.ROUND_ROBIN ? 'Round Robin (League)' : 
-                         tournament.type === TournamentType.KNOCKOUT ? 'Knockout (Single Elimination)' : 
-                         tournament.type === TournamentType.GROUP ? 'Group Stage' :
-                         'Hybrid (Group + Knockout)' }}
-                    </span>
-                  </div>
-                  
-                  <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                    <span class="text-sm text-gray-500">Participants</span>
-                    <span class="font-medium capitalize">{{ tournament.participantType.toLowerCase() }}s</span>
-                  </div>
-                  
-                  <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                    <span class="text-sm text-gray-500">Max Size</span>
-                    <span class="font-medium">{{ tournament.maxParticipants || 'Unlimited' }}</span>
-                  </div>
-                  
-                  <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                    <span class="text-sm text-gray-500">Timezone</span>
-                    <span class="font-medium text-sm">{{ tournament.timezone || 'UTC' }}</span>
-                  </div>
-                  
-                  <div class="flex justify-between items-center py-2">
-                    <span class="text-sm text-gray-500">Auto-approve</span>
-                    <UBadge :color="tournament.autoApprove ? 'success' : 'neutral'" variant="subtle" size="sm">
-                      {{ tournament.autoApprove ? 'Yes' : 'No' }}
-                    </UBadge>
-                  </div>
+                <div class="flex flex-col gap-6 lg:col-span-1">
+                  <!-- Organizer -->
+                  <UCard v-if="tournament.organizer" class="border border-gray-100 dark:border-gray-800 shadow-sm transition-all h-fit">
+                    <template #header>
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-heroicons-user" class="w-5 h-5 text-indigo-500" />
+                        <span class="font-medium">Organizer</span>
+                      </div>
+                    </template>
+                    
+                    <div class="flex items-center gap-3">
+                      <UAvatar 
+                        v-if="tournament.organizer.picture" 
+                        :src="tournament.organizer.picture" 
+                        size="md"
+                      />
+                      <UAvatar 
+                        v-else 
+                        :text="tournament.organizer.name?.charAt(0).toUpperCase()" 
+                        size="md"
+                        class="bg-indigo-500 text-white"
+                      />
+                      <div>
+                        <p class="font-medium text-gray-900 dark:text-white">{{ tournament.organizer.name }}</p>
+                        <p class="text-sm text-gray-500">{{ tournament.organizer.email }}</p>
+                      </div>
+                    </div>
+                  </UCard>
+
+                  <!-- Sponsors -->
+                  <UCard class="border border-gray-100 dark:border-gray-800 shadow-sm transition-all h-fit">
+                    <template #header>
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <UIcon name="i-heroicons-building-storefront" class="w-5 h-5 text-indigo-500" />
+                          <span class="font-medium">Sponsors</span>
+                          <UBadge v-if="sponsors.length" size="sm" variant="subtle">
+                            {{ sponsors.length }}
+                          </UBadge>
+                        </div>
+                        <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSponsorModal" />
+                      </div>
+                    </template>
+                    
+                    <!-- Loading -->
+                    <div v-if="sponsorsLoading && !sponsors.length" class="py-8 text-center text-gray-400">
+                      <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 mx-auto mb-2 animate-spin" />
+                      <p>Loading sponsors...</p>
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div v-else-if="!sponsors.length" class="text-center py-4 text-gray-400 text-sm">
+                      <p>No sponsors yet</p>
+                      <UButton size="xs" variant="link" @click="openAddSponsorModal">Add one</UButton>
+                    </div>
+                    
+                    <!-- Sponsor List -->
+                    <div v-else class="flex flex-col gap-2">
+                      <div 
+                        v-for="sponsor in sponsors" 
+                        :key="sponsor.id"
+                        class="group relative"
+                      >
+                        <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all w-full">
+                          <div class="h-8 max-w-20 flex flex-col justify-center shrink-0">
+                            <img 
+                              v-if="sponsor.logoUrl" 
+                              :src="sponsor.logoUrl" 
+                              :alt="sponsor.name"
+                              class="max-h-full max-w-full object-contain"
+                            />
+                            <UIcon v-else name="i-heroicons-building-office-2" class="w-5 h-5 text-gray-400" />
+                          </div>
+                          <div class="flex flex-col overflow-hidden min-w-0 flex-1">
+                            <span class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ sponsor.name }}</span>
+                            <a 
+                              v-if="sponsor.websiteUrl" 
+                              :href="sponsor.websiteUrl"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="text-xs text-indigo-500 hover:text-indigo-600 truncate"
+                            >
+                              {{ sponsor.websiteUrl.replace(/^https?:\/\//, '') }}
+                            </a>
+                          </div>
+                        </div>
+                        <button 
+                          class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-xs transition-all z-10"
+                          @click="handleRemoveSponsor(sponsor.id)"
+                          title="Remove"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  </UCard>
+
+                  <!-- Social Links -->
+                  <UCard class="border border-gray-100 dark:border-gray-800 shadow-sm transition-all h-fit">
+                    <template #header>
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <UIcon name="i-heroicons-share" class="w-5 h-5 text-indigo-500" />
+                          <span class="font-medium">Social Links</span>
+                        </div>
+                        <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSocialModal" />
+                      </div>
+                    </template>
+                    
+                    <div v-if="socials.length" class="flex flex-wrap gap-2">
+                      <div 
+                        v-for="social in socials" 
+                        :key="social.id"
+                        class="group relative"
+                      >
+                        <a 
+                          :href="social.url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all"
+                          :title="social.handle || social.platform"
+                        >
+                          <SocialsTwitterIcon v-if="social.platform === 'twitter'" class="w-4 h-4" />
+                          <SocialsInstagramIcon v-else-if="social.platform === 'instagram'" class="w-4 h-4" />
+                          <UIcon v-else :name="getSocialIcon(social.platform)" class="w-4 h-4" :class="getSocialColor(social.platform)" />
+                          <span class="text-sm text-gray-700 dark:text-gray-300 capitalize">{{ social.platform }}</span>
+                        </a>
+                        <button 
+                          class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-xs transition-all"
+                          @click="handleRemoveSocial(social.id)"
+                          title="Remove"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                    <div v-else class="text-center py-4 text-gray-400 text-sm">
+                      <p>No social links yet</p>
+                      <UButton size="xs" variant="link" @click="openAddSocialModal">Add one</UButton>
+                    </div>
+                  </UCard>
                 </div>
-              </UCard>
+              </div>
             </template>
 
             <!-- Participants Tab -->
@@ -1986,150 +2267,6 @@ const openConfirmModal = (options: {
               </UCard>
             </template>
           </UTabs>
-        </div>
-
-        <!-- Sidebar -->
-        <div class="space-y-6">
-
-
-          <!-- Organizer -->
-          <UCard v-if="tournament.organizer">
-            <template #header>
-              <div class="flex items-center gap-2">
-                <UIcon name="i-heroicons-user" class="w-5 h-5 text-indigo-500" />
-                <span class="font-medium">Organizer</span>
-              </div>
-            </template>
-            
-            <div class="flex items-center gap-3">
-              <UAvatar 
-                v-if="tournament.organizer.picture" 
-                :src="tournament.organizer.picture" 
-                size="md"
-              />
-              <UAvatar 
-                v-else 
-                :text="tournament.organizer.name?.charAt(0).toUpperCase()" 
-                size="md"
-                class="bg-indigo-500 text-white"
-              />
-              <div>
-                <p class="font-medium text-gray-900 dark:text-white">{{ tournament.organizer.name }}</p>
-                <p class="text-sm text-gray-500">{{ tournament.organizer.email }}</p>
-              </div>
-            </div>
-          </UCard>
-
-          <!-- Sponsors -->
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <UIcon name="i-heroicons-building-storefront" class="w-5 h-5 text-indigo-500" />
-                  <span class="font-medium">Sponsors</span>
-                  <UBadge v-if="sponsors.length" size="sm" variant="subtle">
-                    {{ sponsors.length }}
-                  </UBadge>
-                </div>
-                <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSponsorModal" />
-              </div>
-            </template>
-            
-            <!-- Loading -->
-            <div v-if="sponsorsLoading && !sponsors.length" class="py-8 text-center text-gray-400">
-              <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 mx-auto mb-2 animate-spin" />
-              <p>Loading sponsors...</p>
-            </div>
-            
-            <!-- Empty State -->
-            <div v-else-if="!sponsors.length" class="text-center py-4 text-gray-400 text-sm">
-              <p>No sponsors yet</p>
-              <UButton size="xs" variant="link" @click="openAddSponsorModal">Add one</UButton>
-            </div>
-            
-            <!-- Sponsor List -->
-            <div v-else class="flex flex-col gap-2">
-              <div 
-                v-for="sponsor in sponsors" 
-                :key="sponsor.id"
-                class="group relative"
-              >
-                <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all w-full">
-                  <div class="h-8 max-w-20 flex flex-col justify-center shrink-0">
-                    <img 
-                      v-if="sponsor.logoUrl" 
-                      :src="sponsor.logoUrl" 
-                      :alt="sponsor.name"
-                      class="max-h-full max-w-full object-contain"
-                    />
-                    <UIcon v-else name="i-heroicons-building-office-2" class="w-5 h-5 text-gray-400" />
-                  </div>
-                  <div class="flex flex-col overflow-hidden min-w-0 flex-1">
-                    <span class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ sponsor.name }}</span>
-                    <a 
-                      v-if="sponsor.websiteUrl" 
-                      :href="sponsor.websiteUrl"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-xs text-indigo-500 hover:text-indigo-600 truncate"
-                    >
-                      {{ sponsor.websiteUrl.replace(/^https?:\/\//, '') }}
-                    </a>
-                  </div>
-                </div>
-                <button 
-                  class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-xs transition-all z-10"
-                  @click="handleRemoveSponsor(sponsor.id)"
-                  title="Remove"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          </UCard>
-
-          <!-- Social Links -->
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <UIcon name="i-heroicons-share" class="w-5 h-5 text-indigo-500" />
-                  <span class="font-medium">Social Links</span>
-                </div>
-                <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSocialModal" />
-              </div>
-            </template>
-            
-            <div v-if="socials.length" class="flex flex-wrap gap-2">
-              <div 
-                v-for="social in socials" 
-                :key="social.id"
-                class="group relative"
-              >
-                <a 
-                  :href="social.url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all"
-                  :title="social.handle || social.platform"
-                >
-                  <UIcon :name="getSocialIcon(social.platform)" class="w-4 h-4" :class="getSocialColor(social.platform)" />
-                  <span class="text-sm text-gray-700 dark:text-gray-300 capitalize">{{ social.platform }}</span>
-                </a>
-                <button 
-                  class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-xs transition-all"
-                  @click="handleRemoveSocial(social.id)"
-                  title="Remove"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-            <div v-else class="text-center py-4 text-gray-400 text-sm">
-              <p>No social links yet</p>
-              <UButton size="xs" variant="link" @click="openAddSocialModal">Add one</UButton>
-            </div>
-          </UCard>
         </div>
       </div>
     </template>
