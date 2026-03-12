@@ -109,6 +109,10 @@ export interface Tournament {
   registrationClose?: string | null
   autoApprove: boolean
 
+  // Advanced Knockout Options
+  twoLegsKnockout?: boolean
+  thirdPlaceMatch?: boolean
+
   // Group config
   numberOfGroups?: number | null
   teamsPerGroup?: number | null
