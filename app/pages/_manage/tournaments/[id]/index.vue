@@ -3,7 +3,6 @@ import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { Visibility, TournamentType, ParticipantType, ParticipantStatus, FixtureStatus, FixtureStage } from '~/types'
 import type { Participant, Fixture, Sponsor, Social, Tournament } from '~/types'
-import * as xlsx from 'xlsx'
 import QrcodeVue from 'qrcode.vue'
 
 definePageMeta({
@@ -325,6 +324,7 @@ const handleExcelUpload = async (event: Event) => {
     if (!selectedParticipant.value) return
     try {
       uploadingExcel.value = true
+      const xlsx = await import('xlsx')
       const data = new Uint8Array(e.target?.result as ArrayBuffer)
       const workbook = xlsx.read(data, { type: 'array' })
       const firstSheetName = workbook.SheetNames[0]
@@ -368,7 +368,8 @@ const handleExcelUpload = async (event: Event) => {
   reader.readAsArrayBuffer(file)
 }
 
-const downloadExcelTemplate = () => {
+const downloadExcelTemplate = async () => {
+  const xlsx = await import('xlsx')
   const wsData = [
     ['Name', 'Number', 'Position'],
     ['John Doe', '9', 'FWD'],
