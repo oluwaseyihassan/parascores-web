@@ -7,6 +7,8 @@ interface Props {
   rounds: number[]
   getRoundDisplayName: (round: number) => string
   updatingMatch?: boolean
+  twoLegsKnockout?: boolean
+  thirdPlaceMatch?: boolean
 }
 
 const props = defineProps<Props>()
@@ -17,24 +19,126 @@ const emit = defineEmits<{
 }>()
 
 // Fixture status colors
-const statusColors: Record<FixtureStatus, 'info' | 'success' | 'warning' | 'neutral'> = {
+const statusColors: Record<string, 'info' | 'success' | 'warning' | 'neutral'> = {
   [FixtureStatus.SCHEDULED]: 'info',
   [FixtureStatus.LIVE]: 'warning',
   [FixtureStatus.COMPLETED]: 'success',
   [FixtureStatus.CANCELLED]: 'neutral'
 }
 
-// Get winner class for completed matches
-const getTeamClass = (fixture: Fixture, isHome: boolean) => {
-  if (fixture.status !== FixtureStatus.COMPLETED) return ''
+const getAggregateStatus = (fixtures: Fixture[]): FixtureStatus => {
+  if (fixtures.some(f => f.status === FixtureStatus.LIVE)) return FixtureStatus.LIVE
+  if (fixtures.every(f => f.status === FixtureStatus.COMPLETED)) return FixtureStatus.COMPLETED
+  if (fixtures.some(f => f.status === FixtureStatus.SCHEDULED)) return FixtureStatus.SCHEDULED
+  return FixtureStatus.CANCELLED
+}
+
+// Group fixtures into Matchups (handles 2-legged ties)
+const matchupsByRound = computed(() => {
+  const result: Record<number, any[]> = {}
   
-  const homeScore = fixture.homeScore ?? 0
-  const awayScore = fixture.awayScore ?? 0
+  const totalRounds = props.rounds.length
+  
+  props.rounds.forEach((round, roundIndex) => {
+    const isFinalRound = roundIndex === totalRounds - 1
+    const roundFixtures = props.fixturesByRound[round] || []
+    
+    const matchups: any[] = []
+    
+    if (props.twoLegsKnockout && !isFinalRound) {
+      // Group by 2 for dual-leg matches
+      for (let i = 0; i < roundFixtures.length; i += 2) {
+        const f1 = roundFixtures[i]!
+        const f2 = roundFixtures[i + 1]
+        
+        const fixtures = [f1]
+        if (f2) fixtures.push(f2)
+        
+        matchups.push({
+          id: f1.id,
+          fixtures,
+          isThirdPlace: false,
+          homeTeam: f1.homeTeam,
+          awayTeam: f1.awayTeam,
+          homeTeamPlaceholder: f1.homeTeamPlaceholder,
+          awayTeamPlaceholder: f1.awayTeamPlaceholder,
+          // Aggregate scores accounting for home/away swap between legs
+          // Leg 1: home=TeamA, away=TeamB. Leg 2: home=TeamB, away=TeamA
+          // TeamA total = f1.homeScore + f2.awayScore
+          // TeamB total = f1.awayScore + f2.homeScore
+          homeScore: (f1.homeScore ?? 0) + (f2 ? (f2.awayScore ?? 0) : 0),
+          awayScore: (f1.awayScore ?? 0) + (f2 ? (f2.homeScore ?? 0) : 0),
+          // Sub-scores for display: [TeamA's goals in Leg1, TeamA's goals in Leg2]
+          homeSubScores: [f1.homeScore, f2 ? f2.awayScore : null],
+          awaySubScores: [f1.awayScore, f2 ? f2.homeScore : null],
+          // Penalties happen in Leg 2, but Leg 2 home = Leg 1 away, so swap
+          homePenaltyScore: f2?.awayPenaltyScore ?? f1.homePenaltyScore,
+          awayPenaltyScore: f2?.homePenaltyScore ?? f1.awayPenaltyScore,
+          status: getAggregateStatus(fixtures),
+          homeTeamId: f1.homeTeamId,
+          awayTeamId: f1.awayTeamId
+        })
+      }
+    } else {
+      // Single leg logic (or final round)
+      for (let i = 0; i < roundFixtures.length; i++) {
+        const f = roundFixtures[i]!
+        const isThirdPlace = isFinalRound && props.thirdPlaceMatch && i === 1 // 2nd match in final round
+        matchups.push({
+          id: f.id,
+          fixtures: [f],
+          isThirdPlace,
+          homeTeam: f.homeTeam,
+          awayTeam: f.awayTeam,
+          homeTeamPlaceholder: f.homeTeamPlaceholder,
+          awayTeamPlaceholder: f.awayTeamPlaceholder,
+          homeScore: f.homeScore ?? 0,
+          awayScore: f.awayScore ?? 0,
+          homePenaltyScore: f.homePenaltyScore,
+          awayPenaltyScore: f.awayPenaltyScore,
+          status: f.status,
+          homeTeamId: f.homeTeamId,
+          awayTeamId: f.awayTeamId
+        })
+      }
+    }
+    
+    result[round] = matchups
+  })
+  
+  return result
+})
+
+// Separate final round into main matchups and third-place matchups
+const finalRoundMainMatchups = computed(() => {
+  if (props.rounds.length === 0) return []
+  const finalRound = props.rounds[props.rounds.length - 1]!
+  return (matchupsByRound.value[finalRound] || []).filter((m: any) => !m.isThirdPlace)
+})
+
+const thirdPlaceMatchups = computed(() => {
+  if (props.rounds.length === 0) return []
+  const finalRound = props.rounds[props.rounds.length - 1]!
+  return (matchupsByRound.value[finalRound] || []).filter((m: any) => m.isThirdPlace)
+})
+
+// Get total matchups in first round (used for grid scaling)
+const firstRoundMatches = computed(() => {
+  if (props.rounds.length === 0) return 0
+  return matchupsByRound.value[props.rounds[0]!]?.length || 0
+})
+
+// Get winner class for completed matches
+const getTeamClass = (matchup: any, isHome: boolean) => {
+  if (matchup.status !== FixtureStatus.COMPLETED) return ''
+  
+  const homeScore = matchup.homeScore ?? 0
+  const awayScore = matchup.awayScore ?? 0
   
   if (homeScore === awayScore) {
     // Check penalties
-    const homePen = fixture.homePenaltyScore ?? 0
-    const awayPen = fixture.awayPenaltyScore ?? 0
+    const homePen = matchup.homePenaltyScore ?? 0
+    const awayPen = matchup.awayPenaltyScore ?? 0
     
     if (homePen === awayPen) return ''
     
@@ -52,27 +156,30 @@ const getTeamClass = (fixture: Fixture, isHome: boolean) => {
   }
 }
 
-// Get total matches in first round (used for grid)
-const firstRoundMatches = computed(() => {
-  if (props.rounds.length === 0) return 0
-  return props.fixturesByRound[props.rounds[0]!]?.length || 0
-})
-
-// Get round abbreviation for labels
-
-
 // Get placeholder label for unknown team (e.g., "QF1 Winner")
-const getPlaceholderLabel = (fixture: Fixture, isHome: boolean): string => {
+const getPlaceholderLabel = (matchup: any, isHome: boolean): string => {
   if (isHome) {
-    return fixture.homeTeamPlaceholder || 'TBD'
+    return matchup.homeTeamPlaceholder || 'TBD'
   } else {
-    return fixture.awayTeamPlaceholder || 'TBD'
+    return matchup.awayTeamPlaceholder || 'TBD'
   }
 }
 
+// Detect completed matches with no clear winner (tied with no decisive penalties)
+const hasNoWinner = (matchup: any): boolean => {
+  if (matchup.status !== FixtureStatus.COMPLETED) return false
+  const homeScore = matchup.homeScore ?? 0
+  const awayScore = matchup.awayScore ?? 0
+  if (homeScore !== awayScore) return false
+  // Scores are tied — check penalties
+  const homePen = matchup.homePenaltyScore ?? 0
+  const awayPen = matchup.awayPenaltyScore ?? 0
+  return homePen === awayPen
+}
+
 // Get team name to display
-const getTeamName = (fixture: Fixture, isHome: boolean) => {
-  const team = isHome ? fixture.homeTeam : fixture.awayTeam
+const getTeamName = (matchup: any, isHome: boolean) => {
+  const team = isHome ? matchup.homeTeam : matchup.awayTeam
   
   if (team) {
     if (team.customName) return team.customName
@@ -80,7 +187,7 @@ const getTeamName = (fixture: Fixture, isHome: boolean) => {
     if (team.user?.organization_name) return team.user.organization_name
   }
   
-  return getPlaceholderLabel(fixture, isHome)
+  return getPlaceholderLabel(matchup, isHome)
 }
 
 // Calculate which grid rows a match spans
@@ -90,6 +197,14 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
   const end = start + span * 2
   return `${start} / ${end}`
 }
+
+// Get the number of columns before the final column (for third-place offset)
+const finalColumnOffset = computed(() => {
+  // Each round except the last has a matches-column + a connector-column
+  // The last round just has a matches-column
+  // So offset = (rounds.length - 1) rounds * (200px + 48px)
+  return props.rounds.length - 1
+})
 </script>
 
 <template>
@@ -113,109 +228,168 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
         <template v-for="(round, roundIndex) in rounds" :key="round">
           <!-- Matches column -->
           <div class="matches-column">
-            <div 
-              v-for="(fixture, matchIndex) in fixturesByRound[round]" 
-              :key="fixture.id"
-              class="match-cell"
-              :style="{ gridRow: getMatchGridRow(roundIndex, matchIndex) }"
-            >
-              <div class="bracket-match">
-                <!-- Home team -->
-                <div 
-                  class="bracket-team"
-                  :class="getTeamClass(fixture, true)"
-                >
-                  <div class="bracket-team-info">
-                    <span class="bracket-seed" v-if="fixture.homeTeam?.seed">
-                      {{ fixture.homeTeam.seed }}
-                    </span>
-                    <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0" v-if="fixture.homeTeam?.logoUrl">
-                      <img 
-                        :src="fixture.homeTeam.logoUrl" 
-                        class="w-full h-full object-cover"
-                      />
+            <template v-for="(matchup, matchIndex) in (roundIndex === rounds.length - 1 ? finalRoundMainMatchups : matchupsByRound[round])" :key="matchup.id">
+              <div 
+                class="match-cell"
+                :style="{ gridRow: getMatchGridRow(roundIndex, matchIndex) }"
+              >
+                <div class="flex flex-col w-full self-center">
+                  <div class="bracket-match">
+                    <!-- Home team -->
+                    <div 
+                      class="bracket-team"
+                      :class="getTeamClass(matchup, true)"
+                    >
+                      <div class="bracket-team-info">
+                        <span class="bracket-seed" v-if="matchup.homeTeam?.seed">
+                          {{ matchup.homeTeam.seed }}
+                        </span>
+                        <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0" v-if="matchup.homeTeam?.logoUrl">
+                          <img 
+                            :src="matchup.homeTeam.logoUrl" 
+                            class="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span class="bracket-team-name">
+                          {{ getTeamName(matchup, true) }}
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span v-if="matchup.homeSubScores" class="text-[0.65rem] font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap hidden sm:inline-block">
+                          ({{ matchup.homeSubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }})
+                        </span>
+                        <span class="bracket-score">
+                          <span v-if="matchup.homePenaltyScore !== null && matchup.homePenaltyScore !== undefined" class="text-xs font-normal text-gray-400 mr-1">
+                            ({{ matchup.homePenaltyScore }})
+                          </span>
+                          {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE 
+                            ? matchup.homeScore 
+                            : '-' }}
+                        </span>
+                      </div>
                     </div>
-                    <span class="bracket-team-name">
-                      {{ getTeamName(fixture, true) }}
-                    </span>
-                  </div>
-                  <span class="bracket-score">
-                    <span v-if="fixture.homePenaltyScore !== null && fixture.homePenaltyScore !== undefined" class="text-xs font-normal text-gray-400 mr-1">
-                      ({{ fixture.homePenaltyScore }})
-                    </span>
-                    {{ fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE 
-                      ? (fixture.homeScore ?? 0) 
-                      : '-' }}
-                  </span>
-                </div>
-                
-                <!-- Away team -->
-                <div 
-                  class="bracket-team"
-                  :class="getTeamClass(fixture, false)"
-                >
-                  <div class="bracket-team-info">
-                    <span class="bracket-seed" v-if="fixture.awayTeam?.seed">
-                      {{ fixture.awayTeam.seed }}
-                    </span>
-                    <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0" v-if="fixture.awayTeam?.logoUrl">
-                      <img 
-                        :src="fixture.awayTeam.logoUrl" 
-                        class="w-full h-full object-cover"
-                      />
+                    
+                    <!-- Away team -->
+                    <div 
+                      class="bracket-team"
+                      :class="getTeamClass(matchup, false)"
+                    >
+                      <div class="bracket-team-info">
+                        <span class="bracket-seed" v-if="matchup.awayTeam?.seed">
+                          {{ matchup.awayTeam.seed }}
+                        </span>
+                        <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0" v-if="matchup.awayTeam?.logoUrl">
+                          <img 
+                            :src="matchup.awayTeam.logoUrl" 
+                            class="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span class="bracket-team-name">
+                          {{ getTeamName(matchup, false) }}
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span v-if="matchup.awaySubScores" class="text-[0.65rem] font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap hidden sm:inline-block">
+                          ({{ matchup.awaySubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }})
+                        </span>
+                        <span class="bracket-score">
+                          <span v-if="matchup.awayPenaltyScore !== null && matchup.awayPenaltyScore !== undefined" class="text-xs font-normal text-gray-400 mr-1">
+                            ({{ matchup.awayPenaltyScore }})
+                          </span>
+                          {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE 
+                            ? matchup.awayScore 
+                            : '-' }}
+                        </span>
+                      </div>
                     </div>
-                    <span class="bracket-team-name">
-                      {{ getTeamName(fixture, false) }}
-                    </span>
+                    
+                    <!-- Match status and actions -->
+                    <div class="bracket-status">
+                      <!-- For dual legs: Show individual buttons? Better just control active match -->
+                      <template v-if="matchup.fixtures.length === 1">
+                        <UButton 
+                          v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
+                          size="xs" 
+                          color="success" 
+                          variant="soft"
+                          icon="i-heroicons-play"
+                          :loading="updatingMatch"
+                          @click.stop="emit('start-match', matchup.fixtures[0])"
+                        >
+                          Start
+                        </UButton>
+                        
+                        <UButton 
+                          v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED"
+                          size="xs" 
+                          color="warning" 
+                          variant="soft"
+                          icon="i-heroicons-adjustments-horizontal"
+                          @click.stop="emit('control-match', matchup.fixtures[0])"
+                        >
+                          Control
+                        </UButton>
+                      </template>
+                      <template v-else>
+                        <!-- Sub-controls for each leg if there are multiple legs -->
+                        <div class="flex items-center gap-1 overflow-x-auto w-full justify-center px-1">
+                          <template v-for="(leg, i) in matchup.fixtures" :key="leg.id">
+                            <UButton 
+                              v-if="leg.status === FixtureStatus.SCHEDULED && leg.homeTeamId && leg.awayTeamId"
+                              size="xs" 
+                              color="success" 
+                              variant="soft"
+                              icon="i-heroicons-play"
+                              class="text-[10px] px-1.5 py-0.5 min-w-max"
+                              :loading="updatingMatch"
+                              @click.stop="emit('start-match', leg)"
+                            >
+                              Leg {{ (i as number) + 1 }}
+                            </UButton>
+                            <UButton 
+                              v-else-if="leg.status === FixtureStatus.LIVE || leg.status === FixtureStatus.COMPLETED"
+                              size="xs" 
+                              color="warning" 
+                              variant="soft"
+                              icon="i-heroicons-adjustments-horizontal"
+                              class="text-[10px] px-1.5 py-0.5 min-w-max"
+                              @click.stop="emit('control-match', leg)"
+                            >
+                              Leg {{ (i as number) + 1 }}
+                            </UButton>
+                            <UButton 
+                              v-else-if="leg.status === FixtureStatus.SCHEDULED"
+                              size="xs" 
+                              color="neutral" 
+                              variant="soft"
+                              icon="i-heroicons-clock"
+                              class="text-[10px] px-1.5 py-0.5 min-w-max"
+                              disabled
+                            >
+                              Leg {{ (i as number) + 1 }}
+                            </UButton>
+                          </template>
+                        </div>
+                      </template>
+                      
+                      <!-- Status Badge -->
+                      <UBadge 
+                        :color="hasNoWinner(matchup) ? 'warning' : statusColors[matchup.status]" 
+                        variant="subtle" 
+                        size="xs"
+                        class="shrink-0"
+                      >
+                        <span v-if="hasNoWinner(matchup)" class="flex items-center gap-1">
+                          <UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3 animate-pulse" />
+                          NO WINNER
+                        </span>
+                        <span v-else>{{ matchup.status }}</span>
+                      </UBadge>
+                    </div>
                   </div>
-                  <span class="bracket-score">
-                    <span v-if="fixture.awayPenaltyScore !== null && fixture.awayPenaltyScore !== undefined" class="text-xs font-normal text-gray-400 mr-1">
-                      ({{ fixture.awayPenaltyScore }})
-                    </span>
-                    {{ fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE 
-                      ? (fixture.awayScore ?? 0) 
-                      : '-' }}
-                  </span>
-                </div>
-                
-                <!-- Match status and actions -->
-                <div class="bracket-status">
-                  <!-- Start Match Button (for SCHEDULED) -->
-                  <UButton 
-                    v-if="fixture.status === FixtureStatus.SCHEDULED && fixture.homeTeamId && fixture.awayTeamId"
-                    size="xs" 
-                    color="success" 
-                    variant="soft"
-                    icon="i-heroicons-play"
-                    :loading="updatingMatch"
-                    @click.stop="emit('start-match', fixture)"
-                  >
-                    Start
-                  </UButton>
-                  
-                  <!-- Control Match Button (for LIVE or COMPLETED) -->
-                  <UButton 
-                    v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED"
-                    size="xs" 
-                    color="warning" 
-                    variant="soft"
-                    icon="i-heroicons-adjustments-horizontal"
-                    @click.stop="emit('control-match', fixture)"
-                  >
-                    Control
-                  </UButton>
-                  
-                  <!-- Status Badge -->
-                  <UBadge 
-                    :color="statusColors[fixture.status]" 
-                    variant="subtle" 
-                    size="xs"
-                  >
-                    {{ fixture.status }}
-                  </UBadge>
                 </div>
               </div>
-            </div>
+            </template>
           </div>
 
           <!-- Connector column (not after last round) -->
@@ -224,8 +398,8 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
             class="connector-column"
           >
             <div 
-              v-for="(fixture, matchIndex) in fixturesByRound[round]" 
-              :key="`conn-${fixture.id}`"
+              v-for="(matchup, matchIndex) in matchupsByRound[round]" 
+              :key="`conn-${matchup.id}`"
               class="connector-cell"
               :style="{ gridRow: getMatchGridRow(roundIndex, matchIndex) }"
               :class="{
@@ -272,6 +446,165 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
             </div>
           </div>
         </template>
+      </div>
+
+      <!-- 3rd Place Play-off section (rendered below the bracket, aligned to the final column) -->
+      <div v-if="thirdPlaceMatchups.length > 0" class="third-place-section" :style="{ '--offset-columns': finalColumnOffset }">
+        <div v-for="matchup in thirdPlaceMatchups" :key="matchup.id" class="third-place-wrapper">
+          <div class="text-[0.65rem] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center mb-2">
+            3rd Place Play-off
+          </div>
+          <div class="bracket-match">
+            <!-- Home team -->
+            <div 
+              class="bracket-team"
+              :class="getTeamClass(matchup, true)"
+            >
+              <div class="bracket-team-info">
+                <span class="bracket-seed" v-if="matchup.homeTeam?.seed">
+                  {{ matchup.homeTeam.seed }}
+                </span>
+                <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0" v-if="matchup.homeTeam?.logoUrl">
+                  <img 
+                    :src="matchup.homeTeam.logoUrl" 
+                    class="w-full h-full object-cover"
+                  />
+                </div>
+                <span class="bracket-team-name">
+                  {{ getTeamName(matchup, true) }}
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span v-if="matchup.homeSubScores" class="text-[0.65rem] font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap hidden sm:inline-block">
+                  ({{ matchup.homeSubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }})
+                </span>
+                <span class="bracket-score">
+                  <span v-if="matchup.homePenaltyScore !== null && matchup.homePenaltyScore !== undefined" class="text-xs font-normal text-gray-400 mr-1">
+                    ({{ matchup.homePenaltyScore }})
+                  </span>
+                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE 
+                    ? matchup.homeScore 
+                    : '-' }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- Away team -->
+            <div 
+              class="bracket-team"
+              :class="getTeamClass(matchup, false)"
+            >
+              <div class="bracket-team-info">
+                <span class="bracket-seed" v-if="matchup.awayTeam?.seed">
+                  {{ matchup.awayTeam.seed }}
+                </span>
+                <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0" v-if="matchup.awayTeam?.logoUrl">
+                  <img 
+                    :src="matchup.awayTeam.logoUrl" 
+                    class="w-full h-full object-cover"
+                  />
+                </div>
+                <span class="bracket-team-name">
+                  {{ getTeamName(matchup, false) }}
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span v-if="matchup.awaySubScores" class="text-[0.65rem] font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap hidden sm:inline-block">
+                  ({{ matchup.awaySubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }})
+                </span>
+                <span class="bracket-score">
+                  <span v-if="matchup.awayPenaltyScore !== null && matchup.awayPenaltyScore !== undefined" class="text-xs font-normal text-gray-400 mr-1">
+                    ({{ matchup.awayPenaltyScore }})
+                  </span>
+                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE 
+                    ? matchup.awayScore 
+                    : '-' }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- Match status and actions -->
+            <div class="bracket-status">
+              <template v-if="matchup.fixtures.length === 1">
+                <UButton 
+                  v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
+                  size="xs" 
+                  color="success" 
+                  variant="soft"
+                  icon="i-heroicons-play"
+                  :loading="updatingMatch"
+                  @click.stop="emit('start-match', matchup.fixtures[0])"
+                >
+                  Start
+                </UButton>
+                
+                <UButton 
+                  v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED"
+                  size="xs" 
+                  color="warning" 
+                  variant="soft"
+                  icon="i-heroicons-adjustments-horizontal"
+                  @click.stop="emit('control-match', matchup.fixtures[0])"
+                >
+                  Control
+                </UButton>
+              </template>
+              <template v-else>
+                <div class="flex items-center gap-1 overflow-x-auto w-full justify-center px-1">
+                  <template v-for="(leg, i) in matchup.fixtures" :key="leg.id">
+                    <UButton 
+                      v-if="leg.status === FixtureStatus.SCHEDULED && leg.homeTeamId && leg.awayTeamId"
+                      size="xs" 
+                      color="success" 
+                      variant="soft"
+                      icon="i-heroicons-play"
+                      class="text-[10px] px-1.5 py-0.5 min-w-max"
+                      :loading="updatingMatch"
+                      @click.stop="emit('start-match', leg)"
+                    >
+                      Leg {{ (i as number) + 1 }}
+                    </UButton>
+                    <UButton 
+                      v-else-if="leg.status === FixtureStatus.LIVE || leg.status === FixtureStatus.COMPLETED"
+                      size="xs" 
+                      color="warning" 
+                      variant="soft"
+                      icon="i-heroicons-adjustments-horizontal"
+                      class="text-[10px] px-1.5 py-0.5 min-w-max"
+                      @click.stop="emit('control-match', leg)"
+                    >
+                      Leg {{ (i as number) + 1 }}
+                    </UButton>
+                    <UButton 
+                      v-else-if="leg.status === FixtureStatus.SCHEDULED"
+                      size="xs" 
+                      color="neutral" 
+                      variant="soft"
+                      icon="i-heroicons-clock"
+                      class="text-[10px] px-1.5 py-0.5 min-w-max"
+                      disabled
+                    >
+                      Leg {{ (i as number) + 1 }}
+                    </UButton>
+                  </template>
+                </div>
+              </template>
+              
+              <UBadge 
+                :color="hasNoWinner(matchup) ? 'warning' : statusColors[matchup.status]" 
+                variant="subtle" 
+                size="xs"
+                class="shrink-0"
+              >
+                <span v-if="hasNoWinner(matchup)" class="flex items-center gap-1">
+                  <UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3 animate-pulse" />
+                  NO WINNER
+                </span>
+                <span v-else>{{ matchup.status }}</span>
+              </UBadge>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -320,6 +653,19 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
   display: flex;
 }
 
+.third-place-section {
+  margin-top: 0.75rem;
+  /* Offset to align with the final column: skip (N-1) match columns and (N-1) connector columns */
+  margin-left: calc(var(--offset-columns) * (200px + 48px));
+  min-width: 200px;
+  max-width: 200px;
+}
+
+.third-place-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
 .matches-column {
   display: grid;
   grid-template-rows: repeat(var(--total-rows), 1fr);
@@ -329,7 +675,8 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
 
 .match-cell {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
   padding: 0.25rem 0;
 }
 
@@ -433,7 +780,7 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 130px;
+  max-width: 110px;
 }
 
 :root.dark .bracket-team-name {
@@ -501,12 +848,12 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
 @media (max-width: 768px) {
   .bracket-header,
   .matches-column {
-    min-width: 160px;
+    min-width: 140px;
   }
   
   .header-spacer,
   .connector-column {
-    width: 32px;
+    width: 24px;
   }
   
   .bracket-team {
@@ -515,11 +862,17 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
   
   .bracket-team-name {
     font-size: 0.75rem;
-    max-width: 90px;
+    max-width: 75px;
   }
   
   .bracket-score {
     font-size: 0.8125rem;
+  }
+  
+  .third-place-section {
+    margin-left: calc(var(--offset-columns) * (140px + 24px));
+    min-width: 140px;
+    max-width: 140px;
   }
 }
 </style>
