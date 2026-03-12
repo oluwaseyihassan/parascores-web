@@ -149,8 +149,21 @@ const showBracketTab = computed(() => {
 })
 
 // Fixtures grouped by round
-const groupStageFixtures = computed(() => fixtures.value.filter(f => f.stage === FixtureStage.GROUP_STAGE))
-const knockoutFixtures = computed(() => fixtures.value.filter(f => f.stage === FixtureStage.KNOCKOUT))
+const legFilter = ref<'ALL' | '1' | '2'>('ALL')
+
+const filteredFixtures = computed(() => {
+  if (legFilter.value === 'ALL') return fixtures.value
+  return fixtures.value.filter(f => {
+    if (tournament.value?.twoLegsKnockout) {
+      if (legFilter.value === '1') return !f.roundName?.toLowerCase().includes('leg 2')
+      if (legFilter.value === '2') return !f.roundName?.toLowerCase().includes('leg 1')
+    }
+    return true
+  })
+})
+
+const groupStageFixtures = computed(() => filteredFixtures.value.filter(f => f.stage === FixtureStage.GROUP_STAGE))
+const knockoutFixtures = computed(() => filteredFixtures.value.filter(f => f.stage === FixtureStage.KNOCKOUT))
 
 function groupByRound(list: Fixture[]) {
   const grouped: Record<number, { name: string; fixtures: Fixture[] }> = {}
@@ -166,7 +179,7 @@ function groupByRound(list: Fixture[]) {
 
 const fixturesByRound = computed(() => {
   if (isHybrid.value) return groupByRound(groupStageFixtures.value)
-  return groupByRound(fixtures.value)
+  return groupByRound(filteredFixtures.value)
 })
 const sortedRounds = computed(() => Object.keys(fixturesByRound.value).map(Number).sort((a, b) => a - b))
 
@@ -192,24 +205,90 @@ const bracketFixtures = computed(() => {
   if (isHybrid.value) return knockoutFixtures.value
   return fixtures.value
 })
-const bracketRounds = computed(() => {
+
+const bracketData = computed(() => {
   const grouped: Record<number, Fixture[]> = {}
   for (const f of bracketFixtures.value) {
     const r = f.round || 1
     if (!grouped[r]) grouped[r] = []
     grouped[r].push(f)
   }
-  return Object.keys(grouped).map(Number).sort((a, b) => a - b)
-})
-const bracketByRound = computed(() => {
-  const grouped: Record<number, Fixture[]> = {}
-  for (const f of bracketFixtures.value) {
-    const r = f.round || 1
-    if (!grouped[r]) grouped[r] = []
-    grouped[r].push(f)
+  
+  const sortedRounds = Object.keys(grouped).map(Number).sort((a, b) => a - b)
+  
+  const isTwoLegsKnockout = tournament.value?.twoLegsKnockout || false
+  const hasThirdPlaceMatch = tournament.value?.thirdPlaceMatch || false
+  const totalRounds = sortedRounds.length
+  
+  const matchups: Record<number, any[]> = {}
+  
+  const getAggregateStatus = (legs: Fixture[]): FixtureStatus => {
+    if (legs.some(f => f.status === FixtureStatus.LIVE)) return FixtureStatus.LIVE
+    if (legs.every(f => f.status === FixtureStatus.COMPLETED)) return FixtureStatus.COMPLETED
+    if (legs.some(f => f.status === FixtureStatus.SCHEDULED)) return FixtureStatus.SCHEDULED
+    return FixtureStatus.CANCELLED
   }
-  return grouped
+  
+  sortedRounds.forEach((round, roundIndex) => {
+    const isFinalRound = roundIndex === totalRounds - 1
+    const roundFixtures = grouped[round] || []
+    roundFixtures.sort((a, b) => a.matchNumber - b.matchNumber)
+    
+    const roundMatchups: any[] = []
+    
+    if (isTwoLegsKnockout && !isFinalRound) {
+      for (let i = 0; i < roundFixtures.length; i += 2) {
+        const f1 = roundFixtures[i]!
+        const f2 = roundFixtures[i + 1]
+        const legs = [f1]
+        if (f2) legs.push(f2)
+        
+        roundMatchups.push({
+          id: f1.id,
+          fixtures: legs,
+          isThirdPlace: false,
+          homeTeam: f1.homeTeam,
+          awayTeam: f1.awayTeam,
+          homeTeamPlaceholder: f1.homeTeamPlaceholder,
+          awayTeamPlaceholder: f1.awayTeamPlaceholder,
+          homeScore: legs.reduce((sum, f) => sum + (f.homeScore ?? 0), 0),
+          awayScore: legs.reduce((sum, f) => sum + (f.awayScore ?? 0), 0),
+          homePenaltyScore: f2?.homePenaltyScore ?? f1.homePenaltyScore,
+          awayPenaltyScore: f2?.awayPenaltyScore ?? f1.awayPenaltyScore,
+          status: getAggregateStatus(legs),
+          roundName: f1.roundName
+        })
+      }
+    } else {
+      for (let i = 0; i < roundFixtures.length; i++) {
+        const f = roundFixtures[i]!
+        const isThirdPlace = isFinalRound && hasThirdPlaceMatch && i === 1
+        roundMatchups.push({
+          id: f.id,
+          fixtures: [f],
+          isThirdPlace,
+          homeTeam: f.homeTeam,
+          awayTeam: f.awayTeam,
+          homeTeamPlaceholder: f.homeTeamPlaceholder,
+          awayTeamPlaceholder: f.awayTeamPlaceholder,
+          homeScore: f.homeScore ?? 0,
+          awayScore: f.awayScore ?? 0,
+          homePenaltyScore: f.homePenaltyScore,
+          awayPenaltyScore: f.awayPenaltyScore,
+          status: f.status,
+          roundName: f.roundName
+        })
+      }
+    }
+    
+    matchups[round] = roundMatchups
+  })
+  
+  return { rounds: sortedRounds, matchups }
 })
+
+const bracketRounds = computed(() => bracketData.value.rounds)
+const bracketMatchups = computed(() => bracketData.value.matchups)
 
 // Collapsible rounds
 const collapsedRounds = ref<Set<number>>(new Set())
@@ -260,22 +339,61 @@ function getRoundDisplayName(roundIndex: number, totalRounds: number, roundName?
     default: return `Round ${roundIndex + 1}`
   }
 }
-function getTeamClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
-  if (fixture.status !== FixtureStatus.COMPLETED) return isDark ? 'text-gray-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'
-  const hs = fixture.homeScore ?? 0
-  const as = fixture.awayScore ?? 0
-  if (hs === as) return 'font-medium text-gray-500'
-  const isWinner = isHome ? hs > as : as > hs
-  return isWinner ? (isDark ? 'font-bold text-white' : 'font-bold text-gray-900') : 'font-medium text-gray-500'
+function getTeamClass(matchup: any, isHome: boolean, isDark: boolean) {
+  if (matchup.status !== FixtureStatus.COMPLETED) return isDark ? 'text-gray-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'
+  const hs = matchup.homeScore ?? 0
+  const as = matchup.awayScore ?? 0
+  
+  let isWinner = false
+  let isLoser = false
+  
+  if (hs === as) {
+    const hp = matchup.homePenaltyScore ?? 0
+    const ap = matchup.awayPenaltyScore ?? 0
+    if (hp === ap) return 'font-medium text-gray-500' // True draw
+    isWinner = isHome ? hp > ap : ap > hp
+    isLoser = isHome ? hp < ap : ap < hp
+  } else {
+    isWinner = isHome ? hs > as : as > hs
+    isLoser = isHome ? hs < as : as < hs
+  }
+  
+  if (isWinner) return isDark ? 'font-bold text-white' : 'font-bold text-gray-900'
+  if (isLoser) return 'font-medium text-gray-500'
+  return 'font-medium text-gray-500'
 }
-function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
-  if (fixture.status !== FixtureStatus.COMPLETED) return isDark ? 'text-white' : 'text-gray-900'
-  const hs = fixture.homeScore ?? 0
-  const as = fixture.awayScore ?? 0
-  if (hs === as) return 'font-bold text-gray-500'
-  const isWinner = isHome ? hs > as : as > hs
+function getScoreClass(matchup: any, isHome: boolean, isDark: boolean) {
+  if (matchup.status !== FixtureStatus.COMPLETED) return isDark ? 'text-white' : 'text-gray-900'
+  const hs = matchup.homeScore ?? 0
+  const as = matchup.awayScore ?? 0
+  
+  let isWinner = false
+  
+  if (hs === as) {
+    const hp = matchup.homePenaltyScore ?? 0
+    const ap = matchup.awayPenaltyScore ?? 0
+    if (hp !== ap) {
+      isWinner = isHome ? hp > ap : ap > hp
+    }
+  } else {
+    isWinner = isHome ? hs > as : as > hs
+  }
+  
   return isWinner ? (isDark ? 'font-bold text-white' : 'font-bold text-gray-900') : 'font-bold text-gray-500'
 }
+
+// Detect completed matches with no clear winner (tied with no decisive penalties)
+function hasNoWinner(matchup: any): boolean {
+  if (matchup.status !== FixtureStatus.COMPLETED) return false
+  const homeScore = matchup.homeScore ?? 0
+  const awayScore = matchup.awayScore ?? 0
+  if (homeScore !== awayScore) return false
+  // Scores are tied — check penalties
+  const homePen = matchup.homePenaltyScore ?? 0
+  const awayPen = matchup.awayPenaltyScore ?? 0
+  return homePen === awayPen
+}
+
 </script>
 
 <template>
@@ -452,8 +570,36 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
         <div v-show="!selectedFixtureId && !selectedParticipantId" class="animate-in fade-in duration-300">
           <!-- ====== FIXTURES TAB ====== -->
           <div v-if="activeTab === 'fixtures'">
-            <div v-if="fixtures.length === 0" class="text-center py-16">
-            <p class="text-sm text-gray-500">No fixtures available yet.</p>
+            
+            <!-- Filters & Controls -->
+            <div v-if="tournament.twoLegsKnockout && fixtures.length > 0" class="flex justify-end mb-4">
+              <div class="flex items-center gap-1.5">
+                <UButton
+                  size="sm"
+                  :color="legFilter === 'ALL' ? 'primary' : 'neutral'"
+                  :variant="legFilter === 'ALL' ? 'solid' : 'soft'"
+                  label="All"
+                  @click="legFilter = 'ALL'"
+                />
+                <UButton
+                  size="sm"
+                  :color="legFilter === '1' ? 'primary' : 'neutral'"
+                  :variant="legFilter === '1' ? 'solid' : 'soft'"
+                  label="Leg 1"
+                  @click="legFilter = '1'"
+                />
+                <UButton
+                  size="sm"
+                  :color="legFilter === '2' ? 'primary' : 'neutral'"
+                  :variant="legFilter === '2' ? 'solid' : 'soft'"
+                  label="Leg 2"
+                  @click="legFilter = '2'"
+                />
+              </div>
+            </div>
+
+            <div v-if="filteredFixtures.length === 0" class="text-center py-16">
+            <p class="text-sm text-gray-500">No fixtures available for this filter.</p>
           </div>
           <div v-else class="space-y-4">
             <!-- Group Stage label for hybrid -->
@@ -756,66 +902,97 @@ function getScoreClass(fixture: Fixture, isHome: boolean, isDark: boolean) {
                 <!-- Round Header -->
                 <div class="text-center mb-4">
                   <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    {{ getRoundDisplayName(roundIndex, bracketRounds.length, bracketByRound[round]?.[0]?.roundName) }}
+                    {{ getRoundDisplayName(roundIndex, bracketRounds.length, bracketMatchups[round]?.[0]?.roundName) }}
                   </span>
                 </div>
 
                 <!-- Matches -->
                 <div 
                   class="flex flex-col justify-around flex-1 gap-4"
-                  :style="{ minHeight: `${(bracketByRound[bracketRounds[0] ?? 0]?.length || 1) * 90}px` }"
+                  :style="{ minHeight: `${(bracketMatchups[bracketRounds[0] ?? 0]?.length || 1) * 90}px` }"
                 >
-                  <button
-                    type="button"
-                    @click="selectedFixtureId = fixture.id"
-                    v-for="fixture in bracketByRound[round]"
-                    :key="fixture.id"
-                    class="w-56 rounded-xl border overflow-hidden hover:border-emerald-500/30 transition-all group text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50" :class="isDark ? 'bg-gray-900 border-white/[0.08]' : 'bg-white border-gray-200 shadow-sm'"
+                  <div
+                    v-for="matchup in bracketMatchups[round]"
+                    :key="matchup.id"
+                    class="flex flex-col items-center"
                   >
-                    <!-- Home -->
-                    <div 
-                      class="flex items-center justify-between px-3.5 py-2.5 border-b transition-colors" 
-                      :class="[isDark ? 'border-white/[0.06]' : 'border-gray-100', getTeamClass(fixture, true, isDark)]"
+                    <!-- 3rd Place Match Label -->
+                    <div v-if="matchup.isThirdPlace" class="text-[0.65rem] font-bold text-gray-400 uppercase tracking-wider text-center mt-6 mb-2">
+                      3rd Place Play-off
+                    </div>
+
+                    <button
+                      type="button"
+                      @click="selectedFixtureId = matchup.id"
+                      class="w-56 rounded-xl border overflow-hidden hover:border-emerald-500/30 transition-all group text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50" :class="isDark ? 'bg-gray-900 border-white/[0.08]' : 'bg-white border-gray-200 shadow-sm'"
                     >
-                      <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 transition-colors" :class="isDark ? 'bg-white/10' : 'bg-gray-100'">
-                          <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
-                          <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-gray-500">
-                            {{ (fixture.homeTeam?.customName || 'TBD').charAt(0) }}
+                      <!-- Home -->
+                      <div 
+                        class="flex items-center justify-between px-3.5 py-2.5 border-b transition-colors" 
+                        :class="[isDark ? 'border-white/[0.06]' : 'border-gray-100', getTeamClass(matchup, true, isDark)]"
+                      >
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                          <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 transition-colors" :class="isDark ? 'bg-white/10' : 'bg-gray-100'">
+                            <img v-if="matchup.homeTeam?.logoUrl" :src="matchup.homeTeam.logoUrl" class="w-full h-full object-cover" />
+                            <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-gray-500">
+                              {{ (matchup.homeTeam?.customName || 'TBD').charAt(0) }}
+                            </span>
+                          </div>
+                          <span class="text-xs truncate transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ matchup.homeTeam?.customName || 'TBD' }}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                          <span v-if="matchup.fixtures.length > 1" class="text-[0.65rem] font-medium opacity-50 whitespace-nowrap">
+                            ({{ matchup.fixtures.map((f: any) => f.status === 'COMPLETED' || f.status === 'LIVE' ? (f.homeScore ?? 0) : '-').join(', ') }})
+                          </span>
+                          <span 
+                            class="text-sm font-bold min-w-[1.5rem] text-center inline-flex items-center justify-end"
+                            :class="matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? 'text-white' : 'text-gray-600'"
+                          >
+                            <span v-if="matchup.homePenaltyScore !== null && matchup.homePenaltyScore !== undefined" class="text-[0.65rem] font-normal opacity-50 mr-1.5">
+                              ({{ matchup.homePenaltyScore }})
+                            </span>
+                            {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? (matchup.homeScore ?? 0) : '-' }}
                           </span>
                         </div>
-                        <span class="text-xs truncate transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ fixture.homeTeam?.customName || 'TBD' }}</span>
                       </div>
-                      <span 
-                        class="text-sm font-bold min-w-[1.5rem] text-center"
-                        :class="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE ? 'text-white' : 'text-gray-600'"
-                      >
-                        {{ fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE ? (fixture.homeScore ?? 0) : '-' }}
-                      </span>
-                    </div>
-                    <!-- Away -->
-                    <div class="flex items-center justify-between px-3.5 py-2.5" :class="getTeamClass(fixture, false, isDark)">
-                      <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 transition-colors" :class="isDark ? 'bg-white/10' : 'bg-gray-100'">
-                          <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
-                          <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-gray-500">
-                            {{ (fixture.awayTeam?.customName || 'TBD').charAt(0) }}
+                      <!-- Away -->
+                      <div class="flex items-center justify-between px-3.5 py-2.5" :class="getTeamClass(matchup, false, isDark)">
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                          <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 transition-colors" :class="isDark ? 'bg-white/10' : 'bg-gray-100'">
+                            <img v-if="matchup.awayTeam?.logoUrl" :src="matchup.awayTeam.logoUrl" class="w-full h-full object-cover" />
+                            <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-gray-500">
+                              {{ (matchup.awayTeam?.customName || 'TBD').charAt(0) }}
+                            </span>
+                          </div>
+                          <span class="text-xs truncate transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ matchup.awayTeam?.customName || 'TBD' }}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                          <span v-if="matchup.fixtures.length > 1" class="text-[0.65rem] font-medium opacity-50 whitespace-nowrap">
+                            ({{ matchup.fixtures.map((f: any) => f.status === 'COMPLETED' || f.status === 'LIVE' ? (f.awayScore ?? 0) : '-').join(', ') }})
+                          </span>
+                          <span 
+                            class="text-sm font-bold min-w-[1.5rem] text-center inline-flex items-center justify-end"
+                            :class="matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? 'text-white' : 'text-gray-600'"
+                          >
+                            <span v-if="matchup.awayPenaltyScore !== null && matchup.awayPenaltyScore !== undefined" class="text-[0.65rem] font-normal opacity-50 mr-1.5">
+                              ({{ matchup.awayPenaltyScore }})
+                            </span>
+                            {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? (matchup.awayScore ?? 0) : '-' }}
                           </span>
                         </div>
-                        <span class="text-xs truncate transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ fixture.awayTeam?.customName || 'TBD' }}</span>
                       </div>
-                      <span 
-                        class="text-sm font-bold min-w-[1.5rem] text-center"
-                        :class="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE ? 'text-white' : 'text-gray-600'"
-                      >
-                        {{ fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE ? (fixture.awayScore ?? 0) : '-' }}
-                      </span>
-                    </div>
-                    <!-- Live badge -->
-                    <div v-if="fixture.status === FixtureStatus.LIVE" class="text-center py-1 bg-red-500/10">
-                      <span class="text-[10px] font-medium text-red-400">● LIVE</span>
-                    </div>
-                  </button>
+                      <!-- Status badges (Live / Warning) -->
+                      <div v-if="matchup.status === FixtureStatus.LIVE" class="text-center py-1 bg-red-500/10 border-t border-red-500/20">
+                        <span class="text-[10px] font-medium text-red-400">● LIVE</span>
+                      </div>
+                      <div v-else-if="hasNoWinner(matchup)" class="text-center py-1 bg-warning-500/10 border-t border-warning-500/20">
+                        <span class="text-[10px] font-medium text-warning-500 flex items-center justify-center gap-1">
+                          <UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3 animate-pulse" />
+                          NO WINNER
+                        </span>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
