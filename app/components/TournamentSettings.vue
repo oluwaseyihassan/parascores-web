@@ -156,7 +156,9 @@ const schema = z.object({
   start_date: z.string().min(1, 'Start date is required'),
   end_date: z.string().min(1, 'End date is required'),
   maxParticipants: z.number().positive().optional().nullable(),
-  autoApprove: z.boolean()
+  autoApprove: z.boolean(),
+  twoLegsKnockout: z.boolean().optional(),
+  thirdPlaceMatch: z.boolean().optional()
 })
 
 type Schema = z.output<typeof schema>
@@ -175,7 +177,9 @@ const state = reactive<Partial<Schema>>({
   start_date: props.tournament.start_date,
   end_date: props.tournament.end_date,
   maxParticipants: props.tournament.maxParticipants,
-  autoApprove: props.tournament.autoApprove ?? true
+  autoApprove: props.tournament.autoApprove ?? true,
+  twoLegsKnockout: props.tournament.twoLegsKnockout ?? false,
+  thirdPlaceMatch: props.tournament.thirdPlaceMatch ?? false
 })
 
 // Watch date changes and update state
@@ -627,6 +631,28 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               class="w-full md:w-1/2"
             />
           </UFormField>
+
+          <template v-if="state.type === TournamentType.KNOCKOUT || state.type === TournamentType.HYBRID">
+             <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                <h3 class="font-medium text-gray-900 dark:text-white">Knockout Options</h3>
+                
+                <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <div>
+                    <p class="font-medium text-gray-900 dark:text-white">Two-Legged Ties</p>
+                    <p class="text-sm text-gray-500">Knockout rounds (except Final) will have Home and Away legs</p>
+                  </div>
+                  <USwitch v-model="state.twoLegsKnockout" />
+                </div>
+
+                <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <div>
+                    <p class="font-medium text-gray-900 dark:text-white">Third-Place Match</p>
+                    <p class="text-sm text-gray-500">Generate a playoff match for semi-final losers</p>
+                  </div>
+                  <USwitch v-model="state.thirdPlaceMatch" />
+                </div>
+             </div>
+          </template>
         </div>
       </UCard>
 
