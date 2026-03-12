@@ -29,13 +29,12 @@ export const useAuthStore = defineStore('auth', () => {
         method: 'POST',
         body: { email, password },
       })
-      console.log(response)
       if (response.data) {
         setUser(response.data)
       }
       return response
-    } catch (error) {
-      console.log('Login failed:', error)
+    } catch (error: any) {
+      console.error('Login failed:', error?.message || error)
     } finally {
       loading.value = false
     }
@@ -64,13 +63,12 @@ async function signup(email: string, password: string, name: string) {
       const response = await $api<ApiResponse<User>>(`/auth/profile`, {
         method: 'GET',
       })
-      console.log(response)
       if (response.data) {
         setUser(response.data)
       }
       
-    } catch (error) {
-      console.log('Fetch user failed:', error)
+    } catch (error: any) {
+      console.error('Fetch user failed:', error?.message || 'Unknown error')
     } finally {
       loading.value = false
       authLoading.value = false
@@ -85,8 +83,8 @@ async function signup(email: string, password: string, name: string) {
       return navigateTo(config.public.API_BASE_URL + `/auth/google?redirect_url=${redirect_url}`, {
           external: true
       })
-    } catch (error) {
-      console.log('Google signup failed:', error)
+    } catch (error: any) {
+      console.error('Google signup failed:', error?.message || error)
     } finally {
       loading.value = false
     }
@@ -101,8 +99,8 @@ async function signup(email: string, password: string, name: string) {
         method: 'GET',
       })
       setUser(null)
-    } catch (error) {
-      console.log('Logout failed:', error)
+    } catch (error: any) {
+      console.error('Logout failed:', error?.message || error)
     } finally {
       loading.value = false
     }
@@ -131,7 +129,7 @@ async function signup(email: string, password: string, name: string) {
       })
       return response
     } catch (error: any) {
-      console.log('Resend verification failed:', error)
+      console.error('Resend verification failed:', error?.message || error)
       throw error
     } finally {
       loading.value = false
@@ -147,7 +145,7 @@ async function signup(email: string, password: string, name: string) {
       })
       return response
     } catch (error: any) {
-      console.log('Forgot password failed:', error)
+      console.error('Forgot password failed:', error?.message || error)
       throw error
     } finally {
       loading.value = false
@@ -163,7 +161,7 @@ async function signup(email: string, password: string, name: string) {
       })
       return response
     } catch (error: any) {
-      console.log('Reset password failed:', error)
+      console.error('Reset password failed:', error?.message || error)
       throw error
     } finally {
       loading.value = false
@@ -185,7 +183,7 @@ async function signup(email: string, password: string, name: string) {
       }
       return response
     } catch (error: any) {
-      console.log('Update user failed:', error)
+      console.error('Update user failed:', error?.message || error)
       throw error
     } finally {
       loading.value = false

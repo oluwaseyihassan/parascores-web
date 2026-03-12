@@ -21,7 +21,7 @@ export const useStandingStore = defineStore('standing', () => {
         standings.value = Array.isArray(data) ? data : (data.standings || [])
       }
     } catch (error: any) {
-      console.error('Failed to fetch standings:', error)
+      console.error('Failed to fetch standings:', error?.message || error)
       throw error // Re-throw to handle in component
     } finally {
       loading.value = false
@@ -45,7 +45,7 @@ export const useStandingStore = defineStore('standing', () => {
       }
       return response.data
     } catch (error: any) {
-      console.error('Failed to generate standings:', error)
+      console.error('Failed to generate standings:', error?.message || error)
       throw error
     } finally {
       generating.value = false
