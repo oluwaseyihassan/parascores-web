@@ -2,7 +2,7 @@
 import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { Visibility, TournamentType, ParticipantType, ParticipantStatus, FixtureStatus, FixtureStage } from '~/types'
-import type { Participant, Fixture, Sponsor, Social } from '~/types'
+import type { Participant, Fixture, Sponsor, Social, Tournament } from '~/types'
 import * as xlsx from 'xlsx'
 import QrcodeVue from 'qrcode.vue'
 
@@ -29,14 +29,35 @@ const tournamentId = computed(() => route.params.id as string)
 
 onMounted(async () => {
   if (tournamentId.value) {
-    await Promise.all([
-      tournamentStore.fetchTournament(tournamentId.value),
-      participantStore.fetchParticipants(tournamentId.value),
-      fixtureStore.fetchFixtures(tournamentId.value),
-      standingStore.fetchStandings(tournamentId.value),
-      sponsorStore.fetchSponsors(tournamentId.value),
-      socialStore.fetchSocials(tournamentId.value)
-    ])
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<{
+        success: boolean;
+        data: {
+          tournament: Tournament;
+          participants: Participant[];
+          fixtures: Fixture[];
+          standings: any[];
+          sponsors: Sponsor[];
+          socials: Social[];
+        }
+      }>(`/tournaments/${tournamentId.value}/overview`, { method: 'GET' })
+
+      if (response.data) {
+        tournamentStore.setCurrentTournament(response.data.tournament)
+        participants.value = response.data.participants
+        fixtures.value = response.data.fixtures
+        standings.value = response.data.standings
+        sponsors.value = response.data.sponsors
+        socials.value = response.data.socials
+      }
+    } catch (e: any) {
+      console.error('Failed to load dashboard:', e)
+      error.value = e?.message || 'Failed to load tournament data'
+    } finally {
+      loading.value = false
+    }
   }
 })
 
