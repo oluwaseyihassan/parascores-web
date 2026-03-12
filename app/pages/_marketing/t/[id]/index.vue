@@ -54,69 +54,41 @@ async function fetchData() {
   loading.value = true
   error.value = null
   try {
-    const [tournamentRes, fixturesRes, standingsRes, participantsRes, sponsorsRes, socialsRes] = await Promise.all([
-      $publicApi<any>(`/tournaments/${tournamentId}`),
-      $publicApi<any>(`/fixtures/tournaments/${tournamentId}`).catch(() => null),
-      $publicApi<any>(`/standings/tournament/${tournamentId}`).catch(() => null),
-      $publicApi<any>(`/participants/tournaments/${tournamentId}`).catch(() => null),
-      $publicApi<any>(`/sponsors/tournaments/${tournamentId}`).catch(() => null),
-      $publicApi<any>(`/socials/tournaments/${tournamentId}`).catch(() => null)
-    ])
+    const response = await $publicApi<{
+      success: boolean;
+      data: {
+        tournament: Tournament;
+        participants: Participant[];
+        fixtures: Fixture[];
+        standings: any[];
+        sponsors: Sponsor[];
+        socials: Social[];
+      }
+    }>(`/tournaments/${tournamentId}/overview`).catch(() => null)
     
-    tournament.value = tournamentRes?.data || tournamentRes
-    
-    // Handle fixtures: may be { rounds: [...] } or flat array
-    const fixturesData = fixturesRes?.data || fixturesRes
-    if (fixturesData?.rounds) {
-      fixtures.value = fixturesData.rounds.flatMap((r: any) => r.fixtures || [])
-    } else if (Array.isArray(fixturesData)) {
-      fixtures.value = fixturesData
+    if (response?.data) {
+      tournament.value = response.data.tournament
+      
+      // Handle fixtures
+      fixtures.value = response.data.fixtures || []
+      
+      // Handle standings
+      standings.value = response.data.standings || []
+      
+      // Handle participants
+      participants.value = response.data.participants || []
+      
+      // Handle sponsors
+      sponsors.value = response.data.sponsors || []
+      
+      // Handle socials
+      socials.value = response.data.socials || []
     } else {
-      fixtures.value = []
+      error.value = 'Tournament not found'
     }
-    
-    // Handle standings
-    const standingsData = standingsRes?.data || standingsRes
-    if (Array.isArray(standingsData)) {
-      standings.value = standingsData
-    } else if (standingsData?.standings) {
-      standings.value = standingsData.standings
-    } else {
-      standings.value = []
-    }
-    
-    // Handle participants
-    const participantsData = participantsRes?.data || participantsRes
-    if (Array.isArray(participantsData)) {
-      participants.value = participantsData
-    } else if (participantsData?.participants) {
-      participants.value = participantsData.participants
-    } else {
-      participants.value = []
-    }
-    
-    // Handle sponsors
-    const sponsorsData = sponsorsRes?.data || sponsorsRes
-    if (Array.isArray(sponsorsData)) {
-      sponsors.value = sponsorsData
-    } else if (sponsorsData?.sponsors) {
-      sponsors.value = sponsorsData.sponsors
-    } else {
-      sponsors.value = []
-    }
-    
-    // Handle socials
-    const socialsData = socialsRes?.data || socialsRes
-    if (Array.isArray(socialsData)) {
-      socials.value = socialsData
-    } else if (socialsData?.socials) {
-      socials.value = socialsData.socials
-    } else {
-      socials.value = []
-    }
-  } catch (e: any) {
-    error.value = e.message || 'Failed to load tournament'
-    console.error('Tournament detail error:', e)
+  } catch (err: any) {
+    error.value = err?.message || 'Failed to load tournament'
+    console.error('Fetch tournament failed:', err)
   } finally {
     loading.value = false
   }
