@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FixtureStatus, MatchEventType, ParticipantType } from '~/types'
+import { FixtureStatus, MatchEventType, ParticipantType, FixtureStage } from '~/types'
 import type { Fixture, Player, MatchEvent } from '~/types'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
 
@@ -37,6 +37,7 @@ const matchEvents = ref<MatchEvent[]>([])
 const loadingEvents = ref(false)
 const showEventsCollapsible = ref(true)
 const showPenaltyCollapsible = ref(true)
+const showPenaltyOverride = ref(false)
 const errorMessage = ref<string | null>(null)
 
 // Goal scoring modal
@@ -128,6 +129,7 @@ watch(() => props.open, async (isOpen) => {
   } else if (!isOpen) {
     // Reset state when closing
     errorMessage.value = null
+    showPenaltyOverride.value = false
     matchEvents.value = []
     homePlayers.value = []
     awayPlayers.value = []
@@ -203,7 +205,7 @@ const startMatch = async () => {
   } catch (error: any) {
     useToast().add({ 
       title: 'Failed to start match', 
-      description: error.message || 'Unknown error', 
+      description: error?.data?.message || error?.message || 'Unknown error', 
       color: 'error' 
     })
   } finally {
@@ -241,6 +243,75 @@ const tournamentMinDate = computed(() => {
 const tournamentMaxDate = computed(() => {
   if (!props.tournament) return undefined
   return parseDateString(props.tournament.end_date)
+})
+
+const isLeg2 = computed(() => {
+  if (!props.tournament?.twoLegsKnockout) return false
+  if (!selectedFixture.value) return false
+  if (selectedFixture.value.stage !== FixtureStage.KNOCKOUT && selectedFixture.value.stage != null) return false
+  return selectedFixture.value.matchNumber % 2 === 0
+})
+
+const leg1Completed = computed(() => {
+  if (!isLeg2.value || !selectedFixture.value) return true
+  
+  const leg1 = fixtureStore.fixtures.find(f => 
+    f.tournament_id === selectedFixture.value?.tournament_id &&
+    f.round === selectedFixture.value?.round &&
+    f.matchNumber === selectedFixture.value!.matchNumber - 1 &&
+    (selectedFixture.value?.stage == null || f.stage === selectedFixture.value?.stage) &&
+    (selectedFixture.value?.groupId == null || f.groupId === selectedFixture.value?.groupId)
+  )
+  
+  if (!leg1) return true
+  return leg1.status === FixtureStatus.COMPLETED
+})
+
+// Check if scores are tied (or aggregate tied for Leg 2)
+const isScoreTiedOrAggregateTied = computed(() => {
+  if (!selectedFixture.value) return false
+  const homeScore = selectedFixture.value.homeScore ?? 0
+  const awayScore = selectedFixture.value.awayScore ?? 0
+
+  if (isLeg2.value) {
+    // For Leg 2, check the aggregate score
+    const leg1 = fixtureStore.fixtures.find(f =>
+      f.tournament_id === selectedFixture.value?.tournament_id &&
+      f.round === selectedFixture.value?.round &&
+      f.matchNumber === selectedFixture.value!.matchNumber - 1 &&
+      (selectedFixture.value?.stage == null || f.stage === selectedFixture.value?.stage) &&
+      (selectedFixture.value?.groupId == null || f.groupId === selectedFixture.value?.groupId)
+    )
+
+    if (leg1) {
+      // Leg 2 home = Leg 1 away, so aggregate:
+      const aggHome = homeScore + (leg1.awayScore ?? 0)
+      const aggAway = awayScore + (leg1.homeScore ?? 0)
+      return aggHome === aggAway
+    }
+  }
+
+  // Single leg or Leg 1: simple comparison
+  return homeScore === awayScore
+})
+
+// Check if the fixture already has penalty scores
+const hasPenalties = computed(() => {
+  if (!selectedFixture.value) return false
+  return (selectedFixture.value.homePenaltyScore != null && selectedFixture.value.homePenaltyScore > 0)
+    || (selectedFixture.value.awayPenaltyScore != null && selectedFixture.value.awayPenaltyScore > 0)
+})
+
+// Warning: completed knockout match with tied aggregate and no decisive penalties
+const needsPenaltyWarning = computed(() => {
+  if (!selectedFixture.value) return false
+  if (selectedFixture.value.status !== 'COMPLETED') return false
+  if (!isScoreTiedOrAggregateTied.value) return false
+  
+  // Check if penalties resolve the tie
+  const homePen = selectedFixture.value.homePenaltyScore ?? 0
+  const awayPen = selectedFixture.value.awayPenaltyScore ?? 0
+  return homePen === awayPen // Equal penalties (including 0-0) means no winner
 })
 
 const isUpdateDisabled = computed(() => {
@@ -365,7 +436,7 @@ const confirmGoal = async () => {
     }
     useToast().add({ 
       title: 'Failed to record goal', 
-      description: error.message || 'Unknown error', 
+      description: error?.data?.message || error?.message || 'Unknown error', 
       color: 'error' 
     })
   } finally {
@@ -412,7 +483,7 @@ const confirmEditEvent = async () => {
     await refreshMatchEvents()
     useToast().add({ title: 'Event Updated', color: 'success' })
   } catch (e: any) {
-    useToast().add({ title: 'Failed to update event', description: e.message, color: 'error' })
+    useToast().add({ title: 'Failed to update event', description: e?.data?.message || e?.message || 'Unknown error', color: 'error' })
   } finally {
     updatingMatch.value = false
   }
@@ -450,7 +521,7 @@ const confirmDeleteEvent = async () => {
     eventBeingDeleted.value = null
     useToast().add({ title: 'Event Deleted', color: 'success' })
   } catch (e: any) {
-    useToast().add({ title: 'Failed to delete event', description: e.message, color: 'error' })
+    useToast().add({ title: 'Failed to delete event', description: e?.data?.message || e?.message || 'Unknown error', color: 'error' })
   } finally {
     loadingEvents.value = false
   }
@@ -525,7 +596,7 @@ const decrementScore = async (team: 'home' | 'away') => {
     }
     useToast().add({ 
       title: 'Failed to update score', 
-      description: error.message || 'Unknown error', 
+      description: error?.data?.message || error?.message || 'Unknown error', 
       color: 'error' 
     })
   } finally {
@@ -538,10 +609,14 @@ const endMatch = async () => {
   
   updatingMatch.value = true
   try {
+    const penaltyData = isScoreTiedOrAggregateTied.value ? {
+      homePenaltyScore: selectedFixture.value.homePenaltyScore ?? 0,
+      awayPenaltyScore: selectedFixture.value.awayPenaltyScore ?? 0
+    } : {}
+
     await fixtureStore.updateFixture(selectedFixture.value.id, {
       status: FixtureStatus.COMPLETED,
-      homePenaltyScore: selectedFixture.value.homePenaltyScore,
-      awayPenaltyScore: selectedFixture.value.awayPenaltyScore
+      ...penaltyData
     })
     
     selectedFixture.value.status = FixtureStatus.COMPLETED
@@ -560,6 +635,35 @@ const endMatch = async () => {
     useToast().add({ 
       title: 'Failed to end match', 
       description: errorMessage.value || undefined,
+      color: 'error' 
+    })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const savePenalties = async () => {
+  if (!selectedFixture.value) return
+  
+  updatingMatch.value = true
+  try {
+    await fixtureStore.updateFixture(selectedFixture.value.id, {
+      homePenaltyScore: selectedFixture.value.homePenaltyScore ?? 0,
+      awayPenaltyScore: selectedFixture.value.awayPenaltyScore ?? 0
+    })
+    
+    emit('fixture-updated', selectedFixture.value)
+    
+    useToast().add({ 
+      title: 'Penalties Saved', 
+      description: 'Penalty shootout scores have been updated.',
+      icon: 'i-heroicons-bolt',
+      color: 'success' 
+    })
+  } catch (error: any) {
+    useToast().add({ 
+      title: 'Failed to save penalties', 
+      description: error?.data?.message || error?.message || 'Unknown error', 
       color: 'error' 
     })
   } finally {
@@ -769,6 +873,27 @@ const downloadGraphic = async () => {
             :title="errorMessage"
           />
 
+          <!-- Warning: no winner determined -->
+          <UAlert
+            v-if="needsPenaltyWarning"
+            icon="i-heroicons-exclamation-triangle"
+            color="warning"
+            variant="soft"
+            title="No winner — scores are tied"
+            description="This knockout match has no winner. Update the scores or add penalty shootout scores to determine a winner."
+          >
+            <template #actions>
+              <UButton
+                size="xs"
+                color="warning"
+                variant="soft"
+                icon="i-heroicons-bolt"
+                label="Add Penalties"
+                @click="showPenaltyOverride = true; showPenaltyCollapsible = true"
+              />
+            </template>
+          </UAlert>
+
           <!-- Teams Display -->
           <div class="flex items-center justify-between gap-4">
             <!-- Home Team -->
@@ -922,9 +1047,9 @@ const downloadGraphic = async () => {
             </div>
           </div>
 
-          <!-- Penalty Shootout Controls (only if drawn and live) -->
+          <!-- Penalty Shootout Controls (show if tied, penalties exist, or user toggled on) -->
           <div 
-            v-if="['LIVE', 'COMPLETED'].includes(selectedFixture.status) && (selectedFixture.homeScore ?? 0) === (selectedFixture.awayScore ?? 0)" 
+            v-if="['LIVE', 'COMPLETED'].includes(selectedFixture.status) && (isScoreTiedOrAggregateTied || hasPenalties || showPenaltyOverride)" 
             class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden"
           >
             <button 
@@ -973,10 +1098,49 @@ const downloadGraphic = async () => {
                 </div>
               </div>
               
+              <!-- Save & Clear buttons -->
+              <div class="flex items-center justify-center gap-2 mt-3">
+                <UButton
+                  v-if="selectedFixture.homePenaltyScore != null && selectedFixture.awayPenaltyScore != null"
+                  size="xs"
+                  color="success"
+                  variant="soft"
+                  icon="i-heroicons-check"
+                  label="Save Penalties"
+                  :loading="updatingMatch"
+                  @click="savePenalties"
+                />
+                <!-- Clear Penalties button (only if penalties exist and scores are no longer tied) -->
+                <UButton
+                  v-if="hasPenalties && !isScoreTiedOrAggregateTied"
+                  size="xs"
+                  color="warning"
+                  variant="soft"
+                  icon="i-heroicons-x-circle"
+                  label="Clear"
+                  @click="selectedFixture!.homePenaltyScore = 0; selectedFixture!.awayPenaltyScore = 0"
+                />
+              </div>
+
               <p class="text-xs text-center text-gray-500 mt-2">
                 Enter penalty shootout scores to determine the winner.
               </p>
             </div>
+          </div>
+
+          <!-- Toggle to show penalty section on completed matches -->
+          <div 
+            v-if="selectedFixture.status === 'COMPLETED' && !isScoreTiedOrAggregateTied && !hasPenalties && !showPenaltyOverride"
+            class="flex justify-center"
+          >
+            <UButton
+              size="xs"
+              variant="link"
+              color="neutral"
+              icon="i-heroicons-bolt"
+              label="Edit Penalties"
+              @click="showPenaltyOverride = true"
+            />
           </div>
 
           <!-- Loading Players Indicator -->
@@ -1076,14 +1240,25 @@ const downloadGraphic = async () => {
 
           <!-- Actions -->
           <div class="flex justify-between gap-3 pt-2">
-            <UButton 
-              v-if="selectedFixture.status === 'SCHEDULED'"
-              label="Start Match" 
-              icon="i-heroicons-play"
-              color="success"
-              :loading="updatingMatch"
-              @click="startMatch"
-            />
+            <template v-if="selectedFixture.status === 'SCHEDULED'">
+              <UButton 
+                v-if="!isLeg2 || leg1Completed"
+                label="Start Match" 
+                icon="i-heroicons-play"
+                color="success"
+                :loading="updatingMatch"
+                @click="startMatch"
+              />
+              <UTooltip text="Complete Leg 1 first to unlock" v-else>
+                <UButton 
+                  label="Leg 1 Pending"
+                  icon="i-heroicons-lock-closed"
+                  color="neutral"
+                  variant="soft"
+                  disabled
+                />
+              </UTooltip>
+            </template>
             <UButton 
               v-if="selectedFixture.status === 'LIVE'"
               label="End Match" 
