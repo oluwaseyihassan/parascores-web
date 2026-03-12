@@ -70,7 +70,9 @@ export const useFixtureStore = defineStore('fixture', () => {
     fixtures.value.forEach(fixture => {
       if (!names[fixture.round]) {
         // Use roundName if available (knockout rounds), otherwise fallback to "Round X"
-        names[fixture.round] = fixture.roundName || `Round ${fixture.round}`
+        // Strip leg suffixes for display as column headers
+        const baseName = (fixture.roundName || `Round ${fixture.round}`).replace(/ - Leg \d+$/, '')
+        names[fixture.round] = baseName
       }
     })
     return names
@@ -130,7 +132,8 @@ export const useFixtureStore = defineStore('fixture', () => {
     const names: Record<number, string> = {}
     knockoutFixtures.value.forEach(fixture => {
       if (!names[fixture.round]) {
-        names[fixture.round] = fixture.roundName || `Round ${fixture.round}`
+        const baseName = (fixture.roundName || `Round ${fixture.round}`).replace(/ - Leg \d+$/, '')
+        names[fixture.round] = baseName
       }
     })
     return names
