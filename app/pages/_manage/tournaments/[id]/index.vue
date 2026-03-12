@@ -769,7 +769,7 @@ const startMatch = async (fixture: Fixture) => {
   } catch (error: any) {
     useToast().add({ 
       title: 'Failed to start match', 
-      description: error.message || 'Unknown error', 
+      description: error?.data?.message || error?.message || 'Unknown error', 
       color: 'error' 
     })
   } finally {
@@ -1903,6 +1903,8 @@ const copyTournamentLink = async () => {
                     :rounds="rounds"
                     :get-round-display-name="fixtureStore.getRoundDisplayName"
                     :updating-match="updatingMatch"
+                    :two-legs-knockout="tournament?.twoLegsKnockout"
+                    :third-place-match="tournament?.thirdPlaceMatch"
                     @start-match="startMatch"
                     @control-match="openMatchControl"
                   />
