@@ -62,6 +62,28 @@ export const useParticipantStore = defineStore('participant', () => {
     }
   }
 
+  // Add multiple participants in bulk
+  async function addParticipantsBulk(tournamentId: string, data: { participants: CreateParticipantData[] }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<Participant[]>>(`/participants/tournaments/${tournamentId}/bulk`, {
+        method: 'POST',
+        body: data,
+      })
+      if (response.data) {
+        participants.value = response.data
+      }
+      return response
+    } catch (err: any) {
+      error.value = err.message || 'Failed to bulk add participants'
+      console.error('Bulk add participants failed:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Update a participant
   async function updateParticipant(id: string, updates: Partial<CreateParticipantData>) {
     loading.value = true
@@ -267,6 +289,7 @@ export const useParticipantStore = defineStore('participant', () => {
     removePlayer,
     // fetchPlayers,
     fetchParticipantPlayers,
+    addParticipantsBulk,
     clearParticipants,
   }
 })
