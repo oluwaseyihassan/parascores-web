@@ -306,8 +306,76 @@ const newPlayer = reactive({
 })
 const editingPlayerId = ref<string | null>(null)
 const deletingPlayerId = ref<string | null>(null)
+// Excel Upload for Teams
+const uploadingTeamExcel = ref(false)
+const teamExcelFileInput = ref<HTMLInputElement | null>(null)
+
+const triggerTeamExcelUpload = () => {
+  if (teamExcelFileInput.value) teamExcelFileInput.value.click()
+}
+
+const handleTeamExcelUpload = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    try {
+      uploadingTeamExcel.value = true
+      const xlsx = await import('xlsx')
+      const data = new Uint8Array(e.target?.result as ArrayBuffer)
+      const workbook = xlsx.read(data, { type: 'array' })
+      const firstSheetName = workbook.SheetNames[0]
+      if (!firstSheetName) throw new Error('No sheets found in Excel file')
+      const worksheet = workbook.Sheets[firstSheetName]
+      if (!worksheet) throw new Error('Worksheet not found in the Excel file')
+      const jsonData = xlsx.utils.sheet_to_json<any>(worksheet)
+      
+      const teamsToUpload = jsonData.map(row => {
+        const keys = Object.keys(row)
+        const nameKey = keys.find(k => k.toLowerCase().trim() === 'name' || k.toLowerCase().trim() === 'team')
+        const seedKey = keys.find(k => k.toLowerCase().trim() === 'seed' || k.toLowerCase().trim() === 'rank')
+
+        return {
+          customName: nameKey ? String(row[nameKey]).trim() : '',
+          seed: seedKey ? parseInt(row[seedKey]) || null : null,
+          logoUrl: null
+        }
+      }).filter(t => t.customName)
+
+      if (teamsToUpload.length > 0) {
+        await participantStore.addParticipantsBulk(tournamentId.value, { participants: teamsToUpload })
+        useToast().add({ title: `Added ${teamsToUpload.length} participants successfully`, color: 'success' })
+      } else {
+        useToast().add({ title: 'No valid participants found in Excel', color: 'error' })
+      }
+    } catch (err: any) {
+      console.error('Excel parse error:', err)
+      const message = err.data?.message || err.message || 'Failed to parse Excel file'
+      useToast().add({ title: 'Failed to parse Excel file', description: message, color: 'error' })
+    } finally {
+      uploadingTeamExcel.value = false
+      if (teamExcelFileInput.value) teamExcelFileInput.value.value = ''
+    }
+  }
+  reader.readAsArrayBuffer(file)
+}
+
+const downloadTeamExcelTemplate = async () => {
+  const xlsx = await import('xlsx')
+  const wsData = [
+    ['Name', 'Seed'],
+    ['Team A', '1'],
+    ['Team B', '2']
+  ]
+  const ws = xlsx.utils.aoa_to_sheet(wsData)
+  const wb = xlsx.utils.book_new()
+  xlsx.utils.book_append_sheet(wb, ws, 'Teams')
+  xlsx.writeFile(wb, 'Parascores_Team_Upload_Template.xlsx')
+}
 
 // Excel Upload
+
 const uploadingExcel = ref(false)
 const excelFileInput = ref<HTMLInputElement | null>(null)
 
@@ -359,7 +427,8 @@ const handleExcelUpload = async (event: Event) => {
       }
     } catch (err: any) {
       console.error('Excel parse error:', err)
-      useToast().add({ title: 'Failed to parse Excel file', description: err.message, color: 'error' })
+      const message = err.data?.message || err.message || 'Failed to parse Excel file'
+      useToast().add({ title: 'Failed to parse Excel file', description: message, color: 'error' })
     } finally {
       uploadingExcel.value = false
       if (excelFileInput.value) excelFileInput.value.value = ''
@@ -421,9 +490,10 @@ const handleAddPlayer = async () => {
       newPlayer.position = 'FWD'
     }
   } catch (error: any) {
+    const message = error.data?.message || error.message || 'Unknown error'
     useToast().add({ 
       title: editingPlayerId.value ? 'Failed to update player' : 'Failed to add player', 
-      description: error.message || 'Unknown error', 
+      description: message, 
       color: 'error' 
     })
   } finally {
@@ -463,9 +533,10 @@ const handleDeletePlayer = async (playerId: string) => {
         
         if (editingPlayerId.value === playerId) cancelEditPlayer()
       } catch (error: any) {
+        const message = error.data?.message || error.message || 'Unknown error'
         useToast().add({ 
           title: 'Failed to remove player', 
-          description: error.message || 'Unknown error', 
+          description: message, 
           color: 'error' 
         })
       } finally {
@@ -482,9 +553,10 @@ const removeParticipant = async (participantId: string) => {
     await participantStore.removeParticipant(participantId)
     useToast().add({ title: 'Participant removed successfully', color: 'success' })
   } catch (error: any) {
+    const message = error.data?.message || error.message || 'Unknown error'
     useToast().add({ 
       title: 'Failed to remove participant', 
-      description: error.message || 'Unknown error', 
+      description: message, 
       color: 'error' 
     })
   }
@@ -934,9 +1006,10 @@ const handleRemoveSponsor = (sponsorId: string) => {
         await sponsorStore.removeSponsor(tournamentId.value, sponsorId)
         useToast().add({ title: 'Sponsor removed', color: 'success' })
       } catch (error: any) {
+        const message = error.data?.message || error.message || 'Unknown error'
         useToast().add({ 
           title: 'Failed to remove sponsor', 
-          description: error.message || 'Unknown error', 
+          description: message, 
           color: 'error' 
         })
       }
@@ -1012,9 +1085,10 @@ const handleRemoveSocial = (socialId: string) => {
         await socialStore.removeSocial(tournamentId.value, socialId)
         useToast().add({ title: 'Social link removed', color: 'success' })
       } catch (error: any) {
+        const message = error.data?.message || error.message || 'Unknown error'
         useToast().add({ 
           title: 'Failed to remove social link', 
-          description: error.message || 'Unknown error', 
+          description: message, 
           color: 'error' 
         })
       }
@@ -1168,7 +1242,8 @@ const copyTournamentLink = async () => {
       }
     }
   } catch (err) {
-    useToast().add({ title: 'Failed to copy link', description: String(err), color: 'error' })
+    const message = (err as any).data?.message || String(err)
+    useToast().add({ title: 'Failed to copy link', description: message, color: 'error' })
   }
 }
 
@@ -1713,9 +1788,33 @@ const copyTournamentLink = async () => {
                         {{ participants.length }}
                       </UBadge>
                     </div>
-                    <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddModal">
-                      Add
-                    </UButton>
+                    <div class="flex items-center gap-2">
+                      <UDropdownMenu 
+                        :items="[[
+                          { label: 'Upload Excel', icon: 'i-heroicons-arrow-up-tray', onSelect: triggerTeamExcelUpload },
+                          { label: 'Download Template', icon: 'i-heroicons-arrow-down-tray', onSelect: downloadTeamExcelTemplate }
+                        ]]"
+                        :content="{ align: 'end' }"
+                      >
+                        <UButton 
+                          size="xs" 
+                          variant="ghost" 
+                          icon="i-heroicons-arrow-up-tray" 
+                          :loading="uploadingTeamExcel"
+                          title="Bulk Upload Options"
+                        />
+                      </UDropdownMenu>
+                      <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddModal">
+                        Add
+                      </UButton>
+                    </div>
+                    <input 
+                      type="file" 
+                      ref="teamExcelFileInput" 
+                      accept=".xlsx, .xls, .csv" 
+                      class="hidden" 
+                      @change="handleTeamExcelUpload" 
+                    />
                   </div>
                 </template>
                 
