@@ -70,8 +70,7 @@ export const getSponsorsRow = (sponsors: any[]) => {
                                 height: 80,
                                 style: { objectFit: 'contain' }
                             }
-                        } : null,
-                        {
+                        } : {
                             type: 'span',
                             props: {
                                 children: s.name,
