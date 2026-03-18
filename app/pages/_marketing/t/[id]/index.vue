@@ -1025,6 +1025,7 @@ function hasNoWinner(matchup: any): boolean {
                   >
                     <SocialsTwitterIcon v-if="social.platform === 'twitter'" class="w-4 h-4" />
                     <SocialsInstagramIcon v-else-if="social.platform === 'instagram'" class="w-4 h-4" />
+                    <SocialsWebIcon v-else-if="social.platform === 'website'" class="w-4 h-4" />
                     <UIcon v-else-if="social.platform === 'facebook'" name="i-simple-icons-facebook" class="w-4 h-4" />
                     <UIcon v-else-if="social.platform === 'youtube'" name="i-simple-icons-youtube" class="w-4 h-4" />
                     <UIcon v-else-if="social.platform === 'tiktok'" name="i-simple-icons-tiktok" class="w-4 h-4" />

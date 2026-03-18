@@ -1755,6 +1755,7 @@ const copyTournamentLink = async () => {
                         >
                           <SocialsTwitterIcon v-if="social.platform === 'twitter'" class="w-4 h-4" />
                           <SocialsInstagramIcon v-else-if="social.platform === 'instagram'" class="w-4 h-4" />
+                          <SocialsWebIcon v-else-if="social.platform === 'website'" class="w-4 h-4" />
                           <UIcon v-else :name="getSocialIcon(social.platform)" class="w-4 h-4" :class="getSocialColor(social.platform)" />
                           <span class="text-sm text-gray-700 dark:text-gray-300 capitalize">{{ social.platform }}</span>
                         </a>

@@ -117,7 +117,7 @@ export const getAbsoluteFooter = (socials: any[]) => {
                                 props: {
                                     width: 32,
                                     height: 32,
-                                    viewBox: s.platform === 'instagram' ? '0 0 20 20' : s.platform === 'twitter' ? '0 0 30 30' : (SOCIAL_ICONS[s.platform] ? (s.platform === 'twitch' ? '0 0 16 16' : '0 0 24 24') : '0 0 24 24'),
+                                    viewBox: (!SOCIAL_ICONS[s.platform] || s.platform === 'website') ? '0 0 60 60' : s.platform === 'instagram' ? '0 0 20 20' : s.platform === 'twitter' ? '0 0 30 30' : (s.platform === 'twitch' ? '0 0 16 16' : '0 0 24 24'),
                                     style: { color: 'white' },
                                     children: s.platform === 'instagram' ? [
                                         {
@@ -135,11 +135,27 @@ export const getAbsoluteFooter = (socials: any[]) => {
                                                 ]
                                             }
                                         }
+                                    ] : (!SOCIAL_ICONS[s.platform] || s.platform === 'website') ? [
+                                        {
+                                            type: 'g',
+                                            props: {
+                                                children: [
+                                                    { type: 'rect', props: { fill: 'transparent', height: 60, rx: 10, width: 60 } },
+                                                    { type: 'circle', props: { cx: 30, cy: 30, fill: 'transparent', r: 22 } },
+                                                    { type: 'ellipse', props: { cx: 30, cy: 30, fill: 'transparent', rx: 8, ry: 22 } },
+                                                    { type: 'path', props: { d: 'M30,53.5c-6.171,0-9.5-12.108-9.5-23.5S23.829,6.5,30,6.5,39.5,18.608,39.5,30,36.171,53.5,30,53.5Zm0-44c-2.714,0-6.5,7.8-6.5,20.5S27.286,50.5,30,50.5s6.5-7.8,6.5-20.5S32.714,9.5,30,9.5Z', fill: 'currentColor' } },
+                                                    { type: 'path', props: { d: 'M50,23.5H10a1.5,1.5,0,0,1,0-3H50a1.5,1.5,0,0,1,0,3Z', fill: 'currentColor' } },
+                                                    { type: 'path', props: { d: 'M50,39.5H10a1.5,1.5,0,0,1,0-3H50a1.5,1.5,0,0,1,0,3Z', fill: 'currentColor' } },
+                                                    { type: 'path', props: { d: 'M30,53.5A23.5,23.5,0,1,1,53.5,30,23.527,23.527,0,0,1,30,53.5Zm0-44A20.5,20.5,0,1,0,50.5,30,20.523,20.523,0,0,0,30,9.5Z', fill: 'currentColor' } },
+                                                    { type: 'path', props: { d: 'M8,31.5A1.5,1.5,0,0,1,6.5,30,23.527,23.527,0,0,1,30,6.5a1.5,1.5,0,0,1,0,3A20.523,20.523,0,0,0,9.5,30,1.5,1.5,0,0,1,8,31.5Z', fill: 'currentColor' } }
+                                                ]
+                                            }
+                                        }
                                     ] : [
                                         {
                                             type: 'path',
                                             props: {
-                                                d: SOCIAL_ICONS[s.platform] || SOCIAL_ICONS['website'],
+                                                d: SOCIAL_ICONS[s.platform],
                                                 fill: 'currentColor'
                                             }
                                         }
