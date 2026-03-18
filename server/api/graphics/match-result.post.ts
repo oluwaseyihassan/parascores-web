@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
   const awayGoalCount = goalEvents.filter((e: any) => e.participantId === awayTeam.id || e.participant_id === awayTeam.id).length
   const maxGoals = Math.max(homeGoalCount, awayGoalCount, 0)
   // Ensure enough base height to fit the scorecard AND full footer (sponsors + socials)
-  const baseHeight = 650
+  const baseHeight = 800
   const goalRowHeight = 24
   const height = baseHeight + (maxGoals * goalRowHeight)
   const width = 1200
