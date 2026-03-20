@@ -23,9 +23,33 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 import MarketingFixtureDetails from '~/components/marketing/FixtureDetails.vue'
 import MarketingTeamDetails from '~/components/marketing/TeamDetails.vue'
-const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants'>('fixtures')
+const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats'>('fixtures')
 const selectedFixtureId = ref<string | null>(null)
 const selectedParticipantId = ref<string | null>(null)
+
+// Goal Flash state
+const flashingFixtures = ref<Map<string, 'home' | 'away'>>(new Map())
+const toastedScores = new Map<string, string>() // fixtureId -> "home-away" last toasted score
+const toast = useToast()
+
+// Player Stats state
+const playerStats = ref<any>(null)
+const playerStatsLoading = ref(false)
+
+const loadPlayerStats = async () => {
+  if (!tournamentId) return
+  playerStatsLoading.value = true
+  try {
+    const res = await $publicApi<{success: boolean, data: any}>(`/tournaments/${tournamentId}/player-stats`)
+    if (res.data) {
+      playerStats.value = res.data
+    }
+  } catch (e) {
+    console.error('Failed to load player stats:', e)
+  } finally {
+    playerStatsLoading.value = false
+  }
+}
 
 watch(activeTab, () => {
   selectedFixtureId.value = null
@@ -35,19 +59,69 @@ watch(activeTab, () => {
 // Establish Live Stream connection to receive realtime push notifications
 useLiveStream()
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('live-match-update', (e: Event) => {
-    const customEvent = e as CustomEvent
-    const { type, data } = customEvent.detail
+function onLiveMatchUpdate(e: Event) {
+  const customEvent = e as CustomEvent
+  const { type, data } = customEvent.detail
 
-    if (type === 'fixture_updated') {
-      const targetIdx = fixtures.value.findIndex((f) => f.id === data.id)
-      if (targetIdx !== -1) {
-        fixtures.value[targetIdx] = { ...fixtures.value[targetIdx], ...data }
+  if (type === 'fixture_updated') {
+    const targetIdx = fixtures.value.findIndex((f) => f.id === data.id)
+    if (targetIdx !== -1) {
+      const oldFixture = fixtures.value[targetIdx]
+      if (!oldFixture) return
+      const oldHome = oldFixture.homeScore ?? 0
+      const oldAway = oldFixture.awayScore ?? 0
+      const newHome = data.homeScore ?? 0
+      const newAway = data.awayScore ?? 0
+
+      // Detect goal: score increased
+      const goalScored = newHome > oldHome || newAway > oldAway
+
+      // Merge fixture data
+      fixtures.value[targetIdx] = { ...oldFixture, ...data }
+
+      // Trigger goal flash (deduplicate rapid SSE events)
+      const scoreKey = `${newHome}-${newAway}`
+      if (goalScored && toastedScores.get(data.id) !== scoreKey) {
+        toastedScores.set(data.id, scoreKey)
+
+        const homeName = data.homeTeam?.customName || oldFixture.homeTeam?.customName || 'Home'
+        const awayName = data.awayTeam?.customName || oldFixture.awayTeam?.customName || 'Away'
+        const scoringSide: 'home' | 'away' = newHome > oldHome ? 'home' : 'away'
+        const scoringTeam = scoringSide === 'home' ? homeName : awayName
+
+        // Add goal indicator
+        const updatedMap = new Map(flashingFixtures.value)
+        updatedMap.set(data.id, scoringSide)
+        flashingFixtures.value = updatedMap
+
+        // Remove goal indicator after 5s
+        setTimeout(() => {
+          const m = new Map(flashingFixtures.value)
+          m.delete(data.id)
+          flashingFixtures.value = m
+        }, 5000)
+
+        // Toast notification
+        toast.add({
+          id: `goal-${data.id}-${newHome}-${newAway}`,
+          title: `⚽ GOAL! ${scoringTeam}`,
+          description: `${homeName} ${newHome} - ${newAway} ${awayName}`,
+          color: 'success',
+          icon: 'i-mdi-soccer',
+          duration: 10000
+        })
       }
     }
-  })
+  }
 }
+
+onMounted(() => {
+  window.addEventListener('live-match-update', onLiveMatchUpdate)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('live-match-update', onLiveMatchUpdate)
+})
 
 // Fetch data
 async function fetchData() {
@@ -83,6 +157,11 @@ async function fetchData() {
       
       // Handle socials
       socials.value = response.data.socials || []
+      
+      // Load player stats if applicable
+      if (tournament.value.participantType === ParticipantType.TEAM) {
+        loadPlayerStats()
+      }
     } else {
       error.value = 'Tournament not found'
     }
@@ -506,6 +585,18 @@ function hasNoWinner(matchup: any): boolean {
               {{ participantsTabName }}
             </button>
             <button
+              v-if="isTeams"
+              @click="activeTab = 'stats'"
+              :class="[
+                'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
+                activeTab === 'stats'
+                  ? 'text-emerald-400 border-emerald-400'
+                  : 'text-gray-500 border-transparent hover:text-gray-300 hover:border-white/20'
+              ]"
+            >
+              Player Stats
+            </button>
+            <button
               @click="activeTab = 'info'"
               :class="[
                 'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
@@ -608,7 +699,7 @@ function hasNoWinner(matchup: any): boolean {
                     v-for="(fixture, i) in fixturesByRound[round]?.fixtures"
                     :key="fixture.id"
                     class="rounded-xl border overflow-hidden transition-all group flex flex-col text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50 w-full"
-                    :class="isDark ? 'bg-[#1a1a1a] border-white/[0.08] hover:border-emerald-500/50' : 'bg-white border-gray-100 shadow-sm hover:border-emerald-500/30'"
+                    :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.08] hover:border-emerald-500/50' : 'bg-white border-gray-100 shadow-sm hover:border-emerald-500/30']"
                   >
                     <!-- Header -->
                     <div class="flex items-center justify-between px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wider border-b transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'">
@@ -648,6 +739,7 @@ function hasNoWinner(matchup: any): boolean {
                           <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, true, isDark)">
                             {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                           </span>
+                          <span v-if="flashingFixtures.get(fixture.id) === 'home'" class="goal-text shrink-0">GOAL!!!</span>
                         </div>
                         
                         <!-- Away -->
@@ -661,6 +753,7 @@ function hasNoWinner(matchup: any): boolean {
                           <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, false, isDark)">
                             {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                           </span>
+                          <span v-if="flashingFixtures.get(fixture.id) === 'away'" class="goal-text shrink-0">GOAL!!!</span>
                         </div>
                       </div>
 
@@ -718,7 +811,7 @@ function hasNoWinner(matchup: any): boolean {
                       v-for="(fixture, i) in knockoutByRound[round]?.fixtures"
                       :key="fixture.id"
                       class="rounded-xl border overflow-hidden transition-all group flex flex-col text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50 w-full"
-                      :class="isDark ? 'bg-[#1a1a1a] border-white/[0.08] hover:border-emerald-500/50' : 'bg-white border-gray-100 shadow-sm hover:border-emerald-500/30'"
+                      :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.08] hover:border-emerald-500/50' : 'bg-white border-gray-100 shadow-sm hover:border-emerald-500/30']"
                     >
                       <!-- Header -->
                       <div class="flex items-center justify-between px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wider border-b transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'">
@@ -758,6 +851,7 @@ function hasNoWinner(matchup: any): boolean {
                             <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, true, isDark)">
                               {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                             </span>
+                            <span v-if="flashingFixtures.get(fixture.id) === 'home'" class="goal-text shrink-0">GOAL!!!</span>
                           </div>
                           
                           <!-- Away -->
@@ -771,6 +865,7 @@ function hasNoWinner(matchup: any): boolean {
                             <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, false, isDark)">
                               {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                             </span>
+                            <span v-if="flashingFixtures.get(fixture.id) === 'away'" class="goal-text shrink-0">GOAL!!!</span>
                           </div>
                         </div>
 
@@ -1002,6 +1097,13 @@ function hasNoWinner(matchup: any): boolean {
           </div>
         </div>
 
+        <!-- ====== STATS TAB ====== -->
+        <div v-else-if="activeTab === 'stats'">
+          <div class="max-w-4xl mx-auto">
+            <MarketingPlayerStatsLeaderboard :stats="playerStats" :loading="playerStatsLoading" />
+          </div>
+        </div>
+
         <!-- ====== INFO TAB ====== -->
         <div v-else-if="activeTab === 'info'" class="">
           <div class="flex flex-col gap-6">
@@ -1114,5 +1216,25 @@ function hasNoWinner(matchup: any): boolean {
 .round-content.collapsed {
   max-height: 0;
   opacity: 0;
+}
+
+/* Goal Text Animation */
+.goal-text {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #ef4444;
+  text-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+  animation: goalTextPulse 1s ease-in-out infinite;
+}
+@keyframes goalTextPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
 }
 </style>
