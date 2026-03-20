@@ -23,6 +23,25 @@ const { standings, loading: standingsLoading } = storeToRefs(standingStore)
 const { sponsors, loading: sponsorsLoading } = storeToRefs(sponsorStore)
 const { socials, loading: socialsLoading } = storeToRefs(socialStore)
 
+// Player Stats state
+const playerStats = ref<any>(null)
+const playerStatsLoading = ref(false)
+
+const loadPlayerStats = async () => {
+  if (!tournamentId.value) return
+  playerStatsLoading.value = true
+  try {
+    const res = await $api<{success: boolean, data: any}>(`/tournaments/${tournamentId.value}/player-stats`)
+    if (res.data) {
+      playerStats.value = res.data
+    }
+  } catch (e) {
+    console.error('Failed to load player stats:', e)
+  } finally {
+    playerStatsLoading.value = false
+  }
+}
+
 // Fetch tournament, participants, and fixtures on mount
 const tournamentId = computed(() => route.params.id as string)
 
@@ -50,6 +69,11 @@ onMounted(async () => {
         standings.value = response.data.standings
         sponsors.value = response.data.sponsors
         socials.value = response.data.socials
+        
+        // Load stats if applicable
+        if (response.data.tournament.participantType === ParticipantType.TEAM) {
+          loadPlayerStats()
+        }
       }
     } catch (e: any) {
       console.error('Failed to load dashboard:', e)
@@ -1134,7 +1158,13 @@ const tabItems = computed(() => {
     })
   }
 
-
+  if (tournament.value?.participantType === ParticipantType.TEAM) {
+    items.push({
+      slot: 'stats',
+      label: 'Player Stats',
+      icon: 'i-heroicons-star'
+    })
+  }
 
   // Add settings tab
   items.push({
@@ -2241,12 +2271,12 @@ const copyTournamentLink = async () => {
                            <div 
                             v-for="fixture in item.fixtures" 
                             :key="fixture.id"
-                            class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+                            class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
                           >
                             <!-- Match Info -->
-                            <div class="flex-1">
-                              <div class="flex items-center gap-2 text-sm">
-                                <div class="flex items-center gap-2 w-1/3 justify-end">
+                            <div class="w-full sm:flex-1 sm:w-auto">
+                              <div class="flex items-center gap-2 text-sm min-w-0">
+                                <div class="flex items-center gap-2 flex-1 min-w-0 justify-end">
                                   <span class="font-medium text-gray-900 dark:text-white truncate">
                                     {{ fixture.homeTeam?.customName || 'TBD' }}
                                   </span>
@@ -2262,9 +2292,9 @@ const copyTournamentLink = async () => {
                                   </div>
                                 </div>
                                 
-                                <span class="text-gray-400 px-2">vs</span>
+                                <span class="text-gray-400 px-2 shrink-0">vs</span>
                                 
-                                <div class="flex items-center gap-2 w-1/3 justify-start">
+                                <div class="flex items-center gap-2 flex-1 min-w-0 justify-start">
                                   <div class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
                                     <img 
                                       v-if="fixture.awayTeam?.logoUrl" 
@@ -2285,22 +2315,21 @@ const copyTournamentLink = async () => {
                               </p>
                             </div>
                             
-                            <!-- Score (if completed or live) -->
-                            <div 
-                              v-if="fixture.status === 'COMPLETED' || fixture.status === 'LIVE'"
-                              class="flex items-center gap-2 px-3"
-                            >
-                              <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                {{ fixture.homeScore ?? 0 }}
-                              </span>
-                              <span class="text-gray-400">-</span>
-                              <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                {{ fixture.awayScore ?? 0 }}
-                              </span>
-                            </div>
-                            
-                            <!-- Match Actions -->
-                            <div class="flex items-center gap-2">
+                            <!-- Score + Actions -->
+                            <div class="flex items-center justify-end w-full sm:w-auto shrink-0 gap-2 mt-1 sm:mt-0">
+                              <div 
+                                v-if="fixture.status === 'COMPLETED' || fixture.status === 'LIVE'"
+                                class="flex items-center gap-2 px-3"
+                              >
+                                <span class="text-lg font-bold text-gray-900 dark:text-white">
+                                  {{ fixture.homeScore ?? 0 }}
+                                </span>
+                                <span class="text-gray-400">-</span>
+                                <span class="text-lg font-bold text-gray-900 dark:text-white">
+                                  {{ fixture.awayScore ?? 0 }}
+                                </span>
+                              </div>
+                              
                               <!-- Start Match Button (for SCHEDULED) -->
                               <UButton 
                                 v-if="fixture.status === 'SCHEDULED' && fixture.homeTeamId && fixture.awayTeamId"
@@ -2327,7 +2356,7 @@ const copyTournamentLink = async () => {
                               
                               <!-- Control Match Button (for LIVE) -->
                               <UButton 
-                                v-if="fixture.status === 'LIVE'"
+                                v-if="fixture.status === 'LIVE' || fixture.status === 'COMPLETED'"
                                 size="xs" 
                                 color="warning" 
                                 variant="soft"
@@ -2351,7 +2380,12 @@ const copyTournamentLink = async () => {
               </UCard>
             </template>
 
-
+            <!-- Stats Tab -->
+             <template #stats>
+              <div class="mt-4">
+                <MarketingPlayerStatsLeaderboard :stats="playerStats" :loading="playerStatsLoading" />
+              </div>
+            </template>
 
             <!-- Settings Tab -->
             <template #settings>
