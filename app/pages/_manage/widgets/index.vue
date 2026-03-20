@@ -12,7 +12,7 @@ const { tournaments, loading: tournamentsLoading } = storeToRefs(tournamentStore
 
 // Widget config
 const selectedTournamentId = ref<string>('')
-const selectedWidgetType = ref<'fixtures' | 'standings' | 'bracket'>('fixtures')
+const selectedWidgetType = ref<'fixtures' | 'standings' | 'bracket' | 'stats'>('fixtures')
 const widgetTheme = ref<'dark' | 'light'>('dark')
 const widgetWidth = ref(400)
 const widgetHeight = ref(600)
@@ -69,6 +69,10 @@ const widgetTypes = computed(() => {
     // Bracket available for Knockout, Hybrid
     if ([TournamentType.KNOCKOUT, TournamentType.HYBRID].includes(t.type)) {
       types.push({ label: 'Bracket', value: 'bracket', icon: 'i-heroicons-squares-2x2', description: 'Knockout bracket view' })
+    }
+    // Player Stats available for Team tournaments
+    if (t.participantType === 'TEAM') {
+      types.push({ label: 'Player Stats', value: 'stats', icon: 'i-heroicons-chart-bar', description: 'Top goals and assists' })
     }
   }
   
@@ -179,7 +183,7 @@ watch(selectedTournamentId, () => {
               :class="selectedWidgetType === type.value 
                 ? 'border-indigo-500 bg-indigo-500/10 text-indigo-500 dark:text-indigo-400'
                 : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 text-gray-700 dark:text-gray-300'"
-              @click="selectedWidgetType = type.value as 'fixtures' | 'standings' | 'bracket'"
+              @click="selectedWidgetType = type.value as 'fixtures' | 'standings' | 'bracket' | 'stats'"
             >
               <UIcon :name="type.icon" class="w-5 h-5 flex-shrink-0" />
               <div>
