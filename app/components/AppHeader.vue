@@ -47,6 +47,12 @@
           >
             Developers
           </NuxtLink>
+          <NuxtLink
+            to="/contact"
+            class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            Contact
+          </NuxtLink>
         </nav>
 
         <!-- Auth Buttons -->
@@ -97,6 +103,7 @@
           <NuxtLink to="/graphics" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Graphics Studio</NuxtLink>
           <NuxtLink to="/pricing" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Pricing</NuxtLink>
           <NuxtLink to="/developers" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Developers</NuxtLink>
+          <NuxtLink to="/contact" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Contact</NuxtLink>
         </nav>
         <div class="flex flex-col gap-2 mt-4 pt-4 border-t border-white/10">
           <NuxtLink to="/login" class="px-4 py-2 text-center text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Log In</NuxtLink>
