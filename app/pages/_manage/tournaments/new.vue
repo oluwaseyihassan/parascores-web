@@ -571,13 +571,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               />
             </UFormField>
 
-            <UFormField label="Location" name="location">
-              <UInput 
-                v-model="state.location" 
-                placeholder="e.g. Lagos, Nigeria"
-                icon="i-heroicons-map-pin"
-                class="w-full"
-              />
+            <UFormField label="Location" name="location" class="md:col-span-2">
+              <LocationPicker v-model="state.location" />
             </UFormField>
           </div>
         </div>
