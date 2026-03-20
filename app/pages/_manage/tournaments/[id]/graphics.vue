@@ -24,7 +24,9 @@ const generating = ref(false)
 const sharing = ref(false)
 const copying = ref(false)
 const error = ref<string | null>(null)
-const graphicType = ref<'match' | 'standing' | 'bracket' | 'matchday'>('match')
+const graphicType = ref<'match' | 'standing' | 'bracket' | 'matchday' | 'stats'>('match')
+const playerStats = ref<any>(null)
+const selectedStatType = ref<'both' | 'scorers' | 'assists'>('both')
 const selectedGroup = ref<string>('all')
 const selectedRound = ref<number | undefined>(undefined)
 
@@ -135,6 +137,9 @@ const canGenerate = computed(() => {
   if (graphicType.value === 'matchday') {
       return !!tournament.value && selectedRound.value !== undefined && fixtures.value.some(f => f.round === selectedRound.value)
   }
+  if (graphicType.value === 'stats') {
+      return !!tournament.value && !!playerStats.value && (playerStats.value.topScorers?.length > 0 || playerStats.value.topAssists?.length > 0)
+  }
   if (!selectedFixture.value) return false
   // Check if teams exist (at least basics)
   return !!selectedFixture.value.homeTeamId && !!selectedFixture.value.awayTeamId
@@ -179,6 +184,16 @@ const fetchData = async () => {
         f.awayTeam = participants.find((p: any) => p.id === f.awayTeamId)
       }
     })
+
+    // Load player stats if applicable
+    if (tournament.value?.participantType === 'TEAM') {
+      try {
+        const statsRes = await $api<any>(`/tournaments/${tournamentId}/player-stats`)
+        playerStats.value = statsRes.data || statsRes
+      } catch (e) {
+        console.warn('Could not fetch player stats:', e)
+      }
+    }
 
   } catch (e: any) {
     error.value = e.message || 'Failed to load tournament data'
@@ -267,6 +282,18 @@ const generatePreview = async () => {
             },
             responseType: 'blob'
         })
+    } else if (graphicType.value === 'stats') {
+        response = await $fetch<Blob>('/api/graphics/stats', {
+            method: 'POST',
+            body: {
+                stats: playerStats.value,
+                statType: selectedStatType.value,
+                tournament: tournament.value,
+                sponsors: sponsorStore.sponsors,
+                socials: socialStore.socials
+            },
+            responseType: 'blob'
+        })
     } else {
         // Prepare standings data
         let standingsData = standingStore.standings
@@ -304,6 +331,8 @@ const getGraphicFilename = () => {
       return `match-${selectedFixture.value.id}.png`
   } else if (graphicType.value === 'matchday' && tournament.value && selectedRound.value) {
       return `${tournament.value.name}-round-${selectedRound.value}.png`
+  } else if (graphicType.value === 'stats' && tournament.value) {
+      return `${tournament.value.name}-stats.png`
   } else if (tournament.value) {
       const suffix = graphicType.value === 'bracket' ? 'bracket' : 'standings'
       return `${tournament.value.name}-${suffix}.png`
@@ -447,11 +476,20 @@ onUnmounted(() => {
                 </button>
                 <button 
                   type="button"
-                  class="flex-1 px-4 py-2 text-sm font-medium border border-l-0 rounded-r-md focus:z-10 focus:ring-2 focus:ring-indigo-500"
-                  :class="graphicType === 'matchday' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                  class="flex-1 px-4 py-2 text-sm font-medium border border-l-0 focus:z-10 focus:ring-2 focus:ring-indigo-500"
+                  :class="[graphicType === 'matchday' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700', tournament && tournament.participantType === 'TEAM' ? '' : 'rounded-r-md']"
                   @click="graphicType = 'matchday'"
                 >
                   Matchday
+                </button>
+                <button 
+                  v-if="tournament && tournament.participantType === 'TEAM'"
+                  type="button"
+                  class="flex-1 px-4 py-2 text-sm font-medium border border-l-0 rounded-r-md focus:z-10 focus:ring-2 focus:ring-indigo-500"
+                  :class="graphicType === 'stats' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                  @click="graphicType = 'stats'"
+                >
+                  Stats
                 </button>
               </div>
             </div>
@@ -542,6 +580,26 @@ onUnmounted(() => {
                     Generate a graphic showing all matches for a specific matchday/round.
                 </p>
             </div>
+
+            <!-- Stats Config -->
+            <div v-else-if="graphicType === 'stats'" class="space-y-4">
+               <UFormGroup label="Select Stat Type">
+                   <USelect 
+                       v-model="selectedStatType"
+                       :items="[
+                           { label: 'Both (Scorers & Assists)', value: 'both' },
+                           { label: 'Top Scorers Only', value: 'scorers' },
+                           { label: 'Top Assists Only', value: 'assists' }
+                       ]"
+                       value-key="value"
+                       option-label="label"
+                       class="w-full"
+                   />
+               </UFormGroup>
+               <p v-if="playerStats && (playerStats.topScorers?.length === 0 && playerStats.topAssists?.length === 0)" class="text-sm text-amber-500 text-center">
+                    No stats available to generate graphic yet.
+               </p>
+            </div>
           
           <div v-if="graphicType === 'match' && selectedFixture" class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm space-y-2 mb-4 mt-4">
              <div class="flex justify-between">
@@ -621,6 +679,12 @@ onUnmounted(() => {
              <div v-else-if="graphicType === 'bracket' && !previewUrl && !generating && !error" class="text-center text-gray-400">
                 <UIcon name="i-heroicons-rectangle-group" class="w-12 h-12 mx-auto mb-2" />
                 <p>Click generate to create tournament bracket</p>
+             </div>
+
+             <!-- Placeholder (Stats Mode) -->
+             <div v-else-if="graphicType === 'stats' && !previewUrl && !generating && !error" class="text-center text-gray-400">
+                <UIcon name="i-heroicons-chart-bar" class="w-12 h-12 mx-auto mb-2" />
+                <p>Click generate to create player stats graphic</p>
              </div>
              
              <!-- Generating -->
