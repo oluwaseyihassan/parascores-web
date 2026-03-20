@@ -312,3 +312,16 @@ export interface AuthState {
   token: string | null
   loading: boolean
 }
+
+// Stats
+export interface PlayerStatItem {
+  player: { id: string, name: string, number?: number | null }
+  teamName: string
+  teamLogoUrl?: string | null
+  count: number
+}
+
+export interface PlayerStatsResponse {
+  topScorers: PlayerStatItem[]
+  topAssists: PlayerStatItem[]
+}
