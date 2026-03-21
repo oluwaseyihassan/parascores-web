@@ -108,10 +108,14 @@ export interface Tournament {
   registrationOpen?: string | null
   registrationClose?: string | null
   autoApprove: boolean
+  isPinned?: boolean
 
   // Advanced Knockout Options
   twoLegsKnockout?: boolean
   thirdPlaceMatch?: boolean
+
+  // Venues
+  venues?: string[]
 
   // Group config
   numberOfGroups?: number | null
@@ -170,6 +174,7 @@ export interface Fixture {
   roundName?: string | null
   matchNumber: number
   startTime?: string | null
+  venue?: string | null
 
   homeTeamId?: string | null
   homeTeamPlaceholder?: string | null
