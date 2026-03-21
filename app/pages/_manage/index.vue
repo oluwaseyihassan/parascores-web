@@ -318,22 +318,25 @@ watch(loadMoreTrigger, (el) => {
     <div v-else>
       <!-- Grid View -->
       <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <NuxtLink 
+        <div 
           v-for="(tournament, index) in filteredTournaments" 
           :key="tournament.id" 
-          :to="`/tournaments/${tournament.customName || tournament.id}`"
-          class="relative group card-fade-in bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl p-5 hover:border-emerald-500/50 transition-all duration-300 hover:shadow-lg dark:hover:shadow-emerald-500/10 flex flex-col"
+          class="relative group card-fade-in bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl flex flex-col hover:border-emerald-500/50 transition-all duration-300 hover:shadow-lg dark:hover:shadow-emerald-500/10"
           :style="{ animationDelay: `${index * 75}ms` }"
         >
           <button 
             @click.prevent="togglePin(tournament)"
-            class="absolute top-4 right-4 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors z-10"
-            :class="tournament.isPinned ? 'text-amber-400 hover:text-amber-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100'"
+            class="absolute top-4 right-4 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors z-20"
+            :class="tournament.isPinned ? 'text-amber-400 hover:text-amber-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'"
             :title="tournament.isPinned ? 'Unpin tournament' : 'Pin to top'"
           >
             <UIcon :name="tournament.isPinned ? 'i-heroicons-star-solid' : 'i-heroicons-star'" class="w-5 h-5 pointer-events-none" />
           </button>
 
+          <NuxtLink 
+            :to="`/tournaments/${tournament.customName || tournament.id}`"
+            class="flex flex-col flex-1 p-5 focus:outline-none"
+          >
           <!-- Header Row: Logo, Category/Format -->
           <div class="flex items-start justify-between mb-4 pr-8">
             <div class="flex items-center gap-3">
@@ -397,18 +400,22 @@ watch(loadMoreTrigger, (el) => {
               />
             </div>
           </div>
-        </NuxtLink>
+          </NuxtLink>
+        </div>
       </div>
 
       <!-- List View -->
       <div v-else-if="viewMode === 'list'" class="flex flex-col gap-3">
-        <NuxtLink 
+        <div 
           v-for="(tournament, index) in filteredTournaments" 
           :key="tournament.id" 
-          :to="`/tournaments/${tournament.customName || tournament.id}`"
-          class="group card-fade-in flex items-center gap-4 p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl hover:border-emerald-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5"
+          class="group card-fade-in relative flex items-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl hover:border-emerald-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5"
           :style="{ animationDelay: `${index * 50}ms` }"
         >
+          <NuxtLink 
+            :to="`/tournaments/${tournament.customName || tournament.id}`"
+            class="flex flex-1 items-center gap-4 p-3 pr-2 focus:outline-none min-w-0"
+          >
           <!-- Logo -->
           <UAvatar 
             :src="tournament.logoUrl || PLACEHOLDER_LOGO" 
@@ -445,23 +452,25 @@ watch(loadMoreTrigger, (el) => {
 
           <!-- Status/Icon -->
           <div class="flex items-center gap-3">
-             <div class="bg-gray-100 dark:bg-gray-800 p-1.5 rounded-lg">
+             <div class="bg-gray-100 flex items-center justify-center shrink-0 w-8 h-8 dark:bg-gray-800 rounded-lg">
                 <UIcon 
                   :name="getVisibilityIcon(tournament.visibility)" 
                   class="w-4 h-4 text-gray-500" 
                 />
              </div>
-             <button
-                @click.prevent="togglePin(tournament)"
-                class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                :class="tournament.isPinned ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-500' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'"
-                :title="tournament.isPinned ? 'Unpin tournament' : 'Pin to top'"
-             >
-                <UIcon :name="tournament.isPinned ? 'i-heroicons-star-solid' : 'i-heroicons-star'" class="w-4 h-4 pointer-events-none" />
-             </button>
-             <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors" />
+             <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors mr-2" />
           </div>
-        </NuxtLink>
+          </NuxtLink>
+          
+          <button
+             @click.prevent="togglePin(tournament)"
+             class="w-8 h-8 flex items-center justify-center shrink-0 mr-3 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10"
+             :class="tournament.isPinned ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-500' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'"
+             :title="tournament.isPinned ? 'Unpin tournament' : 'Pin to top'"
+          >
+             <UIcon :name="tournament.isPinned ? 'i-heroicons-star-solid' : 'i-heroicons-star'" class="w-4 h-4 pointer-events-none" />
+          </button>
+        </div>
       </div>
     </div>
 
