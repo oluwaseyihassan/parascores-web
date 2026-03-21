@@ -107,7 +107,7 @@ const handleLogout = async () => {
 
         <div class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar w-full px-2 flex flex-col gap-4">
            <!-- Add Tournament Button -->
-          <UTooltip text="New Tournament" :popper="{ placement: 'right' }">
+          <UTooltip text="New Tournament" :content="{ side: 'right' }">
             <NuxtLink
               to="/tournaments/new"
               class="relative group flex-shrink-0 flex items-center justify-center py-2 h-10 w-10 mx-auto rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-green-500 transition-all"
@@ -119,7 +119,7 @@ const handleLogout = async () => {
             v-for="link in sidebarLinks" 
             :key="link.to" 
             :text="link.label"
-            :popper="{ placement: 'right' }"
+            :content="{ side: 'right' }"
           >
             <NuxtLink 
               :to="link.to"
