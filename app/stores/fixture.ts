@@ -10,6 +10,7 @@ export interface UpdateFixtureData {
   awayPenaltyScore?: number | null
   status?: string
   startTime?: string | null
+  venue?: string | null
 }
 
 export const useFixtureStore = defineStore('fixture', () => {
