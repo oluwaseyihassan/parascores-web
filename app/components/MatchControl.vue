@@ -19,6 +19,11 @@ const emit = defineEmits<{
   'match-ended': []
 }>()
 
+const internalOpen = computed({
+  get: () => props.open,
+  set: (value) => emit('update:open', value)
+})
+
 const fixtureStore = useFixtureStore()
 const standingStore = useStandingStore()
 const participantStore = useParticipantStore()
@@ -29,6 +34,7 @@ const updatingMatch = ref(false)
 const matchTime = ref<string>('') // Used for fallback/comparison
 const matchDateVal = shallowRef<DateValue | null>(null)
 const matchTimeVal = ref<string>('12:00')
+const matchVenue = ref<string>('')
 const updatingTime = ref(false)
 const homePlayers = ref<Player[]>([])
 const awayPlayers = ref<Player[]>([])
@@ -104,6 +110,7 @@ watch(() => props.open, async (isOpen) => {
   if (isOpen && props.fixture) {
     errorMessage.value = null
     selectedFixture.value = { ...props.fixture }
+    matchVenue.value = props.fixture.venue || ''
     if (props.fixture.startTime) {
       // Format correctly for native comparison
       const date = new Date(props.fixture.startTime)
@@ -133,6 +140,7 @@ watch(() => props.open, async (isOpen) => {
     matchEvents.value = []
     homePlayers.value = []
     awayPlayers.value = []
+    matchVenue.value = ''
   }
 })
 
@@ -245,6 +253,11 @@ const tournamentMaxDate = computed(() => {
   return parseDateString(props.tournament.end_date)
 })
 
+const venueOptions = computed(() => {
+  if (!props.tournament?.venues?.length) return []
+  return props.tournament.venues.map((v: string) => ({ label: v, value: v }))
+})
+
 const isLeg2 = computed(() => {
   if (!props.tournament?.twoLegsKnockout) return false
   if (!selectedFixture.value) return false
@@ -325,10 +338,13 @@ const isUpdateDisabled = computed(() => {
   
   const newDate = new Date(selectedYear, selectedMonth, selectedDay, h, m)
   
-  if (selectedFixture.value.startTime) {
-    return new Date(selectedFixture.value.startTime).toISOString() === newDate.toISOString()
-  }
-  return false
+  const timeChanged = selectedFixture.value.startTime 
+    ? new Date(selectedFixture.value.startTime).toISOString() !== newDate.toISOString()
+    : true
+
+  const venueChanged = (selectedFixture.value.venue || '') !== matchVenue.value
+
+  return !timeChanged && !venueChanged
 })
 
 const updateMatchTime = async () => {
@@ -343,14 +359,17 @@ const updateMatchTime = async () => {
     
     const newDate = new Date(selectedYear, selectedMonth, selectedDay, h, m)
     const newIso = newDate.toISOString()
+    const newVenue = matchVenue.value || null
     
     await fixtureStore.updateFixture(selectedFixture.value.id, {
-      startTime: newIso
+      startTime: newIso,
+      venue: newVenue
     })
     
     selectedFixture.value = {
       ...selectedFixture.value,
-      startTime: newIso
+      startTime: newIso,
+      venue: newVenue
     }
     matchTime.value = newIso
     
@@ -839,7 +858,7 @@ const downloadGraphic = async () => {
 
 <template>
   <!-- Match Control Modal -->
-  <UModal :open="open" @update:open="$emit('update:open', $event)">
+  <UModal v-model:open="internalOpen">
     <template #content>
       <UCard>
         <template #header>
@@ -939,10 +958,10 @@ const downloadGraphic = async () => {
             <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
               Match Time
             </label>
-            <div class="flex items-center gap-3">
-              <div class="flex-1 flex gap-2">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div class="flex-1 flex flex-col sm:flex-row flex-wrap gap-2">
                 <!-- Date Picker -->
-                <UPopover class="flex-1">
+                <UPopover class="w-full sm:flex-1">
                   <UButton 
                     variant="outline" 
                     color="neutral"
@@ -963,7 +982,7 @@ const downloadGraphic = async () => {
                 </UPopover>
                 
                 <!-- Time Input -->
-                <div class="relative w-32">
+                <div class="relative w-full sm:w-32">
                   <UInput 
                     type="time" 
                     v-model="matchTimeVal"
@@ -975,6 +994,18 @@ const downloadGraphic = async () => {
                     <UIcon name="i-heroicons-clock" class="w-4 h-4" />
                   </div>
                 </div>
+
+                <!-- Venue Selector (only show if tournament has venues) -->
+                <USelect
+                  v-if="props.tournament?.venues?.length"
+                  v-model="matchVenue"
+                  :items="venueOptions"
+                  value-key="value"
+                  placeholder="Select venue..."
+                  class="w-full sm:w-48 h-10"
+                  size="md"
+                  :disabled="updatingTime"
+                />
               </div>
               <UButton 
                 color="primary" 
@@ -983,7 +1014,7 @@ const downloadGraphic = async () => {
                 :loading="updatingTime"
                 :disabled="isUpdateDisabled"
                 @click="updateMatchTime"
-                class="min-w-[80px] h-10 justify-center shadow-sm"
+                class="w-full sm:w-auto min-w-[80px] h-10 justify-center shadow-sm whitespace-nowrap"
               >
                 Update
               </UButton>
