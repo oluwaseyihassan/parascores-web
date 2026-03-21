@@ -158,7 +158,8 @@ const schema = z.object({
   maxParticipants: z.number().positive().optional().nullable(),
   autoApprove: z.boolean(),
   twoLegsKnockout: z.boolean().optional(),
-  thirdPlaceMatch: z.boolean().optional()
+  thirdPlaceMatch: z.boolean().optional(),
+  venues: z.array(z.string()).optional()
 })
 
 type Schema = z.output<typeof schema>
@@ -179,8 +180,23 @@ const state = reactive<Partial<Schema>>({
   maxParticipants: props.tournament.maxParticipants,
   autoApprove: props.tournament.autoApprove ?? true,
   twoLegsKnockout: props.tournament.twoLegsKnockout ?? false,
-  thirdPlaceMatch: props.tournament.thirdPlaceMatch ?? false
+  thirdPlaceMatch: props.tournament.thirdPlaceMatch ?? false,
+  venues: props.tournament.venues || []
 })
+
+// Venue management
+const venueInput = ref('')
+
+function addVenue() {
+  const name = venueInput.value.trim()
+  if (!name || state.venues?.includes(name)) return
+  state.venues = [...(state.venues || []), name]
+  venueInput.value = ''
+}
+
+function removeVenue(venue: string) {
+  state.venues = (state.venues || []).filter(v => v !== venue)
+}
 
 // Watch date changes and update state
 watch(startDate, (val) => {
@@ -332,6 +348,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       customName: event.data.customName || null,
       description: event.data.description || null,
       location: event.data.location || null,
+      venues: event.data.venues || [],
       logoUrl,
       bannerUrl,
     } as unknown as Partial<Tournament>)
@@ -759,6 +776,60 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             </div>
             <USwitch v-model="state.autoApprove" />
           </div>
+        </div>
+      </UCard>
+
+      <!-- Match Venues -->
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-indigo-500" />
+            <span class="font-medium">Match Venues</span>
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <p class="text-sm text-gray-500">Define the venues/pitches available for matches. You can assign a venue to each fixture from the fixtures tab.</p>
+
+          <!-- Add venue input -->
+          <div class="flex gap-2">
+            <UInput
+              v-model="venueInput"
+              placeholder="e.g. Main Bowl, Training Pitch"
+              icon="i-heroicons-map-pin"
+              class="flex-1"
+              @keydown.enter.prevent="addVenue"
+            />
+            <UButton
+              icon="i-heroicons-plus"
+              color="primary"
+              variant="soft"
+              :disabled="!venueInput.trim()"
+              @click="addVenue"
+            >
+              Add
+            </UButton>
+          </div>
+
+          <!-- Venue tags -->
+          <div v-if="state.venues && state.venues.length > 0" class="flex flex-wrap gap-2">
+            <div
+              v-for="venue in state.venues"
+              :key="venue"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700/50"
+            >
+              <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5" />
+              {{ venue }}
+              <button
+                type="button"
+                class="ml-0.5 hover:text-red-500 transition-colors"
+                @click="removeVenue(venue)"
+              >
+                <UIcon name="i-heroicons-x-mark" class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+          <p v-else class="text-sm text-gray-400 italic">No venues added yet</p>
         </div>
       </UCard>
 
