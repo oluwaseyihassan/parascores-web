@@ -89,33 +89,53 @@ const knockoutGroupedByRound = computed(() => {
 })
 
 function groupFixturesByRound(list: Fixture[]) {
-  const grouped: Record<number, { name: string; fixtures: Fixture[] }> = {}
+  const grouped: Record<string, { name: string; fixtures: Fixture[] }> = {}
   for (const fixture of list) {
     const round = fixture.round || 1
-    if (!grouped[round]) {
-      grouped[round] = {
-        name: fixture.roundName || `Round ${round}`,
+    const name = fixture.roundName || `Round ${round}`
+    const key = `${round}::${name}`
+    if (!grouped[key]) {
+      grouped[key] = {
+        name,
         fixtures: []
       }
     }
-    grouped[round].fixtures.push(fixture)
+    grouped[key].fixtures.push(fixture)
   }
   return grouped
 }
 
 const sortedRounds = computed(() => {
-  return Object.keys(groupedByRound.value).map(Number).sort((a, b) => a - b)
+  return Object.keys(groupedByRound.value).sort((a, b) => {
+    const aNum = parseInt(a.split('::')[0]!)
+    const bNum = parseInt(b.split('::')[0]!)
+    if (aNum !== bNum) return aNum - bNum
+    const aName = a.split('::')[1] || ''
+    const bName = b.split('::')[1] || ''
+    if (aName.toLowerCase().includes('final') && !aName.toLowerCase().includes('third')) return 1
+    if (bName.toLowerCase().includes('final') && !bName.toLowerCase().includes('third')) return -1
+    return 0
+  })
 })
 
 const sortedKnockoutRounds = computed(() => {
-  return Object.keys(knockoutGroupedByRound.value).map(Number).sort((a, b) => a - b)
+  return Object.keys(knockoutGroupedByRound.value).sort((a, b) => {
+    const aNum = parseInt(a.split('::')[0]!)
+    const bNum = parseInt(b.split('::')[0]!)
+    if (aNum !== bNum) return aNum - bNum
+    const aName = a.split('::')[1] || ''
+    const bName = b.split('::')[1] || ''
+    if (aName.toLowerCase().includes('final') && !aName.toLowerCase().includes('third')) return 1
+    if (bName.toLowerCase().includes('final') && !bName.toLowerCase().includes('third')) return -1
+    return 0
+  })
 })
 
 const hasLiveFixtures = computed(() => fixtures.value.some(f => f.status === FixtureStatus.LIVE))
 
 // Collapsible rounds
-const collapsedRounds = ref<Set<number>>(new Set())
-function toggleRound(round: number) {
+const collapsedRounds = ref<Set<string>>(new Set())
+function toggleRound(round: string) {
   const s = new Set(collapsedRounds.value)
   if (s.has(round)) s.delete(round)
   else s.add(round)
@@ -287,8 +307,8 @@ function formatDate(dateStr?: string | null) {
 
           <div v-for="round in sortedKnockoutRounds" :key="'ko-' + round" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white shadow-sm'" class="rounded-xl overflow-hidden">
             <button
-              @click="toggleRound(round + 1000)"
-              :class="[isDark ? 'border-white/[0.06]' : 'border-gray-100', collapsedRounds.has(round + 1000) ? 'border-b-0' : 'border-b']"
+              @click="toggleRound('ko::' + round)"
+              :class="[isDark ? 'border-white/[0.06]' : 'border-gray-100', collapsedRounds.has('ko::' + round) ? 'border-b-0' : 'border-b']"
               class="w-full flex items-center justify-between px-4 py-2.5 cursor-pointer select-none"
             >
               <h3 :class="isDark ? 'text-gray-400' : 'text-gray-500'" class="text-[12px] font-semibold uppercase tracking-wide">
@@ -296,7 +316,7 @@ function formatDate(dateStr?: string | null) {
               </h3>
               <svg
                 class="w-3.5 h-3.5 transition-transform duration-200"
-                :class="[collapsedRounds.has(round + 1000) ? '-rotate-90' : 'rotate-0', isDark ? 'text-gray-500' : 'text-gray-400']"
+                :class="[collapsedRounds.has('ko::' + round) ? '-rotate-90' : 'rotate-0', isDark ? 'text-gray-500' : 'text-gray-400']"
                 fill="none" stroke="currentColor" viewBox="0 0 24 24"
               >
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -305,7 +325,7 @@ function formatDate(dateStr?: string | null) {
 
             <div
               class="round-content"
-              :class="{ collapsed: collapsedRounds.has(round + 1000) }"
+              :class="{ collapsed: collapsedRounds.has('ko::' + round) }"
             >
               <div
                 v-for="(fixture, i) in knockoutGroupedByRound[round]?.fixtures"
