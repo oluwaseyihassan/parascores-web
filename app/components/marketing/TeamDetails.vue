@@ -244,9 +244,9 @@ function getScoreBadgeClass(match: Fixture) {
                   </div>
                   
                   <!-- Score -->
-                  <div class="flex-shrink-0 w-16 text-center">
+                  <div class="flex-shrink-0 w-20 text-center">
                     <template v-if="match.status === 'COMPLETED' || match.status === 'LIVE'">
-                      <div class="inline-flex px-3 py-1 rounded min-w-[50px] justify-center text-sm font-bold tracking-widest" :class="getScoreBadgeClass(match)">
+                      <div class="inline-flex px-2 py-1 rounded min-w-[50px] justify-center text-sm font-bold tracking-wider whitespace-nowrap" :class="getScoreBadgeClass(match)">
                          {{ match.homeScore ?? 0 }} - {{ match.awayScore ?? 0 }}
                       </div>
                     </template>
