@@ -23,7 +23,7 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 import MarketingFixtureDetails from '~/components/marketing/FixtureDetails.vue'
 import MarketingTeamDetails from '~/components/marketing/TeamDetails.vue'
-const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats'>('fixtures')
+const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats'>('info')
 const selectedFixtureId = ref<string | null>(null)
 const selectedParticipantId = ref<string | null>(null)
 
@@ -217,13 +217,16 @@ const groupStageFixtures = computed(() => filteredFixtures.value.filter(f => f.s
 const knockoutFixtures = computed(() => filteredFixtures.value.filter(f => f.stage === FixtureStage.KNOCKOUT))
 
 function groupByRound(list: Fixture[]) {
-  const grouped: Record<number, { name: string; fixtures: Fixture[] }> = {}
+  const grouped: Record<string, { name: string; fixtures: Fixture[] }> = {}
   for (const fixture of list) {
     const round = fixture.round || 1
-    if (!grouped[round]) {
-      grouped[round] = { name: fixture.roundName || `Round ${round}`, fixtures: [] }
+    const name = fixture.roundName || `Round ${round}`
+    // Use composite key so fixtures with different roundNames in the same round get separate groups
+    const key = `${round}::${name}`
+    if (!grouped[key]) {
+      grouped[key] = { name, fixtures: [] }
     }
-    grouped[round].fixtures.push(fixture)
+    grouped[key].fixtures.push(fixture)
   }
   return grouped
 }
@@ -232,10 +235,29 @@ const fixturesByRound = computed(() => {
   if (isHybrid.value) return groupByRound(groupStageFixtures.value)
   return groupByRound(filteredFixtures.value)
 })
-const sortedRounds = computed(() => Object.keys(fixturesByRound.value).map(Number).sort((a, b) => a - b))
+const sortedRounds = computed(() => Object.keys(fixturesByRound.value).sort((a, b) => {
+  const aNum = parseInt(a.split('::')[0]!)
+  const bNum = parseInt(b.split('::')[0]!)
+  if (aNum !== bNum) return aNum - bNum
+  // Same round: put Final last so Third Place comes first
+  const aName = a.split('::')[1] || ''
+  const bName = b.split('::')[1] || ''
+  if (aName.toLowerCase().includes('final') && !aName.toLowerCase().includes('third')) return 1
+  if (bName.toLowerCase().includes('final') && !bName.toLowerCase().includes('third')) return -1
+  return 0
+}))
 
 const knockoutByRound = computed(() => groupByRound(knockoutFixtures.value))
-const knockoutRounds = computed(() => Object.keys(knockoutByRound.value).map(Number).sort((a, b) => a - b))
+const knockoutRounds = computed(() => Object.keys(knockoutByRound.value).sort((a, b) => {
+  const aNum = parseInt(a.split('::')[0]!)
+  const bNum = parseInt(b.split('::')[0]!)
+  if (aNum !== bNum) return aNum - bNum
+  const aName = a.split('::')[1] || ''
+  const bName = b.split('::')[1] || ''
+  if (aName.toLowerCase().includes('final') && !aName.toLowerCase().includes('third')) return 1
+  if (bName.toLowerCase().includes('final') && !bName.toLowerCase().includes('third')) return -1
+  return 0
+}))
 
 // Standings grouped by group
 const standingsByGroup = computed(() => {
@@ -342,8 +364,8 @@ const bracketRounds = computed(() => bracketData.value.rounds)
 const bracketMatchups = computed(() => bracketData.value.matchups)
 
 // Collapsible rounds
-const collapsedRounds = ref<Set<number>>(new Set())
-function toggleRound(round: number) {
+const collapsedRounds = ref<Set<string>>(new Set())
+function toggleRound(round: string) {
   const s = new Set(collapsedRounds.value)
   if (s.has(round)) s.delete(round)
   else s.add(round)
@@ -537,6 +559,17 @@ function hasNoWinner(matchup: any): boolean {
         <div class="w-full">
           <nav class="flex gap-1 -mb-px overflow-x-auto hide-scrollbar whitespace-nowrap px-6 md:justify-center md:px-0 max-w-5xl mx-auto">
             <button
+              @click="activeTab = 'info'"
+              :class="[
+                'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
+                activeTab === 'info'
+                  ? 'text-emerald-400 border-emerald-400'
+                  : 'text-gray-500 border-transparent hover:text-gray-300 hover:border-white/20'
+              ]"
+            >
+              Info
+            </button>
+            <button
               @click="activeTab = 'fixtures'"
               :class="[
                 'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
@@ -594,18 +627,7 @@ function hasNoWinner(matchup: any): boolean {
                   : 'text-gray-500 border-transparent hover:text-gray-300 hover:border-white/20'
               ]"
             >
-              Player Stats
-            </button>
-            <button
-              @click="activeTab = 'info'"
-              :class="[
-                'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
-                activeTab === 'info'
-                  ? 'text-emerald-400 border-emerald-400'
-                  : 'text-gray-500 border-transparent hover:text-gray-300 hover:border-white/20'
-              ]"
-            >
-              Info
+               Player Stats
             </button>
           </nav>
         </div>
@@ -703,7 +725,13 @@ function hasNoWinner(matchup: any): boolean {
                   >
                     <!-- Header -->
                     <div class="flex items-center justify-between px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wider border-b transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'">
-                      <span>{{ fixture.group?.name || fixture.roundName || `Group ${round}` }}</span>
+                      <span>
+                        {{ fixture.group?.name || fixture.roundName || `Group ${round}` }}
+                        <template v-if="fixture.venue">
+                          <span class="mx-1.5 opacity-50">•</span>
+                          {{ fixture.venue }}
+                        </template>
+                      </span>
                       <div class="flex items-center gap-2">
                         <template v-if="fixture.status === FixtureStatus.LIVE">
                           <span class="text-[9px] font-semibold text-red-500 flex items-center gap-1">
@@ -787,23 +815,23 @@ function hasNoWinner(matchup: any): boolean {
 
               <div v-for="round in knockoutRounds" :key="'ko-' + round" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'" class="border rounded-xl overflow-hidden transition-colors">
                 <button
-                  @click="toggleRound(round + 1000)"
+                  @click="toggleRound('ko::' + round)"
                   class="w-full flex items-center justify-between px-5 py-3 cursor-pointer select-none border-b"
-                  :class="collapsedRounds.has(round + 1000) ? 'border-transparent' : (isDark ? 'border-white/[0.06]' : 'border-gray-100')"
+                  :class="collapsedRounds.has('ko::' + round) ? 'border-transparent' : (isDark ? 'border-white/[0.06]' : 'border-gray-100')"
                 >
                   <h3 class="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
                     {{ knockoutByRound[round]?.name }}
                   </h3>
                   <svg
                     class="w-4 h-4 text-gray-500 transition-transform duration-200"
-                    :class="collapsedRounds.has(round + 1000) ? '-rotate-90' : 'rotate-0'"
+                    :class="collapsedRounds.has('ko::' + round) ? '-rotate-90' : 'rotate-0'"
                     fill="none" stroke="currentColor" viewBox="0 0 24 24"
                   >
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
 
-                <div class="round-content" :class="{ collapsed: collapsedRounds.has(round + 1000) }">
+                <div class="round-content" :class="{ collapsed: collapsedRounds.has('ko::' + round) }">
                   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
                     <button
                       type="button"
@@ -815,7 +843,13 @@ function hasNoWinner(matchup: any): boolean {
                     >
                       <!-- Header -->
                       <div class="flex items-center justify-between px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wider border-b transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'">
-                        <span>{{ fixture.group?.name || fixture.roundName || knockoutByRound[round]?.name || `Round ${round}` }}</span>
+                        <span>
+                          {{ fixture.group?.name || fixture.roundName || knockoutByRound[round]?.name || `Round ${round}` }}
+                          <template v-if="fixture.venue">
+                            <span class="mx-1.5 opacity-50">•</span>
+                            {{ fixture.venue }}
+                          </template>
+                        </span>
                         <div class="flex items-center gap-2">
                           <template v-if="fixture.status === FixtureStatus.LIVE">
                             <span class="text-[9px] font-semibold text-red-500 flex items-center gap-1">
