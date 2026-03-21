@@ -12,6 +12,41 @@ const { tournaments, loading, pagination, hasMore, totalCount } = storeToRefs(to
 // View mode state
 const viewMode = useCookie<'grid' | 'list'>('tournament-view-mode', { default: () => 'grid' })
 
+// Filter state
+const filterStatus = ref<'all' | 'ongoing' | 'completed'>('all')
+const filteredTournaments = computed(() => {
+  if (!tournaments.value) return []
+  let filtered = tournaments.value
+  if (filterStatus.value === 'ongoing') {
+    filtered = tournaments.value.filter(t => new Date(t.end_date) >= new Date())
+  } else if (filterStatus.value === 'completed') {
+    filtered = tournaments.value.filter(t => new Date(t.end_date) < new Date())
+  }
+  
+  return [...filtered].sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1
+    if (!a.isPinned && b.isPinned) return 1
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
+})
+
+const togglePin = async (tournament: any) => {
+  try {
+    const isPinned = !tournament.isPinned
+    await tournamentStore.updateTournament(tournament.id, { isPinned })
+    useToast().add({
+      title: isPinned ? 'Tournament Pinned' : 'Tournament Unpinned',
+      color: 'success'
+    })
+  } catch (err: any) {
+    useToast().add({
+      title: 'Failed to update pin status',
+      description: err.message,
+      color: 'error'
+    })
+  }
+}
+
 // Fetch tournaments on mount
 onMounted(async () => {
   await tournamentStore.fetchTournaments()
@@ -139,7 +174,33 @@ watch(loadMoreTrigger, (el) => {
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white sm:truncate">My Tournaments</h1>
         <p class="text-gray-500">Manage your leagues, cups, and competitions</p>
       </div>
-      <div class="flex items-center gap-3 self-start md:self-auto">
+      <div class="flex items-center gap-3 self-start md:self-auto flex-wrap">
+        <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <UButton 
+            label="All" 
+            color="neutral" 
+            variant="ghost" 
+            size="xs" 
+            :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': filterStatus === 'all' }"
+            @click="filterStatus = 'all'" 
+          />
+          <UButton 
+            label="Ongoing" 
+            color="neutral" 
+            variant="ghost" 
+            size="xs" 
+            :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': filterStatus === 'ongoing' }"
+            @click="filterStatus = 'ongoing'" 
+          />
+          <UButton 
+            label="Completed" 
+            color="neutral" 
+            variant="ghost" 
+            size="xs" 
+            :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': filterStatus === 'completed' }"
+            @click="filterStatus = 'completed'" 
+          />
+        </div>
         <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
           <UButton 
             icon="i-heroicons-squares-2x2" 
@@ -258,14 +319,23 @@ watch(loadMoreTrigger, (el) => {
       <!-- Grid View -->
       <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <NuxtLink 
-          v-for="(tournament, index) in tournaments" 
+          v-for="(tournament, index) in filteredTournaments" 
           :key="tournament.id" 
           :to="`/tournaments/${tournament.customName || tournament.id}`"
-          class="group card-fade-in bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl p-5 hover:border-emerald-500/50 transition-all duration-300 hover:shadow-lg dark:hover:shadow-emerald-500/10 flex flex-col"
+          class="relative group card-fade-in bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl p-5 hover:border-emerald-500/50 transition-all duration-300 hover:shadow-lg dark:hover:shadow-emerald-500/10 flex flex-col"
           :style="{ animationDelay: `${index * 75}ms` }"
         >
+          <button 
+            @click.prevent="togglePin(tournament)"
+            class="absolute top-4 right-4 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors z-10"
+            :class="tournament.isPinned ? 'text-amber-400 hover:text-amber-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100'"
+            :title="tournament.isPinned ? 'Unpin tournament' : 'Pin to top'"
+          >
+            <UIcon :name="tournament.isPinned ? 'i-heroicons-star-solid' : 'i-heroicons-star'" class="w-5 h-5 pointer-events-none" />
+          </button>
+
           <!-- Header Row: Logo, Category/Format -->
-          <div class="flex items-start justify-between mb-4">
+          <div class="flex items-start justify-between mb-4 pr-8">
             <div class="flex items-center gap-3">
               <!-- Logo -->
               <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-white/10 shrink-0">
@@ -333,7 +403,7 @@ watch(loadMoreTrigger, (el) => {
       <!-- List View -->
       <div v-else-if="viewMode === 'list'" class="flex flex-col gap-3">
         <NuxtLink 
-          v-for="(tournament, index) in tournaments" 
+          v-for="(tournament, index) in filteredTournaments" 
           :key="tournament.id" 
           :to="`/tournaments/${tournament.customName || tournament.id}`"
           class="group card-fade-in flex items-center gap-4 p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl hover:border-emerald-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5"
@@ -381,6 +451,14 @@ watch(loadMoreTrigger, (el) => {
                   class="w-4 h-4 text-gray-500" 
                 />
              </div>
+             <button
+                @click.prevent="togglePin(tournament)"
+                class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                :class="tournament.isPinned ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-500' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'"
+                :title="tournament.isPinned ? 'Unpin tournament' : 'Pin to top'"
+             >
+                <UIcon :name="tournament.isPinned ? 'i-heroicons-star-solid' : 'i-heroicons-star'" class="w-4 h-4 pointer-events-none" />
+             </button>
              <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors" />
           </div>
         </NuxtLink>
