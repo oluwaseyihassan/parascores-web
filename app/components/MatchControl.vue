@@ -1310,63 +1310,75 @@ const downloadGraphic = async () => {
                 No events recorded yet
               </div>
               
-              <div v-else class="relative space-y-4 max-h-[300px] overflow-y-auto px-4 py-8">
-                <!-- Vertical Line -->
-                <div class="absolute inset-y-0 left-1/2 w-0.5 bg-gray-200 dark:bg-gray-700 -ml-[1px]"></div>
-                
+              <div v-else class="space-y-4 max-h-[300px] overflow-y-auto px-4 py-4">
                 <div 
                   v-for="event in [...matchEvents].sort((a, b) => (a.minute || 0) - (b.minute || 0))" 
                   :key="event.id"
-                  class="flex items-center w-full relative"
+                  class="w-full"
                 >
                   <!-- Home Team Event -->
-                  <div class="w-1/2 pr-4 text-right transition-opacity" :class="event.participant_id === selectedFixture?.homeTeamId ? 'opacity-100' : 'opacity-0'">
-                    <div v-if="event.participant_id === selectedFixture?.homeTeamId" class="flex flex-col items-end">
-                      <div class="flex items-center gap-2 group">
-                        <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'end' }">
-                           <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" />
-                        </UDropdownMenu>
-                        <div class="text-sm">
-                          <span class="font-medium text-gray-900 dark:text-white">{{ getPlayerName(event.playerId) || 'Unknown' }}</span>
-                          <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-500 ml-1">(P)</span>
-                          <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-gray-500 ml-1">(OG)</span>
-                        </div>
+                  <div v-if="event.participant_id === selectedFixture?.homeTeamId" class="flex items-center gap-3 w-full animate-in fade-in slide-in-from-left-4 duration-300">
+                    <!-- Minute -->
+                    <div class="w-8 h-8 shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm text-[11px] font-bold text-gray-600 dark:text-gray-400">
+                      {{ event.minute || '-' }}'
+                    </div>
+
+                    <!-- Event Info -->
+                    <div class="flex flex-col min-w-0">
+                      <div class="flex items-center gap-2">
                         <span class="text-lg flex-shrink-0">
                           <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-5 h-5 shadow-sm" :class="getEventColor(event.type)" />
                           <UIcon v-else :name="getEventIcon(event.type)" :class="['w-5 h-5 drop-shadow-sm', getEventColor(event.type)]" />
                         </span>
+                        <div class="text-sm truncate">
+                          <span class="font-medium text-gray-900 dark:text-white">{{ getPlayerName(event.playerId) || 'Unknown' }}</span>
+                          <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-500 ml-1">(P)</span>
+                          <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-gray-500 ml-1">(OG)</span>
+                        </div>
                       </div>
-                      <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                        <IconsAssistIcon class="w-3" /> {{ getPlayerName(event.relatedPlayerId) }}
+                      <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5 ml-7">
+                        <IconsAssistIcon class="w-2.5 h-2.5" /> {{ getPlayerName(event.relatedPlayerId) }}
                       </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    <div class="ml-auto">
+                      <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'end' }">
+                         <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" />
+                      </UDropdownMenu>
                     </div>
                   </div>
 
-                  <!-- Central Marker -->
-                  <div class="absolute left-1/2 -ml-3.5 flex items-center justify-center z-10 w-7 h-7 bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-gray-600 rounded-full shadow-sm text-[11px] font-bold text-gray-600 dark:text-gray-400">
-                    {{ event.minute || '-' }}'
-                  </div>
-
                   <!-- Away Team Event -->
-                  <div class="w-1/2 pl-4 text-left transition-opacity" :class="event.participant_id === selectedFixture?.awayTeamId ? 'opacity-100' : 'opacity-0'">
-                    <div v-if="event.participant_id === selectedFixture?.awayTeamId" class="flex flex-col items-start">
-                      <div class="flex items-center gap-2 group">
-                        <span class="text-lg flex-shrink-0">
-                          <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-5 h-5 shadow-sm" :class="getEventColor(event.type)" />
-                          <UIcon v-else :name="getEventIcon(event.type)" :class="['w-5 h-5 drop-shadow-sm', getEventColor(event.type)]" />
-                        </span>
-                        <div class="text-sm">
+                  <div v-else-if="event.participant_id === selectedFixture?.awayTeamId" class="flex items-center gap-3 w-full justify-end animate-in fade-in slide-in-from-right-4 duration-300">
+                    <!-- Action Button -->
+                    <div class="mr-auto">
+                      <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'start' }">
+                         <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" />
+                      </UDropdownMenu>
+                    </div>
+
+                    <!-- Event Info -->
+                    <div class="flex flex-col min-w-0 items-end text-right">
+                      <div class="flex items-center gap-2">
+                        <div class="text-sm truncate order-2 sm:order-1">
                           <span class="font-medium text-gray-900 dark:text-white">{{ getPlayerName(event.playerId) || 'Unknown' }}</span>
                           <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-500 ml-1">(P)</span>
                           <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-gray-500 ml-1">(OG)</span>
                         </div>
-                        <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'start' }">
-                           <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" class="ml-1" />
-                        </UDropdownMenu>
+                        <span class="text-lg flex-shrink-0 order-1 sm:order-2">
+                          <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-5 h-5 shadow-sm" :class="getEventColor(event.type)" />
+                          <UIcon v-else :name="getEventIcon(event.type)" :class="['w-5 h-5 drop-shadow-sm', getEventColor(event.type)]" />
+                        </span>
                       </div>
-                      <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                        <IconsAssistIcon class="w-3 h-3" /> {{ getPlayerName(event.relatedPlayerId) }}
+                      <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="text-[10px] text-gray-500 flex items-center justify-end gap-1 mt-0.5 mr-7">
+                        {{ getPlayerName(event.relatedPlayerId) }} <IconsAssistIcon class="w-2.5 h-2.5" />
                       </div>
+                    </div>
+
+                    <!-- Minute -->
+                    <div class="w-8 h-8 shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm text-[11px] font-bold text-gray-600 dark:text-gray-400">
+                      {{ event.minute || '-' }}'
                     </div>
                   </div>
                 </div>
