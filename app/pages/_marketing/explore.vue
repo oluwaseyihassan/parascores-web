@@ -154,14 +154,26 @@
             </div>
 
             <!-- Meta Info (Footer) -->
-            <div class="mt-4 pt-4 border-t border-white/5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-400 font-medium">
-              <div class="flex items-center gap-1.5">
-                 <UIcon name="i-heroicons-calendar" class="w-4 h-4 text-gray-500" />
-                 {{ formatDate(tournament.start_date) }}
+            <div class="mt-4 pt-4 border-t border-white/5 flex flex-col gap-2.5 text-xs text-gray-400 font-medium">
+              <div v-if="tournament.organizer" class="flex items-center gap-1.5">
+                <span class="text-gray-500">Hosted by</span>
+                <span class="text-gray-300 truncate max-w-[150px]">{{ tournament.organizer.name }}</span>
+                <UIcon
+                  v-if="tournament.organizer.isVerified"
+                  name="i-heroicons-check-badge-solid"
+                  class="w-4 h-4 text-blue-400 shrink-0"
+                  title="Verified Organizer"
+                />
               </div>
-              <div v-if="tournament.location" class="flex items-center gap-1.5">
-                 <UIcon name="i-heroicons-map-pin" class="w-4 h-4 text-gray-500" />
-                 <span class="truncate max-w-[150px]">{{ tournament.location }}</span>
+              <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <div class="flex items-center gap-1.5">
+                   <UIcon name="i-heroicons-calendar" class="w-4 h-4 text-gray-500" />
+                   {{ formatDate(tournament.start_date) }}
+                </div>
+                <div v-if="tournament.location" class="flex items-center gap-1.5">
+                   <UIcon name="i-heroicons-map-pin" class="w-4 h-4 text-gray-500" />
+                   <span class="truncate max-w-[120px]">{{ tournament.location }}</span>
+                </div>
               </div>
             </div>
           </NuxtLink>
