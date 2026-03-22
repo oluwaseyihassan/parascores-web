@@ -467,6 +467,22 @@ function hasNoWinner(matchup: any): boolean {
   return homePen === awayPen
 }
 
+function getTeamCards(fixture: any, isHome: boolean) {
+  if (!fixture.matchEvents) return { yellow: 0, red: 0 }
+  const teamId = isHome ? fixture.homeTeamId : fixture.awayTeamId
+  if (!teamId) return { yellow: 0, red: 0 }
+  
+  let yellow = 0
+  let red = 0
+  for (const event of fixture.matchEvents) {
+    if (event.participant_id === teamId) {
+      if (event.type === 'YELLOW_CARD') yellow++
+      if (event.type === 'RED_CARD') red++
+    }
+  }
+  return { yellow, red }
+}
+
 </script>
 
 <template>
@@ -779,7 +795,13 @@ function hasNoWinner(matchup: any): boolean {
                           <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, true, isDark)">
                             {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                           </span>
-                          <span v-if="flashingFixtures.get(fixture.id) === 'home'" class="goal-text shrink-0">GOAL!!!</span>
+                          <div v-if="getTeamCards(fixture, true).red > 0" class="w-3 h-4 bg-red-500 rounded-[2px] flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0">
+                            {{ getTeamCards(fixture, true).red }}
+                          </div>
+                          <div v-if="getTeamCards(fixture, true).yellow > 0" class="w-3 h-4 bg-yellow-400 rounded-[2px] flex items-center justify-center text-[10px] font-bold text-black shadow-sm shrink-0">
+                            {{ getTeamCards(fixture, true).yellow }}
+                          </div>
+                          <span v-if="flashingFixtures.get(fixture.id) === 'home'" class="goal-text shrink-0 ml-1">GOAL!!!</span>
                         </div>
                         
                         <!-- Away -->
@@ -793,7 +815,13 @@ function hasNoWinner(matchup: any): boolean {
                           <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, false, isDark)">
                             {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                           </span>
-                          <span v-if="flashingFixtures.get(fixture.id) === 'away'" class="goal-text shrink-0">GOAL!!!</span>
+                          <div v-if="getTeamCards(fixture, false).red > 0" class="w-3 h-4 bg-red-500 rounded-[2px] flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0">
+                            {{ getTeamCards(fixture, false).red }}
+                          </div>
+                          <div v-if="getTeamCards(fixture, false).yellow > 0" class="w-3 h-4 bg-yellow-400 rounded-[2px] flex items-center justify-center text-[10px] font-bold text-black shadow-sm shrink-0">
+                            {{ getTeamCards(fixture, false).yellow }}
+                          </div>
+                          <span v-if="flashingFixtures.get(fixture.id) === 'away'" class="goal-text shrink-0 ml-1">GOAL!!!</span>
                         </div>
                       </div>
 
