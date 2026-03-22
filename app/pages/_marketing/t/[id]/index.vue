@@ -540,9 +540,21 @@ function hasNoWinner(matchup: any): boolean {
               </span>
 
               <!-- Name -->
-              <h1 class="text-3xl md:text-5xl font-bold leading-tight mb-4" :class="isDark ? 'text-white' : 'text-gray-900'">
+              <h1 class="text-3xl md:text-5xl font-bold leading-tight mb-4 text-center" :class="isDark ? 'text-white' : 'text-gray-900'">
                 {{ tournament.name }}
               </h1>
+
+              <!-- Organizer -->
+              <div v-if="tournament.organizer" class="flex items-center gap-2 mb-4 text-gray-400">
+                <span class="text-sm">Hosted by</span>
+                <span class="text-sm font-medium text-gray-200">{{ tournament.organizer.name }}</span>
+                <UIcon
+                  v-if="tournament.organizer.isVerified"
+                  name="i-heroicons-check-badge-solid"
+                  class="w-5 h-5 text-blue-400 shrink-0"
+                  title="Verified Organizer"
+                />
+              </div>
 
               <!-- Live Indicator (Optional, can keep it here if live) -->
               <div v-if="hasLiveFixtures" class="flex items-center gap-1.5 text-red-400 text-sm font-semibold">
