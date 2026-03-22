@@ -1324,7 +1324,7 @@ const downloadGraphic = async () => {
                     <div v-if="event.participant_id === selectedFixture?.homeTeamId" class="flex flex-col items-end">
                       <div class="flex items-center gap-2 group">
                         <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'end' }">
-                           <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" class="opacity-0 group-hover:opacity-100 transition-opacity" />
+                           <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" />
                         </UDropdownMenu>
                         <div class="text-sm">
                           <span class="font-medium text-gray-900 dark:text-white">{{ getPlayerName(event.playerId) || 'Unknown' }}</span>
@@ -1361,7 +1361,7 @@ const downloadGraphic = async () => {
                           <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-gray-500 ml-1">(OG)</span>
                         </div>
                         <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'start' }">
-                           <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" class="ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                           <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" class="ml-1" />
                         </UDropdownMenu>
                       </div>
                       <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
