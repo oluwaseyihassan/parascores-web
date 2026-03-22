@@ -156,11 +156,11 @@ function getEventLabel(type: MatchEventType) {
 }
 
 function getPlayerGoals(playerId: string) {
-  return events.value.filter(e => e.type === MatchEventType.GOAL && (e.playerId === playerId || e.player?.id === playerId)).length
+  return events.value.filter(e => ['GOAL', 'PENALTY'].includes(e.type) && (e.playerId === playerId || e.player?.id === playerId)).length
 }
 
 function getPlayerAssists(playerId: string) {
-  return events.value.filter(e => e.type === MatchEventType.GOAL && (e.relatedPlayerId === playerId || e.relatedPlayer?.id === playerId)).length
+  return events.value.filter(e => ['GOAL', 'PENALTY'].includes(e.type) && (e.relatedPlayerId === playerId || e.relatedPlayer?.id === playerId)).length
 }
 
 // Compute cumulative score for goal events to show the (1 - 0) format
@@ -172,7 +172,7 @@ const timelineEvents = computed(() => {
     let currentAwayScore = awayScore
     let scoringTeam: 'home' | 'away' | null = null
     
-    if (event.type === 'GOAL' || event.type === 'OWN_GOAL') {
+    if (['GOAL', 'OWN_GOAL', 'PENALTY'].includes(event.type)) {
       const isHomeEvent = (event.participant_id === fixture.value?.homeTeamId || (event as any).participantId === fixture.value?.homeTeamId)
       // For own goal, the scoring team is the OPPOSITE of the participant who scored it
       if (event.type === 'OWN_GOAL') {
@@ -198,7 +198,7 @@ const timelineEvents = computed(() => {
     
     return {
       ...event,
-      scoreAtTime: (event.type === 'GOAL' || event.type === 'OWN_GOAL') ? `${currentHomeScore} - ${currentAwayScore}` : '',
+      scoreAtTime: ['GOAL', 'OWN_GOAL', 'PENALTY'].includes(event.type) ? `${currentHomeScore} - ${currentAwayScore}` : '',
       currentHomeScore,
       currentAwayScore,
       scoringTeam
@@ -211,9 +211,7 @@ const timelineEvents = computed(() => {
 
 const keyEventsSummary = computed(() => {
   const goalsAndReds = events.value.filter(e => 
-    e.type === MatchEventType.GOAL || 
-    e.type === MatchEventType.OWN_GOAL || 
-    e.type === MatchEventType.RED_CARD
+    ['GOAL', 'OWN_GOAL', 'PENALTY', 'RED_CARD'].includes(e.type)
   ).sort((a, b) => (a.minute || 0) - (b.minute || 0))
 
   const homeEvents = goalsAndReds.filter(e => isHomeEvent(e))
@@ -411,14 +409,11 @@ const isHomeEvent = (event: any) => {
                         <div class="flex items-center gap-1.5 flex-row md:flex-row-reverse min-w-0">
                           <!-- Event Icon (Left side has it on the right closest to center) -->
                           <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-                            <IconsSoccerBallIcon v-if="event.type === 'GOAL' || event.type === 'OWN_GOAL'" class="w-4 h-4 md:w-5 md:h-5" :class="isDark ? 'text-white' : 'text-gray-900'" />
+                            <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-4 h-4 md:w-5 md:h-5" :class="isDark ? 'text-white' : 'text-gray-900'" />
                             <div v-else-if="event.type === 'YELLOW_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-yellow-400 rounded-[2px] shadow-sm"></div>
                             <div v-else-if="event.type === 'RED_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-red-500 rounded-[2px] shadow-sm"></div>
                             <div v-else-if="event.type === 'SUBSTITUTION'" class="flex items-center justify-center">
                               <UIcon name="i-heroicons-arrows-right-left" class="w-4 h-4 md:w-5 md:h-5 text-gray-400 transform rotate-90" />
-                            </div>
-                            <div v-else-if="event.type === 'PENALTY'" class="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
-                              <span class="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
                             </div>
                             <IconsAssistIcon v-else-if="event.type === 'ASSIST'" class="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                             <span v-else class="text-xs md:text-sm">{{ getEventIcon(event.type) }}</span>
@@ -428,10 +423,14 @@ const isHomeEvent = (event: any) => {
                           <div class="flex flex-col items-start md:items-end min-w-0">
                             <p class="text-[13px] md:text-[14px] font-semibold tracking-tight transition-colors flex flex-wrap justify-start md:justify-end md:items-center gap-1 md:gap-1.5" :class="isDark ? 'text-white' : 'text-gray-900'">
                               <span v-if="event.type === 'SUBSTITUTION'" class="text-emerald-500 break-all min-w-0">{{ event.player?.name || 'Player In' }}</span>
-                              <span v-else class="break-all min-w-0 text-left md:text-right">{{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}</span>
+                              <span v-else class="break-all min-w-0 text-left md:text-right">
+                                {{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}
+                                <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-400 font-normal ml-0.5">(P)</span>
+                                <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-red-500 font-normal ml-0.5">(OG)</span>
+                              </span>
                               
                               <!-- Score after goal -->
-                              <span v-if="(event.type === 'GOAL' || event.type === 'OWN_GOAL') && event.scoreAtTime" class="text-gray-500 ml-1">
+                              <span v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type) && event.scoreAtTime" class="text-gray-500 ml-1">
                                 (<span :class="event.scoringTeam === 'home' ? 'text-emerald-500' : ''">{{ event.currentHomeScore }}</span> - <span :class="event.scoringTeam === 'away' ? 'text-emerald-500' : ''">{{ event.currentAwayScore }}</span>)
                               </span>
                             </p>
@@ -440,14 +439,8 @@ const isHomeEvent = (event: any) => {
                             <p v-if="event.type === 'SUBSTITUTION'" class="text-[11px] md:text-[12px] text-red-500 font-medium tracking-tight">
                               {{ event.relatedPlayer?.name || 'Player Out' }}
                             </p>
-                            <p v-else-if="event.type === 'GOAL' && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
+                            <p v-else-if="['GOAL', 'PENALTY'].includes(event.type) && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
                               assist by {{ event.relatedPlayer.name }}
-                            </p>
-                            <p v-else-if="event.type === 'OWN_GOAL'" class="text-[12px] md:text-[13px] text-red-400/80">
-                              own goal
-                            </p>
-                            <p v-else-if="event.type === 'PENALTY'" class="text-[12px] md:text-[13px] text-gray-400/80">
-                              {{ event.description || 'Missed penalty' }}
                             </p>
                           </div>
                         </div>
@@ -476,14 +469,11 @@ const isHomeEvent = (event: any) => {
                         <div class="flex items-center gap-1.5 flex-row-reverse md:flex-row min-w-0">
                           <!-- Event Icon -->
                           <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-                            <IconsSoccerBallIcon v-if="event.type === 'GOAL' || event.type === 'OWN_GOAL'" class="w-4 h-4 md:w-5 md:h-5" :class="isDark ? 'text-white' : 'text-gray-900'" />
+                            <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-4 h-4 md:w-5 md:h-5" :class="isDark ? 'text-white' : 'text-gray-900'" />
                             <div v-else-if="event.type === 'YELLOW_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-yellow-400 rounded-[2px] shadow-sm"></div>
                             <div v-else-if="event.type === 'RED_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-red-500 rounded-[2px] shadow-sm"></div>
                             <div v-else-if="event.type === 'SUBSTITUTION'" class="flex items-center justify-center">
                               <UIcon name="i-heroicons-arrows-right-left" class="w-4 h-4 md:w-5 md:h-5 text-gray-400 transform rotate-90" />
-                            </div>
-                            <div v-else-if="event.type === 'PENALTY'" class="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
-                              <span class="w-1.5 h-1.5 bg-gray-300 rounded-full border border-gray-400"></span>
                             </div>
                             <IconsAssistIcon v-else-if="event.type === 'ASSIST'" class="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                             <span v-else class="text-xs md:text-sm">{{ getEventIcon(event.type) }}</span>
@@ -493,10 +483,14 @@ const isHomeEvent = (event: any) => {
                           <div class="flex flex-col items-end md:items-start min-w-0">
                             <p class="text-[13px] md:text-[14px] font-semibold tracking-tight transition-colors flex flex-wrap justify-end md:justify-start md:items-center gap-1 md:gap-1.5" :class="isDark ? 'text-white' : 'text-gray-900'">
                               <span v-if="event.type === 'SUBSTITUTION'" class="text-emerald-500 break-all min-w-0">{{ event.player?.name || 'Player In' }}</span>
-                              <span v-else class="break-all min-w-0 text-right md:text-left">{{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}</span>
+                              <span v-else class="break-all min-w-0 text-right md:text-left">
+                                {{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}
+                                <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-400 font-normal ml-0.5">(P)</span>
+                                <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-red-500 font-normal ml-0.5">(OG)</span>
+                              </span>
                               
                               <!-- Score after goal -->
-                              <span v-if="(event.type === 'GOAL' || event.type === 'OWN_GOAL') && event.scoreAtTime" class="text-gray-500 ml-1">
+                              <span v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type) && event.scoreAtTime" class="text-gray-500 ml-1">
                                 (<span :class="event.scoringTeam === 'home' ? 'text-emerald-500' : ''">{{ event.currentHomeScore }}</span> - <span :class="event.scoringTeam === 'away' ? 'text-emerald-500' : ''">{{ event.currentAwayScore }}</span>)
                               </span>
                             </p>
@@ -505,14 +499,8 @@ const isHomeEvent = (event: any) => {
                             <p v-if="event.type === 'SUBSTITUTION'" class="text-[11px] md:text-[12px] text-red-500 font-medium tracking-tight">
                               {{ event.relatedPlayer?.name || 'Player Out' }}
                             </p>
-                            <p v-else-if="event.type === 'GOAL' && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
+                            <p v-else-if="['GOAL', 'PENALTY'].includes(event.type) && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
                               assist by {{ event.relatedPlayer.name }}
-                            </p>
-                            <p v-else-if="event.type === 'OWN_GOAL'" class="text-[12px] md:text-[13px] text-red-400/80">
-                              own goal
-                            </p>
-                            <p v-else-if="event.type === 'PENALTY'" class="text-[12px] md:text-[13px] text-gray-400/80">
-                              {{ event.description || 'Missed penalty' }}
                             </p>
                           </div>
                         </div>
