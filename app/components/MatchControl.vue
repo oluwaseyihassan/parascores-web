@@ -50,8 +50,18 @@ const errorMessage = ref<string | null>(null)
 const showGoalModal = ref(false)
 const scoringTeam = ref<'home' | 'away'>('home')
 const goalData = reactive({
+  type: MatchEventType.GOAL as MatchEventType,
   scorerId: undefined as string | undefined,
   assisterId: undefined as string | undefined,
+  minute: null as number | null
+})
+
+// Card modal
+const showCardModal = ref(false)
+const cardTeam = ref<'home' | 'away'>('home')
+const cardData = reactive({
+  type: MatchEventType.YELLOW_CARD as MatchEventType,
+  playerId: undefined as string | undefined,
   minute: null as number | null
 })
 
@@ -393,7 +403,14 @@ const updateMatchTime = async () => {
 }
 
 const scoringTeamPlayers = computed(() => {
+  if (goalData.type === MatchEventType.OWN_GOAL) {
+    return scoringTeam.value === 'home' ? awayPlayers.value : homePlayers.value
+  }
   return scoringTeam.value === 'home' ? homePlayers.value : awayPlayers.value
+})
+
+const cardTeamPlayers = computed(() => {
+  return cardTeam.value === 'home' ? homePlayers.value : awayPlayers.value
 })
 
 const confirmGoal = async () => {
@@ -427,7 +444,7 @@ const confirmGoal = async () => {
         participantId: participantId,
         playerId: goalData.scorerId,
         relatedPlayerId: goalData.assisterId,
-        type: MatchEventType.GOAL,
+        type: goalData.type,
         minute: goalData.minute
       })
     }
@@ -465,6 +482,7 @@ const confirmGoal = async () => {
 
 const openGoalModal = (team: 'home' | 'away') => {
   scoringTeam.value = team
+  goalData.type = MatchEventType.GOAL
   goalData.scorerId = undefined
   goalData.assisterId = undefined
   goalData.minute = null
@@ -476,6 +494,53 @@ const openGoalModal = (team: 'home' | 'away') => {
   }
   
   showGoalModal.value = true
+}
+
+const openCardModal = (team: 'home' | 'away') => {
+  cardTeam.value = team
+  cardData.type = MatchEventType.YELLOW_CARD
+  cardData.playerId = undefined
+  cardData.minute = null
+  showCardModal.value = true
+}
+
+const confirmCard = async () => {
+  if (!selectedFixture.value) return
+  
+  const participantId = cardTeam.value === 'home' 
+    ? selectedFixture.value.homeTeamId 
+    : selectedFixture.value.awayTeamId
+  
+  if (!participantId || !cardData.playerId) return
+  
+  updatingMatch.value = true
+  try {
+    await fixtureStore.createMatchEvent({
+      fixtureId: selectedFixture.value.id,
+      participantId: participantId,
+      playerId: cardData.playerId,
+      type: cardData.type,
+      minute: cardData.minute
+    })
+    
+    showCardModal.value = false
+    await refreshMatchEvents()
+    
+    useToast().add({ 
+      title: 'Card Recorded!', 
+      description: 'Card event has been added.',
+      icon: cardData.type === MatchEventType.YELLOW_CARD ? 'i-heroicons-exclamation-triangle' : 'i-heroicons-x-circle',
+      color: cardData.type === MatchEventType.YELLOW_CARD ? 'warning' : 'error' 
+    })
+  } catch (error: any) {
+    useToast().add({ 
+      title: 'Failed to record card', 
+      description: error?.data?.message || error?.message || 'Unknown error', 
+      color: 'error' 
+    })
+  } finally {
+    updatingMatch.value = false
+  }
 }
 
 const openEditEventModal = (event: MatchEvent) => {
@@ -548,6 +613,13 @@ const confirmDeleteEvent = async () => {
 
 const editEventTeamPlayers = computed(() => {
   if (!eventBeingEdited.value || !selectedFixture.value) return []
+  
+  if (eventBeingEdited.value.type === MatchEventType.OWN_GOAL) {
+    return eventBeingEdited.value.participant_id === selectedFixture.value.homeTeamId 
+      ? awayPlayers.value 
+      : homePlayers.value
+  }
+  
   return eventBeingEdited.value.participant_id === selectedFixture.value.homeTeamId 
     ? homePlayers.value 
     : awayPlayers.value
@@ -1025,22 +1097,34 @@ const downloadGraphic = async () => {
           <div class="flex items-center justify-center gap-8 py-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
             <!-- Home Score -->
             <div class="flex flex-col items-center gap-2">
-              <UButton 
-                icon="i-heroicons-plus" 
-                size="lg" 
-                color="primary" 
-                variant="soft"
-                :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
-                :loading="updatingMatch"
-                @click="openGoalModal('home')"
-              />
+              <div class="flex gap-2">
+                <UButton 
+                  icon="i-heroicons-plus" 
+                  size="md" 
+                  color="primary" 
+                  variant="soft"
+                  :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
+                  :loading="updatingMatch"
+                  @click="openGoalModal('home')"
+                />
+                <UButton 
+                  v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                  icon="i-heroicons-stop" 
+                  size="md" 
+                  color="warning" 
+                  variant="soft"
+                  :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
+                  :loading="updatingMatch"
+                  @click="openCardModal('home')"
+                />
+              </div>
               <span class="text-4xl font-bold text-gray-900 dark:text-white min-w-[3rem] text-center">
                 {{ selectedFixture.homeScore ?? 0 }}
               </span>
               <UButton 
                 v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
                 icon="i-heroicons-minus" 
-                size="lg" 
+                size="md" 
                 color="neutral" 
                 variant="soft"
                 :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || (selectedFixture.homeScore ?? 0) <= 0"
@@ -1053,22 +1137,34 @@ const downloadGraphic = async () => {
 
             <!-- Away Score -->
             <div class="flex flex-col items-center gap-2">
-              <UButton 
-                icon="i-heroicons-plus" 
-                size="lg" 
-                color="primary" 
-                variant="soft"
-                :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
-                :loading="updatingMatch"
-                @click="openGoalModal('away')"
-              />
+              <div class="flex gap-2">
+                <UButton 
+                  icon="i-heroicons-plus" 
+                  size="md" 
+                  color="primary" 
+                  variant="soft"
+                  :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
+                  :loading="updatingMatch"
+                  @click="openGoalModal('away')"
+                />
+                <UButton 
+                  v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                  icon="i-heroicons-stop" 
+                  size="md" 
+                  color="warning" 
+                  variant="soft"
+                  :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
+                  :loading="updatingMatch"
+                  @click="openCardModal('away')"
+                />
+              </div>
               <span class="text-4xl font-bold text-gray-900 dark:text-white min-w-[3rem] text-center">
                 {{ selectedFixture.awayScore ?? 0 }}
               </span>
               <UButton 
                 v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
                 icon="i-heroicons-minus" 
-                size="lg" 
+                size="md" 
                 color="neutral" 
                 variant="soft"
                 :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || (selectedFixture.awayScore ?? 0) <= 0"
@@ -1214,50 +1310,64 @@ const downloadGraphic = async () => {
                 No events recorded yet
               </div>
               
-              <div v-else class="space-y-3 max-h-48 overflow-y-auto">
+              <div v-else class="relative space-y-4 max-h-[300px] overflow-y-auto px-4 py-8">
+                <!-- Vertical Line -->
+                <div class="absolute inset-y-0 left-1/2 w-0.5 bg-gray-200 dark:bg-gray-700 -ml-[1px]"></div>
+                
                 <div 
-                  v-for="event in matchEvents" 
+                  v-for="event in [...matchEvents].sort((a, b) => (a.minute || 0) - (b.minute || 0))" 
                   :key="event.id"
-                  class="flex items-start gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/30"
+                  class="flex items-center w-full relative"
                 >
-                  <div class="mt-0.5">
-                    <span class="text-lg flex-shrink-0 flex items-center justify-center">
-                      <IconsSoccerBallIcon v-if="event.type === 'GOAL' || event.type === 'OWN_GOAL'" class="w-6 h-6 text-green-500" />
-                      <IconsAssistIcon v-else-if="event.type === 'ASSIST'" class="w-6 h-6 text-cyan-500" />
-                      <UIcon 
-                        v-else
-                        :name="getEventIcon(event.type)" 
-                        :class="['w-5 h-5', getEventColor(event.type)]"
-                      />
-                    </span>
-                  </div>
-                  
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1">
-                      <span class="text-sm font-bold tracking-wide uppercase text-gray-900 dark:text-white">
-                        {{ event.type.replace('_', ' ') }}
-                      </span>
-                      <span v-if="event.minute" class="text-sm font-medium text-gray-500 tabular-nums">
-                        {{ event.minute }}'
-                      </span>
+                  <!-- Home Team Event -->
+                  <div class="w-1/2 pr-4 text-right transition-opacity" :class="event.participant_id === selectedFixture?.homeTeamId ? 'opacity-100' : 'opacity-0'">
+                    <div v-if="event.participant_id === selectedFixture?.homeTeamId" class="flex flex-col items-end">
+                      <div class="flex items-center gap-2 group">
+                        <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'end' }">
+                           <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" class="opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </UDropdownMenu>
+                        <div class="text-sm">
+                          <span class="font-medium text-gray-900 dark:text-white">{{ getPlayerName(event.playerId) || 'Unknown' }}</span>
+                          <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-500 ml-1">(P)</span>
+                          <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-gray-500 ml-1">(OG)</span>
+                        </div>
+                        <span class="text-lg flex-shrink-0">
+                          <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-5 h-5 shadow-sm" :class="getEventColor(event.type)" />
+                          <UIcon v-else :name="getEventIcon(event.type)" :class="['w-5 h-5 drop-shadow-sm', getEventColor(event.type)]" />
+                        </span>
+                      </div>
+                      <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <IconsAssistIcon class="w-3" /> {{ getPlayerName(event.relatedPlayerId) }}
+                      </div>
                     </div>
-                    
-                    <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
-                      <span v-if="getTeamName(event.participant_id)">
-                        {{ getTeamName(event.participant_id) }}
-                      </span>
-                      <span v-if="getPlayerName(event.playerId)">
-                        - {{ getPlayerName(event.playerId) }}
-                      </span>
-                      <span v-if="getPlayerName(event.relatedPlayerId)">
-                        (assist: {{ getPlayerName(event.relatedPlayerId) }})
-                      </span>
-                    </p>
                   </div>
-                  <div class="flex-shrink-0">
-                    <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'end' }">
-                      <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="sm" />
-                    </UDropdownMenu>
+
+                  <!-- Central Marker -->
+                  <div class="absolute left-1/2 -ml-3.5 flex items-center justify-center z-10 w-7 h-7 bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-gray-600 rounded-full shadow-sm text-[11px] font-bold text-gray-600 dark:text-gray-400">
+                    {{ event.minute || '-' }}'
+                  </div>
+
+                  <!-- Away Team Event -->
+                  <div class="w-1/2 pl-4 text-left transition-opacity" :class="event.participant_id === selectedFixture?.awayTeamId ? 'opacity-100' : 'opacity-0'">
+                    <div v-if="event.participant_id === selectedFixture?.awayTeamId" class="flex flex-col items-start">
+                      <div class="flex items-center gap-2 group">
+                        <span class="text-lg flex-shrink-0">
+                          <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-5 h-5 shadow-sm" :class="getEventColor(event.type)" />
+                          <UIcon v-else :name="getEventIcon(event.type)" :class="['w-5 h-5 drop-shadow-sm', getEventColor(event.type)]" />
+                        </span>
+                        <div class="text-sm">
+                          <span class="font-medium text-gray-900 dark:text-white">{{ getPlayerName(event.playerId) || 'Unknown' }}</span>
+                          <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-500 ml-1">(P)</span>
+                          <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-gray-500 ml-1">(OG)</span>
+                        </div>
+                        <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'start' }">
+                           <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" class="ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </UDropdownMenu>
+                      </div>
+                      <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <IconsAssistIcon class="w-3 h-3" /> {{ getPlayerName(event.relatedPlayerId) }}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1356,6 +1466,19 @@ const downloadGraphic = async () => {
         </template>
 
         <div class="space-y-4">
+          <!-- Goal Type -->
+          <UFormField label="Goal Type">
+            <USelect
+              v-model="goalData.type"
+              :items="[
+                { label: 'Normal Goal', value: 'GOAL' }, 
+                { label: 'Penalty', value: 'PENALTY' }, 
+                { label: 'Own Goal', value: 'OWN_GOAL' }
+              ]"
+              class="w-full"
+            />
+          </UFormField>
+
           <!-- Minute -->
           <UFormField label="Minute (optional)">
             <UInput 
@@ -1380,7 +1503,7 @@ const downloadGraphic = async () => {
           </UFormField>
 
           <!-- Assister -->
-          <UFormField label="Assist By (optional)">
+          <UFormField v-if="goalData.type !== 'OWN_GOAL'" label="Assist By (optional)">
             <USelect
               v-model="goalData.assisterId"
               :items="assisterOptions"
@@ -1409,6 +1532,81 @@ const downloadGraphic = async () => {
               color="success"
               :loading="updatingMatch"
               @click="confirmGoal"
+            />
+          </div>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Card Event Modal -->
+  <UModal v-model:open="showCardModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-warning-500" />
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                Record Card
+              </h3>
+              <UBadge :color="cardTeam === 'home' ? 'primary' : 'warning'" variant="subtle" size="sm">
+                {{ cardTeam === 'home' ? selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customName }}
+              </UBadge>
+            </div>
+            <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" @click="showCardModal = false" />
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <!-- Card Type -->
+          <UFormField label="Card Type">
+            <USelect
+              v-model="cardData.type"
+              :items="[
+                { label: 'Yellow Card', value: 'YELLOW_CARD' }, 
+                { label: 'Red Card', value: 'RED_CARD' }
+              ]"
+              class="w-full"
+            />
+          </UFormField>
+
+          <!-- Minute -->
+          <UFormField label="Minute (optional)">
+            <UInput 
+              v-model.number="cardData.minute" 
+              type="number" 
+              placeholder="e.g. 45"
+              icon="i-heroicons-clock"
+              :min="0"
+              :max="120"
+            />
+          </UFormField>
+
+          <!-- Player -->
+          <UFormField label="Player">
+            <USelect
+              v-model="cardData.playerId"
+              :items="cardTeamPlayers.map(p => ({ label: `${p.number ? `#${p.number} ` : ''}${p.name}`, value: p.id }))"
+              placeholder="Select player..."
+              value-key="value"
+              class="w-full"
+            />
+          </UFormField>
+
+          <p v-if="cardTeamPlayers.length === 0" class="text-sm text-gray-500">
+            No players registered for this team. You can still record a card event but cannot assign it to a player.
+          </p>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-3 pt-2">
+            <UButton label="Cancel" variant="ghost" color="neutral" @click="showCardModal = false" />
+            <UButton 
+              label="Record Card" 
+              icon="i-heroicons-check"
+              :color="cardData.type === 'YELLOW_CARD' ? 'warning' : 'error'"
+              :loading="updatingMatch"
+              @click="confirmCard"
             />
           </div>
         </div>
