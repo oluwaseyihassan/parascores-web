@@ -62,6 +62,7 @@ export interface User {
   
   // role is strictly typed to the Enum
   role: Role
+  isVerified?: boolean
   metadata?: Record<string, any> | null
 
   // Branding
