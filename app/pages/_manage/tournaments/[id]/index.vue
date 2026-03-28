@@ -2,7 +2,7 @@
 import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { Visibility, TournamentType, ParticipantType, ParticipantStatus, FixtureStatus, FixtureStage } from '~/types'
-import type { Participant, Fixture, Sponsor, Social, Tournament } from '~/types'
+import type { Participant, Fixture, Sponsor, Social, Tournament, Venue } from '~/types'
 import QrcodeVue from 'qrcode.vue'
 
 definePageMeta({
@@ -16,12 +16,14 @@ const fixtureStore = useFixtureStore()
 const standingStore = useStandingStore()
 const sponsorStore = useSponsorStore()
 const socialStore = useSocialStore()
+const venueStore = useVenueStore()
 const { currentTournament: tournament, loading, error } = storeToRefs(tournamentStore)
 const { participants, loading: participantsLoading } = storeToRefs(participantStore)
 const { fixtures, fixturesByRound, rounds, knockoutFixturesByRound, knockoutRounds, groupStageFixturesByRound, groupStageRounds, loading: fixturesLoading, generating } = storeToRefs(fixtureStore)
 const { standings, loading: standingsLoading } = storeToRefs(standingStore)
 const { sponsors, loading: sponsorsLoading } = storeToRefs(sponsorStore)
 const { socials, loading: socialsLoading } = storeToRefs(socialStore)
+const { venues, loading: venuesLoading } = storeToRefs(venueStore)
 
 // Player Stats state
 const playerStats = ref<any>(null)
@@ -59,6 +61,7 @@ onMounted(async () => {
           standings: any[];
           sponsors: Sponsor[];
           socials: Social[];
+          venues: Venue[];
         }
       }>(`/tournaments/${tournamentId.value}/overview`, { method: 'GET' })
 
@@ -69,6 +72,7 @@ onMounted(async () => {
         standings.value = response.data.standings
         sponsors.value = response.data.sponsors
         socials.value = response.data.socials
+        venues.value = response.data.venues
         
         // Load stats if applicable
         if (response.data.tournament.participantType === ParticipantType.TEAM) {
@@ -1130,6 +1134,71 @@ const getSocialColor = (platform: string) => {
   return option?.color || 'text-gray-500'
 }
 
+// Venue Management
+const showAddVenueModal = ref(false)
+const addingVenue = ref(false)
+const newVenueName = ref('')
+const addVenueError = ref<string | null>(null)
+
+// Manage Modes
+const manageModes = reactive({
+  sponsors: false,
+  venues: false,
+  socials: false
+})
+
+const openAddVenueModal = () => {
+  newVenueName.value = ''
+  addVenueError.value = null
+  showAddVenueModal.value = true
+}
+
+const handleAddVenue = async () => {
+  if (addingVenue.value || !newVenueName.value.trim() || !tournament.value) return
+  
+  // Check if venue already exists
+  const exists = venues.value.some(v => v.name.toLowerCase() === newVenueName.value.trim().toLowerCase())
+  if (exists) {
+    addVenueError.value = 'A venue with this name already exists'
+    return
+  }
+
+  addingVenue.value = true
+  addVenueError.value = null
+  
+  try {
+    await venueStore.addVenue(tournamentId.value, newVenueName.value.trim())
+    showAddVenueModal.value = false
+    useToast().add({ title: 'Venue added successfully', color: 'success' })
+  } catch (err: any) {
+    addVenueError.value = err?.data?.message || err?.message || 'Failed to add venue'
+  } finally {
+    addingVenue.value = false
+  }
+}
+
+const handleRemoveVenue = (venueId: string, venueName: string) => {
+  openConfirmModal({
+    title: 'Remove Venue',
+    description: `Are you sure you want to remove "${venueName}" from the list of venues?`,
+    confirmLabel: 'Remove',
+    color: 'error',
+    onConfirm: async () => {
+      try {
+        await venueStore.removeVenue(venueId)
+        useToast().add({ title: 'Venue removed', color: 'success' })
+      } catch (error: any) {
+        const message = error.data?.message || error.message || 'Unknown error'
+        useToast().add({ 
+          title: 'Failed to remove venue', 
+          description: message, 
+          color: 'error' 
+        })
+      }
+    }
+  })
+}
+
 // Tab configuration
 const tabItems = computed(() => {
   const items = [
@@ -1333,13 +1402,25 @@ const copyTournamentLink = async () => {
 
         <!-- Title & Meta -->
         <div class="mb-4">
-          <div class="flex items-center justify-center gap-3 mb-2">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-              {{ tournament.name }}
-            </h1>
-            <UBadge v-if="tournamentStatus" :color="tournamentStatus.color" variant="subtle">
-              {{ tournamentStatus.label }}
-            </UBadge>
+          <div class="flex flex-col items-center justify-center mb-2">
+            <div v-if="tournament.organizer?.organization_name" class="flex items-center gap-1.5 mb-1.5">
+              <img 
+                v-if="tournament.organizer.organization_logo" 
+                :src="tournament.organizer.organization_logo" 
+                class="w-4 h-4 rounded-full object-cover" 
+              />
+              <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                {{ tournament.organizer.organization_name }}
+              </span>
+            </div>
+            <div class="flex items-center gap-3">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                {{ tournament.name }}
+              </h1>
+              <UBadge v-if="tournamentStatus" :color="tournamentStatus.color" variant="subtle">
+                {{ tournamentStatus.label }}
+              </UBadge>
+            </div>
           </div>
           
           <div class="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-500">
@@ -1581,6 +1662,53 @@ const copyTournamentLink = async () => {
         </template>
       </UModal>
 
+      <!-- Add Venue Modal -->
+      <UModal v-model:open="showAddVenueModal" :ui="{ content: 'sm:max-w-md' }">
+        <template #content>
+          <UCard class="ring-0 shadow-none">
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
+                  Add Venue
+                </h3>
+                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showAddVenueModal = false" />
+              </div>
+            </template>
+
+            <form @submit.prevent="handleAddVenue" class="space-y-4 py-2">
+              <UAlert
+                v-if="addVenueError"
+                color="error"
+                variant="subtle"
+                icon="i-heroicons-exclamation-triangle"
+                :title="addVenueError"
+                class="mb-2"
+              />
+
+              <UFormField label="Venue Name" required>
+                <UInput 
+                  v-model="newVenueName" 
+                  placeholder="e.g. National Stadium, Pitch 1" 
+                  autofocus
+                  @keyup.enter="handleAddVenue"
+                />
+              </UFormField>
+
+              <div class="flex items-center justify-end gap-3 pt-2">
+                <UButton color="neutral" variant="ghost" label="Cancel" @click="showAddVenueModal = false" />
+                <UButton 
+                  color="primary" 
+                  label="Add Venue" 
+                  :loading="addingVenue"
+                  :disabled="!newVenueName.trim()"
+                  type="submit"
+                />
+              </div>
+            </form>
+          </UCard>
+        </template>
+      </UModal>
+
       <!-- Content Container -->
       <div class="max-w-4xl mx-auto w-full">
         <!-- Main Content -->
@@ -1588,7 +1716,10 @@ const copyTournamentLink = async () => {
           <UTabs 
             :items="tabItems" 
             class="w-full"
-            :ui="{ list: 'overflow-x-auto flex-nowrap sm:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' }"
+            :ui="{ 
+              list: 'overflow-x-auto flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1',
+              trigger: 'shrink-0 min-w-max whitespace-nowrap'
+            }"
           >
             <!-- Overview Tab -->
             <template #overview>
@@ -1701,7 +1832,17 @@ const copyTournamentLink = async () => {
                             {{ sponsors.length }}
                           </UBadge>
                         </div>
-                        <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSponsorModal" />
+                        <div class="flex items-center gap-1">
+                          <UButton 
+                            size="xs" 
+                            variant="ghost" 
+                            :color="manageModes.sponsors ? 'primary' : 'neutral'"
+                            :icon="manageModes.sponsors ? 'i-heroicons-check' : 'i-heroicons-pencil-square'" 
+                            @click="manageModes.sponsors = !manageModes.sponsors" 
+                            :label="manageModes.sponsors ? 'Done' : 'Manage'"
+                          />
+                          <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSponsorModal" />
+                        </div>
                       </div>
                     </template>
                     
@@ -1748,13 +1889,65 @@ const copyTournamentLink = async () => {
                           </div>
                         </div>
                         <button 
-                          class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-xs transition-all z-10"
+                          v-if="manageModes.sponsors"
+                          class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs shadow-lg transition-all z-10 hover:bg-red-600 hover:scale-110 active:scale-95"
                           @click="handleRemoveSponsor(sponsor.id)"
                           title="Remove"
                         >
                           ×
                         </button>
                       </div>
+                    </div>
+                  </UCard>
+
+                  <!-- Venues -->
+                  <UCard class="border border-gray-100 dark:border-gray-800 shadow-sm transition-all h-fit">
+                    <template #header>
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-indigo-500" />
+                          <span class="font-medium">Venues</span>
+                          <UBadge v-if="venues.length" size="sm" variant="subtle">
+                            {{ venues.length }}
+                          </UBadge>
+                        </div>
+                        <div class="flex items-center gap-1">
+                          <UButton 
+                            size="xs" 
+                            variant="ghost" 
+                            :color="manageModes.venues ? 'primary' : 'neutral'"
+                            :icon="manageModes.venues ? 'i-heroicons-check' : 'i-heroicons-pencil-square'" 
+                            @click="manageModes.venues = !manageModes.venues" 
+                            :label="manageModes.venues ? 'Done' : 'Manage'"
+                          />
+                          <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddVenueModal" />
+                        </div>
+                      </div>
+                    </template>
+                    
+                    <div v-if="venues.length" class="flex flex-col gap-2">
+                      <div 
+                        v-for="venue in venues" 
+                        :key="venue.id"
+                        class="group relative"
+                      >
+                        <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all">
+                          <UIcon name="i-heroicons-map-pin" class="w-4 h-4 text-gray-400" />
+                          <span class="text-sm text-gray-700 dark:text-gray-300 truncate">{{ venue.name }}</span>
+                        </div>
+                        <button 
+                          v-if="manageModes.venues"
+                          class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs shadow-lg transition-all z-10 hover:bg-red-600 hover:scale-110 active:scale-95"
+                          @click="handleRemoveVenue(venue.id, venue.name)"
+                          title="Remove"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                    <div v-else class="text-center py-4 text-gray-400 text-sm">
+                      <p>No venues added yet</p>
+                      <UButton size="xs" variant="link" @click="openAddVenueModal">Add one</UButton>
                     </div>
                   </UCard>
 
@@ -1766,7 +1959,17 @@ const copyTournamentLink = async () => {
                           <UIcon name="i-heroicons-share" class="w-5 h-5 text-indigo-500" />
                           <span class="font-medium">Social Links</span>
                         </div>
-                        <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSocialModal" />
+                        <div class="flex items-center gap-1">
+                          <UButton 
+                            size="xs" 
+                            variant="ghost" 
+                            :color="manageModes.socials ? 'primary' : 'neutral'"
+                            :icon="manageModes.socials ? 'i-heroicons-check' : 'i-heroicons-pencil-square'" 
+                            @click="manageModes.socials = !manageModes.socials" 
+                            :label="manageModes.socials ? 'Done' : 'Manage' "
+                          />
+                          <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSocialModal" />
+                        </div>
                       </div>
                     </template>
                     
@@ -1790,7 +1993,8 @@ const copyTournamentLink = async () => {
                           <span class="text-sm text-gray-700 dark:text-gray-300 capitalize">{{ social.platform }}</span>
                         </a>
                         <button 
-                          class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-xs transition-all"
+                          v-if="manageModes.socials"
+                          class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs shadow-lg transition-all z-10 hover:bg-red-600 hover:scale-110 active:scale-95"
                           @click="handleRemoveSocial(social.id)"
                           title="Remove"
                         >
@@ -2956,6 +3160,54 @@ const copyTournamentLink = async () => {
     @fixture-updated="handleFixtureUpdated"
     @match-ended="handleMatchEnded"
   />
+
+  <!-- Add Venue Modal -->
+  <UModal v-model:open="showAddVenueModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-indigo-500" />
+            <span class="font-semibold">Add Venue</span>
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <UAlert 
+            v-if="addVenueError" 
+            color="error" 
+            variant="subtle"
+            icon="i-heroicons-exclamation-triangle"
+            :title="addVenueError"
+          />
+
+          <UFormField label="Venue Name" name="venueName" required>
+            <UInput 
+              v-model="newVenueName" 
+              placeholder="e.g. Main Bowl, Pitch 1"
+              icon="i-heroicons-map-pin"
+              @keydown.enter="handleAddVenue"
+            />
+          </UFormField>
+
+          <div class="flex justify-end gap-2 pt-4">
+            <UButton 
+              label="Cancel" 
+              variant="ghost" 
+              color="neutral"
+              @click="showAddVenueModal = false"
+            />
+            <UButton 
+              label="Add Venue" 
+              icon="i-heroicons-plus"
+              :loading="addingVenue"
+              @click="handleAddVenue"
+            />
+          </div>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
 
   <!-- Add Sponsor Modal -->
   <UModal v-model:open="showAddSponsorModal">
