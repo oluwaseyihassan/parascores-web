@@ -447,10 +447,10 @@ onUnmounted(() => {
             <!-- Graphic Type Switcher -->
             <div class="mb-4">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Graphic Type</label>
-              <div class="flex rounded-md shadow-sm">
+              <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
                 <button 
                   type="button"
-                  class="flex-1 px-4 py-2 text-sm font-medium border rounded-l-md focus:z-10 focus:ring-2 focus:ring-indigo-500"
+                  class="px-4 py-2 text-sm font-medium border rounded-md transition-colors shrink-0"
                   :class="graphicType === 'match' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
                   @click="graphicType = 'match'"
                 >
@@ -459,7 +459,7 @@ onUnmounted(() => {
                 <button 
                   v-if="tournament && ['ROUND_ROBIN', 'GROUP', 'HYBRID'].includes(tournament.type)"
                   type="button"
-                  class="flex-1 px-4 py-2 text-sm font-medium border-t border-b focus:z-10 focus:ring-2 focus:ring-indigo-500"
+                  class="px-4 py-2 text-sm font-medium border rounded-md transition-colors shrink-0"
                   :class="graphicType === 'standing' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
                   @click="graphicType = 'standing'"
                 >
@@ -468,7 +468,7 @@ onUnmounted(() => {
                 <button 
                   v-if="tournament && ['KNOCKOUT', 'HYBRID'].includes(tournament.type)"
                   type="button"
-                  class="flex-1 px-4 py-2 text-sm font-medium border border-l-0 rounded-r-md focus:z-10 focus:ring-2 focus:ring-indigo-500"
+                  class="px-4 py-2 text-sm font-medium border rounded-md transition-colors shrink-0"
                   :class="graphicType === 'bracket' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
                   @click="graphicType = 'bracket'"
                 >
@@ -476,8 +476,8 @@ onUnmounted(() => {
                 </button>
                 <button 
                   type="button"
-                  class="flex-1 px-4 py-2 text-sm font-medium border border-l-0 focus:z-10 focus:ring-2 focus:ring-indigo-500"
-                  :class="[graphicType === 'matchday' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700', tournament && tournament.participantType === 'TEAM' ? '' : 'rounded-r-md']"
+                  class="px-4 py-2 text-sm font-medium border rounded-md transition-colors shrink-0"
+                  :class="graphicType === 'matchday' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700' "
                   @click="graphicType = 'matchday'"
                 >
                   Matchday
@@ -485,7 +485,7 @@ onUnmounted(() => {
                 <button 
                   v-if="tournament && tournament.participantType === 'TEAM'"
                   type="button"
-                  class="flex-1 px-4 py-2 text-sm font-medium border border-l-0 rounded-r-md focus:z-10 focus:ring-2 focus:ring-indigo-500"
+                  class="px-4 py-2 text-sm font-medium border rounded-md transition-colors shrink-0"
                   :class="graphicType === 'stats' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
                   @click="graphicType = 'stats'"
                 >
