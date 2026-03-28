@@ -563,7 +563,14 @@ function getTeamCards(fixture: any, isHome: boolean) {
               <!-- Organizer -->
               <div v-if="tournament.organizer" class="flex items-center gap-2 mb-4 text-gray-400">
                 <span class="text-sm">Hosted by</span>
-                <span class="text-sm font-medium text-gray-200">{{ tournament.organizer.name }}</span>
+                <img 
+                  v-if="tournament.organizer.organization_logo" 
+                  :src="tournament.organizer.organization_logo" 
+                  class="w-5 h-5 rounded-full object-cover shrink-0" 
+                />
+                <span class="text-sm font-medium text-gray-200">
+                  {{ tournament.organizer.organization_name || tournament.organizer.name }}
+                </span>
                 <UIcon
                   v-if="tournament.organizer.isVerified"
                   name="i-heroicons-check-badge-solid"
