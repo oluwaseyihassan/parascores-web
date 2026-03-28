@@ -141,7 +141,7 @@ export const useTournamentStore = defineStore('tournament', () => {
           tournaments.value[index] = response.data
         }
         // Update current if same
-        if (currentTournament.value?.id === id) {
+        if (currentTournament.value?.id === id || currentTournament.value?.customName === id) {
           currentTournament.value = response.data
         }
       }
@@ -165,7 +165,7 @@ export const useTournamentStore = defineStore('tournament', () => {
       // Remove from list
       tournaments.value = tournaments.value.filter(t => t.id !== id)
       // Clear current if same
-      if (currentTournament.value?.id === id) {
+      if (currentTournament.value?.id === id || currentTournament.value?.customName === id) {
         currentTournament.value = null
       }
       return response
