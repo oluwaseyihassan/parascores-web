@@ -78,6 +78,7 @@ export interface User {
   // Password Reset
   passwordResetToken?: string | null
   passwordResetExpiry?: string | null
+  hasPassword?: boolean
 
   created_at: string
   updated_at: string
@@ -116,7 +117,7 @@ export interface Tournament {
   thirdPlaceMatch?: boolean
 
   // Venues
-  venues?: string[]
+  venues?: Venue[]
 
   // Group config
   numberOfGroups?: number | null
@@ -303,6 +304,18 @@ export interface Social {
   platform: string
   url: string
   handle?: string | null
+  tournament_id: string
+  
+  created_at: string
+  updated_at: string
+  
+  // Relations
+  tournament?: Tournament | null
+}
+
+export interface Venue {
+  id: string
+  name: string
   tournament_id: string
   
   created_at: string
