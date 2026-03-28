@@ -157,7 +157,7 @@
             <div class="mt-4 pt-4 border-t border-white/5 flex flex-col gap-2.5 text-xs text-gray-400 font-medium">
               <div v-if="tournament.organizer" class="flex items-center gap-1.5">
                 <span class="text-gray-500">Hosted by</span>
-                <span class="text-gray-300 truncate max-w-[150px]">{{ tournament.organizer.name }}</span>
+                <span class="text-gray-300 truncate max-w-[150px]">{{ tournament.organizer.organization_name || tournament.organizer.name }}</span>
                 <UIcon
                   v-if="tournament.organizer.isVerified"
                   name="i-heroicons-check-badge-solid"
