@@ -48,17 +48,26 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     // Allow them to visit login/signup pages if they exist on the subdomain (optional)
     // But typically you send them to the main site login:
     if (to.path !== '/login') {
-       return navigateTo(`${protocol}://${rootHost}/login`, { external: true })
+       return navigateTo(`${protocol}://${rootHost}/login?appRedirect=${encodeURIComponent(to.fullPath)}`, { external: true })
     }
   }
 
-  // B. Redirect Logged-In Users (Marketing Site)
-  // Logic: If on Marketing AND Logged in -> Go to Dashboard
+  // B. Intercept non-organizers accessing the Dashboard
+  if (isApp && user.value && user.value.role === 'USER') {
+    const allowedPaths = ['/', '/onboarding', '/profile']
+    if (!allowedPaths.includes(to.path)) {
+      return navigateTo('/onboarding')
+    }
+  }
+
+  // C. Redirect Logged-In Users visiting Auth Pages
   if (!isApp && user.value) {
-    // Only redirect if they are trying to login or signup
-    // (So they can still browse your landing page if they want)
     if (to.path === '/login' || to.path === '/signup') {
-       return navigateTo(`${protocol}://manage.${rootHost}`, { external: true })
+       if (user.value.role === 'ORGANIZER') {
+         return navigateTo(`${protocol}://manage.${rootHost}`, { external: true })
+       } else {
+         return navigateTo('/')
+       }
     }
   }
 })
