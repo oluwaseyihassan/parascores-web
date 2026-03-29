@@ -8,7 +8,6 @@ definePageMeta({
 
 const route = useRoute()
 const tournamentId = route.params.tournamentId as string
-const limit = parseInt(route.query.limit as string) || 50
 
 // Theme (injected from widget layout)
 const isDark = inject<Ref<boolean>>('widgetIsDark', ref(true))
@@ -55,7 +54,7 @@ const fetchData = async () => {
       } else if (Array.isArray(fixturesData)) {
         allFixtures = fixturesData
       }
-      fixtures.value = allFixtures.slice(0, limit)
+      fixtures.value = allFixtures
     }
   } catch (e: any) {
     error.value = e.message || 'Failed to load tournament data'
@@ -158,69 +157,65 @@ function formatDate(dateStr?: string | null) {
 </script>
 
 <template>
-  <div class="max-w-xl mx-auto px-2 py-4">
-    <!-- Loading -->
+  <div class="max-w-xl mx-auto px-2 py-4 font-sans">
     <div v-if="loading" class="flex items-center justify-center py-16">
       <div class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
     </div>
-
-    <!-- Error -->
-    <div v-else-if="error" class="text-center py-16 text-red-400">
-      <p class="text-sm">{{ error }}</p>
+    <div v-else-if="error" class="text-center py-16">
+      <p class="text-sm bg-red-500/10 text-red-500 font-medium inline-block px-4 py-2 rounded-lg border border-red-500/20">{{ error }}</p>
     </div>
 
-    <!-- Content -->
     <div v-else>
-      <!-- Tournament Header -->
-      <div :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white shadow-sm'" class="rounded-xl mb-4 overflow-hidden">
-        <div class="flex items-center gap-3 px-4 py-3.5">
-          <div :class="isDark ? 'bg-gray-800' : 'bg-gray-100'" class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
+      <div :class="isDark ? 'bg-zinc-900 border border-white/5 shadow-[0_0_15px_rgba(0,0,0,0.5)]' : 'bg-white shadow-sm border border-black/5'" class="rounded-2xl mb-5 overflow-hidden backdrop-blur-sm relative">
+        <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none"></div>
+        <div class="flex items-center gap-4 px-5 py-4 relative z-10">
+          <div :class="isDark ? 'bg-zinc-800 border-white/10' : 'bg-gray-100 border-black/5'" class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 shadow-inner border">
             <img v-if="tournament?.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" />
-            <span v-else class="flex items-center justify-center w-full h-full text-xs font-bold text-gray-500">
+            <span v-else class="flex items-center justify-center w-full h-full text-[15px] font-bold bg-gradient-to-br from-zinc-400 to-zinc-600 bg-clip-text text-transparent">
               {{ (tournament?.name || 'T').charAt(0) }}
             </span>
           </div>
           <div class="flex-1 min-w-0">
-            <h2 :class="isDark ? 'text-white' : 'text-gray-900'" class="text-[15px] font-bold truncate">{{ tournament?.name }}</h2>
-            <p class="text-[11px] text-gray-500">
-              {{ tournament?.type?.replace(/_/g, ' ') }} · {{ fixtures.length }} fixtures
-              <span v-if="hasLiveFixtures" class="ml-1 text-red-400 inline-flex items-center gap-1">
-                <span class="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse inline-block"></span>
-                Live
+            <h2 :class="isDark ? 'text-white' : 'text-gray-900'" class="text-[16px] font-extrabold truncate tracking-tight">{{ tournament?.name }}</h2>
+            <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-500">{{ tournament?.type?.replace(/_/g, ' ') }}</span>
+              <span class="w-1 h-1 rounded-full bg-gray-500/50"></span>
+              <span class="text-[12px] font-medium text-gray-500">{{ fixtures.length }} fixtures</span>
+              <span v-if="hasLiveFixtures" class="ml-2 text-[10px] font-bold text-red-500 flex items-center gap-1.5 px-1.5 py-0.5 bg-red-500/10 rounded-md tracking-wider">
+                <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span>
+                LIVE
               </span>
-            </p>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Fixtures grouped by round -->
-      <div v-if="fixtures.length > 0" class="space-y-3">
-        <!-- Group Stage label for hybrid -->
-        <div v-if="isHybrid && groupStageFixtures.length > 0" class="flex items-center gap-2 px-1">
-          <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-          <span class="text-[11px] font-semibold uppercase tracking-wider" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Group Stage</span>
+      <div v-if="fixtures.length > 0" class="space-y-4">
+        <div v-if="isHybrid && groupStageFixtures.length > 0" class="flex items-center gap-2.5 px-2 mb-1">
+          <div class="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+          <span class="text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-zinc-400' : 'text-gray-500'">Group Stage</span>
         </div>
 
-        <div v-for="round in sortedRounds" :key="round" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white shadow-sm'" class="rounded-xl overflow-hidden">
-          <!-- Round Header (clickable) -->
+        <div v-for="round in sortedRounds" :key="round" :class="isDark ? 'bg-zinc-900/80 border border-white/5' : 'bg-white border border-black/5'" class="rounded-2xl overflow-hidden backdrop-blur-md shadow-sm">
           <button
             @click="toggleRound(round)"
-            :class="[isDark ? 'border-white/[0.06]' : 'border-gray-100', collapsedRounds.has(round) ? 'border-b-0' : 'border-b']"
-            class="w-full flex items-center justify-between px-4 py-2.5 cursor-pointer select-none"
+            :class="[isDark ? 'hover:bg-white/5' : 'hover:bg-black/[0.02]', collapsedRounds.has(round) ? 'border-transparent' : isDark ? 'border-white/5' : 'border-black/5']"
+            class="w-full flex items-center justify-between px-5 py-3.5 cursor-pointer select-none border-b transition-colors"
           >
-            <h3 :class="isDark ? 'text-gray-400' : 'text-gray-500'" class="text-[12px] font-semibold uppercase tracking-wide">
+            <h3 :class="isDark ? 'text-zinc-300' : 'text-gray-700'" class="text-xs font-bold uppercase tracking-widest text-left">
               {{ groupedByRound[round]?.name }}
             </h3>
-            <svg
-              class="w-3.5 h-3.5 transition-transform duration-200"
-              :class="[collapsedRounds.has(round) ? '-rotate-90' : 'rotate-0', isDark ? 'text-gray-500' : 'text-gray-400']"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
+            <div :class="[isDark ? 'bg-white/5 text-zinc-400' : 'bg-black/5 text-gray-500']" class="p-1 rounded-full flex-shrink-0 ml-3">
+              <svg
+                class="w-3.5 h-3.5 transition-transform duration-300"
+                :class="[collapsedRounds.has(round) ? '-rotate-90' : 'rotate-0']"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </button>
 
-          <!-- Fixtures in this round (collapsible) -->
           <div
             class="round-content"
             :class="{ collapsed: collapsedRounds.has(round) }"
@@ -228,68 +223,63 @@ function formatDate(dateStr?: string | null) {
             <div
               v-for="(fixture, i) in groupedByRound[round]?.fixtures"
               :key="fixture.id"
-              class="fixture-row"
-              :class="{ [isDark ? 'border-t border-white/[0.06]' : 'border-t border-gray-100']: i > 0 }"
+              class="fixture-row relative group"
+              :class="{ [isDark ? 'border-t border-white/5' : 'border-t border-black/5']: i > 0 }"
             >
-              <div class="flex items-center px-4 py-3">
-                <!-- Home Team -->
-                <div class="flex-1 flex items-center justify-end gap-2.5 min-w-0">
-                  <span :class="isDark ? 'text-gray-200' : 'text-gray-800'" class="text-[13px] font-medium truncate text-right">
+              <div class="absolute inset-y-0 left-0 w-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+              
+              <div class="flex items-stretch px-5 py-3.5 relative z-10 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-black/[0.015]'">
+                <div class="flex-1 flex items-center justify-end gap-3 min-w-0">
+                  <span :class="isDark ? 'text-zinc-200 group-hover:text-white' : 'text-gray-800 group-hover:text-black'" class="text-[14px] font-semibold truncate text-right transition-colors">
                     {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                   </span>
-                  <div :class="isDark ? 'bg-gray-800' : 'bg-gray-100'" class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                  <div :class="isDark ? 'bg-gradient-to-br from-zinc-700 to-zinc-800 border-white/10' : 'bg-gradient-to-br from-gray-100 to-gray-200 border-black/5'" class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 shadow-sm border">
                     <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
-                    <span v-else class="flex items-center justify-center w-full h-full text-[10px] font-bold text-gray-500">
+                    <span v-else class="flex items-center justify-center w-full h-full text-[11px] font-bold text-zinc-400">
                       {{ (fixture.homeTeam?.customName || 'H').charAt(0) }}
                     </span>
                   </div>
                 </div>
 
-                <!-- Center: Score or Time -->
-                <div class="w-20 flex-shrink-0 flex flex-col items-center justify-center mx-2">
-                  <!-- Live -->
+                <div class="w-24 flex-shrink-0 flex flex-col items-center justify-center mx-1">
                   <template v-if="fixture.status === FixtureStatus.LIVE">
-                    <div class="flex items-center gap-1.5">
-                      <span :class="isDark ? 'text-white' : 'text-gray-900'" class="text-base font-bold">{{ fixture.homeScore ?? 0 }}</span>
-                      <span class="text-[10px] text-gray-600">-</span>
-                      <span class="text-base font-bold text-white">{{ fixture.awayScore ?? 0 }}</span>
+                    <div class="flex items-center gap-2 mb-0.5">
+                      <span class="text-[17px] font-black text-emerald-500 tabular-nums">{{ fixture.homeScore ?? 0 }}</span>
+                      <span class="text-xs font-bold text-zinc-600">-</span>
+                      <span class="text-[17px] font-black text-emerald-500 tabular-nums">{{ fixture.awayScore ?? 0 }}</span>
                     </div>
-                    <span class="text-[9px] font-semibold text-red-400 mt-0.5 flex items-center gap-1">
-                      <span class="w-1 h-1 bg-red-400 rounded-full animate-pulse"></span>
+                    <span class="text-[9px] font-bold text-red-500 flex items-center gap-1.5 px-1.5 py-0.5 bg-red-500/10 rounded tracking-wider">
+                      <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
                       LIVE
                     </span>
                   </template>
-                  <!-- Completed -->
                   <template v-else-if="fixture.status === FixtureStatus.COMPLETED">
-                    <div class="flex items-center gap-1.5">
-                      <span :class="isDark ? 'text-white' : 'text-gray-900'" class="text-base font-bold">{{ fixture.homeScore ?? 0 }}</span>
-                      <span class="text-[10px] text-gray-600">-</span>
-                      <span :class="isDark ? 'text-white' : 'text-gray-900'" class="text-base font-bold">{{ fixture.awayScore ?? 0 }}</span>
+                    <div class="flex items-center gap-2 mb-0.5">
+                      <span :class="isDark ? 'text-white' : 'text-gray-900'" class="text-[17px] font-black tabular-nums">{{ fixture.homeScore ?? 0 }}</span>
+                      <span class="text-xs font-bold text-zinc-500">-</span>
+                      <span :class="isDark ? 'text-white' : 'text-gray-900'" class="text-[17px] font-black tabular-nums">{{ fixture.awayScore ?? 0 }}</span>
                     </div>
-                    <span class="text-[9px] font-medium text-gray-500 mt-0.5">FT</span>
+                    <span class="text-[10px] font-bold text-zinc-500 tracking-wider">FT</span>
                   </template>
-                  <!-- Cancelled -->
                   <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
-                    <span class="text-[10px] font-medium text-gray-600">CANC</span>
+                    <span class="text-[10px] font-bold text-red-400 tracking-widest bg-red-500/10 px-2 py-0.5 rounded">CANC</span>
                   </template>
-                  <!-- Scheduled / Default -->
                   <template v-else>
-                    <span v-if="fixture.startTime" :class="isDark ? 'text-gray-300' : 'text-gray-700'" class="text-[13px] font-semibold">
+                    <span v-if="fixture.startTime" :class="isDark ? 'text-zinc-300 group-hover:text-emerald-400' : 'text-gray-600 group-hover:text-emerald-600'" class="text-[13px] font-bold tracking-tight transition-colors">
                       {{ formatTime(fixture.startTime) }}
                     </span>
-                    <span v-else class="text-[11px] font-medium text-gray-500">vs</span>
+                    <span v-else class="text-[11px] font-bold text-zinc-500">VS</span>
                   </template>
                 </div>
 
-                <!-- Away Team -->
-                <div class="flex-1 flex items-center gap-2.5 min-w-0">
-                  <div :class="isDark ? 'bg-gray-800' : 'bg-gray-100'" class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                <div class="flex-1 flex items-center gap-3 min-w-0">
+                  <div :class="isDark ? 'bg-gradient-to-br from-zinc-700 to-zinc-800 border-white/10' : 'bg-gradient-to-br from-gray-100 to-gray-200 border-black/5'" class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 shadow-sm border">
                     <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
-                    <span v-else class="flex items-center justify-center w-full h-full text-[10px] font-bold text-gray-500">
+                    <span v-else class="flex items-center justify-center w-full h-full text-[11px] font-bold text-zinc-400">
                       {{ (fixture.awayTeam?.customName || 'A').charAt(0) }}
                     </span>
                   </div>
-                  <span :class="isDark ? 'text-gray-200' : 'text-gray-800'" class="text-[13px] font-medium truncate">
+                  <span :class="isDark ? 'text-zinc-200 group-hover:text-white' : 'text-gray-800 group-hover:text-black'" class="text-[14px] font-semibold truncate transition-colors">
                     {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                   </span>
                 </div>
@@ -298,29 +288,30 @@ function formatDate(dateStr?: string | null) {
           </div>
         </div>
 
-        <!-- Knockout Stage for hybrid tournaments -->
         <template v-if="isHybrid && knockoutStageFixtures.length > 0">
-          <div class="flex items-center gap-2 px-1 mt-2">
-            <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-            <span class="text-[11px] font-semibold uppercase tracking-wider" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Knockout Stage</span>
+          <div class="flex items-center gap-2.5 px-2 mt-4 mb-1">
+            <div class="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>
+            <span class="text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-zinc-400' : 'text-gray-500'">Knockout Stage</span>
           </div>
 
-          <div v-for="round in sortedKnockoutRounds" :key="'ko-' + round" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white shadow-sm'" class="rounded-xl overflow-hidden">
+          <div v-for="round in sortedKnockoutRounds" :key="'ko-' + round" :class="isDark ? 'bg-zinc-900/80 border border-white/5' : 'bg-white border border-black/5'" class="rounded-2xl overflow-hidden backdrop-blur-md shadow-sm">
             <button
               @click="toggleRound('ko::' + round)"
-              :class="[isDark ? 'border-white/[0.06]' : 'border-gray-100', collapsedRounds.has('ko::' + round) ? 'border-b-0' : 'border-b']"
-              class="w-full flex items-center justify-between px-4 py-2.5 cursor-pointer select-none"
+              :class="[isDark ? 'hover:bg-white/5' : 'hover:bg-black/[0.02]', collapsedRounds.has('ko::' + round) ? 'border-transparent' : isDark ? 'border-white/5' : 'border-black/5']"
+              class="w-full flex items-center justify-between px-5 py-3.5 cursor-pointer select-none border-b transition-colors"
             >
-              <h3 :class="isDark ? 'text-gray-400' : 'text-gray-500'" class="text-[12px] font-semibold uppercase tracking-wide">
+              <h3 :class="isDark ? 'text-zinc-300' : 'text-gray-700'" class="text-xs font-bold uppercase tracking-widest text-left">
                 {{ knockoutGroupedByRound[round]?.name }}
               </h3>
-              <svg
-                class="w-3.5 h-3.5 transition-transform duration-200"
-                :class="[collapsedRounds.has('ko::' + round) ? '-rotate-90' : 'rotate-0', isDark ? 'text-gray-500' : 'text-gray-400']"
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
+              <div :class="[isDark ? 'bg-white/5 text-zinc-400' : 'bg-black/5 text-gray-500']" class="p-1 rounded-full flex-shrink-0 ml-3">
+                <svg
+                  class="w-3.5 h-3.5 transition-transform duration-300"
+                  :class="[collapsedRounds.has('ko::' + round) ? '-rotate-90' : 'rotate-0']"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </button>
 
             <div
@@ -330,61 +321,63 @@ function formatDate(dateStr?: string | null) {
               <div
                 v-for="(fixture, i) in knockoutGroupedByRound[round]?.fixtures"
                 :key="fixture.id"
-                class="fixture-row"
-                :class="{ [isDark ? 'border-t border-white/[0.06]' : 'border-t border-gray-100']: i > 0 }"
+                class="fixture-row relative group"
+                :class="{ [isDark ? 'border-t border-white/5' : 'border-t border-black/5']: i > 0 }"
               >
-                <div class="flex items-center px-4 py-3">
-                  <div class="flex-1 flex items-center justify-end gap-2.5 min-w-0">
-                    <span :class="isDark ? 'text-gray-200' : 'text-gray-800'" class="text-[13px] font-medium truncate text-right">
+                <div class="absolute inset-y-0 left-0 w-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+
+                <div class="flex items-stretch px-5 py-3.5 relative z-10 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-black/[0.015]'">
+                  <div class="flex-1 flex items-center justify-end gap-3 min-w-0">
+                    <span :class="isDark ? 'text-zinc-200 group-hover:text-white' : 'text-gray-800 group-hover:text-black'" class="text-[14px] font-semibold truncate text-right transition-colors">
                       {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                     </span>
-                    <div :class="isDark ? 'bg-gray-800' : 'bg-gray-100'" class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                    <div :class="isDark ? 'bg-gradient-to-br from-zinc-700 to-zinc-800 border-white/10' : 'bg-gradient-to-br from-gray-100 to-gray-200 border-black/5'" class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 shadow-sm border">
                       <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
-                      <span v-else class="flex items-center justify-center w-full h-full text-[10px] font-bold text-gray-500">
+                      <span v-else class="flex items-center justify-center w-full h-full text-[11px] font-bold text-zinc-400">
                         {{ (fixture.homeTeam?.customName || 'H').charAt(0) }}
                       </span>
                     </div>
                   </div>
 
-                  <div class="w-20 flex-shrink-0 flex flex-col items-center justify-center mx-2">
+                  <div class="w-24 flex-shrink-0 flex flex-col items-center justify-center mx-1">
                     <template v-if="fixture.status === FixtureStatus.LIVE">
-                      <div class="flex items-center gap-1.5">
-                        <span :class="isDark ? 'text-white' : 'text-gray-900'" class="text-base font-bold">{{ fixture.homeScore ?? 0 }}</span>
-                        <span class="text-[10px] text-gray-600">-</span>
-                        <span class="text-base font-bold text-white">{{ fixture.awayScore ?? 0 }}</span>
+                      <div class="flex items-center gap-2 mb-0.5">
+                        <span class="text-[17px] font-black text-emerald-500 tabular-nums">{{ fixture.homeScore ?? 0 }}</span>
+                        <span class="text-xs font-bold text-zinc-600">-</span>
+                        <span class="text-[17px] font-black text-emerald-500 tabular-nums">{{ fixture.awayScore ?? 0 }}</span>
                       </div>
-                      <span class="text-[9px] font-semibold text-red-400 mt-0.5 flex items-center gap-1">
-                        <span class="w-1 h-1 bg-red-400 rounded-full animate-pulse"></span>
+                      <span class="text-[9px] font-bold text-red-500 flex items-center gap-1.5 px-1.5 py-0.5 bg-red-500/10 rounded tracking-wider">
+                        <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
                         LIVE
                       </span>
                     </template>
                     <template v-else-if="fixture.status === FixtureStatus.COMPLETED">
-                      <div class="flex items-center gap-1.5">
-                        <span :class="isDark ? 'text-white' : 'text-gray-900'" class="text-base font-bold">{{ fixture.homeScore ?? 0 }}</span>
-                        <span class="text-[10px] text-gray-600">-</span>
-                        <span :class="isDark ? 'text-white' : 'text-gray-900'" class="text-base font-bold">{{ fixture.awayScore ?? 0 }}</span>
+                      <div class="flex items-center gap-2 mb-0.5">
+                        <span :class="isDark ? 'text-white' : 'text-gray-900'" class="text-[17px] font-black tabular-nums">{{ fixture.homeScore ?? 0 }}</span>
+                        <span class="text-xs font-bold text-zinc-600">-</span>
+                        <span :class="isDark ? 'text-white' : 'text-gray-900'" class="text-[17px] font-black tabular-nums">{{ fixture.awayScore ?? 0 }}</span>
                       </div>
-                      <span class="text-[9px] font-medium text-gray-500 mt-0.5">FT</span>
+                      <span class="text-[10px] font-bold text-zinc-500 tracking-wider">FT</span>
                     </template>
                     <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
-                      <span class="text-[10px] font-medium text-gray-600">CANC</span>
+                      <span class="text-[10px] font-bold text-red-400 tracking-widest bg-red-500/10 px-2 py-0.5 rounded">CANC</span>
                     </template>
                     <template v-else>
-                      <span v-if="fixture.startTime" :class="isDark ? 'text-gray-300' : 'text-gray-700'" class="text-[13px] font-semibold">
+                      <span v-if="fixture.startTime" :class="isDark ? 'text-zinc-300 group-hover:text-emerald-400' : 'text-gray-600 group-hover:text-emerald-600'" class="text-[13px] font-bold tracking-tight transition-colors">
                         {{ formatTime(fixture.startTime) }}
                       </span>
-                      <span v-else class="text-[11px] font-medium text-gray-500">vs</span>
+                      <span v-else class="text-[11px] font-bold text-zinc-500">VS</span>
                     </template>
                   </div>
 
-                  <div class="flex-1 flex items-center gap-2.5 min-w-0">
-                    <div :class="isDark ? 'bg-gray-800' : 'bg-gray-100'" class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                  <div class="flex-1 flex items-center gap-3 min-w-0">
+                    <div :class="isDark ? 'bg-gradient-to-br from-zinc-700 to-zinc-800 border-white/10' : 'bg-gradient-to-br from-gray-100 to-gray-200 border-black/5'" class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 shadow-sm border">
                       <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
-                      <span v-else class="flex items-center justify-center w-full h-full text-[10px] font-bold text-gray-500">
+                      <span v-else class="flex items-center justify-center w-full h-full text-[11px] font-bold text-zinc-400">
                         {{ (fixture.awayTeam?.customName || 'A').charAt(0) }}
                       </span>
                     </div>
-                    <span :class="isDark ? 'text-gray-200' : 'text-gray-800'" class="text-[13px] font-medium truncate">
+                    <span :class="isDark ? 'text-zinc-200 group-hover:text-white' : 'text-gray-800 group-hover:text-black'" class="text-[14px] font-semibold truncate transition-colors">
                       {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                     </span>
                   </div>
@@ -395,25 +388,21 @@ function formatDate(dateStr?: string | null) {
         </template>
       </div>
 
-      <!-- Empty state -->
-      <div v-if="fixtures.length === 0" class="text-center py-16">
-        <p class="text-sm text-gray-500">No fixtures found for this tournament.</p>
+      <div v-if="fixtures.length === 0" :class="isDark ? 'bg-zinc-900/30 border-white/5' : 'bg-gray-50 border-black/5'" class="text-center py-20 rounded-2xl border backdrop-blur-sm">
+        <div :class="isDark ? 'bg-white/5' : 'bg-black/5'" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+          <svg class="w-6 h-6 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        </div>
+        <p class="text-[13px] font-medium text-zinc-400">No fixtures found for this tournament.</p>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.fixture-row {
-  transition: background-color 0.15s ease;
-}
-.fixture-row:hover {
-  background-color: rgba(128, 128, 128, 0.06);
-}
 .round-content {
-  max-height: 2000px;
+  max-height: 2500px;
   overflow: hidden;
-  transition: max-height 0.35s ease, opacity 0.25s ease;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
   opacity: 1;
 }
 .round-content.collapsed {
