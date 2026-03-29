@@ -128,26 +128,6 @@ export const useParticipantStore = defineStore('participant', () => {
     }
   }
 
-  // // Fetch players for a participant
-  // async function fetchPlayers(tournamentId: string, participantId: string) {
-  //   // We don't set global loading here to avoid full page spinner when just opening a modal
-  //   try {
-  //     const response = await $api<ApiResponse<any[]>>(`/players?participantId=${participantId}`, {
-  //       method: 'GET',
-  //     })
-  //     if (response.data) {
-  //       const index = participants.value.findIndex(p => p.id === participantId)
-  //       if (index !== -1 && participants.value[index]) {
-  //         participants.value[index]!.players = response.data
-  //       }
-  //     }
-  //     return response
-  //   } catch (err: any) {
-  //     console.error('Fetch players failed:', err)
-  //     throw err
-  //   }
-  // }
-
   // Fetch players for a participant independently
   async function fetchParticipantPlayers(participantId: string) {
     try {
@@ -243,12 +223,41 @@ export const useParticipantStore = defineStore('participant', () => {
     }
   }
 
+  // Update player status (approve/reject)
+  async function updatePlayerStatus(participantId: string, playerId: string, status: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<any>>(`/participants/${participantId}/players/${playerId}/status`, {
+        method: 'PATCH',
+        body: { status },
+      })
+      if (response.data) {
+        const pIndex = participants.value.findIndex(p => p.id === participantId)
+        if (pIndex !== -1 && participants.value[pIndex]?.players) {
+          const players = participants.value[pIndex]!.players!
+          const playerIdx = players.findIndex((p: any) => p.id === playerId)
+          if (playerIdx !== -1) {
+            players[playerIdx] = { ...players[playerIdx], ...response.data }
+          }
+        }
+      }
+      return response
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update player status'
+      console.error('Update player status failed:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Remove a player
   async function removePlayer(participantId: string, playerId: string) {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<any>>(`/players/${playerId}`, {
+      const response = await $api<ApiResponse<any>>(`/participants/${participantId}/players/${playerId}`, {
         method: 'DELETE',
       })
       const pIndex = participants.value.findIndex(p => p.id === participantId)
@@ -287,7 +296,7 @@ export const useParticipantStore = defineStore('participant', () => {
     addPlayersBulk,
     updatePlayer,
     removePlayer,
-    // fetchPlayers,
+    updatePlayerStatus,
     fetchParticipantPlayers,
     addParticipantsBulk,
     clearParticipants,
