@@ -31,6 +31,12 @@ export enum ParticipantStatus {
   DISQUALIFIED = 'DISQUALIFIED'
 }
 
+export enum PlayerStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
+}
+
 export enum FixtureStatus {
   SCHEDULED = 'SCHEDULED',
   LIVE = 'LIVE',
@@ -111,6 +117,7 @@ export interface Tournament {
   registrationClose?: string | null
   autoApprove: boolean
   isPinned?: boolean
+  pendingRequestsCount?: number
 
   // Advanced Knockout Options
   twoLegsKnockout?: boolean
@@ -272,10 +279,13 @@ export interface Team {
 export interface Player {
   id: string
   participantId: string
+  userId?: string | null
   
   name: string
   number?: number | null
   position?: string | null
+  avatarUrl?: string | null
+  status: PlayerStatus
   
   created_at: string
   updated_at: string
@@ -343,4 +353,28 @@ export interface PlayerStatItem {
 export interface PlayerStatsResponse {
   topScorers: PlayerStatItem[]
   topAssists: PlayerStatItem[]
+}
+
+export interface TeamInvite {
+  id: string
+  token: string
+  participant_id: string
+  tournament_id: string
+  createdById: string
+  maxUses?: number | null
+  usedCount: number
+  expiresAt?: string | null
+  isActive: boolean
+  created_at: string
+  updated_at: string
+  
+  // Computed by API
+  isValid?: boolean
+  isExpired?: boolean
+  isMaxedOut?: boolean
+
+  // Relations
+  participant?: Participant | null
+  tournament?: Tournament | null
+  createdBy?: Partial<User> | null
 }
