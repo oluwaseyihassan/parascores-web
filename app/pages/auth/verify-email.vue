@@ -36,7 +36,7 @@
             variant="green"
             size="lg"
             block
-            @click="navigateTo('/login')"
+            @click="navigateTo({ path: '/login', query: route.query })"
           >
             Go to Login
           </UButton>
@@ -55,13 +55,13 @@
               variant="green"
               size="lg"
               block
-              @click="navigateTo('/signup')"
+              @click="navigateTo({ path: '/signup', query: route.query })"
             >
               Back to Sign Up
             </UButton>
             <p class="text-center text-muted text-sm">
               Need a new verification link?
-              <NuxtLink to="/signup" class="text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">
+              <NuxtLink :to="{ path: '/signup', query: route.query }" class="text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">
                 Sign up again
               </NuxtLink>
             </p>
@@ -80,7 +80,7 @@
             variant="green"
             size="lg"
             block
-            @click="navigateTo('/signup')"
+            @click="navigateTo({ path: '/signup', query: route.query })"
           >
             Back to Sign Up
           </UButton>
