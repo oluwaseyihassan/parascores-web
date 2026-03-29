@@ -69,7 +69,7 @@
                 color="neutral"
                 size="lg"
                 block
-                @click="navigateTo('/login')"
+                @click="navigateTo({ path: '/login', query: $route.query })"
               >
                 Go to Login
               </UButton>
@@ -216,7 +216,7 @@
           <!-- Login Link -->
           <p class="text-center text-muted text-sm mt-6">
             Already have an account?
-            <NuxtLink to="/login" class="text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">
+            <NuxtLink :to="{ path: '/login', query: $route.query }" class="text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">
               Sign in
             </NuxtLink>
           </p>
