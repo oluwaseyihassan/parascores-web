@@ -169,7 +169,7 @@ async function signup(email: string, password: string, name: string) {
   }
 
   
-  async function updateUser(updates: Partial<User>) {
+  const updateUser = async (updates: Partial<User>) => {
     if (!user.value?.id) return
     
     loading.value = true
@@ -184,6 +184,25 @@ async function signup(email: string, password: string, name: string) {
       return response
     } catch (error: any) {
       console.error('Update user failed:', error?.message || error)
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const upgradeToOrganizer = async (data: { organization_name: string, phone: string, organization_logo?: string }) => {
+    loading.value = true
+    try {
+      const response = await $api<ApiResponse<User>>(`/auth/upgrade-to-organizer`, {
+        method: 'POST',
+        body: data,
+      })
+      if (response.data) {
+        setUser(response.data)
+      }
+      return response
+    } catch (error: any) {
+      console.error('Upgrade to organizer failed:', error?.message || error)
       throw error
     } finally {
       loading.value = false
@@ -205,6 +224,7 @@ async function signup(email: string, password: string, name: string) {
     resendVerificationEmail,
     forgotPassword,
     resetPassword,
-    updateUser
+    updateUser,
+    upgradeToOrganizer
   }
 })
