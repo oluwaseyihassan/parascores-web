@@ -15,7 +15,64 @@ export default defineNuxtConfig({
     "@nuxtjs/color-mode",
     "@nuxtjs/i18n",
     "@nuxt/image",
+    "@vite-pwa/nuxt"
   ],
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      name: 'Parascores',
+      short_name: 'Parascores',
+      theme_color: '#000000',
+      background_color: '#000000',
+      icons: [
+        {
+          src: 'pwa-192x192.png',
+          sizes: '640x640',
+          type: 'image/png'
+        },
+        {
+          src: 'pwa-512x512.png',
+          sizes: '640x640',
+          type: 'image/png'
+        },
+        {
+          src: 'pwa-512x512.png',
+          sizes: '640x640',
+          type: 'image/png',
+          purpose: 'maskable'
+        }
+      ],
+      screenshots: [
+        {
+          src: 'images/landing/dashboard-screenshot.png',
+          sizes: '1906x921',
+          type: 'image/png',
+          form_factor: 'wide',
+          label: 'Tournament Dashboard'
+        },
+        {
+          src: 'images/landing/bracket-view.png',
+          sizes: '695x487',
+          type: 'image/png',
+          label: 'Tournament Brackets'
+        }
+      ]
+    },
+    workbox: {
+      navigateFallback: '/',
+      globPatterns: ['**/*.{js,css,html,png,svg,ico}']
+    },
+    client: {
+      installPrompt: true,
+      periodicSyncForUpdates: 3600
+    },
+    devOptions: {
+      enabled: true,
+      suppressWarnings: true,
+      navigateFallbackAllowlist: [/^\/$/],
+      type: 'module'
+    }
+  },
   icon: {
     serverBundle: {
       collections: ['heroicons']
