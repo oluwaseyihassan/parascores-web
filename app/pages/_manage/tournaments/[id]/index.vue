@@ -546,8 +546,6 @@ const cancelEditPlayer = () => {
 const handleDeletePlayer = async (playerId: string) => {
   if (!selectedParticipant.value) return
   
-  // Assuming 'openConfirmModal' is defined elsewhere, or define it here if needed
-  // const openConfirmModal = ({ title, description, confirmLabel, color, onConfirm }) => { /* ... */ }
   openConfirmModal({
     title: 'Delete Player',
     description: 'Are you sure you want to remove this player from the team?',
@@ -569,6 +567,44 @@ const handleDeletePlayer = async (playerId: string) => {
         })
       } finally {
         deletingPlayerId.value = null
+      }
+    }
+  })
+}
+
+const pendingPlayers = computed(() => {
+  return selectedParticipant.value?.players?.filter(p => p.status === 'PENDING') || []
+})
+
+const approvedPlayers = computed(() => {
+  return selectedParticipant.value?.players?.filter(p => p.status === 'APPROVED') || []
+})
+
+const handleApprovePlayer = async (playerId: string) => {
+  if (!selectedParticipant.value) return
+  try {
+    await participantStore.updatePlayerStatus(selectedParticipant.value.id, playerId, 'APPROVED')
+    useToast().add({ title: 'Player approved successfully', color: 'success' })
+  } catch (error: any) {
+    const message = error.data?.message || error.message || 'Unknown error'
+    useToast().add({ title: 'Failed to approve player', description: message, color: 'error' })
+  }
+}
+
+const handleRejectPlayer = async (playerId: string) => {
+  if (!selectedParticipant.value) return
+  openConfirmModal({
+    title: 'Reject Player',
+    description: 'Are you sure you want to reject this join request?',
+    confirmLabel: 'Reject',
+    color: 'error',
+    onConfirm: async () => {
+      try {
+        await participantStore.updatePlayerStatus(selectedParticipant.value!.id, playerId, 'REJECTED')
+        useToast().add({ title: 'Request rejected', color: 'success' })
+      } catch (error: any) {
+        const message = error.data?.message || error.message || 'Unknown error'
+        useToast().add({ title: 'Failed to reject request', description: message, color: 'error' })
       }
     }
   })
@@ -1147,6 +1183,52 @@ const manageModes = reactive({
   socials: false
 })
 
+// Invite Link Management
+const showInviteModal = ref(false)
+const inviteLink = ref('')
+const inviteLoading = ref(false)
+const inviteParticipant = ref<Participant | null>(null)
+
+const generateInviteLink = async (participant: Participant) => {
+  inviteParticipant.value = participant
+  inviteLoading.value = true
+  showInviteModal.value = true
+  try {
+    const response = await $api<{success: boolean, data: any}>('/team-invites', {
+      method: 'POST',
+      body: {
+        participantId: participant.id,
+        tournamentId: tournament.value?.id || tournamentId.value,
+      },
+    })
+    if (response.data) {
+      const host = import.meta.client ? window.location.host.replace(/^manage\./, '') : 'parascores.com'
+      const protocol = import.meta.dev ? 'http' : 'https'
+      const baseUrl = `${protocol}://${host}`
+      inviteLink.value = `${baseUrl}/join/${response.data.token}`
+    }
+  } catch (err: any) {
+    useToast().add({
+      title: 'Failed to generate invite link',
+      description: err?.data?.message || err?.message || 'Unknown error',
+      color: 'error',
+    })
+    showInviteModal.value = false
+  } finally {
+    inviteLoading.value = false
+  }
+}
+
+const copyInviteLink = async () => {
+  if (!import.meta.client) return
+  try {
+    await navigator.clipboard.writeText(inviteLink.value)
+    useToast().add({ title: 'Invite link copied!', color: 'success' })
+  } catch {
+    useToast().add({ title: 'Failed to copy link', color: 'error' })
+  }
+}
+
 const openAddVenueModal = () => {
   newVenueName.value = ''
   addVenueError.value = null
@@ -1199,7 +1281,18 @@ const handleRemoveVenue = (venueId: string, venueName: string) => {
   })
 }
 
+// Pending requests calculation
+const totalPendingPlayers = computed(() => {
+  if (!participants.value) return 0
+  return participants.value.reduce((total, p) => {
+    const pendingCount = p.players?.filter(pl => pl.status === 'PENDING').length || 0
+    return total + pendingCount
+  }, 0)
+})
+
 // Tab configuration
+// Tab management
+const activeTab = ref('0')
 const tabItems = computed(() => {
   const items = [
     {
@@ -1210,7 +1303,8 @@ const tabItems = computed(() => {
     {
       slot: 'participants',
       label: 'Participants',
-      icon: 'i-heroicons-user-group'
+      icon: 'i-heroicons-user-group',
+      badge: totalPendingPlayers.value > 0 ? totalPendingPlayers.value : undefined
     },
     {
       slot: 'fixtures',
@@ -1709,11 +1803,64 @@ const copyTournamentLink = async () => {
         </template>
       </UModal>
 
+      <!-- Invite Link Modal -->
+      <UModal v-model:open="showInviteModal" :ui="{ content: 'sm:max-w-md' }">
+        <template #content>
+          <UCard class="ring-0 shadow-none">
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
+                  Invite Link
+                </h3>
+                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showInviteModal = false" />
+              </div>
+            </template>
+
+            <div class="py-2">
+              <!-- Loading -->
+              <div v-if="inviteLoading" class="flex flex-col items-center py-8">
+                <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-gray-400 mb-3" />
+                <p class="text-sm text-gray-500">Generating invite link...</p>
+              </div>
+
+              <!-- Link Ready -->
+              <div v-else-if="inviteLink" class="space-y-4">
+                <p class="text-sm text-gray-500">
+                  Share this link with players to invite them to join
+                  <strong class="text-gray-900 dark:text-white">{{ inviteParticipant?.customName }}</strong>.
+                </p>
+
+                <div class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <span class="text-xs text-gray-600 dark:text-gray-300 truncate flex-1 select-all font-mono">
+                    {{ inviteLink }}
+                  </span>
+                  <UButton
+                    color="primary"
+                    variant="soft"
+                    icon="i-heroicons-clipboard-document"
+                    size="xs"
+                    @click="copyInviteLink"
+                  />
+                </div>
+
+                <UAlert
+                  color="info"
+                  variant="subtle"
+                  icon="i-heroicons-information-circle"
+                  title="Players will need to log in or create an account to join the team."
+                />
+              </div>
+            </div>
+          </UCard>
+        </template>
+      </UModal>
+
       <!-- Content Container -->
       <div class="max-w-4xl mx-auto w-full">
         <!-- Main Content -->
         <div class="w-full">
           <UTabs 
+            v-model="activeTab"
             :items="tabItems" 
             class="w-full"
             :ui="{ 
@@ -1723,6 +1870,23 @@ const copyTournamentLink = async () => {
           >
             <!-- Overview Tab -->
             <template #overview>
+              <!-- Pending Requests Alert -->
+              <UAlert 
+                v-if="totalPendingPlayers > 0"
+                color="warning" 
+                variant="subtle"
+                icon="i-heroicons-exclamation-circle"
+                class="mt-4 border border-warning-200 dark:border-warning-900/50"
+                :title="`${totalPendingPlayers} Pending Join Request${totalPendingPlayers > 1 ? 's' : ''}`"
+                description="Players are waiting for your approval to join their teams. Review them in the Participants tab."
+              >
+                <template #actions>
+                  <UButton size="xs" color="warning" @click="activeTab = '1'">
+                    Review Now
+                  </UButton>
+                </template>
+              </UAlert>
+
               <UCard v-if="tournament.description" class="mt-4">
                 <template #header>
                   <div class="flex items-center gap-2">
@@ -2116,17 +2280,18 @@ const copyTournamentLink = async () => {
                     <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
                       <UChip
                         v-if="tournament?.participantType === ParticipantType.TEAM"
-                        :show="!!participant.players?.length"
-                        :text="participant.players?.length"
+                        :show="!!(participant.players?.filter(p => p.status === 'PENDING').length || 0)"
+                        :text="participant.players?.filter(p => p.status === 'PENDING').length"
                         size="xl"
                         color="error"
                         inset
                       >
                         <UButton 
                           size="xs" 
-                          color="neutral" 
-                          variant="ghost" 
+                          :color="participant.players?.some(p => p.status === 'PENDING') ? 'error' : 'neutral'" 
+                          :variant="participant.players?.some(p => p.status === 'PENDING') ? 'soft' : 'ghost'" 
                           icon="i-heroicons-users"
+                          :label="participant.players?.length ? String(participant.players.length) : undefined"
                           @click="openManagePlayers(participant)"
                           title="Manage Players"
                         />
@@ -2134,6 +2299,7 @@ const copyTournamentLink = async () => {
                       <UDropdownMenu 
                         :items="[[
                           { label: 'Edit', icon: 'i-heroicons-pencil-square', onSelect: () => openEditParticipantModal(participant) },
+                          ...(tournament?.participantType === ParticipantType.TEAM ? [{ label: 'Invite Link', icon: 'i-heroicons-link', onSelect: () => generateInviteLink(participant) }] : []),
                           { label: 'Delete', icon: 'i-heroicons-trash', onSelect: () => removeParticipant(participant.id), class: 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' }
                         ]]"
                         :content="{ align: 'end' }"
@@ -2748,45 +2914,99 @@ const copyTournamentLink = async () => {
           <USeparator />
 
           <!-- Player List -->
-          <div class="space-y-2">
-            <div v-if="!selectedParticipant?.players?.length" class="text-center py-8 text-gray-400">
-              <p>No players added yet</p>
-            </div>
-            <div v-else class="space-y-2 max-h-60 overflow-y-auto pr-1">
-              <div 
-                v-for="player in selectedParticipant.players" 
-                :key="player.id"
-                class="group flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
-              >
-                <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-medium text-xs">
-                    {{ player.number || '#' }}
+          <div class="space-y-4">
+            <!-- Pending Requests -->
+            <div v-if="pendingPlayers.length > 0" class="space-y-3">
+              <h4 class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+                Pending Join Requests ({{ pendingPlayers.length }})
+              </h4>
+              <div class="space-y-2">
+                <div 
+                  v-for="player in pendingPlayers" 
+                  :key="player.id"
+                  class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-lg"
+                >
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center font-medium text-xs">
+                      ?
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900 dark:text-white">
+                        {{ player.name }}
+                      </p>
+                      <p class="text-xs text-gray-500">
+                        {{ player.position }} {{ player.number ? `• #${player.number}` : '' }}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900 dark:text-white">
-                      {{ player.name }}
-                    </p>
-                    <p class="text-xs text-gray-500">
-                      {{ player.position }}
-                    </p>
+                  <div class="flex items-center gap-2">
+                    <UButton 
+                      size="xs" 
+                      color="success" 
+                      variant="soft" 
+                      icon="i-heroicons-check"
+                      label="Approve"
+                      @click="handleApprovePlayer(player.id)"
+                    />
+                    <UButton 
+                      size="xs" 
+                      color="error" 
+                      variant="soft" 
+                      icon="i-heroicons-x-mark"
+                      label="Reject"
+                      @click="handleRejectPlayer(player.id)"
+                    />
                   </div>
                 </div>
-                <div class="flex items-center">
-                  <UDropdownMenu 
-                    :items="[[
-                      { label: 'Edit', icon: 'i-heroicons-pencil-square', onSelect: () => startEditPlayer(player) },
-                      { label: 'Delete', icon: 'i-heroicons-trash', onSelect: () => handleDeletePlayer(player.id), class: 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' }
-                    ]]"
-                    :content="{ align: 'end' }"
-                  >
-                    <UButton 
-                      color="neutral" 
-                      variant="ghost" 
-                      icon="i-heroicons-ellipsis-vertical"
-                      :loading="deletingPlayerId === player.id"
-                      class="opacity-70 flex-shrink-0"
-                    />
-                  </UDropdownMenu>
+              </div>
+              <USeparator />
+            </div>
+
+            <!-- Approved Players -->
+            <div class="space-y-2">
+              <h4 v-if="pendingPlayers.length > 0" class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Active Players ({{ approvedPlayers.length }})
+              </h4>
+              <div v-if="!approvedPlayers.length && !pendingPlayers.length" class="text-center py-8 text-gray-400">
+                <p>No players added yet</p>
+              </div>
+              <div v-else class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                <div 
+                  v-for="player in approvedPlayers" 
+                  :key="player.id"
+                  class="group flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
+                >
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-medium text-xs">
+                      {{ player.number || '#' }}
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900 dark:text-white">
+                        {{ player.name }}
+                      </p>
+                      <p class="text-xs text-gray-500">
+                        {{ player.position }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-center">
+                    <UDropdownMenu 
+                      :items="[[
+                        { label: 'Edit', icon: 'i-heroicons-pencil-square', onSelect: () => startEditPlayer(player) },
+                        { label: 'Delete', icon: 'i-heroicons-trash', onSelect: () => handleDeletePlayer(player.id), class: 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' }
+                      ]]"
+                      :content="{ align: 'end' }"
+                    >
+                      <UButton 
+                        color="neutral" 
+                        variant="ghost" 
+                        icon="i-heroicons-ellipsis-vertical"
+                        :loading="deletingPlayerId === player.id"
+                        class="opacity-70 flex-shrink-0"
+                      />
+                    </UDropdownMenu>
+                  </div>
                 </div>
               </div>
             </div>
