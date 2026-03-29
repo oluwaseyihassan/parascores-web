@@ -196,7 +196,7 @@ const state = reactive<Partial<Schema>>({
   start_date: '',
   end_date: '',
   maxParticipants: null,
-  autoApprove: true,
+  autoApprove: false,
   twoLegsKnockout: false,
   thirdPlaceMatch: false
 })
@@ -768,9 +768,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </UFormField>
 
           <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-            <div>
-              <p class="font-medium text-gray-900 dark:text-white">Auto-approve Participants</p>
-              <p class="text-sm text-gray-500">Automatically approve new registrations</p>
+            <div class="flex-1 pr-4">
+              <p class="font-medium text-gray-900 dark:text-white">Auto-approve Join Requests</p>
+              <p class="text-sm text-gray-500">When enabled, players joining via invite link are added immediately. When disabled, you must manually approve each request in the "Manage Players" section to ensure roster integrity.</p>
             </div>
             <USwitch v-model="state.autoApprove" />
           </div>
