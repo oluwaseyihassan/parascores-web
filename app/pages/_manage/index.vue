@@ -324,6 +324,17 @@ watch(loadMoreTrigger, (el) => {
           class="relative group card-fade-in bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl flex flex-col hover:border-emerald-500/50 transition-all duration-300 hover:shadow-lg dark:hover:shadow-emerald-500/10"
           :style="{ animationDelay: `${index * 75}ms` }"
         >
+          <!-- Pending Requests Badge -->
+          <div 
+            v-if="tournament.pendingRequestsCount && tournament.pendingRequestsCount > 0" 
+            class="absolute -top-2 -left-2 z-30"
+            title="Pending player join requests"
+          >
+            <UBadge color="error" variant="solid" size="md" class="rounded-full shadow-lg ring-2 ring-white dark:ring-gray-900 font-bold">
+              {{ tournament.pendingRequestsCount }}
+            </UBadge>
+          </div>
+
           <button 
             @click.prevent="togglePin(tournament)"
             class="absolute top-4 right-4 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors z-20"
@@ -422,7 +433,12 @@ watch(loadMoreTrigger, (el) => {
             :alt="tournament.name"
             size="md"
             class="ring-1 ring-gray-200 dark:ring-gray-800"
-          />
+          >
+            <!-- Pending Requests Indicator for List View -->
+            <template v-if="tournament.pendingRequestsCount && tournament.pendingRequestsCount > 0" #label>
+              <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-900"></div>
+            </template>
+          </UAvatar>
 
           <!-- Info -->
           <div class="flex-1 min-w-0">
