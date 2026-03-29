@@ -109,7 +109,7 @@
         <!-- Sign Up Link -->
         <p class="text-center text-gray-400 text-sm mt-6">
           Don't have an account?
-          <NuxtLink to="/signup" class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
+          <NuxtLink :to="{ path: '/signup', query: $route.query }" class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
             Sign up
           </NuxtLink>
         </p>
@@ -127,6 +127,7 @@ definePageMeta({
   layout: 'auth',
 })
 const dashboardUrl = useRuntimeConfig().public.DASHBOARD_URL
+const route = useRoute()
 
 const authStore = useAuthStore()
 const { loading } = storeToRefs(authStore)
@@ -165,7 +166,21 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
         // Checking auth.ts, it doesn't redirect.
         // I will add a redirect here to be safe and helpful.
         console.log('Login successful')
-        navigateTo(dashboardUrl || 'http://manage.lvh.me:3001', {external: true})
+        const redirect = route.query.redirect as string | undefined
+        const appRedirect = route.query.appRedirect as string | undefined
+        const role = response.data?.role || 'USER'
+
+        if (appRedirect && appRedirect.startsWith('/')) {
+          navigateTo(`${dashboardUrl}${appRedirect}`, { external: true })
+        } else if (redirect && redirect.startsWith('/')) {
+          navigateTo(redirect)
+        } else {
+          if (role === 'ORGANIZER') {
+            navigateTo(dashboardUrl || 'http://manage.lvh.me:3001', { external: true })
+          } else {
+            navigateTo('/')
+          }
+        }
     }
   } catch (err: any) {
     console.error('Login failed:', err?.message)
