@@ -194,7 +194,7 @@ function getScoreBadgeClass(match: Fixture) {
             </div>
             
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <div v-for="player in participant.players" :key="player.id" 
+              <div v-for="player in participant.players.filter(p => p.status === 'APPROVED')" :key="player.id" 
                    class="flex items-center gap-3 p-3 rounded-lg transition-colors border"
                    :class="isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'">
                 <div class="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-sm flex-shrink-0">
