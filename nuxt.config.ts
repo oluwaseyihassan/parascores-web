@@ -60,6 +60,7 @@ export default defineNuxtConfig({
     },
     workbox: {
       navigateFallback: '/',
+      navigateFallbackDenylist: [/^\/api($|\/)/, /^\/_manage($|\/)/],
       globPatterns: ['**/*.{js,css,html,png,svg,ico}']
     },
     client: {
