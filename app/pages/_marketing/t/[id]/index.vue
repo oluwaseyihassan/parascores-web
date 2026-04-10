@@ -3,7 +3,7 @@ import type { Tournament, Fixture, Standing, Participant, Sponsor, Social } from
 import { TournamentType, FixtureStatus, FixtureStage, ParticipantType } from '~/types'
 
 definePageMeta({
-  layout: 'widget'
+  layout: 'feed'
 })
 
 const route = useRoute()
@@ -11,6 +11,10 @@ const tournamentId = route.params.id as string
 
 // Theme (injected from widget layout)
 const isDark = inject<Ref<boolean>>('widgetIsDark', ref(true))
+
+// Stores
+const authStore = useAuthStore()
+const tournamentStore = useTournamentStore()
 
 // State
 const tournament = ref<Tournament | null>(null)
@@ -21,8 +25,7 @@ const sponsors = ref<Sponsor[]>([])
 const socials = ref<Social[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-import MarketingFixtureDetails from '~/components/marketing/FixtureDetails.vue'
-import MarketingTeamDetails from '~/components/marketing/TeamDetails.vue'
+const { toMain, toTournament } = useHost()
 const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats'>('info')
 const selectedFixtureId = ref<string | null>(null)
 const selectedParticipantId = ref<string | null>(null)
@@ -173,7 +176,9 @@ async function fetchData() {
   }
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  fetchData()
+})
 
 // SEO
 watchEffect(() => {
@@ -198,6 +203,54 @@ const showBracketTab = computed(() => {
   if (!tournament.value) return false
   return tournament.value.type === TournamentType.KNOCKOUT || tournament.value.type === TournamentType.HYBRID
 })
+
+// Follow Feature
+const isFollowing = ref(false)
+const togglingFollow = ref(false)
+
+// Initialize follow state once auth is ready
+watch(() => authStore.isAuthenticated, async (isAuth) => {
+  if (isAuth) {
+    // If the store already has data, check it
+    if (tournamentStore.followedTournaments.length > 0) {
+      isFollowing.value = tournamentStore.followedTournaments.some(t => t.id === tournamentId || t.customName === tournamentId)
+    } else {
+      // Fetch and then check
+      await tournamentStore.fetchFollowedTournaments()
+      isFollowing.value = tournamentStore.followedTournaments.some(t => t.id === tournamentId || t.customName === tournamentId)
+    }
+  } else {
+    isFollowing.value = false
+  }
+}, { immediate: true })
+
+async function toggleFollow() {
+  if (!authStore.isAuthenticated) {
+    toast.add({ title: 'Login Required', description: 'Please login to follow tournaments', color: 'error' })
+    await navigateTo('/login')
+    return
+  }
+  
+  const wasFollowing = isFollowing.value
+  // Optimistic UI update
+  isFollowing.value = !wasFollowing
+  togglingFollow.value = true
+  try {
+    if (wasFollowing) {
+      await tournamentStore.unfollowTournament(tournamentId)
+      toast.add({ title: 'Unfollowed', description: 'You have unfollowed this tournament.', color: 'neutral' })
+    } else {
+      await tournamentStore.followTournament(tournamentId)
+      toast.add({ title: 'Followed', description: 'You are now following this tournament!', color: 'success' })
+    }
+  } catch (err: any) {
+    // Revert on failure
+    isFollowing.value = wasFollowing
+    toast.add({ title: 'Error', description: err.data?.message || err.message || 'Could not update follow status.', color: 'error' })
+  } finally {
+    togglingFollow.value = false
+  }
+}
 
 // Fixtures grouped by round
 const legFilter = ref<'ALL' | '1' | '2'>('ALL')
@@ -505,7 +558,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
         </div>
         <h3 class="text-lg font-semibold mb-2">Failed to load tournament</h3>
         <p class="text-sm text-gray-400 mb-4">{{ error }}</p>
-        <NuxtLink to="/explore" class="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
+        <NuxtLink :to="toMain('/explore')" class="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
           ← Back to Explore
         </NuxtLink>
       </div>
@@ -514,75 +567,88 @@ function getTeamCards(fixture: any, isHome: boolean) {
     <!-- Content -->
     <div v-else-if="tournament">
       <!-- Hero Banner -->
-      <section class="relative overflow-hidden">
-        <!-- Banner Background -->
-        <div class="absolute inset-0 h-64 md:h-80">
-          <img
-            v-if="tournament.bannerUrl"
-            :src="tournament.bannerUrl"
-            class="w-full h-full object-cover"
-          />
-          <div
-            v-else
-            class="w-full h-full"
-            :style="{ background: 'linear-gradient(135deg, #0a1628 0%, #1a3050 40%, #0d1f35 100%)' }"
-          ></div>
-          <div class="absolute inset-0 bg-gradient-to-b from-[#0A0F1C]/40 via-[#0A0F1C]/70 to-[#0A0F1C]"></div>
+      <section class="relative border-b" :class="isDark ? 'border-white/[0.05] bg-[#0A0A0A]' : 'border-gray-200 bg-white'">
+        <!-- Banner Background top strictly 200-250px -->
+        <div class="h-48 md:h-64 relative w-full overflow-hidden">
+          <img v-if="tournament.bannerUrl" :src="tournament.bannerUrl" class="w-full h-full object-cover" />
+          <div v-else class="w-full h-full" :style="{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #020617 100%)' }"></div>
+          <div class="absolute inset-0 bg-gradient-to-t" :class="isDark ? 'from-[#0A0A0A] via-[#0A0A0A]/20 to-transparent' : 'from-white via-white/20 to-transparent'"></div>
+          
+          <!-- Back link over banner -->
+          <div class="absolute top-6 inset-x-0 z-10 w-full">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6">
+              <NuxtLink :to="toMain('/explore')" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-xs font-semibold text-white/90 hover:text-white transition-all border border-white/10">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Explore
+              </NuxtLink>
+            </div>
+          </div>
         </div>
 
-        <!-- Header Content -->
-        <div class="relative max-w-5xl mx-auto px-6 pt-24 md:pt-32 pb-8">
-          <!-- Back link -->
-          <NuxtLink to="/explore" class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-emerald-400 transition-colors mb-6">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to Explore
-          </NuxtLink>
-
-          <div class="flex flex-col items-center text-center">
-            <!-- Logo -->
-            <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden bg-white/10 backdrop-blur-md border border-white/20 flex-shrink-0 shadow-xl mb-4">
-              <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" />
-              <span v-else class="flex items-center justify-center w-full h-full text-3xl font-bold text-white/60">
+        <!-- Header Content Container (overlapping banner) -->
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 relative pb-8">
+          <div class="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-end -mt-16 md:-mt-20">
+            <!-- Logo overlapping -->
+            <div class="w-32 h-32 md:w-40 md:h-40 rounded-3xl overflow-hidden border-4 shadow-2xl flex-shrink-0 relative group z-10" :class="isDark ? 'bg-[#0A0A0A] border-[#0A0A0A]' : 'bg-white border-white'">
+              <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" :class="isDark ? 'bg-white/5' : 'bg-gray-50'" />
+              <span v-else class="flex items-center justify-center w-full h-full text-5xl font-bold" :class="isDark ? 'text-white/40 bg-white/5' : 'text-gray-400 bg-gray-50'">
                 {{ tournament.name.charAt(0).toUpperCase() }}
               </span>
             </div>
 
-            <div class="max-w-2xl mx-auto flex flex-col items-center">
-              <!-- Type Badge -->
-              <span :class="['px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded border mb-3 inline-block', getTypeBadgeClasses(tournament.type)]">
-                {{ formatType(tournament.type) }}
-              </span>
-
-              <!-- Name -->
-              <h1 class="text-3xl md:text-5xl font-bold leading-tight mb-4 text-center" :class="isDark ? 'text-white' : 'text-gray-900'">
+            <!-- Text Content -->
+            <div class="flex-1 text-center md:text-left pt-2 md:pt-0 pb-2 flex flex-col items-center md:items-start w-full">
+              <!-- Bar containing badges & actions -->
+              <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-3 w-full">
+                <span :class="['px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md border', getTypeBadgeClasses(tournament.type)]">
+                  {{ formatType(tournament.type) }}
+                </span>
+                <span v-if="hasLiveFixtures" class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md border border-red-500/30 bg-red-500/10 text-red-500 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                  Live Now
+                </span>
+              </div>
+              
+              <h1 class="text-3xl md:text-5xl lg:text-5xl font-extrabold tracking-tight mb-4" :class="isDark ? 'text-white' : 'text-gray-900'">
                 {{ tournament.name }}
               </h1>
 
-              <!-- Organizer -->
-              <div v-if="tournament.organizer" class="flex items-center gap-2 mb-4 text-gray-400">
-                <span class="text-sm">Hosted by</span>
-                <img 
-                  v-if="tournament.organizer.organization_logo" 
-                  :src="tournament.organizer.organization_logo" 
-                  class="w-5 h-5 rounded-full object-cover shrink-0" 
-                />
-                <span class="text-sm font-medium text-gray-200">
-                  {{ tournament.organizer.organization_name || tournament.organizer.name }}
-                </span>
-                <UIcon
-                  v-if="tournament.organizer.isVerified"
-                  name="i-heroicons-check-badge-solid"
-                  class="w-5 h-5 text-blue-400 shrink-0"
-                  title="Verified Organizer"
-                />
+              <!-- Meta Info -->
+              <div class="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-3 text-sm font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+                <div v-if="tournament.organization" class="flex items-center gap-2">
+                  <span>Hosted by</span>
+                  <NuxtLink :to="toMain('/org/' + tournament.organization.slug)" class="flex items-center gap-2 px-2.5 py-1 rounded-lg transition-colors border cursor-pointer group" :class="isDark ? 'bg-white/5 hover:bg-white/10 border-white/5' : 'bg-gray-50 hover:bg-gray-100 border-gray-200'">
+                    <img v-if="tournament.organization.logoUrl" :src="tournament.organization.logoUrl" class="w-5 h-5 rounded-full object-cover shrink-0 ring-1" :class="isDark ? 'ring-white/10' : 'ring-black/5'" />
+                    <span class="font-semibold transition-colors" :class="isDark ? 'text-gray-200 group-hover:text-white' : 'text-gray-700 group-hover:text-gray-900'">{{ tournament.organization.name }}</span>
+                    <UIcon v-if="tournament.organization.isVerified" name="i-heroicons-check-badge-solid" class="w-4 h-4 text-blue-400 shrink-0" title="Verified Organization" />
+                  </NuxtLink>
+                </div>
+                
+                <div class="flex items-center gap-1.5" v-if="tournament.location">
+                  <UIcon name="i-heroicons-map-pin" class="w-4 h-4 opacity-70" />
+                  <span>{{ tournament.location }}</span>
+                </div>
+                <div class="flex items-center gap-1.5" v-if="tournament.start_date">
+                  <UIcon name="i-heroicons-calendar" class="w-4 h-4 opacity-70" />
+                  <span>{{ formatDate(tournament.start_date) }}</span>
+                </div>
               </div>
-
-              <!-- Live Indicator (Optional, can keep it here if live) -->
-              <div v-if="hasLiveFixtures" class="flex items-center gap-1.5 text-red-400 text-sm font-semibold">
-                <span class="w-2 h-2 bg-red-400 rounded-full animate-pulse"></span>
-                Live Now
+              
+              <!-- Follow Button -->
+              <div class="mt-5 flex gap-3">
+                <UButton
+                  size="md"
+                  :color="isFollowing ? 'neutral' : 'success'"
+                  :variant="isFollowing ? 'soft' : 'solid'"
+                  :icon="isFollowing ? 'i-heroicons-check' : 'i-heroicons-plus'"
+                  :loading="togglingFollow"
+                  @click="toggleFollow"
+                  class="rounded-full px-5 font-bold shadow-sm"
+                >
+                  {{ isFollowing ? 'Unfollow' : 'Follow' }}
+                </UButton>
               </div>
             </div>
           </div>
@@ -590,16 +656,16 @@ function getTeamCards(fixture: any, isHome: boolean) {
       </section>
 
       <!-- Tabs -->
-      <section class="border-b sticky top-0 z-20 backdrop-blur-md transition-colors" :class="isDark ? 'border-white/10 bg-gray-950/95' : 'border-gray-200 bg-gray-50/95'">
-        <div class="w-full">
-          <nav class="flex gap-1 -mb-px overflow-x-auto hide-scrollbar whitespace-nowrap px-6 md:justify-center md:px-0 max-w-5xl mx-auto">
+      <section class="border-b sticky top-0 z-40 backdrop-blur-xl transition-colors" :class="isDark ? 'border-white/10 bg-[#0A0A0A]/80' : 'border-gray-200 bg-white/80'">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6">
+          <nav class="flex gap-6 -mb-px overflow-x-auto hide-scrollbar whitespace-nowrap">
             <button
               @click="activeTab = 'info'"
               :class="[
-                'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
+                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
                 activeTab === 'info'
-                  ? 'text-emerald-400 border-emerald-400'
-                  : 'text-gray-500 border-transparent hover:text-gray-300 hover:border-white/20'
+                  ? (isDark ? 'text-white border-white' : 'text-gray-900 border-gray-900')
+                  : (isDark ? 'text-gray-500 border-transparent hover:text-gray-300' : 'text-gray-500 border-transparent hover:text-gray-700')
               ]"
             >
               Info
@@ -607,23 +673,28 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <button
               @click="activeTab = 'fixtures'"
               :class="[
-                'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
+                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
                 activeTab === 'fixtures'
-                  ? 'text-emerald-400 border-emerald-400'
-                  : 'text-gray-500 border-transparent hover:text-gray-300 hover:border-white/20'
+                  ? (isDark ? 'text-white border-white' : 'text-gray-900 border-gray-900')
+                  : (isDark ? 'text-gray-500 border-transparent hover:text-gray-300' : 'text-gray-500 border-transparent hover:text-gray-700')
               ]"
             >
               Fixtures
-              <span v-if="fixtures.length" class="ml-1.5 text-xs opacity-60">{{ fixtures.length }}</span>
+              <span v-if="fixtures.length" :class="[
+                'px-2 py-0.5 rounded-full text-xs font-semibold',
+                activeTab === 'fixtures' 
+                  ? (isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-900')
+                  : (isDark ? 'bg-white/5' : 'bg-gray-50')
+              ]">{{ fixtures.length }}</span>
             </button>
             <button
               v-if="standings.length > 0"
               @click="activeTab = 'standings'"
               :class="[
-                'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
+                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
                 activeTab === 'standings'
-                  ? 'text-emerald-400 border-emerald-400'
-                  : 'text-gray-500 border-transparent hover:text-gray-300 hover:border-white/20'
+                  ? (isDark ? 'text-white border-white' : 'text-gray-900 border-gray-900')
+                  : (isDark ? 'text-gray-500 border-transparent hover:text-gray-300' : 'text-gray-500 border-transparent hover:text-gray-700')
               ]"
             >
               Standings
@@ -632,10 +703,10 @@ function getTeamCards(fixture: any, isHome: boolean) {
               v-if="showBracketTab"
               @click="activeTab = 'bracket'"
               :class="[
-                'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
+                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
                 activeTab === 'bracket'
-                  ? 'text-emerald-400 border-emerald-400'
-                  : 'text-gray-500 border-transparent hover:text-gray-300 hover:border-white/20'
+                  ? (isDark ? 'text-white border-white' : 'text-gray-900 border-gray-900')
+                  : (isDark ? 'text-gray-500 border-transparent hover:text-gray-300' : 'text-gray-500 border-transparent hover:text-gray-700')
               ]"
             >
               Bracket
@@ -644,10 +715,10 @@ function getTeamCards(fixture: any, isHome: boolean) {
               v-if="participants.length > 0"
               @click="activeTab = 'participants'"
               :class="[
-                'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
+                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
                 activeTab === 'participants'
-                  ? 'text-emerald-400 border-emerald-400'
-                  : 'text-gray-500 border-transparent hover:text-gray-300 hover:border-white/20'
+                  ? (isDark ? 'text-white border-white' : 'text-gray-900 border-gray-900')
+                  : (isDark ? 'text-gray-500 border-transparent hover:text-gray-300' : 'text-gray-500 border-transparent hover:text-gray-700')
               ]"
             >
               {{ participantsTabName }}
@@ -656,10 +727,10 @@ function getTeamCards(fixture: any, isHome: boolean) {
               v-if="isTeams"
               @click="activeTab = 'stats'"
               :class="[
-                'px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200',
+                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
                 activeTab === 'stats'
-                  ? 'text-emerald-400 border-emerald-400'
-                  : 'text-gray-500 border-transparent hover:text-gray-300 hover:border-white/20'
+                  ? (isDark ? 'text-white border-white' : 'text-gray-900 border-gray-900')
+                  : (isDark ? 'text-gray-500 border-transparent hover:text-gray-300' : 'text-gray-500 border-transparent hover:text-gray-700')
               ]"
             >
                Player Stats
@@ -1044,106 +1115,16 @@ function getTeamCards(fixture: any, isHome: boolean) {
           <div v-if="bracketRounds.length === 0" class="text-center py-16">
             <p class="text-sm text-gray-500">No bracket data available yet.</p>
           </div>
-          <div v-else class="overflow-x-auto pb-6">
-            <div class="flex gap-8 min-w-max">
-              <div v-for="(round, roundIndex) in bracketRounds" :key="round" class="flex flex-col">
-                <!-- Round Header -->
-                <div class="text-center mb-4">
-                  <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    {{ getRoundDisplayName(roundIndex, bracketRounds.length, bracketMatchups[round]?.[0]?.roundName) }}
-                  </span>
-                </div>
-
-                <!-- Matches -->
-                <div 
-                  class="flex flex-col justify-around flex-1 gap-4"
-                  :style="{ minHeight: `${(bracketMatchups[bracketRounds[0] ?? 0]?.length || 1) * 90}px` }"
-                >
-                  <div
-                    v-for="matchup in bracketMatchups[round]"
-                    :key="matchup.id"
-                    class="flex flex-col items-center"
-                  >
-                    <!-- 3rd Place Match Label -->
-                    <div v-if="matchup.isThirdPlace" class="text-[0.65rem] font-bold text-gray-400 uppercase tracking-wider text-center mt-6 mb-2">
-                      3rd Place Play-off
-                    </div>
-
-                    <button
-                      type="button"
-                      @click="selectedFixtureId = matchup.id"
-                      class="w-56 rounded-xl border overflow-hidden hover:border-emerald-500/30 transition-all group text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50" :class="isDark ? 'bg-gray-900 border-white/[0.08]' : 'bg-white border-gray-200 shadow-sm'"
-                    >
-                      <!-- Home -->
-                      <div 
-                        class="flex items-center justify-between px-3.5 py-2.5 border-b transition-colors" 
-                        :class="[isDark ? 'border-white/[0.06]' : 'border-gray-100', getTeamClass(matchup, true, isDark)]"
-                      >
-                        <div class="flex items-center gap-2 flex-1 min-w-0">
-                          <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 transition-colors" :class="isDark ? 'bg-white/10' : 'bg-gray-100'">
-                            <img v-if="matchup.homeTeam?.logoUrl" :src="matchup.homeTeam.logoUrl" class="w-full h-full object-cover" />
-                            <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-gray-500">
-                              {{ (matchup.homeTeam?.customName || 'TBD').charAt(0) }}
-                            </span>
-                          </div>
-                          <span class="text-xs truncate transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ matchup.homeTeam?.customName || 'TBD' }}</span>
-                        </div>
-                        <div class="flex items-center gap-1.5 flex-shrink-0">
-                          <span v-if="matchup.fixtures.length > 1" class="text-[0.65rem] font-medium opacity-50 whitespace-nowrap">
-                            ({{ matchup.fixtures.map((f: any) => f.status === 'COMPLETED' || f.status === 'LIVE' ? (f.homeScore ?? 0) : '-').join(', ') }})
-                          </span>
-                          <span 
-                            class="text-sm font-bold min-w-[1.5rem] text-center inline-flex items-center justify-end"
-                            :class="matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? 'text-white' : 'text-gray-600'"
-                          >
-                            <span v-if="matchup.homePenaltyScore !== null && matchup.homePenaltyScore !== undefined" class="text-[0.65rem] font-normal opacity-50 mr-1.5">
-                              ({{ matchup.homePenaltyScore }})
-                            </span>
-                            {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? (matchup.homeScore ?? 0) : '-' }}
-                          </span>
-                        </div>
-                      </div>
-                      <!-- Away -->
-                      <div class="flex items-center justify-between px-3.5 py-2.5" :class="getTeamClass(matchup, false, isDark)">
-                        <div class="flex items-center gap-2 flex-1 min-w-0">
-                          <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 transition-colors" :class="isDark ? 'bg-white/10' : 'bg-gray-100'">
-                            <img v-if="matchup.awayTeam?.logoUrl" :src="matchup.awayTeam.logoUrl" class="w-full h-full object-cover" />
-                            <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-gray-500">
-                              {{ (matchup.awayTeam?.customName || 'TBD').charAt(0) }}
-                            </span>
-                          </div>
-                          <span class="text-xs truncate transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ matchup.awayTeam?.customName || 'TBD' }}</span>
-                        </div>
-                        <div class="flex items-center gap-1.5 flex-shrink-0">
-                          <span v-if="matchup.fixtures.length > 1" class="text-[0.65rem] font-medium opacity-50 whitespace-nowrap">
-                            ({{ matchup.fixtures.map((f: any) => f.status === 'COMPLETED' || f.status === 'LIVE' ? (f.awayScore ?? 0) : '-').join(', ') }})
-                          </span>
-                          <span 
-                            class="text-sm font-bold min-w-[1.5rem] text-center inline-flex items-center justify-end"
-                            :class="matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? 'text-white' : 'text-gray-600'"
-                          >
-                            <span v-if="matchup.awayPenaltyScore !== null && matchup.awayPenaltyScore !== undefined" class="text-[0.65rem] font-normal opacity-50 mr-1.5">
-                              ({{ matchup.awayPenaltyScore }})
-                            </span>
-                            {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? (matchup.awayScore ?? 0) : '-' }}
-                          </span>
-                        </div>
-                      </div>
-                      <!-- Status badges (Live / Warning) -->
-                      <div v-if="matchup.status === FixtureStatus.LIVE" class="text-center py-1 bg-red-500/10 border-t border-red-500/20">
-                        <span class="text-[10px] font-medium text-red-400">● LIVE</span>
-                      </div>
-                      <div v-else-if="hasNoWinner(matchup)" class="text-center py-1 bg-warning-500/10 border-t border-warning-500/20">
-                        <span class="text-[10px] font-medium text-warning-500 flex items-center justify-center gap-1">
-                          <UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3 animate-pulse" />
-                          NO WINNER
-                        </span>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div v-else class="px-4 pb-12">
+            <KnockoutBracket
+              :fixtures-by-round="bracketMatchups"
+              :rounds="bracketRounds"
+              :get-round-display-name="(round, index, total) => getRoundDisplayName(index, total, bracketMatchups[round]?.[0]?.roundName)"
+              :two-legs-knockout="tournament.twoLegsKnockout"
+              :third-place-match="tournament.thirdPlaceMatch"
+              @control-match="(fixture) => selectedFixtureId = fixture.id"
+              @start-match="(fixture) => selectedFixtureId = fixture.id"
+            />
           </div>
         </div>
 
