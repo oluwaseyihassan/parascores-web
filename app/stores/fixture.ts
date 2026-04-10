@@ -181,7 +181,7 @@ export const useFixtureStore = defineStore('fixture', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to fetch fixtures'
+      error.value = err.data?.message || err.message || 'Failed to fetch fixtures'
       console.error('Fetch fixtures failed:', err)
       throw err
     } finally {
@@ -204,7 +204,7 @@ export const useFixtureStore = defineStore('fixture', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to generate fixtures'
+      error.value = err.data?.message || err.message || 'Failed to generate fixtures'
       console.error('Generate fixtures failed:', err)
       throw err
     } finally {
@@ -242,7 +242,7 @@ export const useFixtureStore = defineStore('fixture', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to advance to knockout stage'
+      error.value = err.data?.message || err.message || 'Failed to advance to knockout stage'
       console.error('Advance to knockout failed:', err)
       throw err
     } finally {
@@ -267,7 +267,7 @@ export const useFixtureStore = defineStore('fixture', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to update fixture'
+      error.value = err.data?.message || err.message || 'Failed to update fixture'
       console.error('Update fixture failed:', err)
       throw err
     } finally {
@@ -288,7 +288,7 @@ export const useFixtureStore = defineStore('fixture', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to fetch live fixtures'
+      error.value = err.data?.message || err.message || 'Failed to fetch live fixtures'
       console.error('Fetch live fixtures failed:', err)
       throw err
     } finally {
@@ -322,7 +322,7 @@ export const useFixtureStore = defineStore('fixture', () => {
       })
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to create match event'
+      error.value = err.data?.message || err.message || 'Failed to create match event'
       console.error('Create match event failed:', err)
       throw err
     } finally {
@@ -348,7 +348,7 @@ export const useFixtureStore = defineStore('fixture', () => {
       })
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to update match event'
+      error.value = err.data?.message || err.message || 'Failed to update match event'
       console.error('Update match event failed:', err)
       throw err
     } finally {
@@ -366,7 +366,7 @@ export const useFixtureStore = defineStore('fixture', () => {
       })
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to delete match event'
+      error.value = err.data?.message || err.message || 'Failed to delete match event'
       console.error('Delete match event failed:', err)
       throw err
     } finally {
