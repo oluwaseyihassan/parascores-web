@@ -17,7 +17,7 @@ onMounted(async () => {
 // Mobile links (Keep simple)
 const mobileLinks = [
   { label: 'Home', icon: 'i-heroicons-home', to: '/' },
-  { label: 'Leagues', icon: 'i-heroicons-trophy', to: '/tournaments' }, // Points to list
+  { label: 'Organizations', icon: 'i-heroicons-building-office', to: '/organizations' },
   { label: 'Live', icon: 'i-heroicons-signal', to: '/live', activeClass: 'text-red-500 animate-pulse' }
 ]
 
@@ -87,7 +87,7 @@ const frontendUrl = config.public.FRONT_END_URL
 
 const handleLogout = async () => {
   await authStore.logout()
-  navigateTo(`${frontendUrl}/login`, { external: true })
+  navigateTo(`${frontendUrl}/`, { external: true })
 }
 </script>
 
@@ -101,8 +101,48 @@ const handleLogout = async () => {
       <!-- Desktop Sidebar -->
       <nav class="flex flex-col w-16 bg-white/80 dark:bg-white/5 dark:backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-3xl shadow-xl py-4 items-center z-50">
         
-        <div class="w-10 h-10 flex-shrink-0 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-4">
+        <div class="w-10 h-10 flex-shrink-0 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-6">
            <UIcon name="i-heroicons-bolt-20-solid" class="w-6 h-6 text-white" />
+        </div>
+
+        <!-- Organization Switcher -->
+        <div class="flex flex-col gap-4 py-2 w-full px-2 border-b border-gray-100 dark:border-white/10 mb-6 pb-6">
+          <UTooltip 
+            v-for="orgMember in authStore.organizations" 
+            :key="orgMember.organizationId" 
+            :text="orgMember.organization?.name"
+            :content="{ side: 'right' }"
+          >
+            <button
+              @click="authStore.setActiveOrganization(orgMember.organizationId)"
+              class="relative group flex-shrink-0 flex items-center justify-center h-10 w-10 mx-auto rounded-xl transition-all duration-300 overflow-hidden ring-2"
+              :class="[
+                authStore.activeOrganizationId === orgMember.organizationId
+                  ? 'ring-indigo-500 scale-110 shadow-lg shadow-indigo-500/20' 
+                  : 'ring-transparent hover:ring-gray-300 dark:hover:ring-white/20'
+              ]"
+            >
+              <UAvatar 
+                v-if="orgMember.organization?.logoUrl" 
+                :src="orgMember.organization.logoUrl" 
+                size="sm" 
+                class="w-full h-full object-cover"
+              />
+              <div v-else class="w-full h-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-xs font-bold uppercase text-gray-500">
+                {{ orgMember.organization?.name?.charAt(0) }}
+              </div>
+            </button>
+          </UTooltip>
+
+          <!-- Create Organization Button -->
+          <UTooltip text="New Organization" :content="{ side: 'right' }">
+            <NuxtLink
+              to="/onboarding"
+              class="relative group flex-shrink-0 flex items-center justify-center h-10 w-10 mx-auto rounded-xl border-2 border-dashed border-gray-200 dark:border-white/10 text-gray-400 hover:border-indigo-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all"
+            >
+              <UIcon name="i-heroicons-plus" class="w-5 h-5" />
+            </NuxtLink>
+          </UTooltip>
         </div>
 
         <div class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar w-full px-2 flex flex-col gap-4">
@@ -112,7 +152,7 @@ const handleLogout = async () => {
               to="/tournaments/new"
               class="relative group flex-shrink-0 flex items-center justify-center py-2 h-10 w-10 mx-auto rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-green-500 transition-all"
             >
-              <UIcon name="i-heroicons-plus" class="w-6 h-6" />
+              <UIcon name="i-heroicons-plus-circle" class="w-6 h-6" />
             </NuxtLink>
           </UTooltip>
           <UTooltip 
@@ -154,6 +194,32 @@ const handleLogout = async () => {
 
       <!-- Desktop Main Content -->
       <main class="flex-1 flex flex-col relative h-full rounded-3xl overflow-hidden bg-white/50 dark:bg-white/5 dark:backdrop-blur-md border border-gray-200 dark:border-white/10 shadow-sm">
+        <!-- Dashboard Top Header -->
+        <header class="hidden md:flex items-center justify-between px-8 py-4 border-b border-gray-200 dark:border-white/10 bg-white/30 dark:bg-transparent">
+          <div class="flex items-center gap-3">
+            <template v-if="authStore.currentOrganization">
+              <UAvatar 
+                v-if="authStore.currentOrganization.logoUrl" 
+                :src="authStore.currentOrganization.logoUrl" 
+                size="xs" 
+                class="rounded-md"
+              />
+              <div v-else class="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-[10px] font-bold text-indigo-500">
+                {{ authStore.currentOrganization.name?.charAt(0) }}
+              </div>
+              <span class="font-bold text-gray-800 dark:text-white">
+                {{ authStore.currentOrganization.name }}
+              </span>
+            </template>
+            <div v-else class="flex items-center gap-2">
+              <div class="w-6 h-6 bg-indigo-500 rounded flex items-center justify-center">
+                <UIcon name="i-heroicons-bolt-20-solid" class="w-4 h-4 text-white" />
+              </div>
+              <span class="font-bold text-gray-800 dark:text-white">ParaScores</span>
+            </div>
+          </div>
+        </header>
+
         <div class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
            <slot />
         </div>
@@ -167,10 +233,26 @@ const handleLogout = async () => {
       <!-- Mobile Header -->
       <header class="flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-black/80 dark:backdrop-blur-xl border-b border-gray-200 dark:border-white/10 z-40">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shadow-md shadow-indigo-500/20">
-            <UIcon name="i-heroicons-bolt-20-solid" class="w-5 h-5 text-white" />
+          <template v-if="authStore.currentOrganization">
+            <UAvatar 
+              v-if="authStore.currentOrganization.logoUrl" 
+              :src="authStore.currentOrganization.logoUrl" 
+              size="xs" 
+              class="rounded-md"
+            />
+            <div v-else class="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-[10px] font-bold text-indigo-500">
+              {{ authStore.currentOrganization.name?.charAt(0) }}
+            </div>
+            <span class="font-bold text-sm tracking-tight truncate max-w-[150px]">
+              {{ authStore.currentOrganization.name }}
+            </span>
+          </template>
+          <div v-else class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shadow-md shadow-indigo-500/20">
+              <UIcon name="i-heroicons-bolt-20-solid" class="w-5 h-5 text-white" />
+            </div>
+            <span class="font-bold text-lg tracking-tight">ParaScores</span>
           </div>
-          <span class="font-bold text-lg tracking-tight">ParaScores</span>
         </div>
         <UDropdownMenu :items="profileMenuItems">
           <UAvatar v-if="authStore.user?.picture" :src="authStore.user?.picture" size="sm" class="cursor-pointer ring-2 ring-transparent hover:ring-indigo-500 transition-all" />
