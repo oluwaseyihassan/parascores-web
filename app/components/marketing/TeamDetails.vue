@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Tournament, Participant, Fixture } from '~/types'
 
+const { toMain } = useHost()
+
 const props = defineProps<{
   tournamentId: string
   participantId: string
@@ -221,7 +223,7 @@ function getScoreBadgeClass(match: Fixture) {
             </div>
             
             <div v-else class="divide-y" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
-              <NuxtLink v-for="match in participantFixtures" :key="match.id" :to="`/t/${tournament.id}/fixture/${match.id}`"
+              <NuxtLink v-for="match in participantFixtures" :key="match.id" :to="toMain(`/t/${tournament.customName || tournament.id}/fixture/${match.id}`)"
                   class="flex items-center justify-between p-4 md:p-5 transition-colors group hover:bg-white/[0.02]"
                   :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
                 
