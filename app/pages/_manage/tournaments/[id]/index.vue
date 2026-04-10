@@ -6,6 +6,7 @@ import type { Participant, Fixture, Sponsor, Social, Tournament, Venue } from '~
 import QrcodeVue from 'qrcode.vue'
 
 definePageMeta({
+  middleware: ['require-organizer'],
   layout: 'dashboard'
 })
 
@@ -81,7 +82,7 @@ onMounted(async () => {
       }
     } catch (e: any) {
       console.error('Failed to load dashboard:', e)
-      error.value = e?.message || 'Failed to load tournament data'
+      error.value = e?.data?.message || e?.message || 'Failed to load tournament data'
     } finally {
       loading.value = false
     }
@@ -1462,11 +1463,26 @@ const copyTournamentLink = async () => {
     <UAlert 
       v-else-if="error" 
       color="error" 
-      variant="subtle"
-      icon="i-heroicons-exclamation-triangle"
-      :title="error"
-      class="mb-6"
-    />
+      variant="soft"
+      icon="i-heroicons-exclamation-circle"
+      title="Action Required"
+      :description="error"
+      class="mb-6 rounded-2xl border border-red-100 dark:border-red-900/30 shadow-sm"
+    >
+      <template #description>
+        <div class="flex items-center justify-between gap-3">
+          <span class="flex-1">{{ error }}</span>
+          <UButton 
+            size="xs" 
+            color="error" 
+            variant="ghost" 
+            icon="i-heroicons-x-mark" 
+            class="rounded-full"
+            @click="error = null" 
+          />
+        </div>
+      </template>
+    </UAlert>
 
     <!-- Tournament Content -->
     <template v-else-if="tournament">
@@ -1497,14 +1513,14 @@ const copyTournamentLink = async () => {
         <!-- Title & Meta -->
         <div class="mb-4">
           <div class="flex flex-col items-center justify-center mb-2">
-            <div v-if="tournament.organizer?.organization_name" class="flex items-center gap-1.5 mb-1.5">
+            <div v-if="tournament.organization" class="flex items-center gap-1.5 mb-1.5">
               <img 
-                v-if="tournament.organizer.organization_logo" 
-                :src="tournament.organizer.organization_logo" 
+                v-if="tournament.organization.logoUrl" 
+                :src="tournament.organization.logoUrl" 
                 class="w-4 h-4 rounded-full object-cover" 
               />
               <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
-                {{ tournament.organizer.organization_name }}
+                {{ tournament.organization.name }}
               </span>
             </div>
             <div class="flex items-center gap-3">
@@ -1957,30 +1973,33 @@ const copyTournamentLink = async () => {
                 </UCard>
                 
                 <div class="flex flex-col gap-6 lg:col-span-1">
-                  <!-- Organizer -->
-                  <UCard v-if="tournament.organizer" class="border border-gray-100 dark:border-gray-800 shadow-sm transition-all h-fit">
+                  <!-- Organization -->
+                  <UCard v-if="tournament.organization" class="border border-gray-100 dark:border-gray-800 shadow-sm transition-all h-fit">
                     <template #header>
                       <div class="flex items-center gap-2">
-                        <UIcon name="i-heroicons-user" class="w-5 h-5 text-indigo-500" />
-                        <span class="font-medium">Organizer</span>
+                        <UIcon name="i-heroicons-building-office" class="w-5 h-5 text-indigo-500" />
+                        <span class="font-medium">Organization</span>
                       </div>
                     </template>
                     
                     <div class="flex items-center gap-3">
                       <UAvatar 
-                        v-if="tournament.organizer.picture" 
-                        :src="tournament.organizer.picture" 
+                        v-if="tournament.organization.logoUrl" 
+                        :src="tournament.organization.logoUrl" 
                         size="md"
                       />
                       <UAvatar 
                         v-else 
-                        :text="tournament.organizer.name?.charAt(0).toUpperCase()" 
+                        :text="tournament.organization.name?.charAt(0).toUpperCase()" 
                         size="md"
                         class="bg-indigo-500 text-white"
                       />
                       <div>
-                        <p class="font-medium text-gray-900 dark:text-white">{{ tournament.organizer.name }}</p>
-                        <p class="text-sm text-gray-500">{{ tournament.organizer.email }}</p>
+                        <p class="font-medium text-gray-900 dark:text-white">{{ tournament.organization.name }}</p>
+                        <p v-if="tournament.organization.phone" class="text-sm text-gray-500">{{ tournament.organization.phone }}</p>
+                        <UBadge v-if="tournament.organization.isVerified" color="info" variant="subtle" size="xs" class="mt-1">
+                          Verified
+                        </UBadge>
                       </div>
                     </div>
                   </UCard>
