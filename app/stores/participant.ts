@@ -32,7 +32,7 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to fetch participants'
+      error.value = err.data?.message || err.message || 'Failed to fetch participants'
       console.error('Fetch participants failed:', err)
       throw err
     } finally {
@@ -54,7 +54,7 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to add participant'
+      error.value = err.data?.message || err.message || 'Failed to add participant'
       console.error('Add participant failed:', err)
       throw err
     } finally {
@@ -76,7 +76,7 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to bulk add participants'
+      error.value = err.data?.message || err.message || 'Failed to bulk add participants'
       console.error('Bulk add participants failed:', err)
       throw err
     } finally {
@@ -101,7 +101,7 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to update participant'
+      error.value = err.data?.message || err.message || 'Failed to update participant'
       console.error('Update participant failed:', err)
       throw err
     } finally {
@@ -120,7 +120,7 @@ export const useParticipantStore = defineStore('participant', () => {
       participants.value = participants.value.filter(p => p.id !== id)
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to remove participant'
+      error.value = err.data?.message || err.message || 'Failed to remove participant'
       console.error('Remove participant failed:', err)
       throw err
     } finally {
@@ -161,7 +161,7 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to add player'
+      error.value = err.data?.message || err.message || 'Failed to add player'
       console.error('Add player failed:', err)
       throw err
     } finally {
@@ -186,7 +186,7 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to bulk add players'
+      error.value = err.data?.message || err.message || 'Failed to bulk add players'
       console.error('Bulk add players failed:', err)
       throw err
     } finally {
@@ -215,7 +215,7 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to update player'
+      error.value = err.data?.message || err.message || 'Failed to update player'
       console.error('Update player failed:', err)
       throw err
     } finally {
@@ -244,7 +244,7 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to update player status'
+      error.value = err.data?.message || err.message || 'Failed to update player status'
       console.error('Update player status failed:', err)
       throw err
     } finally {
@@ -268,7 +268,7 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to remove player'
+      error.value = err.data?.message || err.message || 'Failed to remove player'
       console.error('Remove player failed:', err)
       throw err
     } finally {
