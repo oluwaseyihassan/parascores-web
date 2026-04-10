@@ -33,6 +33,7 @@ export default <RouterConfig> {
       // 🔵 MARKETING: Show _marketing routes + auth routes + widget routes
       return _routes
         .filter(r => 
+          r.path === '/' ||
           r.path.startsWith('/_marketing') || 
           r.path.startsWith('/auth') || 
           r.path.startsWith('/widget') ||
