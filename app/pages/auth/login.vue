@@ -167,19 +167,12 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
         // I will add a redirect here to be safe and helpful.
         console.log('Login successful')
         const redirect = route.query.redirect as string | undefined
-        const appRedirect = route.query.appRedirect as string | undefined
-        const role = response.data?.role || 'USER'
+        const router = useRouter()
 
-        if (appRedirect && appRedirect.startsWith('/')) {
-          navigateTo(`${dashboardUrl}${appRedirect}`, { external: true })
-        } else if (redirect && redirect.startsWith('/')) {
-          navigateTo(redirect)
+        if (redirect && redirect.startsWith('/')) {
+          router.push(redirect)
         } else {
-          if (role === 'ORGANIZER') {
-            navigateTo(dashboardUrl || 'http://manage.lvh.me:3001', { external: true })
-          } else {
-            navigateTo('/')
-          }
+          router.push('/')
         }
     }
   } catch (err: any) {
