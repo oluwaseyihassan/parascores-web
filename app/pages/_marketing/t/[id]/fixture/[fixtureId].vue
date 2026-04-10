@@ -2,9 +2,10 @@
 import MarketingFixtureDetails from '~/components/marketing/FixtureDetails.vue'
 
 definePageMeta({
-  layout: 'widget'
+  layout: 'feed'
 })
 
+const { toTournament } = useHost()
 const route = useRoute()
 const tournamentId = route.params.id as string
 const fixtureId = route.params.fixtureId as string
@@ -14,6 +15,6 @@ const fixtureId = route.params.fixtureId as string
   <MarketingFixtureDetails
     :tournamentId="tournamentId"
     :fixtureId="fixtureId"
-    @back="$router.push(`/t/${tournamentId}`)"
+    @back="navigateTo(toTournament({ id: tournamentId }))"
   />
 </template>
