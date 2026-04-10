@@ -2,6 +2,7 @@
 import { storeToRefs } from 'pinia'
 
 definePageMeta({
+  middleware: ['require-organizer'],
   layout: 'dashboard'
 })
 
@@ -175,32 +176,17 @@ watch(loadMoreTrigger, (el) => {
         <p class="text-gray-500">Manage your leagues, cups, and competitions</p>
       </div>
       <div class="flex items-center gap-3 self-start md:self-auto flex-wrap">
-        <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-          <UButton 
-            label="All" 
-            color="neutral" 
-            variant="ghost" 
-            size="xs" 
-            :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': filterStatus === 'all' }"
-            @click="filterStatus = 'all'" 
-          />
-          <UButton 
-            label="Ongoing" 
-            color="neutral" 
-            variant="ghost" 
-            size="xs" 
-            :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': filterStatus === 'ongoing' }"
-            @click="filterStatus = 'ongoing'" 
-          />
-          <UButton 
-            label="Completed" 
-            color="neutral" 
-            variant="ghost" 
-            size="xs" 
-            :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': filterStatus === 'completed' }"
-            @click="filterStatus = 'completed'" 
-          />
-        </div>
+        <USelect
+          v-model="filterStatus"
+          :items="[
+            { label: 'All Status', value: 'all' },
+            { label: 'Ongoing', value: 'ongoing' },
+            { label: 'Completed', value: 'completed' }
+          ]"
+          class="w-[140px]"
+          size="md"
+          variant="outline"
+        />
         <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
           <UButton 
             icon="i-heroicons-squares-2x2" 
