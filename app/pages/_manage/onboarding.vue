@@ -11,9 +11,14 @@
 
         <!-- Header -->
         <div class="text-center mb-8">
-          <h1 class="text-3xl font-bold text-heading mb-2">Become an Organizer</h1>
+          <h1 class="text-3xl font-bold text-heading mb-2">
+            {{ authStore.isOrganizer ? 'Create New Organization' : 'Become an Organizer' }}
+          </h1>
           <p class="text-muted text-sm px-4">
-            To create and manage tournaments, we need a few details about you and your organization.
+            {{ authStore.isOrganizer 
+              ? 'Add another workspace to manage different sets of tournaments.' 
+              : 'To create and manage tournaments, we need a few details about you and your organization.' 
+            }}
           </p>
         </div>
 
@@ -48,7 +53,7 @@
           </UFormField>
 
           <!-- Contact Phone Number -->
-          <UFormField name="phone" label="Contact Phone Number" required>
+          <UFormField name="phone" label="Public WhatsApp Number (For player support)" required>
             <UInput
               v-model="state.phone"
               type="tel"
@@ -58,7 +63,7 @@
               input-class="bg-surface"
               :disabled="loading"
             />
-            <p class="text-xs text-muted mt-1">Crucial for B2B sales and priority support.</p>
+            <p class="text-xs text-muted mt-1">This number will be visible to players for support queries.</p>
           </UFormField>
 
           <!-- Organization Logo -->
@@ -103,7 +108,7 @@
             class="font-semibold py-4"
             variant="green"
           >
-            Complete Onboarding
+            {{ authStore.isOrganizer ? 'Create Organization' : 'Complete Onboarding' }}
           </UButton>
           
           <div class="text-center mt-4">
@@ -192,18 +197,29 @@ const handleUpgrade = async (event: FormSubmitEvent<Schema>) => {
   
   try {
     const { organization_name, phone, organization_logo } = event.data
-    const response = await authStore.upgradeToOrganizer({
-      organization_name,
-      phone,
-      organization_logo
+    
+    const response = await $api<{success: boolean, message: string}>('/organizations', {
+      method: 'POST',
+      body: {
+        name: organization_name,
+        phone,
+        logoUrl: organization_logo
+      }
     })
     
     if (response?.success) {
-      toast.add({ title: 'Welcome Organizer!', color: 'success' })
+      // Refetch user to get the new organization and role
+      await authStore.fetchUser()
+      
+      toast.add({ 
+        title: authStore.isOrganizer ? 'Organization created!' : 'Welcome Organizer!', 
+        color: 'success' 
+      })
+      
       // Navigate to the dashboard index correctly after upgrading
       navigateTo('/')
     } else {
-      error.value = response?.message || 'Failed to upgrade to Organizer. Please try again.'
+      error.value = response?.message || 'Failed to create organization. Please try again.'
     }
   } catch (err: any) {
     console.error('Upgrade failed:', err)
