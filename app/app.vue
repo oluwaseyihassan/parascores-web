@@ -5,9 +5,10 @@
       <p>Is Logged In? {{ !!authStore.user }}</p>
       <pre>{{ authStore.user?.name }}</pre>
     </div> -->
-    <NuxtLayout :name="layoutName">
+    <NuxtLayout v-if="layoutName !== false" :name="layoutName">
       <NuxtPage />
     </NuxtLayout>
+    <NuxtPage v-else />
     <Analytics />
   </UApp>
 </template>
@@ -32,14 +33,20 @@ await callOnce(async () => {
 // 2. Smart Layout Switching
 // This checks the current route name/path to decide which layout to show
 const layoutName = computed(() => {
+  // If explicitly set to false, return false to let the page handle it
+  if (route.meta.layout === false) {
+    return false
+  }
+  
   if (route.meta.layout) {
     return route.meta.layout as LayoutKey
   }
+  
   // If the route is inside the _app folder, use 'dashboard' layout
   if (route.path.startsWith('/_app') || route.name?.toString().includes('_app')) {
     return 'dashboard' as LayoutKey
   }
-  // Otherwise use 'marketing'
+  // Otherwise use 'default'
   return 'default' as LayoutKey
 })
 </script>
