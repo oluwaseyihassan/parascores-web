@@ -5,7 +5,7 @@ import { FixtureStatus } from '~/types'
 interface Props {
   fixturesByRound: Record<number, Fixture[]>
   rounds: number[]
-  getRoundDisplayName: (round: number) => string
+  getRoundDisplayName: (round: number, index: number, total: number) => string
   updatingMatch?: boolean
   twoLegsKnockout?: boolean
   thirdPlaceMatch?: boolean
@@ -184,7 +184,6 @@ const getTeamName = (matchup: any, isHome: boolean) => {
   if (team) {
     if (team.customName) return team.customName
     if (team.user?.name) return team.user.name
-    if (team.user?.organization_name) return team.user.organization_name
   }
   
   return getPlaceholderLabel(matchup, isHome)
@@ -214,7 +213,7 @@ const finalColumnOffset = computed(() => {
       <div class="bracket-headers">
         <template v-for="(round, roundIndex) in rounds" :key="`header-${round}`">
           <div class="bracket-header">
-            {{ getRoundDisplayName(round) }}
+            {{ getRoundDisplayName(round, roundIndex, rounds.length) }}
           </div>
           <div v-if="roundIndex < rounds.length - 1" class="header-spacer"></div>
         </template>
@@ -223,7 +222,12 @@ const finalColumnOffset = computed(() => {
       <!-- Bracket grid -->
       <div 
         class="bracket-grid"
-        :style="{ '--total-rows': firstRoundMatches * 2 }"
+        :style="{ 
+          '--total-rows': firstRoundMatches * 2,
+          display: 'grid',
+          gridTemplateColumns: rounds.map((_, i) => i < rounds.length - 1 ? 'minmax(200px, 1fr) 48px' : 'minmax(200px, 1fr)').join(' '),
+          gap: '0'
+        }"
       >
         <template v-for="(round, roundIndex) in rounds" :key="round">
           <!-- Matches column -->
@@ -398,48 +402,21 @@ const finalColumnOffset = computed(() => {
             class="connector-column"
           >
             <div 
-              v-for="(matchup, matchIndex) in matchupsByRound[round]" 
+              v-for="(matchup, matchIndex) in (roundIndex === rounds.length - 1 ? [] : matchupsByRound[round])" 
               :key="`conn-${matchup.id}`"
               class="connector-cell"
               :style="{ gridRow: getMatchGridRow(roundIndex, matchIndex) }"
-              :class="{
-                'connector-top': matchIndex % 2 === 0,
-                'connector-bottom': matchIndex % 2 === 1
-              }"
             >
-              <svg class="connector-svg" preserveAspectRatio="none">
-                <!-- Horizontal line from match -->
-                <line 
-                  x1="0" 
-                  y1="50%" 
-                  x2="50%" 
-                  y2="50%" 
-                  class="connector-line"
-                />
-                <!-- Vertical line -->
-                <line 
+              <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
+                <!-- Line from current match to the middle -->
+                <path 
                   v-if="matchIndex % 2 === 0"
-                  x1="50%" 
-                  y1="50%" 
-                  x2="50%" 
-                  y2="100%" 
+                  d="M 0 50 L 24 50 L 24 100" 
                   class="connector-line"
                 />
-                <line 
+                <path 
                   v-else
-                  x1="50%" 
-                  y1="0" 
-                  x2="50%" 
-                  y2="50%" 
-                  class="connector-line"
-                />
-                <!-- Horizontal line to next match (only for bottom of pair) -->
-                <line 
-                  v-if="matchIndex % 2 === 1"
-                  x1="50%" 
-                  y1="0" 
-                  x2="100%" 
-                  y2="0" 
+                  d="M 0 50 L 24 50 L 24 0 M 24 0 L 48 0" 
                   class="connector-line"
                 />
               </svg>
@@ -650,7 +627,8 @@ const finalColumnOffset = computed(() => {
 }
 
 .bracket-grid {
-  display: flex;
+  display: grid;
+  width: 100%;
 }
 
 .third-place-section {
@@ -700,13 +678,13 @@ const finalColumnOffset = computed(() => {
 }
 
 .connector-line {
-  stroke: var(--color-gray-500);
+  stroke: #4b5563; /* gray-600 */
   stroke-width: 2;
   fill: none;
+  vector-effect: non-scaling-stroke;
 }
-
 :root.dark .connector-line {
-  stroke: var(--color-gray-600);
+  stroke: #9ca3af; /* gray-400 */
 }
 
 .bracket-match {
