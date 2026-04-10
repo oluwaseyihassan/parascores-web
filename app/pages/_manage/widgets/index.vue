@@ -4,6 +4,7 @@ import type { Tournament } from '~/types'
 import { TournamentType } from '~/types'
 
 definePageMeta({
+  middleware: ['require-organizer'],
   layout: 'dashboard'
 })
 
