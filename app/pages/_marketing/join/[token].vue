@@ -107,53 +107,61 @@ const formatDate = (dateStr: string) => {
     </div>
 
     <!-- Join Success -->
-    <div v-else-if="joinSuccess" class="text-center max-w-md">
-      <div 
-        class="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
-        :class="joinStatus === 'PENDING' ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-green-100 dark:bg-green-900/30'"
+    <div v-else-if="joinSuccess" class="max-w-md w-full">
+      <UCard
+        class="shadow-xl border-0"
+        :ui="{ 
+          root: 'ring-1 ring-gray-200 dark:ring-gray-800',
+          body: 'text-center'
+        }"
       >
-        <UIcon 
-          :name="joinStatus === 'PENDING' ? 'i-heroicons-clock' : 'i-heroicons-check-circle'" 
-          class="w-10 h-10"
-          :class="joinStatus === 'PENDING' ? 'text-amber-500' : 'text-green-500'"
-        />
-      </div>
-      
-      <h2 v-if="joinStatus === 'PENDING'" class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Request Sent! ⏳</h2>
-      <h2 v-else class="text-2xl font-bold text-gray-900 dark:text-white mb-2">You're In! 🎉</h2>
-      
-      <p class="text-gray-500 mb-2">
-        <span v-if="joinStatus === 'PENDING'">Your request to join </span>
-        <span v-else>You've successfully joined </span>
-        <strong class="text-gray-900 dark:text-white">{{ invite?.participant?.customName }}</strong>
-      </p>
-      
-      <p v-if="joinStatus === 'PENDING'" class="text-sm text-gray-400 mb-8">
-        is waiting for approval from the organizer of <strong>{{ invite?.tournament?.name }}</strong>.
-      </p>
-      <p v-else class="text-sm text-gray-400 mb-8">
-        in {{ invite?.tournament?.name }}
-      </p>
-      
-      <div class="flex flex-col gap-3">
-        <UButton
-          :to="`/t/${invite?.tournament?.customName}`"
-          color="primary"
-          size="lg"
-          block
+        <div 
+          class="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center transition-all duration-500 scale-110"
+          :class="joinStatus === 'PENDING' ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-green-100 dark:bg-green-900/30'"
         >
-          View Tournament
-        </UButton>
-        <UButton
-          to="/"
-          variant="outline"
-          color="neutral"
-          size="lg"
-          block
-        >
-          Go Home
-        </UButton>
-      </div>
+          <UIcon 
+            :name="joinStatus === 'PENDING' ? 'i-heroicons-clock' : 'i-heroicons-check-circle'" 
+            class="w-10 h-10"
+            :class="joinStatus === 'PENDING' ? 'text-amber-500' : 'text-green-500'"
+          />
+        </div>
+        
+        <h2 v-if="joinStatus === 'PENDING'" class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Request Sent! ⏳</h2>
+        <h2 v-else class="text-2xl font-bold text-gray-900 dark:text-white mb-2">You're In! 🎉</h2>
+        
+        <p class="text-gray-500 mb-2">
+          <span v-if="joinStatus === 'PENDING'">Your request to join </span>
+          <span v-else>You've successfully joined </span>
+          <strong class="text-gray-900 dark:text-white">{{ invite?.participant?.customName }}</strong>
+        </p>
+        
+        <p v-if="joinStatus === 'PENDING'" class="text-sm text-gray-400 mb-8 px-4">
+          is waiting for approval from the organizer of <strong>{{ invite?.tournament?.name }}</strong>.
+        </p>
+        <p v-else class="text-sm text-gray-400 mb-8 px-4">
+          in {{ invite?.tournament?.name }}
+        </p>
+        
+        <div class="flex flex-col gap-3">
+          <UButton
+            :to="`/t/${invite?.tournament?.customName}`"
+            color="primary"
+            size="lg"
+            block
+          >
+            View Tournament
+          </UButton>
+          <UButton
+            to="/"
+            variant="outline"
+            color="neutral"
+            size="lg"
+            block
+          >
+            Go Home
+          </UButton>
+        </div>
+      </UCard>
     </div>
 
     <!-- Invite Card -->
@@ -178,10 +186,10 @@ const formatDate = (dateStr: string) => {
 
           <!-- Organizer -->
           <p
-            v-if="invite.tournament?.organizer?.organization_name"
+            v-if="invite.tournament?.organization?.name"
             class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
           >
-            {{ invite.tournament.organizer.organization_name }}
+            {{ invite.tournament.organization.name }}
           </p>
 
           <h1 class="text-xl font-bold text-gray-900 dark:text-white mb-1">
