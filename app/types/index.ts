@@ -5,6 +5,12 @@ export enum Role {
   SUPER_ADMIN = 'SUPER_ADMIN'
 }
 
+export enum OrganizationRole {
+  OWNER = 'OWNER',
+  ADMIN = 'ADMIN',
+  MEMBER = 'MEMBER'
+}
+
 export enum Visibility {
   PUBLIC = 'PUBLIC',
   PRIVATE = 'PRIVATE',
@@ -71,16 +77,15 @@ export interface User {
   isVerified?: boolean
   metadata?: Record<string, any> | null
 
-  // Branding
-  organization_name?: string | null
-  organization_logo?: string | null
-  organization_color?: string | null
+  // Relations
+  organizations?: OrganizationMember[]
+  player_profiles?: Player[]
 
   // Email Verification
   isEmailVerified: boolean
   emailVerificationToken?: string | null
   emailVerificationExpiry?: string | null
-
+  
   // Password Reset
   passwordResetToken?: string | null
   passwordResetExpiry?: string | null
@@ -88,6 +93,33 @@ export interface User {
 
   created_at: string
   updated_at: string
+}
+
+export interface Organization {
+  id: string
+  name: string
+  slug: string
+  logoUrl?: string | null
+  bannerUrl?: string | null
+  color?: string | null
+  phone?: string | null
+  location?: string | null
+  website?: string | null
+  isVerified: boolean
+  created_at: string
+  updated_at: string
+  
+  members?: OrganizationMember[]
+  tournaments?: Tournament[]
+}
+
+export interface OrganizationMember {
+  id: string
+  organizationId: string
+  organization?: Organization
+  userId: string
+  user?: User
+  role: OrganizationRole
 }
 
 export interface Tournament {
@@ -141,8 +173,14 @@ export interface Tournament {
   created_at: string
   updated_at: string
 
-  organizer_id?: string | null
-  organizer?: User | null
+  organization_id?: string | null
+  organization?: Organization | null
+  
+  _count?: {
+    participants?: number
+    groups?: number
+    standings?: number
+  }
 }
 
 export interface Participant {
@@ -205,6 +243,7 @@ export interface Fixture {
   homeTeam?: Participant | null
   awayTeam?: Participant | null
   
+  tournament?: Tournament | null
   matchEvents?: MatchEvent[]
 }
 
@@ -293,6 +332,7 @@ export interface Player {
   // Relations
   participant?: Participant | null
   matchEvents?: MatchEvent[]
+  user?: User | null
 }
 
 export interface Sponsor {
@@ -377,4 +417,26 @@ export interface TeamInvite {
   participant?: Participant | null
   tournament?: Tournament | null
   createdBy?: Partial<User> | null
+}
+
+// API Responses
+export interface ApiResponse<T> {
+  success: boolean
+  message: string
+  data?: T | null
+  timestamp: string
+  error?: number
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean
+  message: string
+  data: T[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+  timestamp: string
 }
