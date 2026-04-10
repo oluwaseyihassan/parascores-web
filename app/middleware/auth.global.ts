@@ -63,11 +63,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   // C. Redirect Logged-In Users visiting Auth Pages
   if (!isApp && user.value) {
     if (to.path === '/login' || to.path === '/signup') {
-       if (user.value.role === 'ORGANIZER') {
-         return navigateTo(`${protocol}://manage.${rootHost}`, { external: true })
-       } else {
-         return navigateTo('/')
-       }
+      return navigateTo('/')
     }
   }
 })
