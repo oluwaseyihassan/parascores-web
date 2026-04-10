@@ -1,10 +1,11 @@
 <script setup lang="ts">
 definePageMeta({
+  middleware: ['require-organizer'],
   layout: 'dashboard'
 })
 
 const authStore = useAuthStore()
-const { user } = storeToRefs(authStore)
+const { user, currentOrganization } = storeToRefs(authStore)
 
 // File upload
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -83,15 +84,17 @@ const editState = reactive({
   name: '',
   organization_name: '',
   organization_logo: '',
-  organization_color: ''
+  organization_color: '',
+  phone: ''
 })
 
 const startEditing = () => {
   if (!user.value) return
   editState.name = user.value.name || ''
-  editState.organization_name = user.value.organization_name || ''
-  editState.organization_logo = user.value.organization_logo || ''
-  editState.organization_color = user.value.organization_color || '#3b82f6'
+  editState.organization_name = currentOrganization.value?.name || ''
+  editState.organization_logo = currentOrganization.value?.logoUrl || ''
+  editState.organization_color = currentOrganization.value?.color || '#3b82f6'
+  editState.phone = currentOrganization.value?.phone || ''
   isEditing.value = true
 }
 
@@ -103,18 +106,14 @@ const handleUpdateProfile = async () => {
   if (!user.value) return
   updatingProfile.value = true
   try {
-    const response = await $api<{success: boolean, data: any, message: string}>(`/users/${user.value.id}`, {
+    // Update user name
+    const userResponse = await $api<{success: boolean, data: any, message: string}>(`/users/${user.value.id}`, {
       method: 'PATCH',
-      body: {
-        name: editState.name,
-        organization_name: editState.organization_name,
-        organization_logo: editState.organization_logo,
-        organization_color: editState.organization_color
-      }
+      body: { name: editState.name }
     })
     
-    if (response.success) {
-      authStore.setUser({ ...user.value, ...response.data })
+    if (userResponse.success) {
+      await authStore.fetchUser()
       useToast().add({ title: 'Profile updated successfully', color: 'success' })
       isEditing.value = false
     }
@@ -126,7 +125,7 @@ const handleUpdateProfile = async () => {
       color: 'error' 
     })
   } finally {
-    updatingProfile.value = true
+    updatingProfile.value = false
   }
 }
 
@@ -357,36 +356,22 @@ const formatDate = (dateString: string) => {
           </div>
         </div>
 
-        <!-- Organization Details (if applicable) -->
-        <div v-if="user?.organization_name">
-          <div class="border-t border-gray-200 dark:border-gray-800 my-6"></div>
-          
-          <div class="space-y-4">
-            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Organization</h3>
-            
-            <div class="flex items-center gap-4">
-              <img 
-                v-if="user.organization_logo" 
-                :src="user.organization_logo" 
-                :alt="user.organization_name"
-                class="w-12 h-12 rounded-lg object-cover"
-              />
-              <div 
-                v-else 
-                class="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
-              >
-                <UIcon name="i-heroicons-building-office" class="w-6 h-6 text-gray-400" />
-              </div>
-              <div>
-                <p class="font-medium text-gray-900 dark:text-white">{{ user.organization_name }}</p>
-                <div 
-                  v-if="user.organization_color" 
-                  class="w-6 h-6 rounded border border-gray-200 dark:border-gray-700 mt-1"
-                  :style="{ backgroundColor: user.organization_color }"
-                ></div>
-              </div>
-            </div>
+        <!-- Organizations Shortcut -->
+        <div class="border-t border-gray-200 dark:border-gray-800 my-6"></div>
+        <div class="flex items-center justify-between p-4 bg-indigo-50/30 dark:bg-indigo-500/5 rounded-2xl border border-indigo-500/20">
+          <div>
+            <h3 class="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest leading-none mb-1">Workspaces</h3>
+            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-tight">Manage settings & team members</p>
           </div>
+          <UButton 
+            to="/organizations" 
+            label="OPEN" 
+            variant="solid" 
+            color="primary" 
+            icon="i-heroicons-arrow-right"
+            trailing
+            class="rounded-xl font-black text-[10px] px-6 shadow-lg shadow-indigo-500/20"
+          />
         </div>
       </div>
 
@@ -397,39 +382,6 @@ const formatDate = (dateString: string) => {
             <UInput v-model="editState.name" icon="i-heroicons-user" placeholder="Your name" />
           </UFormField>
 
-          <div class="border-t border-gray-200 dark:border-gray-800 my-6"></div>
-
-          <div class="space-y-4">
-            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Organization Details</h3>
-            
-            <UFormField label="Organization Name" name="organization_name">
-              <UInput v-model="editState.organization_name" icon="i-heroicons-building-office" placeholder="Parascores FC" />
-            </UFormField>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <UFormField label="Organization Logo">
-                <div class="flex items-center gap-4">
-                  <div class="relative w-16 h-16 rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
-                    <img v-if="editState.organization_logo" :src="editState.organization_logo" class="w-full h-full object-cover" />
-                    <UIcon v-else name="i-heroicons-photo" class="w-8 h-8 text-gray-400" />
-                    <div v-if="uploadingOrgLogo" class="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 text-white animate-spin" />
-                    </div>
-                  </div>
-                  <input ref="orgLogoInput" type="file" accept="image/*" class="hidden" @change="handleOrgLogoChange" />
-                  <UButton size="xs" color="neutral" variant="ghost" icon="i-heroicons-arrow-path" label="Change Logo" @click="triggerOrgLogoInput" :disabled="uploadingOrgLogo" />
-                </div>
-              </UFormField>
-
-              <UFormField label="Brand Color">
-                <div class="flex items-center gap-3">
-                  <input type="color" v-model="editState.organization_color" class="w-10 h-10 rounded border-0 p-0 overflow-hidden cursor-pointer" />
-                  <UInput v-model="editState.organization_color" placeholder="#3b82f6" class="w-32" />
-                </div>
-              </UFormField>
-            </div>
-          </div>
-          
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
             <UButton label="Cancel" variant="ghost" color="neutral" @click="cancelEditing" />
             <UButton label="Save Changes" color="primary" icon="i-heroicons-check" :loading="updatingProfile" @click="handleUpdateProfile" />
