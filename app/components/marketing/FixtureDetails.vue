@@ -3,6 +3,8 @@ import { useRoute } from '#imports'
 import type { Tournament, Fixture, MatchEvent } from '~/types'
 import { FixtureStatus, MatchEventType } from '~/types'
 
+const { toMain } = useHost()
+
 const props = defineProps<{
   tournamentId: string
   fixtureId: string
@@ -173,24 +175,13 @@ const timelineEvents = computed(() => {
     let scoringTeam: 'home' | 'away' | null = null
     
     if (['GOAL', 'OWN_GOAL', 'PENALTY'].includes(event.type)) {
-      const isHomeEvent = (event.participant_id === fixture.value?.homeTeamId || (event as any).participantId === fixture.value?.homeTeamId)
-      // For own goal, the scoring team is the OPPOSITE of the participant who scored it
-      if (event.type === 'OWN_GOAL') {
-          if (isHomeEvent) {
-            awayScore++
-            scoringTeam = 'away'
-          } else {
-            homeScore++
-            scoringTeam = 'home'
-          }
+      const isHomeEventFlag = isHomeEvent(event)
+      if (isHomeEventFlag) {
+        homeScore++
+        scoringTeam = 'home'
       } else {
-          if (isHomeEvent) {
-            homeScore++
-            scoringTeam = 'home'
-          } else {
-            awayScore++
-            scoringTeam = 'away'
-          }
+        awayScore++
+        scoringTeam = 'away'
       }
       currentHomeScore = homeScore
       currentAwayScore = awayScore
@@ -277,7 +268,7 @@ const isHomeEvent = (event: any) => {
             </button>
 
             <!-- Full Page Link -->
-            <NuxtLink v-if="!isFullPage" :to="`/t/${tournament.id}/fixture/${fixture.id}`" class="inline-flex items-center gap-1.5 text-xs text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-full border border-emerald-500/20">
+            <NuxtLink v-if="!isFullPage" :to="toMain(`/t/${tournament.customName || tournament.id}/fixture/${fixture.id}`)" class="inline-flex items-center gap-1.5 text-xs text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-full border border-emerald-500/20">
               View Full Match Page
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -409,7 +400,7 @@ const isHomeEvent = (event: any) => {
                         <div class="flex items-center gap-1.5 flex-row md:flex-row-reverse min-w-0">
                           <!-- Event Icon (Left side has it on the right closest to center) -->
                           <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-                            <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-4 h-4 md:w-5 md:h-5" :class="isDark ? 'text-white' : 'text-gray-900'" />
+                            <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-4 h-4 md:w-5 md:h-5" :class="event.type === 'OWN_GOAL' ? 'text-red-500' : (isDark ? 'text-white' : 'text-gray-900')" />
                             <div v-else-if="event.type === 'YELLOW_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-yellow-400 rounded-[2px] shadow-sm"></div>
                             <div v-else-if="event.type === 'RED_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-red-500 rounded-[2px] shadow-sm"></div>
                             <div v-else-if="event.type === 'SUBSTITUTION'" class="flex items-center justify-center">
@@ -469,7 +460,7 @@ const isHomeEvent = (event: any) => {
                         <div class="flex items-center gap-1.5 flex-row-reverse md:flex-row min-w-0">
                           <!-- Event Icon -->
                           <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-                            <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-4 h-4 md:w-5 md:h-5" :class="isDark ? 'text-white' : 'text-gray-900'" />
+                            <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-4 h-4 md:w-5 md:h-5" :class="event.type === 'OWN_GOAL' ? 'text-red-500' : (isDark ? 'text-white' : 'text-gray-900')" />
                             <div v-else-if="event.type === 'YELLOW_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-yellow-400 rounded-[2px] shadow-sm"></div>
                             <div v-else-if="event.type === 'RED_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-red-500 rounded-[2px] shadow-sm"></div>
                             <div v-else-if="event.type === 'SUBSTITUTION'" class="flex items-center justify-center">
