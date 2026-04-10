@@ -3,19 +3,23 @@ import type { Player } from '~/types'
 import type { ApiResponse } from '~/stores/auth'
 
 definePageMeta({
-  layout: 'default'
+  layout: false
 })
 
+const { toMain } = useHost()
 const route = useRoute()
 const playerId = route.params.id as string
 
-const player = ref<Player | null>(null)
+const player = ref<any | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 
+// Theme
+const isDark = true
+
 onMounted(async () => {
   try {
-    const response = await $publicApi<ApiResponse<Player>>(`/players/${playerId}`)
+    const response = await $publicApi<{success: boolean, data: any}>(`/players/${playerId}`)
     if (response.data) {
       player.value = response.data
     }
@@ -63,112 +67,140 @@ const statsFromEvents = computed(() => {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-4 py-12">
-    <!-- Loading -->
-    <div v-if="loading" class="flex items-center justify-center py-20">
-      <UIcon name="i-heroicons-arrow-path" class="w-10 h-10 animate-spin text-gray-400" />
+  <div class="min-h-screen bg-[#0F0F0F] text-gray-200 font-sans flex items-center justify-center p-4">
+    <!-- Simple Exit Button -->
+    <div class="fixed top-8 right-8 z-50">
+      <UButton
+        :to="toMain('/explore')"
+        icon="i-heroicons-x-mark"
+        color="neutral"
+        variant="ghost"
+        class="rounded-full bg-[#1A1A1A] hover:bg-[#252525] border border-[#333]"
+      />
     </div>
 
-    <!-- Error -->
-    <div v-else-if="error" class="text-center py-20">
-      <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-        <UIcon name="i-heroicons-x-circle" class="w-8 h-8 text-red-500" />
+    <!-- Container -->
+    <div class="w-full max-w-lg">
+      
+      <!-- Loading -->
+      <div v-if="loading" class="bg-[#1A1A1A] border border-[#333] rounded-3xl p-20 flex flex-col items-center justify-center">
+        <div class="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-sm text-gray-500 font-bold uppercase tracking-wider">Loading Profile</p>
       </div>
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Player Not Found</h2>
-      <p class="text-gray-500 mb-6">{{ error }}</p>
-      <UButton to="/" variant="outline" color="neutral">Go Home</UButton>
-    </div>
 
-    <!-- Player Profile -->
-    <div v-else-if="player">
-      <!-- Profile Header -->
-      <div class="flex flex-col items-center text-center mb-8">
-        <!-- Avatar -->
-        <div class="w-24 h-24 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 mb-4 ring-4 ring-white dark:ring-gray-900 shadow-xl flex items-center justify-center">
-          <img
-            v-if="player.avatarUrl"
-            :src="player.avatarUrl"
-            :alt="player.name"
-            class="w-full h-full object-cover"
-          />
-          <span v-else class="text-3xl font-bold text-gray-400">
-            {{ player.name.charAt(0).toUpperCase() }}
-          </span>
-        </div>
+      <!-- Error -->
+      <div v-else-if="error" class="bg-[#1A1A1A] border border-red-500/20 p-12 rounded-3xl text-center">
+        <UIcon name="i-heroicons-exclamation-circle" class="w-12 h-12 text-red-500 mb-4" />
+        <h2 class="text-xl font-bold text-white mb-2">Error</h2>
+        <p class="text-gray-400 mb-6">{{ error }}</p>
+        <UButton :to="toMain('/explore')" color="neutral" variant="outline" class="rounded-xl border-[#333]">Go Back</UButton>
+      </div>
 
-        <!-- Name & Number -->
-        <div class="flex items-center gap-3 mb-2">
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <!-- Player Profile Card (Normal) -->
+      <div v-else-if="player" class="bg-[#1A1A1A] border border-[#2A2A2A] rounded-[2rem] shadow-2xl overflow-hidden">
+        
+        <!-- Header -->
+        <div class="p-8 pb-6 flex flex-col items-center text-center">
+          <div class="w-28 h-28 rounded-full overflow-hidden bg-[#222] border-4 border-[#1A1A1A] ring-1 ring-[#333] mb-4 shadow-xl">
+            <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+            <div v-else class="w-full h-full flex items-center justify-center text-4xl font-bold text-gray-600">
+              {{ player.name.charAt(0) }}
+            </div>
+          </div>
+
+          <h1 class="text-2xl font-bold text-white mb-1 flex items-center gap-2">
             {{ player.name }}
+            <span v-if="player.number" class="text-indigo-500">#{{ player.number }}</span>
           </h1>
-          <span
-            v-if="player.number"
-            class="text-lg font-bold px-2.5 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
-          >
-            #{{ player.number }}
-          </span>
+          <p class="text-sm font-semibold text-gray-500 uppercase tracking-widest">
+            {{ getPositionLabel(player.position) }}
+          </p>
         </div>
 
-        <!-- Position Badge -->
-        <UBadge
-          v-if="player.position"
-          :color="getPositionColor(player.position) as any"
-          variant="subtle"
-          size="lg"
-        >
-          {{ getPositionLabel(player.position) }}
-        </UBadge>
+        <!-- Stats Bar -->
+        <div class="px-8 pb-8">
+          <div class="grid grid-cols-4 gap-2 bg-[#222] p-2 rounded-2xl border border-[#333]">
+            <div v-for="(val, label) in statsFromEvents" :key="label" class="text-center py-3 rounded-xl bg-[#1A1A1A] border border-[#2A2A2A]">
+              <span class="block text-lg font-bold text-white">{{ val }}</span>
+              <span class="text-[9px] font-bold text-gray-600 uppercase tracking-tighter">{{ label.replace('Cards', '') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="px-8 pb-8 space-y-6 max-h-[400px] overflow-y-auto custom-scrollbar">
+          
+          <!-- Current Event -->
+          <div v-if="player.participant?.tournament">
+            <h3 class="text-[10px] font-bold text-gray-600 uppercase tracking-[0.2em] mb-3 px-1">Active Tournament</h3>
+            <NuxtLink
+              :to="`/t/${player.participant.tournament.customName || player.participant.tournament.id}`"
+              class="flex items-center gap-4 p-4 bg-[#222] border border-[#333] hover:border-indigo-500/50 rounded-2xl group transition-all"
+            >
+              <div class="w-12 h-12 rounded-xl bg-white border border-[#222] p-1 shrink-0 overflow-hidden">
+                <img v-if="player.participant.tournament.logoUrl" :src="player.participant.tournament.logoUrl" class="w-full h-full object-contain" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-bold text-white truncate">{{ player.participant.tournament.name }}</p>
+                <p class="text-[11px] text-gray-500 font-bold uppercase tracking-wider">{{ player.participant.customName || 'Individual' }}</p>
+              </div>
+              <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-gray-700 group-hover:text-indigo-500" />
+            </NuxtLink>
+          </div>
+
+          <!-- History -->
+          <div v-if="player.user?.player_profiles?.length && player.user.player_profiles.length > 1">
+            <h3 class="text-[10px] font-bold text-gray-600 uppercase tracking-[0.2em] mb-3 px-1">Career Records</h3>
+            <div class="space-y-2">
+              <template v-for="profile in player.user.player_profiles" :key="profile.id">
+                <NuxtLink
+                  v-if="profile.id !== player.id"
+                  :to="`/player/${profile.id}`"
+                  class="flex items-center gap-3 p-3 bg-[#1A1A1A] border border-[#2A2A2A] hover:bg-[#222] rounded-xl transition-colors group"
+                >
+                  <div class="w-8 h-8 rounded-lg bg-white/5 border border-[#333] flex items-center justify-center shrink-0">
+                    <img v-if="profile.participant?.tournament?.logoUrl" :src="profile.participant.tournament.logoUrl" class="w-full h-full object-contain p-1" />
+                    <UIcon v-else name="i-heroicons-archive-box" class="w-4 h-4 text-gray-700" />
+                  </div>
+                  <div class="flex-1 min-w-0 text-xs">
+                    <p class="font-bold text-gray-300 truncate group-hover:text-white">{{ profile.participant?.tournament?.name }}</p>
+                    <p class="text-[10px] text-gray-600">{{ profile.participant?.customName }} <span v-if="profile.number">• #{{ profile.number }}</span></p>
+                  </div>
+                  <UIcon name="i-heroicons-chevron-right" class="w-3 h-3 text-gray-800" />
+                </NuxtLink>
+              </template>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="p-6 bg-[#181818] border-t border-[#2A2A2A] flex items-center justify-between">
+          <div class="flex items-center gap-2 grayscale opacity-50">
+            <div class="w-6 h-6 rounded bg-indigo-500 flex items-center justify-center text-[10px] font-bold text-black">P</div>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500 leading-none">ParaScores</span>
+          </div>
+          <span class="text-[9px] font-bold text-gray-600 uppercase tracking-widest">Verified Profile</span>
+        </div>
+
       </div>
 
-      <!-- Stats Cards -->
-      <div v-if="player.matchEvents?.length" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <UCard class="text-center">
-          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ statsFromEvents.goals }}</p>
-          <p class="text-xs text-gray-500 mt-1">Goals</p>
-        </UCard>
-        <UCard class="text-center">
-          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ statsFromEvents.assists }}</p>
-          <p class="text-xs text-gray-500 mt-1">Assists</p>
-        </UCard>
-        <UCard class="text-center">
-          <p class="text-2xl font-bold text-amber-500">{{ statsFromEvents.yellowCards }}</p>
-          <p class="text-xs text-gray-500 mt-1">Yellow Cards</p>
-        </UCard>
-        <UCard class="text-center">
-          <p class="text-2xl font-bold text-red-500">{{ statsFromEvents.redCards }}</p>
-          <p class="text-xs text-gray-500 mt-1">Red Cards</p>
-        </UCard>
-      </div>
-
-      <!-- Tournament Info -->
-      <UCard v-if="player.participant?.tournament">
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-indigo-500" />
-            <span class="font-medium">Tournament</span>
-          </div>
-        </template>
-        <NuxtLink
-          :to="`/t/${player.participant.tournament.id}`"
-          class="flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors p-2 -m-2"
-        >
-          <div
-            v-if="player.participant.tournament.logoUrl"
-            class="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0"
-          >
-            <img :src="player.participant.tournament.logoUrl" class="w-full h-full object-cover" />
-          </div>
-          <div>
-            <p class="font-medium text-gray-900 dark:text-white">
-              {{ player.participant.tournament.name }}
-            </p>
-            <p class="text-xs text-gray-500">
-              Team: {{ player.participant.customName || 'Unknown' }}
-            </p>
-          </div>
-          <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-gray-400 ml-auto" />
-        </NuxtLink>
-      </UCard>
     </div>
   </div>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+</style>
