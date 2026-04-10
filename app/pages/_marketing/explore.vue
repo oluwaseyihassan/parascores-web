@@ -1,10 +1,7 @@
 <template>
-  <div class="bg-[#0A0F1C] text-white">
+  <div class="min-h-full text-white">
     <!-- Hero Section -->
-    <section class="relative pt-20 pb-12 overflow-x-hidden">
-      <!-- Background Glow -->
-      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
-
+    <section class="relative pt-8 pb-12 overflow-x-hidden">
       <div class="max-w-7xl mx-auto px-6 relative z-10">
         <!-- Badge -->
         <div class="inline-flex items-center gap-2 px-3 py-1.5 mb-6 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded">
@@ -31,7 +28,7 @@
               v-model="searchQuery"
               type="text"
               placeholder="Search tournaments..."
-              class="w-full pl-10 pr-4 py-3 bg-[#111827] border border-white/10 rounded-lg text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-emerald-500/50 transition-colors"
+              class="w-full pl-10 pr-4 py-3 bg-[#0A0A0A] border border-white/10 rounded-lg text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-emerald-500/50 transition-colors"
             />
           </div>
         </div>
@@ -45,7 +42,7 @@
               'px-4 py-2 text-xs font-medium rounded-lg border transition-all duration-200',
               selectedType === filter.value
                 ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
-                : 'bg-[#111827] border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
+                : 'bg-[#0A0A0A] border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
             ]"
             @click="selectedType = filter.value"
           >
@@ -68,7 +65,7 @@
 
         <!-- Loading State -->
         <div v-if="loading && tournaments.length === 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="i in 6" :key="i" class="bg-[#111827] border border-white/10 rounded-xl overflow-hidden animate-pulse">
+          <div v-for="i in 6" :key="i" class="bg-[#0A0A0A] border border-white/10 rounded-xl overflow-hidden animate-pulse">
             <div class="h-36 bg-white/5"></div>
             <div class="p-5">
               <div class="h-4 bg-white/5 rounded w-3/4 mb-3"></div>
@@ -111,82 +108,24 @@
 
         <!-- Tournament Grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <NuxtLink
+          <TournamentCard
             v-for="(tournament, index) in filteredTournaments"
             :key="tournament.id"
-            :to="`/t/${tournament.customName || tournament.id}`"
-            class="group bg-[#111827] border border-white/10 rounded-xl p-5 hover:border-emerald-500/50 transition-all duration-300 card-fade-in flex flex-col"
+            :tournament="tournament"
             :style="{ animationDelay: `${index * 50}ms` }"
-          >
-            <!-- Header Row: Sport, Logo, Type Badge -->
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0">
-                  <img
-                    v-if="tournament.logoUrl"
-                    :src="tournament.logoUrl"
-                    :alt="tournament.name"
-                    class="w-full h-full object-cover"
-                  />
-                  <span v-else class="text-sm font-bold text-white">
-                    {{ tournament.name.charAt(0).toUpperCase() }}
-                  </span>
-                </div>
-                <div>
-                  <span class="text-xs font-medium text-emerald-400 uppercase tracking-wide">
-                    {{ tournament.sport }}
-                  </span>
-                </div>
-              </div>
-              <span :class="[
-                'px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded border',
-                getTypeBadgeClasses(tournament.type)
-              ]">
-                {{ formatType(tournament.type) }}
-              </span>
-            </div>
-
-            <!-- Title & Desc -->
-            <div class="flex-1">
-              <h3 class="text-lg font-bold text-white leading-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
-                {{ tournament.name }}
-              </h3>
-            </div>
-
-            <!-- Meta Info (Footer) -->
-            <div class="mt-4 pt-4 border-t border-white/5 flex flex-col gap-2.5 text-xs text-gray-400 font-medium">
-              <div v-if="tournament.organizer" class="flex items-center gap-1.5">
-                <span class="text-gray-500">Hosted by</span>
-                <span class="text-gray-300 truncate max-w-[150px]">{{ tournament.organizer.organization_name || tournament.organizer.name }}</span>
-                <UIcon
-                  v-if="tournament.organizer.isVerified"
-                  name="i-heroicons-check-badge-solid"
-                  class="w-4 h-4 text-blue-400 shrink-0"
-                  title="Verified Organizer"
-                />
-              </div>
-              <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <div class="flex items-center gap-1.5">
-                   <UIcon name="i-heroicons-calendar" class="w-4 h-4 text-gray-500" />
-                   {{ formatDate(tournament.start_date) }}
-                </div>
-                <div v-if="tournament.location" class="flex items-center gap-1.5">
-                   <UIcon name="i-heroicons-map-pin" class="w-4 h-4 text-gray-500" />
-                   <span class="truncate max-w-[120px]">{{ tournament.location }}</span>
-                </div>
-              </div>
-            </div>
-          </NuxtLink>
+          />
         </div>
 
         <!-- Load More -->
         <div v-if="hasMore && !loading" class="flex justify-center mt-12">
-          <button
-            class="px-8 py-3 text-sm font-semibold text-white bg-emerald-600/10 border border-emerald-500/30 rounded-full hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all duration-300 backdrop-blur-sm"
+          <UButton
+            color="success"
+            variant="soft"
+            class="px-10 py-3 rounded-full font-bold shadow-lg shadow-emerald-500/5"
             @click="loadMore"
           >
             Load More Tournaments
-          </button>
+          </UButton>
         </div>
 
         <!-- Loading More Spinner -->
@@ -209,8 +148,8 @@
           Create tournaments, manage fixtures, generate graphics, and embed live widgets — all for free.
         </p>
         <NuxtLink
-          to="/signup"
-          class="inline-block px-8 py-4 text-base font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors"
+          :to="toMain('/signup')"
+          class="inline-block px-8 py-4 text-base font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95"
         >
           Start Organizing
         </NuxtLink>
@@ -222,8 +161,10 @@
 <script setup lang="ts">
 import type { Tournament } from '~/types'
 
+const { toMain, toTournament } = useHost()
+
 definePageMeta({
-  layout: 'explore'
+  layout: 'feed'
 })
 
 interface PaginatedResponse<T> {
@@ -333,21 +274,6 @@ function formatDate(dateString: string) {
     day: 'numeric',
     year: 'numeric',
   })
-}
-
-function formatType(type: string) {
-  return type.replace(/_/g, ' ')
-}
-
-function getTypeBadgeClasses(type: string) {
-  switch (type) {
-    case 'KNOCKOUT': return 'bg-red-500/20 text-red-400 border-red-500/30'
-    case 'ROUND_ROBIN': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-    case 'GROUP': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-    case 'HYBRID': return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-    case 'FRIENDLY': return 'bg-green-500/20 text-green-400 border-green-500/30'
-    default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-  }
 }
 
 // Fetch on mount
