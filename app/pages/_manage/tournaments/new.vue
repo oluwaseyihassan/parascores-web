@@ -5,8 +5,13 @@ import { TournamentType, ParticipantType, Visibility, type Tournament } from '~/
 import { CalendarDate, type DateValue } from '@internationalized/date'
 
 definePageMeta({
+  middleware: ['require-organizer'],
   layout: 'dashboard'
 })
+
+const tournamentStore = useTournamentStore()
+const authStore = useAuthStore()
+const router = useRouter()
 
 const isDirty = computed(() => {
   return state.name !== '' || state.sport !== '' || logoFile.value !== null || bannerFile.value !== null
@@ -21,9 +26,6 @@ onBeforeRouteLeave((to, from, next) => {
     next()
   }
 })
-
-const tournamentStore = useTournamentStore()
-const router = useRouter()
 
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -177,7 +179,8 @@ const schema = z.object({
   maxParticipants: z.number().positive().optional().nullable(),
   autoApprove: z.boolean(),
   twoLegsKnockout: z.boolean().optional(),
-  thirdPlaceMatch: z.boolean().optional()
+  thirdPlaceMatch: z.boolean().optional(),
+  organization_id: z.string().min(1, 'Organization is required')
 })
 
 type Schema = z.output<typeof schema>
@@ -198,7 +201,8 @@ const state = reactive<Partial<Schema>>({
   maxParticipants: null,
   autoApprove: false,
   twoLegsKnockout: false,
-  thirdPlaceMatch: false
+  thirdPlaceMatch: false,
+  organization_id: authStore.currentOrganization?.id || ''
 })
 
 // Watch for custom name changes (must be after state declaration)
@@ -330,7 +334,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       customName: event.data.customName || undefined,
       logoUrl,
       bannerUrl,
-      scoringRules: {} // Default empty scoring rules
+      organization_id: event.data.organization_id,
+      scoringRules: { win: 3, draw: 1, loss: 0 } // Default scoring rules
     } as Partial<Tournament>)
     
     if (response?.data) {
@@ -364,13 +369,26 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     <UAlert 
       v-if="error" 
       color="error" 
-      variant="subtle"
-      icon="i-heroicons-exclamation-triangle"
-      :title="error"
-      class="mb-6"
-      :close-button="{ icon: 'i-heroicons-x-mark', color: 'error', variant: 'link' }"
-      @close="error = null"
-    />
+      variant="soft"
+      icon="i-heroicons-exclamation-circle"
+      title="Action Required"
+      :description="error"
+      class="mb-6 rounded-2xl border border-red-100 dark:border-red-900/30 shadow-sm"
+    >
+      <template #description>
+        <div class="flex items-center justify-between gap-3">
+          <span class="flex-1">{{ error }}</span>
+          <UButton 
+            size="xs" 
+            color="error" 
+            variant="ghost" 
+            icon="i-heroicons-x-mark" 
+            class="rounded-full"
+            @click="error = null" 
+          />
+        </div>
+      </template>
+    </UAlert>
 
     <!-- Form -->
     <UForm :schema="schema" :state="state" @submit="onSubmit" class="space-y-8">
@@ -378,9 +396,24 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       <!-- Basic Info -->
       <UCard>
         <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-indigo-500" />
-            <span class="font-medium">Basic Information</span>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-indigo-500" />
+              <span class="font-medium">Basic Information</span>
+            </div>
+            
+            <div v-if="authStore.organizations.length > 1" class="flex items-center gap-2">
+               <span class="text-xs text-gray-500">Creating for:</span>
+               <USelect 
+                 v-model="state.organization_id" 
+                 :items="authStore.organizations.map((o: any) => ({ label: o.organization?.name, value: o.organization?.id }))"
+                 size="xs"
+                 class="w-40"
+               />
+            </div>
+            <div v-else-if="authStore.currentOrganization" class="text-xs text-gray-400 italic">
+               Creating for {{ authStore.currentOrganization.name }}
+            </div>
           </div>
         </template>
 
