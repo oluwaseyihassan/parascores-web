@@ -2,6 +2,7 @@
 import type { Fixture, Tournament } from '~/types'
 
 definePageMeta({
+  middleware: ['require-organizer'],
   layout: 'dashboard'
 })
 const route = useRoute()
@@ -196,7 +197,7 @@ const fetchData = async () => {
     }
 
   } catch (e: any) {
-    error.value = e.message || 'Failed to load tournament data'
+    error.value = e.data?.message || e.message || 'Failed to load tournament data'
   } finally {
     loading.value = false
   }
