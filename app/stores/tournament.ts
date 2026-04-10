@@ -19,8 +19,10 @@ export interface PaginatedResponse<T> {
 
 export const useTournamentStore = defineStore('tournament', () => {
   const tournaments = ref<Tournament[]>([])
+  const followedTournaments = ref<Tournament[]>([])
   const currentTournament = ref<Tournament | null>(null)
   const loading = ref(false)
+  const followedLoading = ref(false)
   const error = ref<string | null>(null)
   const pagination = ref<Pagination>({
     page: 1,
@@ -42,12 +44,18 @@ export const useTournamentStore = defineStore('tournament', () => {
   const totalCount = computed(() => pagination.value.total)
 
   // Actions
-  async function fetchTournaments(params: { page?: number; limit?: number; append?: boolean } = {}) {
-    const { page = 1, limit = 10, append = false } = params
+  async function fetchTournaments(params: { page?: number; limit?: number; append?: boolean, organizationId?: string } = {}) {
+    const { page = 1, limit = 10, append = false, organizationId } = params
     loading.value = true
     error.value = null
     try {
-      const response = await $api<PaginatedResponse<Tournament>>(`/tournaments/mine?page=${page}&limit=${limit}`, {
+      const authStore = useAuthStore()
+      const orgId = organizationId || authStore.activeOrganizationId
+      let url = `/tournaments/mine?page=${page}&limit=${limit}`
+      if (orgId) {
+        url += `&organizationId=${orgId}`
+      }
+      const response = await $api<PaginatedResponse<Tournament>>(url, {
         method: 'GET',
       })
       if (response.data) {
@@ -62,7 +70,7 @@ export const useTournamentStore = defineStore('tournament', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to fetch tournaments'
+      error.value = err.data?.message || err.message || 'Failed to fetch tournaments'
       console.error('Fetch tournaments failed:', err)
       throw err
     } finally {
@@ -96,7 +104,7 @@ export const useTournamentStore = defineStore('tournament', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to fetch tournament'
+      error.value = err.data?.message || err.message || 'Failed to fetch tournament'
       console.error('Fetch tournament failed:', err)
       throw err
     } finally {
@@ -108,9 +116,14 @@ export const useTournamentStore = defineStore('tournament', () => {
     loading.value = true
     error.value = null
     try {
+      const authStore = useAuthStore()
+      const body = {
+        ...data,
+        organization_id: data.organization_id || authStore.activeOrganizationId
+      }
       const response = await $api<ApiResponse<Tournament>>('/tournaments', {
         method: 'POST',
-        body: data,
+        body,
       })
       if (response.data) {
         tournaments.value.push(response.data)
@@ -118,7 +131,7 @@ export const useTournamentStore = defineStore('tournament', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to create tournament'
+      error.value = err.data?.message || err.message || 'Failed to create tournament'
       console.error('Create tournament failed:', err)
       throw err
     } finally {
@@ -147,7 +160,7 @@ export const useTournamentStore = defineStore('tournament', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to update tournament'
+      error.value = err.data?.message || err.message || 'Failed to update tournament'
       console.error('Update tournament failed:', err)
       throw err
     } finally {
@@ -170,11 +183,59 @@ export const useTournamentStore = defineStore('tournament', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.message || 'Failed to delete tournament'
+      error.value = err.data?.message || err.message || 'Failed to delete tournament'
       console.error('Delete tournament failed:', err)
       throw err
     } finally {
       loading.value = false
+    }
+  }
+
+  async function fetchFollowedTournaments(page: number = 1, limit: number = 20) {
+    followedLoading.value = true
+    try {
+      const response = await $api<PaginatedResponse<Tournament>>(`/tournaments/following/mine?page=${page}&limit=${limit}`, {
+        method: 'GET',
+      })
+      if (response.data) {
+        followedTournaments.value = response.data
+      }
+      return response
+    } catch (err: any) {
+      console.error('Fetch followed tournaments failed:', err)
+      throw err
+    } finally {
+      followedLoading.value = false
+    }
+  }
+
+  async function followTournament(id: string) {
+    const t = tournaments.value.find(x => x.id === id || x.customName === id) || (currentTournament.value?.id === id || currentTournament.value?.customName === id ? currentTournament.value : null)
+    
+    try {
+      await $api(`/tournaments/${id}/follow`, { method: 'POST' })
+    } catch (err: any) {
+      if (err.data?.message !== 'Tournament already followed') {
+        console.error('Follow tournament failed:', err)
+        throw err
+      }
+    }
+    
+    if (t && !followedTournaments.value.some(x => x.id === t.id)) {
+      followedTournaments.value.push(t)
+    } else if (!t) {
+      // Tournament not in local store (e.g. following from public page) — re-fetch to update sidebar
+      await fetchFollowedTournaments()
+    }
+  }
+
+  async function unfollowTournament(id: string) {
+    try {
+      await $api(`/tournaments/${id}/unfollow`, { method: 'DELETE' })
+      followedTournaments.value = followedTournaments.value.filter(t => t.id !== id && t.customName !== id)
+    } catch (err: any) {
+      console.error('Unfollow tournament failed:', err)
+      throw err
     }
   }
 
@@ -192,8 +253,10 @@ export const useTournamentStore = defineStore('tournament', () => {
   return {
     // State
     tournaments,
+    followedTournaments,
     currentTournament,
     loading,
+    followedLoading,
     error,
     pagination,
     // Getters
@@ -208,6 +271,9 @@ export const useTournamentStore = defineStore('tournament', () => {
     createTournament,
     updateTournament,
     deleteTournament,
+    fetchFollowedTournaments,
+    followTournament,
+    unfollowTournament,
     setCurrentTournament,
     clearTournaments,
   }
