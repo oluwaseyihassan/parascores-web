@@ -3,6 +3,7 @@ import { FixtureStatus } from '~/types'
 import type { Fixture } from '~/types'
 
 definePageMeta({
+  middleware: ['require-organizer'],
   layout: 'dashboard'
 })
 
