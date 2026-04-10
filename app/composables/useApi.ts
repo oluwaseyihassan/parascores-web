@@ -81,7 +81,7 @@ export async function $api<T>(url: string, options: FetchOptions & { _retry?: bo
           await authStore.logout()
         }
         if (import.meta.client) {
-            navigateTo('/login')
+            navigateTo('/')
         }
         throw refreshError
       }
