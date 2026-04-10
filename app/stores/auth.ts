@@ -14,8 +14,32 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const loading = ref(false)
   const authLoading = ref(true) // Tracks initial authentication check
+  const activeOrganizationId = ref<string | null>(null)
 
   const isAuthenticated = computed(() => !!user.value)
+  const organizations = computed(() => user.value?.organizations || [])
+  const isOrganizer = computed(() => organizations.value.length > 0)
+  
+  const currentOrganization = computed(() => {
+    if (!isOrganizer.value) return null
+    
+    // 1. Try to find the explicitly active one
+    if (activeOrganizationId.value) {
+      const active = organizations.value.find(org => org.organizationId === activeOrganizationId.value)
+      if (active?.organization) return active.organization
+    }
+
+    // 2. Fallback: Prioritize OWNER or ADMIN roles, then just the first one
+    const primary = organizations.value.find(org => org.role === 'OWNER' || org.role === 'ADMIN')
+    const fallback = primary?.organization || organizations.value[0]?.organization || null
+    
+    // Side effect: If no activeOrgId set, set it to the fallback's ID
+    if (!activeOrganizationId.value && fallback) {
+        activeOrganizationId.value = fallback.id
+    }
+    
+    return fallback
+  })
 
   function setUser(newUser: User | null) {
     user.value = newUser
@@ -65,6 +89,12 @@ async function signup(email: string, password: string, name: string) {
       })
       if (response.data) {
         setUser(response.data)
+        
+        // Initial active organization setup
+        const cookie = useCookie('active_org_id')
+        if (cookie.value) {
+          activeOrganizationId.value = cookie.value
+        }
       }
       
     } catch (error: any) {
@@ -78,7 +108,7 @@ async function signup(email: string, password: string, name: string) {
   async function googleSignup() {
     loading.value = true
     const config = useRuntimeConfig()
-    const redirect_url = config.public.DASHBOARD_URL
+    const redirect_url = config.public.FRONT_END_URL
     try {
       return navigateTo(config.public.API_BASE_URL + `/auth/google?redirect_url=${redirect_url}`, {
           external: true
@@ -209,11 +239,24 @@ async function signup(email: string, password: string, name: string) {
     }
   }
 
+  const setActiveOrganization = (id: string) => {
+    activeOrganizationId.value = id
+    const cookie = useCookie('active_org_id')
+    cookie.value = id
+    
+    // Refresh tournaments for the new context
+    const tournamentStore = useTournamentStore()
+    tournamentStore.fetchTournaments({ limit: 50 })
+  }
+
   return {
     user,
     loading,
     authLoading,
     isAuthenticated,
+    organizations,
+    isOrganizer,
+    currentOrganization,
     setUser,
     login,
     signup,
@@ -225,6 +268,8 @@ async function signup(email: string, password: string, name: string) {
     forgotPassword,
     resetPassword,
     updateUser,
-    upgradeToOrganizer
+    upgradeToOrganizer,
+    activeOrganizationId,
+    setActiveOrganization
   }
 })
