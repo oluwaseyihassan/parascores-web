@@ -7,6 +7,7 @@ definePageMeta({
 })
 
 const route = useRoute()
+const router = useRouter()
 const tournamentId = route.params.id as string
 
 // Theme (injected from widget layout)
@@ -577,12 +578,12 @@ function getTeamCards(fixture: any, isHome: boolean) {
           <!-- Back link over banner -->
           <div class="absolute top-6 inset-x-0 z-10 w-full">
             <div class="max-w-5xl mx-auto px-4 sm:px-6">
-              <NuxtLink :to="toMain('/explore')" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-xs font-semibold text-white/90 hover:text-white transition-all border border-white/10">
+              <button @click="router.back()" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-xs font-semibold text-white/90 hover:text-white transition-all border border-white/10 cursor-pointer">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
-                Back to Explore
-              </NuxtLink>
+                Back
+              </button>
             </div>
           </div>
         </div>
@@ -838,23 +839,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
                           {{ fixture.venue }}
                         </template>
                       </span>
-                      <div class="flex items-center gap-2">
-                        <template v-if="fixture.status === FixtureStatus.LIVE">
-                          <span class="text-[9px] font-semibold text-red-500 flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_4px_rgba(239,68,68,0.5)]"></span>
-                            LIVE
-                          </span>
-                        </template>
-                        <template v-else-if="fixture.status === FixtureStatus.COMPLETED">
-                          <span>FT</span>
-                        </template>
-                        <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
-                          <span class="text-red-400">CANC</span>
-                        </template>
-                        <template v-else>
-                          <span v-if="fixture.startTime" class="text-gray-500">{{ formatTime24(fixture.startTime) }}</span>
-                          <span v-else class="text-gray-500">TBD</span>
-                        </template>
+                      <div v-if="fixture.status === FixtureStatus.CANCELLED" class="flex items-center gap-2">
+                        <span class="text-red-400">CANC</span>
                       </div>
                     </div>
                     
@@ -903,19 +889,26 @@ function getTeamCards(fixture: any, isHome: boolean) {
                         </div>
                       </div>
 
-                      <!-- Score -->
-                      <div class="flex flex-col items-center justify-center pl-4 border-l min-w-[2rem]" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+                      <!-- Score/Time -->
+                      <div class="flex flex-col items-center justify-center pl-4 border-l min-w-[3.5rem]" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                         <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED">
-                          <div class="flex flex-col items-center gap-3">
+                          <div class="flex flex-col items-center gap-1">
                             <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true, isDark)">{{ fixture.homeScore ?? 0 }}</span>
+                            <span v-if="fixture.status === FixtureStatus.LIVE" class="text-[9px] font-bold text-red-500 uppercase flex items-center gap-1">
+                              <span class="w-1 h-1 bg-red-500 rounded-full animate-pulse"></span>
+                              LIVE
+                            </span>
+                            <span v-else class="text-[9px] font-bold text-gray-500 uppercase">FT</span>
                             <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, false, isDark)">{{ fixture.awayScore ?? 0 }}</span>
                           </div>
                         </template>
+                        <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
+                           <span class="text-[11px] font-bold text-red-400">CANC</span>
+                        </template>
                         <template v-else>
-                          <div class="flex flex-col items-center gap-3 text-gray-600">
-                            <span class="text-[13px] font-bold leading-none">-</span>
-                            <span class="text-[13px] font-bold leading-none">-</span>
-                          </div>
+                          <span class="text-[13px] font-bold text-gray-900 dark:text-gray-200">
+                             {{ fixture.startTime ? formatTime24(fixture.startTime) : 'TBD' }}
+                          </span>
                         </template>
                       </div>
                     </div>
@@ -968,23 +961,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
                             {{ fixture.venue }}
                           </template>
                         </span>
-                        <div class="flex items-center gap-2">
-                          <template v-if="fixture.status === FixtureStatus.LIVE">
-                            <span class="text-[9px] font-semibold text-red-500 flex items-center gap-1">
-                              <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_4px_rgba(239,68,68,0.5)]"></span>
-                              LIVE
-                            </span>
-                          </template>
-                          <template v-else-if="fixture.status === FixtureStatus.COMPLETED">
-                            <span>FT</span>
-                          </template>
-                          <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
-                            <span class="text-red-400">CANC</span>
-                          </template>
-                          <template v-else>
-                            <span v-if="fixture.startTime" class="text-gray-500">{{ formatTime24(fixture.startTime) }}</span>
-                            <span v-else class="text-gray-500">TBD</span>
-                          </template>
+                        <div v-if="fixture.status === FixtureStatus.CANCELLED" class="flex items-center gap-2">
+                          <span class="text-red-400">CANC</span>
                         </div>
                       </div>
                       
@@ -1021,19 +999,26 @@ function getTeamCards(fixture: any, isHome: boolean) {
                           </div>
                         </div>
 
-                        <!-- Score -->
-                        <div class="flex flex-col items-center justify-center pl-4 border-l min-w-[2rem]" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+                        <!-- Score/Time -->
+                        <div class="flex flex-col items-center justify-center pl-4 border-l min-w-[3.5rem]" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                           <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED">
-                            <div class="flex flex-col items-center gap-3">
+                            <div class="flex flex-col items-center gap-1">
                               <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true, isDark)">{{ fixture.homeScore ?? 0 }}</span>
-                              <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, false, isDark)">{{ fixture.awayScore ?? 0 }}</span>
+                              <span v-if="fixture.status === FixtureStatus.LIVE" class="text-[9px] font-bold text-red-500 uppercase flex items-center gap-1">
+                                <span class="w-1 h-1 bg-red-500 rounded-full animate-pulse"></span>
+                                LIVE
+                              </span>
+                              <span v-else class="text-[9px] font-bold text-gray-500 uppercase">FT</span>
+                              <span class="text-[14px} leading-none transition-colors" :class="getScoreClass(fixture, false, isDark)">{{ fixture.awayScore ?? 0 }}</span>
                             </div>
                           </template>
+                          <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
+                             <span class="text-[11px] font-bold text-red-400">CANC</span>
+                          </template>
                           <template v-else>
-                            <div class="flex flex-col items-center gap-3 text-gray-600">
-                              <span class="text-[13px] font-bold leading-none">-</span>
-                              <span class="text-[13px] font-bold leading-none">-</span>
-                            </div>
+                            <span class="text-[13px] font-bold text-gray-900 dark:text-gray-200">
+                               {{ fixture.startTime ? formatTime24(fixture.startTime) : 'TBD' }}
+                            </span>
                           </template>
                         </div>
                       </div>
