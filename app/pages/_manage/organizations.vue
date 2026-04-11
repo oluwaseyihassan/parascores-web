@@ -17,7 +17,17 @@ const handleSwitch = (id: string) => {
 
 // Management State
 const expandedOrgId = ref<string | null>(null)
-const activeTabs = ref<Record<string, 'members' | 'branding'>>({})
+const activeTabs = ref<Record<string, 'members' | 'branding' | 'settings'>>({})
+
+// Delete Organization State
+const deleteModalOpen = ref(false)
+const deleteStep = ref<1 | 2>(1)
+const deleteOrgId = ref<string | null>(null)
+const deleteOrgName = ref('')
+const deleteCounts = ref({ tournamentCount: 0, memberCount: 0 })
+const deleteCode = ref('')
+const requestingCode = ref(false)
+const confirmingDelete = ref(false)
 
 const toggleExpand = (id: string) => {
   if (expandedOrgId.value === id) {
@@ -205,7 +215,7 @@ const logoInput = ref<HTMLInputElement | null>(null)
 // Helper to initialize branding state when switching to branding tab
 watch(activeTabs, (newTabs) => {
     for (const [orgId, tab] of Object.entries(newTabs)) {
-        if (tab === 'branding' && !brandingStates.value[orgId]) {
+        if (tab === 'settings' && !brandingStates.value[orgId]) {
             const org = authStore.organizations.find(o => o.organizationId === orgId)?.organization
             if (org) startBrandingEdit(org)
         }
@@ -247,6 +257,60 @@ const openConfirmModal = (options: {
     }
   }
   confirmModalState.isOpen = true
+}
+
+// Delete Organization Handlers
+const openDeleteModal = (orgId: string, orgName: string) => {
+  deleteOrgId.value = orgId
+  deleteOrgName.value = orgName
+  deleteStep.value = 1
+  deleteCode.value = ''
+  deleteModalOpen.value = true
+}
+
+const handleRequestDeleteCode = async () => {
+  if (!deleteOrgId.value) return
+  requestingCode.value = true
+  try {
+    const response = await $api<{success: boolean, data: {tournamentCount: number, memberCount: number}, message: string}>(
+      `/organizations/${deleteOrgId.value}/request-delete`,
+      { method: 'POST' }
+    )
+    deleteCounts.value = response.data
+    deleteStep.value = 2
+    useToast().add({ title: 'Code sent', description: 'Check your email for the verification code', color: 'success' })
+  } catch (error: any) {
+    useToast().add({ title: 'Failed', description: error.data?.message || 'Could not send verification code', color: 'error' })
+  } finally {
+    requestingCode.value = false
+  }
+}
+
+const handleConfirmDelete = async () => {
+  if (!deleteOrgId.value || !deleteCode.value) return
+  confirmingDelete.value = true
+  try {
+    await $api(`/organizations/${deleteOrgId.value}/confirm-delete`, {
+      method: 'POST',
+      body: { code: deleteCode.value }
+    })
+    useToast().add({ title: 'Organization deleted', description: `${deleteOrgName.value} has been permanently deleted.`, color: 'success' })
+    deleteModalOpen.value = false
+    // Refresh user data to remove the deleted org
+    await authStore.fetchUser()
+    // If we deleted the active org, switch to first available
+    if (deleteOrgId.value === authStore.activeOrganizationId) {
+      const remaining = authStore.organizations[0]
+      if (remaining) {
+        authStore.setActiveOrganization(remaining.organizationId)
+      }
+    }
+    expandedOrgId.value = null
+  } catch (error: any) {
+    useToast().add({ title: 'Delete failed', description: error.data?.message || 'Invalid or expired code', color: 'error' })
+  } finally {
+    confirmingDelete.value = false
+  }
 }
 </script>
 
@@ -343,7 +407,7 @@ const openConfirmModal = (options: {
             <!-- Settings Tabs -->
             <div class="flex gap-4 border-b border-gray-200 dark:border-white/5 mb-4">
                 <button 
-                    v-for="tab in ['members', 'branding'] as const" 
+                    v-for="tab in ['members', 'settings'] as const" 
                     :key="tab"
                     class="px-4 py-2 text-sm font-bold capitalize transition-all border-b-2 -mb-px"
                     :class="activeTabs[orgMember.organizationId] === tab ? 'text-indigo-500 border-indigo-500' : 'text-gray-500 border-transparent hover:text-gray-700 dark:hover:text-gray-300'"
@@ -418,9 +482,11 @@ const openConfirmModal = (options: {
                 </div>
             </div>
 
-            <!-- Branding Tab -->
-            <div v-if="activeTabs[orgMember.organizationId] === 'branding'" class="space-y-6 pt-2">
+            <!-- Settings Tab -->
+            <div v-if="activeTabs[orgMember.organizationId] === 'settings'" class="space-y-6 pt-2">
+                <!-- Branding Section -->
                 <div v-if="brandingStates[orgMember.organizationId]" class="space-y-4">
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Branding</h4>
                     <UFormField label="Workspace Name">
                         <UInput v-model="brandingStates[orgMember.organizationId].name" placeholder="Organization name" />
                     </UFormField>
@@ -461,6 +527,32 @@ const openConfirmModal = (options: {
                         :loading="updatingBranding"
                         @click="handleUpdateBranding(orgMember.organizationId)"
                     />
+                </div>
+
+                <!-- Danger Zone -->
+                <div v-if="orgMember.role === 'OWNER'" class="border-2 border-red-500/30 rounded-xl overflow-hidden">
+                    <div class="px-5 py-3 bg-red-500/5 border-b border-red-500/20">
+                        <h4 class="text-sm font-bold text-red-500 flex items-center gap-2">
+                            <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4" />
+                            Danger Zone
+                        </h4>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-bold text-gray-900 dark:text-white text-sm">Delete this organization</p>
+                                <p class="text-xs text-gray-500 mt-1">Permanently delete this organization and all its tournaments, fixtures, and data. This action cannot be undone.</p>
+                            </div>
+                            <UButton
+                                label="Delete Organization"
+                                color="error"
+                                variant="soft"
+                                icon="i-heroicons-trash"
+                                class="rounded-xl font-bold shrink-0 ml-4"
+                                @click="openDeleteModal(orgMember.organizationId, orgMember.organization?.name || 'Organization')"
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -521,6 +613,89 @@ const openConfirmModal = (options: {
                             :label="confirmModalState.confirmLabel"
                             :loading="confirmModalState.loading"
                             @click="confirmModalState.onConfirm"
+                        />
+                    </div>
+                </template>
+            </UCard>
+        </template>
+    </UModal>
+
+    <!-- Delete Organization Modal -->
+    <UModal v-model:open="deleteModalOpen" :ui="{ content: 'sm:max-w-lg' }">
+        <template #content>
+            <UCard>
+                <template #header>
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-red-500" />
+                            Delete {{ deleteOrgName }}
+                        </h3>
+                        <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="deleteModalOpen = false" />
+                    </div>
+                </template>
+
+                <!-- Step 1: Warning -->
+                <div v-if="deleteStep === 1" class="py-4 px-2 space-y-4">
+                    <div class="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl">
+                        <p class="text-sm font-bold text-red-600 dark:text-red-400 mb-2">⚠️ This action is irreversible!</p>
+                        <p class="text-sm text-red-600/80 dark:text-red-400/80">Deleting this organization will permanently remove:</p>
+                        <ul class="text-sm text-red-600/80 dark:text-red-400/80 mt-2 ml-4 list-disc space-y-1">
+                            <li>The organization "<strong>{{ deleteOrgName }}</strong>"</li>
+                            <li>All tournaments and their fixtures, standings, and match data</li>
+                            <li>All team invites and player registrations</li>
+                            <li>All member associations</li>
+                        </ul>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                        To proceed, we'll send a <strong>6-digit verification code</strong> to your email address. You must enter this code to confirm the deletion.
+                    </p>
+                </div>
+
+                <!-- Step 2: Code Entry -->
+                <div v-if="deleteStep === 2" class="py-4 px-2 space-y-4">
+                    <div class="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl">
+                        <p class="text-sm text-amber-700 dark:text-amber-400">
+                            <strong>Verification code sent!</strong> Check your email and enter the 6-digit code below. The code expires in 10 minutes.
+                        </p>
+                    </div>
+                    <UFormField label="Verification Code">
+                        <UInput
+                            v-model="deleteCode"
+                            placeholder="Enter 6-digit code"
+                            size="lg"
+                            class="font-mono text-center tracking-widest"
+                            maxlength="6"
+                            @keyup.enter="handleConfirmDelete"
+                        />
+                    </UFormField>
+                    <p class="text-xs text-gray-400">Didn't receive the code? <button class="text-indigo-500 hover:underline" :disabled="requestingCode" @click="handleRequestDeleteCode">Resend code</button></p>
+                </div>
+
+                <template #footer>
+                    <div class="flex items-center justify-end gap-3">
+                        <UButton
+                            color="neutral"
+                            variant="ghost"
+                            label="Cancel"
+                            @click="deleteModalOpen = false"
+                            :disabled="requestingCode || confirmingDelete"
+                        />
+                        <UButton
+                            v-if="deleteStep === 1"
+                            color="error"
+                            label="Send Verification Code"
+                            icon="i-heroicons-envelope"
+                            :loading="requestingCode"
+                            @click="handleRequestDeleteCode"
+                        />
+                        <UButton
+                            v-if="deleteStep === 2"
+                            color="error"
+                            label="Permanently Delete"
+                            icon="i-heroicons-trash"
+                            :loading="confirmingDelete"
+                            :disabled="deleteCode.length !== 6"
+                            @click="handleConfirmDelete"
                         />
                     </div>
                 </template>
