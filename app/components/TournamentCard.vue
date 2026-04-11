@@ -23,12 +23,6 @@
           </span>
         </div>
       </div>
-      <span :class="[
-        'px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded border',
-        getTypeBadgeClasses(tournament.type)
-      ]">
-        {{ formatType(tournament.type) }}
-      </span>
     </div>
 
     <!-- Title & Desc -->
@@ -81,21 +75,6 @@ function formatDate(dateString: string) {
     day: 'numeric',
     year: 'numeric',
   })
-}
-
-function formatType(type: string) {
-  return type.replace(/_/g, ' ')
-}
-
-function getTypeBadgeClasses(type: string) {
-  switch (type) {
-    case 'KNOCKOUT': return 'bg-red-500/20 text-red-400 border-red-500/30'
-    case 'ROUND_ROBIN': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-    case 'GROUP': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-    case 'HYBRID': return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-    case 'FRIENDLY': return 'bg-green-500/20 text-green-400 border-green-500/30'
-    default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-  }
 }
 </script>
 
