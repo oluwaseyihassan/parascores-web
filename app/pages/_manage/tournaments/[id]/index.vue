@@ -186,6 +186,29 @@ const handleGenerateFixtures = async () => {
   }
 }
 
+const handleClearFixtures = () => {
+  openConfirmModal({
+    title: 'Clear All Fixtures',
+    description: 'Are you sure you want to delete all fixtures and standings for this tournament? This action cannot be undone.',
+    confirmLabel: 'Clear All',
+    color: 'error',
+    onConfirm: async () => {
+      try {
+        await fixtureStore.deleteAllFixtures(tournamentId.value)
+        // Refresh standings as they are cleared on backend
+        await standingStore.fetchStandings(tournamentId.value)
+        useToast().add({ title: 'Fixtures cleared successfully', color: 'success' })
+      } catch (err: any) {
+        useToast().add({ 
+          title: 'Failed to clear fixtures', 
+          description: err.data?.message || err.message, 
+          color: 'error' 
+        })
+      }
+    }
+  })
+}
+
 // Advance to Knockout Stage (Hybrid)
 const showAdvanceModal = ref(false)
 const advancing = ref(false)
@@ -497,6 +520,9 @@ const openManagePlayers = async (participant: Participant) => {
     }
   }
   cancelEditPlayer() // Reset form and editing state
+  
+  // Also generate invite link in background
+  generateInviteLink(participant, false)
 }
 
 const handleAddPlayer = async () => {
@@ -1190,10 +1216,10 @@ const inviteLink = ref('')
 const inviteLoading = ref(false)
 const inviteParticipant = ref<Participant | null>(null)
 
-const generateInviteLink = async (participant: Participant) => {
+const generateInviteLink = async (participant: Participant, openModal = true) => {
   inviteParticipant.value = participant
   inviteLoading.value = true
-  showInviteModal.value = true
+  if (openModal) showInviteModal.value = true
   try {
     const response = await $api<{success: boolean, data: any}>('/team-invites', {
       method: 'POST',
@@ -2384,16 +2410,26 @@ const copyTournamentLink = async () => {
                         {{ fixtures.length }}
                       </UBadge>
                     </div>
-                    <UButton 
-                      size="xs" 
-                      variant="ghost" 
-                      icon="i-heroicons-sparkles"
-                      :loading="generating"
-                      :disabled="participants.length < 2"
-                      @click="openGenerateModal"
-                    >
-                      Generate
-                    </UButton>
+                    <div class="flex items-center gap-1">
+                      <UButton 
+                        v-if="fixtures.length"
+                        size="xs" 
+                        variant="ghost" 
+                        color="error"
+                        icon="i-heroicons-trash"
+                        @click="handleClearFixtures"
+                        label="Clear"
+                      />
+                      <UButton 
+                        size="xs" 
+                        variant="ghost" 
+                        icon="i-heroicons-sparkles"
+                        :loading="generating"
+                        :disabled="participants.length < 2"
+                        @click="openGenerateModal"
+                        label="Generate"
+                      />
+                    </div>
                   </div>
                 </template>
                 
@@ -2889,6 +2925,39 @@ const copyTournamentLink = async () => {
                     :loading="uploadingExcel"
                     @click="triggerExcelUpload"
                     label="Upload Excel"
+                  />
+                </div>
+              </div>
+            </template>
+          </UAlert>
+
+          <!-- Player Invite Link -->
+          <UAlert
+            icon="i-heroicons-link"
+            title="Invite Players"
+            variant="soft"
+            color="success"
+          >
+            <template #description>
+              <div class="flex flex-col gap-2 mt-1">
+                <span class="text-sm">
+                  Share this link with players to allow them to join this team directly.
+                </span>
+                <div v-if="inviteLoading" class="flex items-center gap-2 py-1">
+                  <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin text-success-500" />
+                  <span class="text-xs text-gray-500">Generating link...</span>
+                </div>
+                <div v-else-if="inviteLink" class="flex items-center gap-2 p-2 bg-white dark:bg-gray-900 border border-success-200 dark:border-success-900/50 rounded-lg">
+                  <span class="text-xs font-mono truncate flex-1 select-all text-gray-600 dark:text-gray-300">
+                    {{ inviteLink }}
+                  </span>
+                  <UButton
+                    color="success"
+                    variant="ghost"
+                    icon="i-heroicons-clipboard-document"
+                    size="xs"
+                    @click="copyInviteLink"
+                    title="Copy Link"
                   />
                 </div>
               </div>
@@ -3400,53 +3469,6 @@ const copyTournamentLink = async () => {
     @match-ended="handleMatchEnded"
   />
 
-  <!-- Add Venue Modal -->
-  <UModal v-model:open="showAddVenueModal">
-    <template #content>
-      <UCard>
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-indigo-500" />
-            <span class="font-semibold">Add Venue</span>
-          </div>
-        </template>
-
-        <div class="space-y-4">
-          <UAlert 
-            v-if="addVenueError" 
-            color="error" 
-            variant="subtle"
-            icon="i-heroicons-exclamation-triangle"
-            :title="addVenueError"
-          />
-
-          <UFormField label="Venue Name" name="venueName" required>
-            <UInput 
-              v-model="newVenueName" 
-              placeholder="e.g. Main Bowl, Pitch 1"
-              icon="i-heroicons-map-pin"
-              @keydown.enter="handleAddVenue"
-            />
-          </UFormField>
-
-          <div class="flex justify-end gap-2 pt-4">
-            <UButton 
-              label="Cancel" 
-              variant="ghost" 
-              color="neutral"
-              @click="showAddVenueModal = false"
-            />
-            <UButton 
-              label="Add Venue" 
-              icon="i-heroicons-plus"
-              :loading="addingVenue"
-              @click="handleAddVenue"
-            />
-          </div>
-        </div>
-      </UCard>
-    </template>
-  </UModal>
 
   <!-- Add Sponsor Modal -->
   <UModal v-model:open="showAddSponsorModal">
