@@ -26,13 +26,13 @@
 
     <main class="max-w-7xl mx-auto px-6 pb-24 space-y-16">
       <!-- Live Now Section -->
-      <section v-if="liveMatches.length > 0 || loadingLive">
+      <section v-if="authStore.isAuthenticated && (filteredLive.length > 0 || loadingLive)">
         <div class="flex items-center justify-between mb-8">
           <div class="flex items-center gap-3">
             <h2 class="text-2xl font-bold">Live Now</h2>
             <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-bold uppercase tracking-wider">
               <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></span>
-              {{ liveMatches.length }} Active
+              {{ filteredLive.length }} Active
             </span>
           </div>
           <UButton variant="link" color="neutral" :to="toMain('/explore')" icon="i-heroicons-arrow-right" class="text-sm">
@@ -46,7 +46,7 @@
 
         <div v-else class="flex gap-6 overflow-x-auto pb-4 hide-scrollbar snap-x">
           <FanFeedCard 
-            v-for="match in liveMatches" 
+            v-for="match in filteredLive" 
             :key="match.id"
             class="min-w-[320px] md:min-w-[380px] snap-start"
           >
@@ -83,67 +83,106 @@
             </div>
           </FanFeedCard>
           
-          <div v-if="liveMatches.length === 0" class="w-full py-12 flex flex-col items-center justify-center border border-white/5 bg-white/2 rounded-2xl">
+          <div v-if="filteredLive.length === 0" class="w-full py-12 flex flex-col items-center justify-center border border-white/5 bg-white/2 rounded-2xl">
             <UIcon name="i-heroicons-clock" class="w-8 h-8 text-gray-600 mb-2" />
             <p class="text-gray-500 text-sm italic">No matches live at the moment</p>
           </div>
         </div>
       </section>
 
-      <!-- Results Stream -->
-      <section v-if="recentResults.length > 0 || loadingRecent">
+      <!-- Upcoming Matches (from followed tournaments only) -->
+      <section v-if="authStore.isAuthenticated && (filteredUpcoming.length > 0 || loadingUpcoming)">
         <div class="flex items-center justify-between mb-8">
           <div class="flex items-center gap-3">
-            <h2 class="text-2xl font-bold">Results Stream</h2>
-            <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-              <UIcon name="i-heroicons-clock" class="w-3 h-3" />
-              Recent
+            <h2 class="text-2xl font-bold">Upcoming Matches</h2>
+            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
+              <UIcon name="i-heroicons-calendar" class="w-3 h-3" />
+              Scheduled
             </span>
           </div>
         </div>
 
-        <div v-if="loadingRecent" class="space-y-4">
-          <div v-for="i in 4" :key="i" class="h-[100px] bg-white/5 rounded-2xl animate-pulse"></div>
+        <div v-if="loadingUpcoming" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div v-for="i in 4" :key="i" class="h-[180px] bg-white/5 rounded-2xl animate-pulse"></div>
         </div>
 
-        <div v-else class="space-y-3">
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <NuxtLink
-            v-for="match in recentResults"
+            v-for="match in filteredUpcoming"
             :key="match.id"
             :to="toTournament(match.tournament as any)"
-            class="group block bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] hover:border-emerald-500/20 rounded-2xl p-5 transition-all duration-300"
+            class="upcoming-card group relative overflow-hidden rounded-2xl border border-white/[0.06] hover:border-blue-500/30 transition-all duration-500"
           >
-            <div class="flex items-center justify-between mb-3">
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{{ match.tournament?.name }}</span>
-                <span v-if="match.roundName" class="text-[10px] text-gray-600">&middot; {{ match.roundName }}</span>
+            <!-- Subtle gradient background -->
+            <div class="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-blue-500/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            
+            <div class="relative p-5">
+              <!-- Header: Tournament + Countdown -->
+              <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></div>
+                  <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">{{ match.tournament?.name }}</span>
+                  <span v-if="match.roundName" class="text-[10px] text-gray-600 shrink-0">&middot; {{ match.roundName }}</span>
+                </div>
+                <span class="shrink-0 ml-2 px-2.5 py-1 rounded-lg bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/20 text-blue-400 text-[10px] font-black tracking-wide">
+                  {{ formatCountdown(match.startTime) }}
+                </span>
               </div>
-              <span class="px-2 py-0.5 rounded bg-gray-500/20 text-gray-400 text-[10px] font-black">FT</span>
-            </div>
 
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3 flex-1 min-w-0">
-                <UAvatar :src="match.homeTeam?.logoUrl || undefined" :alt="match.homeTeam?.customName || undefined" size="sm" />
-                <span class="font-bold text-sm truncate" :class="[(match.homeScore ?? 0) > (match.awayScore ?? 0) ? 'text-white' : 'text-gray-400']">{{ match.homeTeam?.customName || 'TBD' }}</span>
-              </div>
-              <div class="flex items-center gap-2 px-4 shrink-0">
-                <span class="text-2xl font-black" :class="[(match.homeScore ?? 0) > (match.awayScore ?? 0) ? 'text-white' : 'text-gray-500']">{{ match.homeScore ?? 0 }}</span>
-                <span class="text-gray-600 text-sm font-bold">-</span>
-                <span class="text-2xl font-black" :class="[(match.awayScore ?? 0) > (match.homeScore ?? 0) ? 'text-white' : 'text-gray-500']">{{ match.awayScore ?? 0 }}</span>
-              </div>
-              <div class="flex items-center gap-3 flex-1 min-w-0 justify-end">
-                <span class="font-bold text-sm truncate" :class="[(match.awayScore ?? 0) > (match.homeScore ?? 0) ? 'text-white' : 'text-gray-400']">{{ match.awayTeam?.customName || 'TBD' }}</span>
-                <UAvatar :src="match.awayTeam?.logoUrl || undefined" :alt="match.awayTeam?.customName || undefined" size="sm" />
-              </div>
-            </div>
+              <!-- Match: Teams VS -->
+              <div class="flex items-center justify-between gap-3">
+                <!-- Home Team -->
+                <div class="flex-1 flex flex-col items-center gap-2.5 min-w-0">
+                  <div class="relative">
+                    <UAvatar 
+                      :src="match.homeTeam?.logoUrl || undefined" 
+                      :alt="match.homeTeam?.customName || undefined" 
+                      size="lg" 
+                      class="ring-2 ring-white/10 group-hover:ring-blue-500/30 transition-all duration-300"
+                    />
+                  </div>
+                  <span class="font-bold text-sm text-center text-gray-200 truncate max-w-full leading-tight">
+                    {{ match.homeTeam?.customName || match.homeTeamPlaceholder || 'TBD' }}
+                  </span>
+                </div>
 
-            <div v-if="match.homePenaltyScore != null || match.awayPenaltyScore != null" class="mt-2 text-center">
-              <span class="text-[10px] text-yellow-400 font-bold uppercase">Penalties: {{ match.homePenaltyScore }} - {{ match.awayPenaltyScore }}</span>
-            </div>
+                <!-- VS Divider -->
+                <div class="flex flex-col items-center gap-1 shrink-0 px-2">
+                  <div class="w-px h-4 bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
+                  <span class="text-[10px] font-black text-gray-600 uppercase tracking-widest">vs</span>
+                  <div class="w-px h-4 bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
+                </div>
 
-            <div class="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-gray-500">
-              <span>{{ formatTimeAgo(match.updated_at) }}</span>
-              <span class="text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity font-bold">View Tournament &rarr;</span>
+                <!-- Away Team -->
+                <div class="flex-1 flex flex-col items-center gap-2.5 min-w-0">
+                  <div class="relative">
+                    <UAvatar 
+                      :src="match.awayTeam?.logoUrl || undefined" 
+                      :alt="match.awayTeam?.customName || undefined" 
+                      size="lg" 
+                      class="ring-2 ring-white/10 group-hover:ring-blue-500/30 transition-all duration-300"
+                    />
+                  </div>
+                  <span class="font-bold text-sm text-center text-gray-200 truncate max-w-full leading-tight">
+                    {{ match.awayTeam?.customName || match.awayTeamPlaceholder || 'TBD' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Footer: Time + Venue -->
+              <div class="mt-5 pt-3 border-t border-white/[0.04] flex items-center justify-between text-[11px] text-gray-500">
+                <div class="flex items-center gap-3 min-w-0">
+                  <span v-if="match.startTime" class="flex items-center gap-1.5 shrink-0">
+                    <UIcon name="i-heroicons-clock" class="w-3 h-3 text-gray-600" />
+                    {{ formatMatchTime(match.startTime) }}
+                  </span>
+                  <span v-if="match.venue" class="flex items-center gap-1.5 truncate">
+                    <UIcon name="i-heroicons-map-pin" class="w-3 h-3 text-gray-600 shrink-0" />
+                    <span class="truncate">{{ match.venue }}</span>
+                  </span>
+                </div>
+                <UIcon name="i-heroicons-arrow-right" class="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300 shrink-0" />
+              </div>
             </div>
           </NuxtLink>
         </div>
@@ -314,10 +353,10 @@ const { isConnected } = useLiveStream()
 
 // State
 const liveMatches = ref<Fixture[]>([])
-const recentResults = ref<Fixture[]>([])
+const upcomingMatches = ref<Fixture[]>([])
 const trendingTournaments = ref<Tournament[]>([])
 const loadingLive = ref(false)
-const loadingRecent = ref(false)
+const loadingUpcoming = ref(false)
 const loadingTrending = ref(false)
 
 // Computed
@@ -329,6 +368,19 @@ const greetingTime = computed(() => {
 })
 
 const userName = computed(() => authStore.user?.name || 'Fan')
+
+// Filter live and upcoming to only followed tournaments
+const followedIds = computed(() => new Set(tournamentStore.followedTournaments.map(t => t.id)))
+
+const filteredLive = computed(() => {
+  if (followedIds.value.size === 0) return []
+  return liveMatches.value.filter(m => m.tournament_id && followedIds.value.has(m.tournament_id))
+})
+
+const filteredUpcoming = computed(() => {
+  if (followedIds.value.size === 0) return []
+  return upcomingMatches.value.filter(m => m.tournament_id && followedIds.value.has(m.tournament_id))
+})
 
 // Fetching
 async function fetchLiveMatches() {
@@ -343,15 +395,15 @@ async function fetchLiveMatches() {
   }
 }
 
-async function fetchRecentResults() {
-  loadingRecent.value = true
+async function fetchUpcoming() {
+  loadingUpcoming.value = true
   try {
-    const res = await $publicApi<any>('/fixtures/recent?limit=10')
-    recentResults.value = res.data || []
+    const res = await $publicApi<any>('/fixtures/upcoming?limit=8')
+    upcomingMatches.value = res.data || []
   } catch (err) {
-    console.error('Failed to fetch recent results:', err)
+    console.error('Failed to fetch upcoming matches:', err)
   } finally {
-    loadingRecent.value = false
+    loadingUpcoming.value = false
   }
 }
 
@@ -379,6 +431,29 @@ function formatTimeAgo(dateStr: string) {
   return `${days}d ago`
 }
 
+function formatCountdown(dateStr?: string | null) {
+  if (!dateStr) return 'TBD'
+  const diff = new Date(dateStr).getTime() - Date.now()
+  if (diff <= 0) return 'Starting soon'
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `in ${mins}m`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `in ${hours}h`
+  const days = Math.floor(hours / 24)
+  return `in ${days}d`
+}
+
+function formatMatchTime(dateStr: string) {
+  return new Date(dateStr).toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  })
+}
+
 // SSE: Listen for live match updates and hot-swap data
 function handleLiveUpdate(event: Event) {
   const payload = (event as CustomEvent).detail
@@ -395,10 +470,8 @@ function handleLiveUpdate(event: Event) {
       liveMatches.value.unshift(updatedFixture)
     }
   } else if (updatedFixture.status === 'COMPLETED') {
-    // Remove from live, add to recent results
+    // Remove from live
     liveMatches.value = liveMatches.value.filter((m) => m.id !== updatedFixture.id)
-    recentResults.value.unshift(updatedFixture)
-    if (recentResults.value.length > 10) recentResults.value.pop()
   } else {
     // If status changed to something other than LIVE (e.g. CANCELLED), remove from live
     liveMatches.value = liveMatches.value.filter((m) => m.id !== updatedFixture.id)
@@ -408,7 +481,7 @@ function handleLiveUpdate(event: Event) {
 // Initial Load
 onMounted(() => {
   fetchLiveMatches()
-  fetchRecentResults()
+  fetchUpcoming()
   fetchTrendingTournaments()
   if (authStore.isAuthenticated && tournamentStore.followedTournaments.length === 0) {
     tournamentStore.fetchFollowedTournaments()
