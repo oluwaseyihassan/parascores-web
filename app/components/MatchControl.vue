@@ -27,6 +27,7 @@ const internalOpen = computed({
 const fixtureStore = useFixtureStore()
 const standingStore = useStandingStore()
 const participantStore = useParticipantStore()
+const venueStore = useVenueStore()
 
 // Local state
 const selectedFixture = ref<Fixture | null>(null)
@@ -264,8 +265,7 @@ const tournamentMaxDate = computed(() => {
 })
 
 const venueOptions = computed(() => {
-  if (!props.tournament?.venues?.length) return []
-  return props.tournament.venues.map((v: string) => ({ label: v, value: v }))
+  return venueStore.venues.map(v => ({ label: v.name, value: v.name }))
 })
 
 const isLeg2 = computed(() => {
@@ -1026,7 +1026,7 @@ const downloadGraphic = async () => {
           </div>
 
           <!-- Match Schedule -->
-          <div v-if="selectedFixture.status === 'SCHEDULED'" class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div v-if="['SCHEDULED', 'LIVE', 'COMPLETED'].includes(selectedFixture.status)" class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
             <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
               Match Time
             </label>
@@ -1069,7 +1069,7 @@ const downloadGraphic = async () => {
 
                 <!-- Venue Selector (only show if tournament has venues) -->
                 <USelect
-                  v-if="props.tournament?.venues?.length"
+                  v-if="venueStore.venues.length"
                   v-model="matchVenue"
                   :items="venueOptions"
                   value-key="value"
