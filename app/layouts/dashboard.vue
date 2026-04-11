@@ -134,6 +134,17 @@ const handleLogout = async () => {
             </button>
           </UTooltip>
 
+          <!-- Manage Organizations Button -->
+          <UTooltip text="Manage Organizations" :content="{ side: 'right' }">
+            <NuxtLink
+              to="/organizations"
+              class="relative group flex-shrink-0 flex items-center justify-center h-10 w-10 mx-auto rounded-xl border border-gray-200 dark:border-white/10 text-gray-400 hover:border-indigo-500 hover:text-indigo-500 hover:bg-white dark:hover:bg-white/5 transition-all"
+              :class="{ 'border-indigo-500 text-indigo-500 bg-white dark:bg-white/5': route.path === '/organizations' }"
+            >
+              <UIcon name="i-heroicons-building-office" class="w-5 h-5" />
+            </NuxtLink>
+          </UTooltip>
+
           <!-- Create Organization Button -->
           <UTooltip text="New Organization" :content="{ side: 'right' }">
             <NuxtLink
