@@ -374,7 +374,27 @@ export const useFixtureStore = defineStore('fixture', () => {
     }
   }
 
-  // Clear fixtures
+  // Delete all fixtures for a tournament
+  async function deleteAllFixtures(tournamentId: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<{ message: string }>>(`/fixtures/tournaments/${tournamentId}`, {
+        method: 'DELETE',
+      })
+      // Clear local state
+      fixtures.value = []
+      return response
+    } catch (err: any) {
+      error.value = err.data?.message || err.message || 'Failed to clear fixtures'
+      console.error('Clear fixtures failed:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Clear local fixtures state
   function clearFixtures() {
     fixtures.value = []
     liveFixtures.value = []
@@ -413,6 +433,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     updateMatchEvent,
     deleteMatchEvent,
     clearFixtures,
+    deleteAllFixtures,
     advanceToKnockout
   }
 })
