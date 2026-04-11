@@ -603,9 +603,6 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <div class="flex-1 text-center md:text-left pt-2 md:pt-0 pb-2 flex flex-col items-center md:items-start w-full">
               <!-- Bar containing badges & actions -->
               <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-3 w-full">
-                <span :class="['px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md border', getTypeBadgeClasses(tournament.type)]">
-                  {{ formatType(tournament.type) }}
-                </span>
                 <span v-if="hasLiveFixtures" class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md border border-red-500/30 bg-red-500/10 text-red-500 flex items-center gap-1.5">
                   <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
                   Live Now
