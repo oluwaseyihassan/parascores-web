@@ -280,9 +280,15 @@ const isHomeEvent = (event: any) => {
           <div class="pb-8">
             <!-- Round info -->
             <div class="text-center mb-6">
-              <span class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+              <span class="text-[11px] font-bold text-gray-400 uppercase tracking-widest block">
                 {{ fixture.roundName || `Round ${fixture.round}` }}<template v-if="fixture.matchNumber"> · Match {{ fixture.matchNumber }}</template>
               </span>
+              <div v-if="fixture.venue" class="flex items-center justify-center gap-1.5 mt-1.5 opacity-60">
+                <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-gray-400" />
+                <span class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  {{ fixture.venue }}
+                </span>
+              </div>
             </div>
 
             <!-- Scoreboard -->
@@ -604,6 +610,10 @@ const isHomeEvent = (event: any) => {
               <div class="flex items-center justify-between px-5 py-3">
                 <span class="text-sm text-gray-500">Match</span>
                 <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">#{{ fixture.matchNumber }}</span>
+              </div>
+              <div v-if="fixture.venue" class="flex items-center justify-between px-5 py-3">
+                <span class="text-sm text-gray-500">Venue</span>
+                <span class="text-sm font-semibold transition-colors" :class="isDark ? 'text-emerald-400' : 'text-emerald-600'">{{ fixture.venue }}</span>
               </div>
               <div v-if="fixture.startTime" class="flex items-center justify-between px-5 py-3">
                 <span class="text-sm text-gray-500">Date & Time</span>
