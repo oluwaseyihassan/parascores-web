@@ -8,6 +8,11 @@ const { authLoading, user, isAuthenticated } = storeToRefs(authStore)
 const { toMain, toManage, toTournament, isManage } = useHost()
 
 const tournamentStore = useTournamentStore()
+const colorMode = useColorMode()
+
+const setTheme = (theme: 'light' | 'dark' | 'system') => {
+  colorMode.preference = theme
+}
 
 onMounted(() => {
   if (authStore.isAuthenticated && tournamentStore.followedTournaments.length === 0) {
@@ -19,7 +24,6 @@ const navLinks = computed(() => [
   { label: 'Feed', icon: 'i-heroicons-home', to: toMain('/') },
   { label: 'Explore', icon: 'i-heroicons-magnifying-glass', to: toMain('/explore') },
   { label: 'Following', icon: 'i-heroicons-heart', to: toMain('/following') },
-  { label: 'My Tournaments', icon: 'i-heroicons-trophy', to: toManage('/') },
 ])
 
 const profileMenuItems = computed(() => {
@@ -46,6 +50,30 @@ const profileMenuItems = computed(() => {
     }
   }
 
+  items.push([{
+    label: 'Theme',
+    icon: 'i-heroicons-paint-brush',
+    children: [
+      { 
+        label: 'Light', 
+        icon: colorMode.preference === 'light' ? 'i-heroicons-check' : 'i-heroicons-sun', 
+        onSelect: () => setTheme('light'),
+        active: colorMode.preference === 'light'
+      },
+      { 
+        label: 'Dark', 
+        icon: colorMode.preference === 'dark' ? 'i-heroicons-check' : 'i-heroicons-moon', 
+        onSelect: () => setTheme('dark'),
+        active: colorMode.preference === 'dark'
+      },
+      { 
+        label: 'System', 
+        icon: colorMode.preference === 'system' ? 'i-heroicons-check' : 'i-heroicons-computer-desktop', 
+        onSelect: () => setTheme('system'),
+        active: colorMode.preference === 'system'
+      }
+    ]
+  }])
   items.push([{ label: 'Settings', icon: 'i-heroicons-cog-6-tooth', to: '/settings' }])
   items.push([{ label: 'Log out', icon: 'i-heroicons-arrow-right-on-rectangle', onSelect: handleLogout }])
 
@@ -59,11 +87,11 @@ async function handleLogout() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-black text-white font-sans flex overflow-hidden">
+  <div class="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100 font-sans flex overflow-hidden selection:bg-emerald-500/30">
     <AuthLoadingOverlay :show="authLoading" />
 
     <!-- Left Sidebar (Desktop) -->
-    <aside class="hidden lg:flex flex-col w-72 border-r border-white/[0.05] bg-[#050505] p-6 h-screen overflow-y-auto hide-scrollbar shrink-0">
+    <aside class="hidden lg:flex flex-col w-72 border-r border-gray-200 dark:border-white/[0.05] bg-white dark:bg-[#050505] p-6 h-screen overflow-y-auto hide-scrollbar shrink-0">
       <div class="mb-8">
         <NuxtLink to="/" class="flex items-center gap-3 group">
           <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform shrink-0">
@@ -74,14 +102,14 @@ async function handleLogout() {
               <path d="M12 9V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
           </div>
-          <span class="text-xl font-black tracking-tighter text-white">PARASCORES</span>
+          <span class="text-xl font-black tracking-tighter text-gray-900 dark:text-white">PARASCORES</span>
         </NuxtLink>
       </div>
 
       <!-- Followed Tournaments Card -->
-      <div class="bg-white/[0.02] border border-white/[0.05] rounded-2xl flex-1 overflow-hidden flex flex-col min-h-0">
-        <div class="p-4 border-b border-white/[0.05] bg-[#080808]">
-           <h3 class="font-bold text-sm text-gray-300">Followed Tournaments</h3>
+      <div class="bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] rounded-2xl flex-1 overflow-hidden flex flex-col min-h-0">
+        <div class="p-4 border-b border-gray-200 dark:border-white/[0.05] bg-gray-100 dark:bg-[#080808]">
+           <h3 class="font-bold text-sm text-gray-900 dark:text-gray-300">Followed Tournaments</h3>
         </div>
         
         <div class="flex-1 overflow-y-auto p-2 space-y-1 hide-scrollbar">
@@ -96,10 +124,10 @@ async function handleLogout() {
             v-for="t in tournamentStore.followedTournaments"
             :key="t.id"
             :to="toTournament(t as any)"
-            class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group"
+            class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-200 dark:hover:bg-white/5 transition-colors group"
           >
-            <UAvatar :src="t.logoUrl || t.bannerUrl || undefined" :alt="t.name" size="sm" class="shrink-0 bg-white/5" />
-            <span class="text-sm font-bold text-gray-400 group-hover:text-white truncate">{{ t.name }}</span>
+            <UAvatar :src="t.logoUrl || t.bannerUrl || undefined" :alt="t.name" size="sm" class="shrink-0 bg-gray-200 dark:bg-white/5" />
+            <span class="text-sm font-bold text-gray-600 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white truncate">{{ t.name }}</span>
           </NuxtLink>
         </div>
       </div>
@@ -107,9 +135,9 @@ async function handleLogout() {
     </aside>
 
     <!-- Main Wrapper -->
-    <div class="flex-1 flex flex-col h-screen overflow-hidden bg-black relative">
+    <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-black relative">
       <!-- Top Bar -->
-      <header class="h-20 border-b border-white/[0.05] bg-black/80 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-40">
+      <header class="h-20 border-b border-gray-200 dark:border-white/[0.05] bg-white/80 dark:bg-black/80 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-40">
         <div class="flex items-center gap-6 flex-1">
           <div class="flex-1 max-w-xl">
             <div class="relative group">
@@ -117,7 +145,7 @@ async function handleLogout() {
               <input 
                 type="text" 
                 placeholder="Search..." 
-                class="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 transition-all placeholder:text-gray-600"
+                class="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl pl-12 pr-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-600 text-gray-900 dark:text-gray-100"
               />
             </div>
           </div>
@@ -163,7 +191,7 @@ async function handleLogout() {
       </main>
 
       <!-- Mobile Bottom Nav -->
-      <nav class="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-black/95 backdrop-blur-xl border-t border-white/[0.05] flex items-center justify-around px-4 z-50">
+      <nav class="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/95 dark:bg-black/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/[0.05] flex items-center justify-around px-4 z-50">
         <NuxtLink 
           v-for="link in navLinks" 
           :key="link.to" 
@@ -192,7 +220,7 @@ main::-webkit-scrollbar-track {
   background: transparent;
 }
 main::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(156, 163, 175, 0.3);
   border-radius: 10px;
 }
 main::-webkit-scrollbar-thumb:hover {
