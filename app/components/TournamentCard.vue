@@ -1,20 +1,20 @@
 <template>
   <NuxtLink
     :to="toTournament(tournament)"
-    class="group bg-[#0A0A0A] border border-white/10 rounded-xl p-5 hover:border-emerald-500/50 transition-all duration-300 card-fade-in flex flex-col h-full"
+    class="group bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-white/10 rounded-xl p-5 shadow-sm hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all duration-300 card-fade-in flex flex-col h-full"
   >
     <!-- Header Row: Sport, Logo, Type Badge -->
     <div class="flex items-start justify-between mb-4">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0">
+        <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-white/10 shrink-0">
           <img
             v-if="tournament.logoUrl"
             :src="tournament.logoUrl"
-            :alt="tournament.name"
+            :alt="tournament.customName || tournament.name"
             class="w-full h-full object-cover"
           />
-          <span v-else class="text-sm font-bold text-white">
-            {{ tournament.name.charAt(0).toUpperCase() }}
+          <span v-else class="text-sm font-bold text-gray-400 dark:text-white">
+            {{ (tournament.customName || tournament.name).charAt(0).toUpperCase() }}
           </span>
         </div>
         <div>
@@ -27,8 +27,8 @@
 
     <!-- Title & Desc -->
     <div class="flex-1">
-      <h3 class="text-lg font-bold text-white leading-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
-        {{ tournament.name }}
+      <h3 class="text-lg font-bold text-gray-900 dark:text-white leading-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
+        {{ tournament.customName || tournament.name }}
       </h3>
     </div>
 
@@ -37,7 +37,7 @@
       <div v-if="tournament.organization" class="flex items-center gap-1.5">
         <span class="text-gray-500">Hosted by</span>
         <button @click.prevent="navigateTo(toMain('/org/' + tournament.organization.slug))" class="flex items-center gap-1 hover:text-emerald-400 transition-colors z-10 relative group/org">
-          <span class="text-gray-300 truncate max-w-[150px] group-hover/org:text-white transition-colors">{{ tournament.organization.name }}</span>
+          <span class="text-gray-600 dark:text-gray-300 truncate max-w-[150px] group-hover/org:text-gray-900 dark:group-hover/org:text-white transition-colors">{{ tournament.organization.name }}</span>
           <UIcon
             v-if="tournament.organization.isVerified"
             name="i-heroicons-check-badge-solid"
