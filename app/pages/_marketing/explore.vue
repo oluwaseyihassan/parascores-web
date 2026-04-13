@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-full text-white">
+  <div class="min-h-full text-gray-900 dark:text-white transition-colors">
     <!-- Hero Section -->
     <section class="relative pt-8 pb-12 overflow-x-hidden">
       <div class="max-w-7xl mx-auto px-6 relative z-10">
@@ -10,10 +10,10 @@
         </div>
 
         <!-- Headline -->
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4">
-          Discover <span class="text-emerald-400">Tournaments</span>
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-4 tracking-tight">
+          Discover <span class="text-emerald-500">Tournaments</span>
         </h1>
-        <p class="text-lg text-gray-400 max-w-xl mb-10">
+        <p class="text-lg text-gray-600 dark:text-gray-400 max-w-xl mb-10">
           Browse public competitions from organizers around the world. Follow live scores, view standings, and stay up to date.
         </p>
 
@@ -28,7 +28,7 @@
               v-model="searchQuery"
               type="text"
               placeholder="Search tournaments..."
-              class="w-full pl-10 pr-4 py-3 bg-[#0A0A0A] border border-white/10 rounded-lg text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-emerald-500/50 transition-colors"
+              class="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-white/10 rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-emerald-500 shadow-sm focus:ring-1 focus:ring-emerald-500/20 transition-all"
             />
           </div>
         </div>
@@ -41,8 +41,8 @@
             :class="[
               'px-4 py-2 text-xs font-medium rounded-lg border transition-all duration-200',
               selectedType === filter.value
-                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
-                : 'bg-[#0A0A0A] border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
+                ? 'bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                : 'bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-emerald-500/30 hover:text-emerald-600 dark:hover:text-white shadow-sm'
             ]"
             @click="selectedType = filter.value"
           >
@@ -57,22 +57,22 @@
       <div class="max-w-7xl mx-auto px-6">
         <!-- Results Count -->
         <div class="flex items-center justify-between mb-6">
-          <p class="text-sm text-gray-500">
-            <span v-if="!loading">{{ filteredTournaments.length }} tournament{{ filteredTournaments.length === 1 ? '' : 's' }} found</span>
-            <span v-else>Loading...</span>
+          <p class="text-sm text-gray-600 dark:text-gray-500">
+            <span v-if="!loading">{{ totalCount }} tournament{{ totalCount === 1 ? '' : 's' }} found</span>
+            <span v-else>Loading tournaments...</span>
           </p>
         </div>
 
         <!-- Loading State -->
         <div v-if="loading && tournaments.length === 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="i in 6" :key="i" class="bg-[#0A0A0A] border border-white/10 rounded-xl overflow-hidden animate-pulse">
-            <div class="h-36 bg-white/5"></div>
+          <div v-for="i in 6" :key="i" class="bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-white/10 rounded-xl overflow-hidden animate-pulse">
+            <div class="h-36 bg-gray-100 dark:bg-white/5"></div>
             <div class="p-5">
-              <div class="h-4 bg-white/5 rounded w-3/4 mb-3"></div>
-              <div class="h-3 bg-white/5 rounded w-1/2 mb-4"></div>
+              <div class="h-4 bg-gray-100 dark:bg-white/5 rounded w-3/4 mb-3"></div>
+              <div class="h-3 bg-gray-100 dark:bg-white/5 rounded w-1/2 mb-4"></div>
               <div class="flex gap-2">
-                <div class="h-6 bg-white/5 rounded w-16"></div>
-                <div class="h-6 bg-white/5 rounded w-20"></div>
+                <div class="h-6 bg-gray-100 dark:bg-white/5 rounded w-16"></div>
+                <div class="h-6 bg-gray-100 dark:bg-white/5 rounded w-20"></div>
               </div>
             </div>
           </div>
@@ -83,13 +83,13 @@
           v-else-if="!loading && filteredTournaments.length === 0"
           class="flex flex-col items-center justify-center py-20 text-center"
         >
-          <div class="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mb-6">
+          <div class="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mb-6 shadow-sm">
             <svg class="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
           </div>
-          <h3 class="text-xl font-semibold mb-2">No tournaments found</h3>
-          <p class="text-gray-400 max-w-md mb-6">
+          <h3 class="text-xl font-bold mb-2">No tournaments found</h3>
+          <p class="text-gray-500 dark:text-gray-400 max-w-md mb-6">
             <template v-if="searchQuery || selectedType !== 'ALL'">
               Try adjusting your search or filters to find what you're looking for.
             </template>
@@ -99,8 +99,8 @@
           </p>
           <button
             v-if="searchQuery || selectedType !== 'ALL'"
-            class="px-5 py-2.5 text-sm font-medium text-emerald-400 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/10 transition-colors"
-            @click="searchQuery = ''; selectedType = 'ALL'"
+            class="px-5 py-2.5 text-sm font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/10 transition-colors"
+            @click="clearFilters"
           >
             Clear Filters
           </button>
@@ -109,24 +109,14 @@
         <!-- Tournament Grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <TournamentCard
-            v-for="(tournament, index) in filteredTournaments"
+            v-for="tournament in filteredTournaments"
             :key="tournament.id"
             :tournament="tournament"
-            :style="{ animationDelay: `${index * 50}ms` }"
           />
         </div>
 
-        <!-- Load More -->
-        <div v-if="hasMore && !loading" class="flex justify-center mt-12">
-          <UButton
-            color="success"
-            variant="soft"
-            class="px-10 py-3 rounded-full font-bold shadow-lg shadow-emerald-500/5"
-            @click="loadMore"
-          >
-            Load More Tournaments
-          </UButton>
-        </div>
+        <!-- Infinite scroll sentinel -->
+        <div ref="scrollSentinel" class="h-1"></div>
 
         <!-- Loading More Spinner -->
         <div v-if="loading && tournaments.length > 0" class="flex justify-center mt-12">
@@ -139,12 +129,12 @@
     </section>
 
     <!-- CTA Section -->
-    <section class="py-20 border-t border-white/10">
+    <section class="py-20 border-t border-gray-200 dark:border-white/10">
       <div class="max-w-3xl mx-auto px-6 text-center">
-        <h2 class="text-3xl md:text-4xl font-bold mb-4">
+        <h2 class="text-3xl md:text-4xl font-extrabold mb-4 tracking-tight">
           Want to organize your own?
         </h2>
-        <p class="text-gray-400 mb-8">
+        <p class="text-gray-600 dark:text-gray-400 mb-8">
           Create tournaments, manage fixtures, generate graphics, and embed live widgets — all for free.
         </p>
         <NuxtLink
@@ -161,7 +151,7 @@
 <script setup lang="ts">
 import type { Tournament } from '~/types'
 
-const { toMain, toTournament } = useHost()
+const { toMain } = useHost()
 
 definePageMeta({
   layout: 'feed'
@@ -188,10 +178,6 @@ useSeoMeta({
   ogDescription: 'Browse public tournaments from organizers around the world. View live scores, standings, brackets, and more.',
 })
 
-// Constants
-const PLACEHOLDER_LOGO = 'https://res.cloudinary.com/djsnerfzp/image/upload/v1769695792/parascores_logo_placeholder.png'
-const PLACEHOLDER_BANNER = 'https://res.cloudinary.com/djsnerfzp/image/upload/v1769696842/parascores_banner_placeholder.png'
-
 // State
 const tournaments = ref<Tournament[]>([])
 const loading = ref(false)
@@ -199,7 +185,21 @@ const searchQuery = ref('')
 const selectedType = ref('ALL')
 const currentPage = ref(1)
 const totalPages = ref(0)
+const totalCount = ref(0)
 const limit = 12
+
+// Debounce search input before hitting the API
+const debouncedSearch = ref('')
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(searchQuery, (val) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => { debouncedSearch.value = val }, 400)
+})
+
+// Re-fetch from page 1 whenever search or type filter changes
+watch([debouncedSearch, selectedType], () => {
+  fetchPublicTournaments(1)
+})
 
 // Type filters
 const typeFilters = [
@@ -213,47 +213,28 @@ const typeFilters = [
 
 // Computed
 const hasMore = computed(() => currentPage.value < totalPages.value)
+const filteredTournaments = computed(() => tournaments.value)
 
-const filteredTournaments = computed(() => {
-  let result = tournaments.value
-
-  // Filter by type
-  if (selectedType.value !== 'ALL') {
-    result = result.filter(t => t.type === selectedType.value)
-  }
-
-  // Filter by search
-  if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(t =>
-      t.name.toLowerCase().includes(query) ||
-      t.description?.toLowerCase().includes(query) ||
-      t.sport?.toLowerCase().includes(query) ||
-      t.location?.toLowerCase().includes(query)
-    )
-  }
-
-  return result
-})
-
-// Fetch public tournaments
+// Fetch public tournaments — search & type are sent to the API
 async function fetchPublicTournaments(page = 1, append = false) {
   loading.value = true
+  if (!append) tournaments.value = []
   try {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+    if (debouncedSearch.value.trim()) params.set('search', debouncedSearch.value.trim())
+    if (selectedType.value !== 'ALL') params.set('type', selectedType.value)
+
     const response = await $publicApi<PaginatedResponse<Tournament>>(
-      `/tournaments/public?page=${page}&limit=${limit}`,
+      `/tournaments/public?${params}`,
       { method: 'GET' }
     )
     if (response.data) {
-      if (append) {
-        tournaments.value = [...tournaments.value, ...response.data]
-      } else {
-        tournaments.value = response.data
-      }
+      tournaments.value = append ? [...tournaments.value, ...response.data] : response.data
     }
     if (response.pagination) {
       currentPage.value = response.pagination.page
       totalPages.value = response.pagination.totalPages
+      totalCount.value = response.pagination.total
     }
   } catch (err: any) {
     console.error('Failed to fetch public tournaments:', err)
@@ -262,40 +243,36 @@ async function fetchPublicTournaments(page = 1, append = false) {
   }
 }
 
-async function loadMore() {
-  if (!hasMore.value || loading.value) return
-  await fetchPublicTournaments(currentPage.value + 1, true)
+function clearFilters() {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchQuery.value = ''
+  debouncedSearch.value = ''
+  selectedType.value = 'ALL'
 }
 
-// Helpers
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+// Infinite scroll
+const scrollSentinel = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
+
+function setupObserver() {
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && hasMore.value && !loading.value) {
+      fetchPublicTournaments(currentPage.value + 1, true)
+    }
+  }, { rootMargin: '200px' })
+
+  if (scrollSentinel.value) observer.observe(scrollSentinel.value)
 }
 
-// Fetch on mount
 onMounted(() => {
   fetchPublicTournaments()
+  setupObserver()
+})
+
+onUnmounted(() => {
+  observer?.disconnect()
 })
 </script>
 
 <style scoped>
-.card-fade-in {
-  opacity: 0;
-  animation: cardFadeUp 0.5s ease-out forwards;
-}
-
-@keyframes cardFadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 </style>
