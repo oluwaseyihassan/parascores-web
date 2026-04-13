@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-full text-white overflow-x-hidden">
+  <div class="min-h-full text-gray-900 dark:text-white overflow-x-hidden">
     <!-- Hero Section -->
     <header class="relative pt-12 pb-16 px-6 overflow-hidden">
       <!-- Background Accents -->
@@ -9,14 +9,11 @@
       <div class="max-w-7xl mx-auto relative z-10">
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <div class="inline-flex items-center gap-2 px-3 py-1 mb-4 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-              <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-              YOUR PERSONAL FEED
-            </div>
+
             <h1 class="text-4xl md:text-5xl font-bold tracking-tight">
               Good {{ greetingTime }}, <span class="text-emerald-400">{{ userName }}</span>
             </h1>
-            <p class="text-gray-400 mt-3 text-lg max-w-2xl">
+            <p class="text-gray-600 dark:text-gray-400 mt-3 text-lg max-w-2xl">
               Stay updated with live scores, upcoming matches, and trending tournaments from the communities you follow.
             </p>
           </div>
@@ -30,10 +27,7 @@
         <div class="flex items-center justify-between mb-8">
           <div class="flex items-center gap-3">
             <h2 class="text-2xl font-bold">Live Now</h2>
-            <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-bold uppercase tracking-wider">
-              <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></span>
-              {{ filteredLive.length }} Active
-            </span>
+
           </div>
           <UButton variant="link" color="neutral" :to="toMain('/explore')" icon="i-heroicons-arrow-right" class="text-sm">
             View All
@@ -52,7 +46,7 @@
           >
             <div class="flex flex-col h-full">
               <div class="flex items-center justify-between mb-4">
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{{ match.tournament?.name }}</span>
+                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{{ match.tournament?.customName || match.tournament?.name }}</span>
                 <span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-[10px] font-black italic">LIVE</span>
               </div>
               
@@ -60,17 +54,17 @@
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
                     <UAvatar :src="match.homeTeam?.logoUrl || undefined" :alt="match.homeTeam?.customName || undefined" size="sm" />
-                    <span class="font-bold text-sm truncate max-w-[120px]">{{ match.homeTeam?.customName || 'TBD' }}</span>
+                    <span class="font-bold text-sm truncate max-w-[120px] text-gray-900 dark:text-white">{{ match.homeTeam?.customName || 'TBD' }}</span>
                   </div>
-                  <span class="text-2xl font-black text-white">{{ match.homeScore ?? 0 }}</span>
+                  <span class="text-2xl font-black text-gray-900 dark:text-white">{{ match.homeScore ?? 0 }}</span>
                 </div>
                 
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
                     <UAvatar :src="match.awayTeam?.logoUrl || undefined" :alt="match.awayTeam?.customName || undefined" size="sm" />
-                    <span class="font-bold text-sm truncate max-w-[120px]">{{ match.awayTeam?.customName || 'TBD' }}</span>
+                    <span class="font-bold text-sm truncate max-w-[120px] text-gray-900 dark:text-white">{{ match.awayTeam?.customName || 'TBD' }}</span>
                   </div>
-                  <span class="text-2xl font-black text-white">{{ match.awayScore ?? 0 }}</span>
+                  <span class="text-2xl font-black text-gray-900 dark:text-white">{{ match.awayScore ?? 0 }}</span>
                 </div>
               </div>
               
@@ -111,7 +105,8 @@
             v-for="match in filteredUpcoming"
             :key="match.id"
             :to="toTournament(match.tournament as any)"
-            class="upcoming-card group relative overflow-hidden rounded-2xl border border-white/[0.06] hover:border-blue-500/30 transition-all duration-500"
+            class="upcoming-card group relative overflow-hidden rounded-2xl bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-white/[0.05] hover:border-blue-500/30 transition-all duration-500"
+
           >
             <!-- Subtle gradient background -->
             <div class="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-blue-500/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -121,7 +116,7 @@
               <div class="flex items-center justify-between mb-5">
                 <div class="flex items-center gap-2 min-w-0">
                   <div class="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></div>
-                  <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">{{ match.tournament?.name }}</span>
+                  <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">{{ match.tournament?.customName || match.tournament?.name }}</span>
                   <span v-if="match.roundName" class="text-[10px] text-gray-600 shrink-0">&middot; {{ match.roundName }}</span>
                 </div>
                 <span class="shrink-0 ml-2 px-2.5 py-1 rounded-lg bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/20 text-blue-400 text-[10px] font-black tracking-wide">
@@ -138,19 +133,19 @@
                       :src="match.homeTeam?.logoUrl || undefined" 
                       :alt="match.homeTeam?.customName || undefined" 
                       size="lg" 
-                      class="ring-2 ring-white/10 group-hover:ring-blue-500/30 transition-all duration-300"
+                      class="ring-2 ring-gray-100 dark:ring-white/10 group-hover:ring-blue-500/30 transition-all duration-300"
                     />
                   </div>
-                  <span class="font-bold text-sm text-center text-gray-200 truncate max-w-full leading-tight">
+                  <span class="font-bold text-sm text-center text-gray-800 dark:text-gray-200 truncate max-w-full leading-tight">
                     {{ match.homeTeam?.customName || match.homeTeamPlaceholder || 'TBD' }}
                   </span>
                 </div>
 
                 <!-- VS Divider -->
                 <div class="flex flex-col items-center gap-1 shrink-0 px-2">
-                  <div class="w-px h-4 bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
-                  <span class="text-[10px] font-black text-gray-600 uppercase tracking-widest">vs</span>
-                  <div class="w-px h-4 bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
+                  <div class="w-px h-4 bg-gradient-to-b from-transparent via-gray-200 dark:via-white/10 to-transparent"></div>
+                  <span class="text-[10px] font-black text-gray-400 dark:text-gray-600 uppercase tracking-widest">vs</span>
+                  <div class="w-px h-4 bg-gradient-to-b from-transparent via-gray-200 dark:via-white/10 to-transparent"></div>
                 </div>
 
                 <!-- Away Team -->
@@ -160,10 +155,10 @@
                       :src="match.awayTeam?.logoUrl || undefined" 
                       :alt="match.awayTeam?.customName || undefined" 
                       size="lg" 
-                      class="ring-2 ring-white/10 group-hover:ring-blue-500/30 transition-all duration-300"
+                      class="ring-2 ring-gray-100 dark:ring-white/10 group-hover:ring-blue-500/30 transition-all duration-300"
                     />
                   </div>
-                  <span class="font-bold text-sm text-center text-gray-200 truncate max-w-full leading-tight">
+                  <span class="font-bold text-sm text-center text-gray-800 dark:text-gray-200 truncate max-w-full leading-tight">
                     {{ match.awayTeam?.customName || match.awayTeamPlaceholder || 'TBD' }}
                   </span>
                 </div>
@@ -231,7 +226,7 @@
               {{ tournament.name }}
             </h3>
             
-            <p class="text-gray-400 text-xs line-clamp-2 mb-4 flex-1">
+            <p class="text-gray-600 dark:text-gray-400 text-xs line-clamp-2 mb-4 flex-1">
               {{ tournament.description || 'Follow this tournament for live updates and fixtures.' }}
             </p>
             
@@ -253,7 +248,7 @@
         <div class="flex items-center justify-between mb-8">
           <h2 class="text-2xl font-bold">Recommended Tournaments</h2>
           <UButton variant="link" color="neutral" :to="toMain('/explore')" icon="i-heroicons-magnifying-glass" class="text-sm">
-            Explore More
+            Explore
           </UButton>
         </div>
 
