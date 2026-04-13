@@ -84,17 +84,17 @@ const editState = reactive({
   name: '',
   organization_name: '',
   organization_logo: '',
-  organization_color: '',
   phone: ''
 })
+
 
 const startEditing = () => {
   if (!user.value) return
   editState.name = user.value.name || ''
   editState.organization_name = currentOrganization.value?.name || ''
   editState.organization_logo = currentOrganization.value?.logoUrl || ''
-  editState.organization_color = currentOrganization.value?.color || '#3b82f6'
   editState.phone = currentOrganization.value?.phone || ''
+
   isEditing.value = true
 }
 
