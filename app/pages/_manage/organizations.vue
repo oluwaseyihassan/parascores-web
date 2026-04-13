@@ -166,7 +166,6 @@ const startBrandingEdit = (org: any) => {
     brandingStates.value[org.id] = {
         name: org.name || '',
         logoUrl: org.logoUrl || '',
-        color: org.color || '#3b82f6',
         location: org.location || '',
         website: org.website || ''
     }
@@ -492,12 +491,6 @@ const handleConfirmDelete = async () => {
                     </UFormField>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <UFormField label="Brand Color">
-                            <div class="flex gap-2">
-                                <input type="color" v-model="brandingStates[orgMember.organizationId].color" class="w-10 h-10 border-0 p-0 rounded-lg overflow-hidden cursor-pointer" />
-                                <UInput v-model="brandingStates[orgMember.organizationId].color" class="flex-1" />
-                            </div>
-                        </UFormField>
                         
                         <div class="flex flex-col gap-2">
                             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Workspace Logo</span>
