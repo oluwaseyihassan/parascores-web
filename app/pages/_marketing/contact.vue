@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-[#0A0F1C] min-h-screen text-white">
+  <div class="bg-white dark:bg-[#0A0F1C] min-h-screen text-gray-900 dark:text-white transition-colors">
     <!-- Hero Section -->
     <section class="relative pt-20 pb-16 overflow-hidden">
       <div class="max-w-7xl mx-auto px-6">
@@ -10,12 +10,12 @@
           </div>
 
           <!-- Headline -->
-          <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6">
-            Let's <span class="text-emerald-400">Connect.</span>
+          <h1 class="text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight mb-6 tracking-tight">
+            Let's <span class="text-emerald-500">Connect.</span>
           </h1>
 
           <!-- Subtitle -->
-          <p class="text-lg text-gray-400 mb-8 max-w-xl mx-auto">
+          <p class="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-xl mx-auto font-medium">
             Have a question about our tournament tools, pricing, or need custom enterprise features? Drop us a line—we're here to help.
           </p>
         </div>
@@ -29,8 +29,8 @@
           
           <!-- Left Column (Contact Info) -->
           <div class="lg:col-span-2 flex flex-col gap-8 order-2 lg:order-1">
-            <div class="bg-[#111827] border border-white/10 rounded-xl p-8 hover:border-emerald-500/30 transition-colors">
-              <h3 class="text-xl font-bold text-white mb-6">Contact Information</h3>
+            <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl p-8 shadow-sm hover:border-emerald-500/30 transition-colors">
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Contact Information</h3>
               
               <div class="flex flex-col gap-6">
                 <!-- Location -->
@@ -39,8 +39,8 @@
                     <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-emerald-400" />
                   </div>
                   <div>
-                    <h4 class="text-sm font-semibold text-gray-200 mb-1">Office</h4>
-                    <p class="text-sm text-gray-400">123 Tournament Ave.<br />New York, NY 10012</p>
+                    <h4 class="text-sm font-bold text-gray-900 dark:text-gray-200 mb-1">Office</h4>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">123 Tournament Ave.<br />New York, NY 10012</p>
                   </div>
                 </div>
 
@@ -50,8 +50,8 @@
                     <UIcon name="i-heroicons-envelope" class="w-5 h-5 text-emerald-400" />
                   </div>
                   <div>
-                    <h4 class="text-sm font-semibold text-gray-200 mb-1">Email Us</h4>
-                    <p class="text-sm text-gray-400">support@parascores.com</p>
+                    <h4 class="text-sm font-bold text-gray-900 dark:text-gray-200 mb-1">Email Us</h4>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">support@parascores.com</p>
                   </div>
                 </div>
 
@@ -61,25 +61,25 @@
                     <UIcon name="i-heroicons-phone" class="w-5 h-5 text-emerald-400" />
                   </div>
                   <div>
-                    <h4 class="text-sm font-semibold text-gray-200 mb-1">Call Us</h4>
-                    <p class="text-sm text-gray-400">+1 (555) 123-4567</p>
+                    <h4 class="text-sm font-bold text-gray-900 dark:text-gray-200 mb-1">Call Us</h4>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">+1 (555) 123-4567</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- Social Links -->
-            <div class="bg-[#111827] border border-white/10 rounded-xl p-8 hover:border-emerald-500/30 transition-colors">
-              <h3 class="text-lg font-bold text-white mb-4">Follow Us</h3>
-              <p class="text-sm text-gray-400 mb-6">Stay up to date with the latest features and community tournaments.</p>
+            <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl p-8 shadow-sm hover:border-emerald-500/30 transition-colors">
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Follow Us</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 font-medium">Stay up to date with the latest features and community tournaments.</p>
               <div class="flex flex-wrap gap-4">
-                <a href="#" class="w-10 h-10 bg-[#0d1424] border border-white/10 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-400 hover:border-emerald-400/50 transition-all">
+                <a href="#" class="w-10 h-10 bg-white dark:bg-[#0d1424] border border-gray-200 dark:border-white/10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 hover:border-emerald-500/50 transition-all shadow-sm">
                   <SocialsTwitterIcon class="w-4 h-4" />
                 </a>
-                <a href="#" class="w-10 h-10 bg-[#0d1424] border border-white/10 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-400 hover:border-emerald-400/50 transition-all">
+                <a href="#" class="w-10 h-10 bg-white dark:bg-[#0d1424] border border-gray-200 dark:border-white/10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 hover:border-emerald-500/50 transition-all shadow-sm">
                   <SocialsInstagramIcon class="w-4 h-4" />
                 </a>
-                <a href="#" class="w-10 h-10 bg-[#0d1424] border border-white/10 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-400 hover:border-emerald-400/50 transition-all">
+                <a href="#" class="w-10 h-10 bg-white dark:bg-[#0d1424] border border-gray-200 dark:border-white/10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 hover:border-emerald-500/50 transition-all shadow-sm">
                   <UIcon name="i-simple-icons-discord" class="w-4 h-4" />
                 </a>
               </div>
@@ -88,10 +88,10 @@
 
           <!-- Right Column (Contact Form) -->
           <div class="lg:col-span-3 order-1 lg:order-2">
-            <div class="bg-[#111827] border border-white/10 rounded-xl p-6 md:p-8 relative overflow-hidden">
+            <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl p-6 md:p-8 relative overflow-hidden shadow-sm">
               <div class="absolute top-0 right-0 p-32 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none"></div>
               
-              <h3 class="text-2xl font-bold text-white mb-6">Send us a message</h3>
+              <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Send us a message</h3>
               
               <UForm :schema="schema" :state="state" @submit="onSubmit" class="space-y-6 relative z-10">
                 <div class="grid md:grid-cols-2 gap-6">
