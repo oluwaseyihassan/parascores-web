@@ -10,8 +10,9 @@ const route = useRoute()
 const router = useRouter()
 const tournamentId = route.params.id as string
 
-// Theme (injected from widget layout)
-const isDark = inject<Ref<boolean>>('widgetIsDark', ref(true))
+// Theme
+const colorMode = useColorMode()
+const isDark = computed(() => colorMode.value === 'dark')
 
 // Stores
 const authStore = useAuthStore()
@@ -23,6 +24,7 @@ const fixtures = ref<Fixture[]>([])
 const standings = ref<Standing[]>([])
 const participants = ref<Participant[]>([])
 const sponsors = ref<Sponsor[]>([])
+const selectedSponsor = ref<Sponsor | null>(null)
 const socials = ref<Social[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -438,6 +440,11 @@ function formatTime24(dateStr?: string | null) {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
 }
+function formatDateTimeShort(dateStr?: string | null) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+}
 function formatType(type: string) {
   const map: Record<string, string> = {
     KNOCKOUT: 'Knockout', ROUND_ROBIN: 'Round Robin', GROUP: 'Group Stage',
@@ -577,7 +584,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
           
           <!-- Back link over banner -->
           <div class="absolute top-6 inset-x-0 z-10 w-full">
-            <div class="max-w-5xl mx-auto px-4 sm:px-6">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6">
               <button @click="router.back()" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-xs font-semibold text-white/90 hover:text-white transition-all border border-white/10 cursor-pointer">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -589,7 +596,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
         </div>
 
         <!-- Header Content Container (overlapping banner) -->
-        <div class="max-w-5xl mx-auto px-4 sm:px-6 relative pb-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 relative pb-8">
           <div class="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-end -mt-16 md:-mt-20">
             <!-- Logo overlapping -->
             <div class="w-32 h-32 md:w-40 md:h-40 rounded-3xl overflow-hidden border-4 shadow-2xl flex-shrink-0 relative group z-10" :class="isDark ? 'bg-[#0A0A0A] border-[#0A0A0A]' : 'bg-white border-white'">
@@ -603,10 +610,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <div class="flex-1 text-center md:text-left pt-2 md:pt-0 pb-2 flex flex-col items-center md:items-start w-full">
               <!-- Bar containing badges & actions -->
               <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-3 w-full">
-                <span v-if="hasLiveFixtures" class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md border border-red-500/30 bg-red-500/10 text-red-500 flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
-                  Live Now
-                </span>
+
               </div>
               
               <h1 class="text-3xl md:text-5xl lg:text-5xl font-extrabold tracking-tight mb-4" :class="isDark ? 'text-white' : 'text-gray-900'">
@@ -655,7 +659,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
       <!-- Tabs -->
       <section class="border-b sticky top-0 z-40 backdrop-blur-xl transition-colors" :class="isDark ? 'border-white/10 bg-[#0A0A0A]/80' : 'border-gray-200 bg-white/80'">
-        <div class="max-w-5xl mx-auto px-4 sm:px-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
           <nav class="flex gap-6 -mb-px overflow-x-auto hide-scrollbar whitespace-nowrap">
             <button
               @click="activeTab = 'info'"
@@ -738,7 +742,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
       </section>
 
       <!-- Tab Content -->
-      <section class="max-w-5xl mx-auto px-4 py-8 relative min-h-[500px]">
+      <section class="max-w-7xl mx-auto px-4 py-8 relative min-h-[500px]">
         
         <div v-if="selectedFixtureId" class="animate-in fade-in slide-in-from-bottom-4 duration-300">
           <MarketingFixtureDetails 
@@ -794,7 +798,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <!-- Group Stage label for hybrid -->
             <div v-if="isHybrid && groupStageFixtures.length > 0" class="flex items-center gap-2 px-1 mb-1">
               <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Group Stage</span>
+              <span class="text-xs font-bold text-gray-500">Group Stage</span>
             </div>
 
             <div v-for="round in sortedRounds" :key="round" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'" class="border rounded-xl overflow-hidden transition-colors">
@@ -804,7 +808,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 class="w-full flex items-center justify-between px-5 py-3 cursor-pointer select-none border-b"
                 :class="collapsedRounds.has(round) ? 'border-transparent' : (isDark ? 'border-white/[0.06]' : 'border-gray-100')"
               >
-                <h3 class="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
+                <h3 class="text-sm font-bold text-gray-500">
                   {{ fixturesByRound[round]?.name }}
                 </h3>
                 <svg
@@ -818,7 +822,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
               <!-- Fixtures -->
               <div class="round-content" :class="{ collapsed: collapsedRounds.has(round) }">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                   <button
                     type="button"
                     @click="selectedFixtureId = fixture.id"
@@ -828,16 +832,24 @@ function getTeamCards(fixture: any, isHome: boolean) {
                     :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.08] hover:border-emerald-500/50' : 'bg-white border-gray-100 shadow-sm hover:border-emerald-500/30']"
                   >
                     <!-- Header -->
-                    <div class="flex items-center justify-between px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wider border-b transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'">
+                    <div class="flex items-center justify-between px-3.5 py-2 text-xs font-bold border-b transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] text-gray-500' : 'bg-gray-50 border-gray-100 text-gray-600'">
                       <span>
-                        {{ fixture.group?.name || fixture.roundName || `Group ${round}` }}
-                        <template v-if="fixture.venue">
-                          <span class="mx-1.5 opacity-50">•</span>
-                          {{ fixture.venue }}
-                        </template>
+                        {{ fixture.venue || fixture.group?.name || fixture.roundName || `Group ${round}` }}
                       </span>
-                      <div v-if="fixture.status === FixtureStatus.CANCELLED" class="flex items-center gap-2">
-                        <span class="text-red-400">CANC</span>
+                      <div class="flex items-center gap-2">
+                        <span v-if="fixture.status === FixtureStatus.SCHEDULED" class="font-medium text-gray-400">
+                          {{ fixture.startTime ? formatDateTimeShort(fixture.startTime) : 'TBD' }}
+                        </span>
+                        <div v-else-if="fixture.status === FixtureStatus.CANCELLED" class="flex items-center gap-2">
+                          <span class="text-red-400">CANC</span>
+                        </div>
+                        <span v-else-if="fixture.status === FixtureStatus.LIVE" class="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
+                          <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                          LIVE
+                        </span>
+                        <span v-else-if="fixture.status === FixtureStatus.COMPLETED" class="text-[10px] font-bold text-emerald-500 uppercase">
+                          FT
+                        </span>
                       </div>
                     </div>
                     
@@ -891,11 +903,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                         <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED">
                           <div class="flex flex-col items-center gap-1">
                             <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true, isDark)">{{ fixture.homeScore ?? 0 }}</span>
-                            <span v-if="fixture.status === FixtureStatus.LIVE" class="text-[9px] font-bold text-red-500 uppercase flex items-center gap-1">
-                              <span class="w-1 h-1 bg-red-500 rounded-full animate-pulse"></span>
-                              LIVE
-                            </span>
-                            <span v-else class="text-[9px] font-bold text-gray-500 uppercase">FT</span>
+                            <span class="text-[9px] font-bold text-gray-500/50 uppercase">-</span>
                             <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, false, isDark)">{{ fixture.awayScore ?? 0 }}</span>
                           </div>
                         </template>
@@ -903,9 +911,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
                            <span class="text-[11px] font-bold text-red-400">CANC</span>
                         </template>
                         <template v-else>
-                          <span class="text-[13px] font-bold text-gray-900 dark:text-gray-200">
-                             {{ fixture.startTime ? formatTime24(fixture.startTime) : 'TBD' }}
-                          </span>
+                          <div class="flex flex-col items-center gap-1 opacity-20">
+                            <span class="text-[14px] leading-none transition-colors font-bold">-</span>
+                            <span class="text-[9px] font-bold uppercase">&nbsp;</span>
+                            <span class="text-[14px] leading-none transition-colors font-bold">-</span>
+                          </div>
                         </template>
                       </div>
                     </div>
@@ -918,7 +928,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <template v-if="isHybrid && knockoutFixtures.length > 0">
               <div class="flex items-center gap-2 px-1 mt-3 mb-1">
                 <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-                <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Knockout Stage</span>
+                <span class="text-xs font-bold text-gray-500">Knockout Stage</span>
               </div>
 
               <div v-for="round in knockoutRounds" :key="'ko-' + round" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'" class="border rounded-xl overflow-hidden transition-colors">
@@ -927,7 +937,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                   class="w-full flex items-center justify-between px-5 py-3 cursor-pointer select-none border-b"
                   :class="collapsedRounds.has('ko::' + round) ? 'border-transparent' : (isDark ? 'border-white/[0.06]' : 'border-gray-100')"
                 >
-                  <h3 class="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
+                  <h3 class="text-sm font-bold text-gray-500">
                     {{ knockoutByRound[round]?.name }}
                   </h3>
                   <svg
@@ -940,7 +950,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 </button>
 
                 <div class="round-content" :class="{ collapsed: collapsedRounds.has('ko::' + round) }">
-                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                     <button
                       type="button"
                       @click="selectedFixtureId = fixture.id"
@@ -950,16 +960,24 @@ function getTeamCards(fixture: any, isHome: boolean) {
                       :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.08] hover:border-emerald-500/50' : 'bg-white border-gray-100 shadow-sm hover:border-emerald-500/30']"
                     >
                       <!-- Header -->
-                      <div class="flex items-center justify-between px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wider border-b transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'">
+                      <div class="flex items-center justify-between px-3.5 py-2 text-xs font-bold border-b transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] text-gray-500' : 'bg-gray-50 border-gray-100 text-gray-600'">
                         <span>
-                          {{ fixture.group?.name || fixture.roundName || knockoutByRound[round]?.name || `Round ${round}` }}
-                          <template v-if="fixture.venue">
-                            <span class="mx-1.5 opacity-50">•</span>
-                            {{ fixture.venue }}
-                          </template>
+                          {{ fixture.venue || fixture.group?.name || fixture.roundName || knockoutByRound[round]?.name || `Round ${round}` }}
                         </span>
-                        <div v-if="fixture.status === FixtureStatus.CANCELLED" class="flex items-center gap-2">
-                          <span class="text-red-400">CANC</span>
+                        <div class="flex items-center gap-2">
+                          <span v-if="fixture.status === FixtureStatus.SCHEDULED" class="font-medium text-gray-400">
+                            {{ fixture.startTime ? formatDateTimeShort(fixture.startTime) : 'TBD' }}
+                          </span>
+                          <div v-else-if="fixture.status === FixtureStatus.CANCELLED" class="flex items-center gap-2">
+                            <span class="text-red-400">CANC</span>
+                          </div>
+                          <span v-else-if="fixture.status === FixtureStatus.LIVE" class="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                            LIVE
+                          </span>
+                          <span v-else-if="fixture.status === FixtureStatus.COMPLETED" class="text-[10px] font-bold text-emerald-500 uppercase">
+                            FT
+                          </span>
                         </div>
                       </div>
                       
@@ -1001,21 +1019,19 @@ function getTeamCards(fixture: any, isHome: boolean) {
                           <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED">
                             <div class="flex flex-col items-center gap-1">
                               <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true, isDark)">{{ fixture.homeScore ?? 0 }}</span>
-                              <span v-if="fixture.status === FixtureStatus.LIVE" class="text-[9px] font-bold text-red-500 uppercase flex items-center gap-1">
-                                <span class="w-1 h-1 bg-red-500 rounded-full animate-pulse"></span>
-                                LIVE
-                              </span>
-                              <span v-else class="text-[9px] font-bold text-gray-500 uppercase">FT</span>
-                              <span class="text-[14px} leading-none transition-colors" :class="getScoreClass(fixture, false, isDark)">{{ fixture.awayScore ?? 0 }}</span>
+                              <span class="text-[9px] font-bold text-gray-500/50 uppercase">-</span>
+                              <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, false, isDark)">{{ fixture.awayScore ?? 0 }}</span>
                             </div>
                           </template>
                           <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
                              <span class="text-[11px] font-bold text-red-400">CANC</span>
                           </template>
                           <template v-else>
-                            <span class="text-[13px] font-bold text-gray-900 dark:text-gray-200">
-                               {{ fixture.startTime ? formatTime24(fixture.startTime) : 'TBD' }}
-                            </span>
+                            <div class="flex flex-col items-center gap-1 opacity-20">
+                              <span class="text-[14px] leading-none transition-colors font-bold">-</span>
+                              <span class="text-[9px] font-bold uppercase">&nbsp;</span>
+                              <span class="text-[14px] leading-none transition-colors font-bold">-</span>
+                            </div>
                           </template>
                         </div>
                       </div>
@@ -1032,10 +1048,10 @@ function getTeamCards(fixture: any, isHome: boolean) {
           <div v-if="standings.length === 0" class="text-center py-16">
             <p class="text-sm text-gray-500">No standings available yet.</p>
           </div>
-          <div v-else class="space-y-6 max-w-4xl mx-auto">
+          <div v-else class="space-y-6 w-full mx-auto">
             <div v-for="(groupStandings, groupName) in standingsByGroup" :key="groupName">
               <div class="flex items-center justify-between mb-3 px-1">
-                <h4 v-if="groupName !== 'default'" class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <h4 v-if="groupName !== 'default'" class="text-xs font-bold text-gray-500">
                   {{ groupName }}
                 </h4>
               </div>
@@ -1043,16 +1059,16 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 <table class="w-full text-sm">
                   <thead>
                     <tr class="border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-                      <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 sticky left-0 z-20" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white'">#</th>
-                      <th class="text-left w-1/2 px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white'">Team</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">P</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">W</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">D</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">L</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">GF</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">GA</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">GD</th>
-                      <th class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Pts</th>
+                      <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-bold text-gray-500 sticky left-0 z-20" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white'">#</th>
+                      <th class="text-left w-1/2 px-3 py-3 text-[11px] font-bold text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white'">Team</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">P</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">W</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">D</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">L</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GF</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GA</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GD</th>
+                      <th class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[11px] font-bold text-emerald-400">Pts</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1143,7 +1159,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
         <!-- ====== STATS TAB ====== -->
         <div v-else-if="activeTab === 'stats'">
-          <div class="max-w-4xl mx-auto">
+          <div class="max-w-7xl mx-auto">
             <MarketingPlayerStatsLeaderboard :stats="playerStats" :loading="playerStatsLoading" />
           </div>
         </div>
@@ -1156,7 +1172,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <!-- About Section (First) -->
             <div v-if="tournament.description || (socials && socials.length > 0)" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
               <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-                <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400">About</h3>
+                <h3 class="text-sm font-bold text-gray-500">About</h3>
                 
                 <!-- Socials in Header -->
                 <div v-if="socials && socials.length > 0" class="flex items-center gap-3">
@@ -1191,31 +1207,106 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <div v-if="sponsors && sponsors.length > 0" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden mt-6">
               <div class="px-5 py-3.5 border-b transition-colors flex items-center gap-2" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                 <UIcon name="i-heroicons-building-office-2" class="w-4 h-4 text-gray-400" />
-                <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400">Sponsors</h3>
+                <h3 class="text-sm font-bold text-gray-500">Sponsors</h3>
               </div>
               <div class="p-8 flex flex-wrap justify-center items-center gap-8 sm:gap-12 md:gap-16">
                 <template v-for="sponsor in sponsors" :key="sponsor.id">
-                  <component
-                    :is="sponsor.websiteUrl ? 'a' : 'div'"
-                    :href="sponsor.websiteUrl || undefined"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="group flex flex-col items-center justify-center transition-transform duration-300"
-                    :class="[sponsor.websiteUrl ? 'cursor-pointer hover:scale-105' : '']"
+                  <button
+                    class="group flex flex-col items-center justify-center transition-transform duration-300 cursor-pointer hover:scale-105"
+                    @click="selectedSponsor = sponsor"
                   >
                     <div class="h-16 sm:h-20 lg:h-24 max-w-[160px] sm:max-w-[200px] flex items-center justify-center mb-0">
                       <img v-if="sponsor.logoUrl" :src="sponsor.logoUrl" :alt="sponsor.name" class="w-full h-full object-contain filter " :class="isDark ? 'brightness-90 group-hover:brightness-100 transition-all' : ''" />
                       <span v-else class="text-xl font-bold text-gray-400">{{ sponsor.name }}</span>
                     </div>
-                  </component>
+                  </button>
                 </template>
               </div>
+
+              <!-- Sponsor Detail Modal -->
+              <Teleport to="body">
+                <Transition name="sponsor-modal">
+                  <div
+                    v-if="selectedSponsor"
+                    class="fixed inset-0 z-[100] flex items-center justify-center px-4"
+                    @click.self="selectedSponsor = null"
+                  >
+                    <!-- Backdrop -->
+                    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="selectedSponsor = null" />
+
+                    <!-- Card -->
+                    <div
+                      class="relative w-full max-w-sm rounded-2xl border p-6 shadow-2xl transition-all"
+                      :class="isDark ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-gray-200'"
+                    >
+                      <!-- Close Button -->
+                      <button
+                        class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors"
+                        :class="isDark ? 'hover:bg-white/10 text-gray-400' : 'hover:bg-gray-100 text-gray-500'"
+                        @click="selectedSponsor = null"
+                      >
+                        <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+                      </button>
+
+                      <!-- Logo -->
+                      <div class="flex justify-center mb-5">
+                        <div
+                          class="w-28 h-28 rounded-xl flex items-center justify-center overflow-hidden border"
+                          :class="isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-100'"
+                        >
+                          <img
+                            v-if="selectedSponsor.logoUrl"
+                            :src="selectedSponsor.logoUrl"
+                            :alt="selectedSponsor.name"
+                            class="w-full h-full object-contain p-3"
+                          />
+                          <span v-else class="text-3xl font-bold text-gray-400">
+                            {{ selectedSponsor.name.charAt(0).toUpperCase() }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- Name -->
+                      <h3
+                        class="text-xl font-bold text-center mb-1 break-words overflow-hidden"
+
+                        :class="isDark ? 'text-white' : 'text-gray-900'"
+                      >
+                        {{ selectedSponsor.name }}
+                      </h3>
+
+                      <p class="text-xs text-center text-gray-500 mb-5">Tournament Sponsor</p>
+
+                      <!-- Website Link -->
+                      <a
+                        v-if="selectedSponsor.websiteUrl"
+                        :href="selectedSponsor.websiteUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                      >
+                        <UIcon name="i-heroicons-globe-alt" class="w-4 h-4" />
+                        Visit Website
+                      </a>
+
+                      <div
+                        v-else
+                        class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium"
+                        :class="isDark ? 'text-gray-500 bg-white/5' : 'text-gray-400 bg-gray-50'"
+                      >
+                        <UIcon name="i-heroicons-globe-alt" class="w-4 h-4" />
+                        No website available
+                      </div>
+                    </div>
+                  </div>
+                </Transition>
+              </Teleport>
             </div>
 
             <!-- Tournament Info (Last) -->
             <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden mt-6">
               <div class="px-5 py-3.5 border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-                <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400">Tournament Info</h3>
+                <h3 class="text-sm font-bold text-gray-500">Tournament Info</h3>
               </div>
               <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
                 <div class="flex items-center justify-between px-5 py-3">
@@ -1281,4 +1372,30 @@ function getTeamCards(fixture: any, isHome: boolean) {
     transform: scale(1.1);
   }
 }
+
 </style>
+
+<style>
+/* Sponsor Modal Transitions (unscoped because modal is teleported to body) */
+.sponsor-modal-enter-active,
+.sponsor-modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+.sponsor-modal-enter-active > div:last-child,
+.sponsor-modal-leave-active > div:last-child {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.sponsor-modal-enter-from,
+.sponsor-modal-leave-to {
+  opacity: 0;
+}
+.sponsor-modal-enter-from > div:last-child {
+  transform: scale(0.95);
+  opacity: 0;
+}
+.sponsor-modal-leave-to > div:last-child {
+  transform: scale(0.95);
+  opacity: 0;
+}
+</style>
+
