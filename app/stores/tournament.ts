@@ -139,6 +139,27 @@ export const useTournamentStore = defineStore('tournament', () => {
     }
   }
 
+  async function startSeason(id: string, data: { seasonName: string; start_date: string; end_date: string }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<Tournament>>(`/tournaments/${id}/season`, {
+        method: 'POST',
+        body: data,
+      })
+      if (response.data) {
+        tournaments.value.push(response.data)
+      }
+      return response
+    } catch (err: any) {
+      error.value = err.data?.message || err.message || 'Failed to start season'
+      console.error('Start season failed:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function updateTournament(id: string, updates: Partial<Tournament>) {
     loading.value = true
     error.value = null
@@ -269,6 +290,7 @@ export const useTournamentStore = defineStore('tournament', () => {
     fetchTournament,
     loadMore,
     createTournament,
+    startSeason,
     updateTournament,
     deleteTournament,
     fetchFollowedTournaments,
