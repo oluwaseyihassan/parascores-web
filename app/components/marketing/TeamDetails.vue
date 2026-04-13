@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tournament, Participant, Fixture } from '~/types'
+import type { Tournament, Participant, Fixture, Standing } from '~/types'
 
 const { toMain } = useHost()
 
@@ -9,23 +9,27 @@ const props = defineProps<{
 }>()
 
 defineEmits(['back'])
-const isDark = inject<Ref<boolean>>('widgetIsDark', ref(true))
+const colorMode = useColorMode()
+const widgetIsDark = inject<Ref<boolean> | null>('widgetIsDark', null)
+const isDark = computed(() => widgetIsDark?.value ?? colorMode.value === 'dark')
 
 const tournament = ref<Tournament | null>(null)
 const participant = ref<Participant | null>(null)
 const participantFixtures = ref<Fixture[]>([])
+const standings = ref<Standing[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-const activeTab = ref<'squad' | 'matches'>('squad')
+const activeTab = ref<'squad' | 'matches' | 'standings'>('squad')
 
 async function fetchData() {
   loading.value = true
   error.value = null
   try {
-    const [tournamentRes, participantRes, fixturesRes] = await Promise.all([
+    const [tournamentRes, participantRes, fixturesRes, standingsRes] = await Promise.all([
       $publicApi<any>(`/tournaments/${props.tournamentId}`),
       $publicApi<any>(`/participants/${props.participantId}`),
-      $publicApi<any>(`/fixtures/tournaments/${props.tournamentId}`).catch(() => null)
+      $publicApi<any>(`/fixtures/tournaments/${props.tournamentId}`).catch(() => null),
+      $publicApi<any>(`/standings/tournament/${props.tournamentId}`).catch(() => null)
     ])
     
     tournament.value = tournamentRes?.data || tournamentRes
@@ -45,6 +49,10 @@ async function fetchData() {
           return new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
         })
       }
+
+      // Parse standings
+      const rawStandings = standingsRes?.data || standingsRes || []
+      standings.value = Array.isArray(rawStandings) ? rawStandings : (rawStandings.standings || [])
     }
   } catch (e: any) {
     error.value = e.message || 'Failed to load team details'
@@ -67,7 +75,6 @@ if (typeof window !== 'undefined') {
     if (type === 'fixture_updated') {
       const targetIdx = participantFixtures.value.findIndex((f) => f.id === data.id)
       if (targetIdx !== -1) {
-        // If it's pertinent to this team, update it
         participantFixtures.value[targetIdx] = { ...participantFixtures.value[targetIdx], ...data }
       }
     }
@@ -84,6 +91,22 @@ watchEffect(() => {
     })
   }
 })
+
+// Standings helpers — only show the group the current team is in
+const teamGroup = computed(() => {
+  const teamStanding = standings.value.find(s => s.participant_id === props.participantId)
+  return teamStanding?.group || 'default'
+})
+
+const standingsByGroup = computed(() => {
+  const group = teamGroup.value
+  const groupStandings = standings.value
+    .filter(s => (s.group || 'default') === group)
+    .sort((a, b) => (a.position || 999) - (b.position || 999))
+  return { [group]: groupStandings }
+})
+
+const hasStandings = computed(() => standings.value.length > 0)
 
 // Helpers
 function formatTime(dateStr?: string | null) {
@@ -141,13 +164,13 @@ function getScoreBadgeClass(match: Fixture) {
     <div v-else-if="participant && tournament">
       <!-- Team Header -->
       <section class="relative overflow-hidden transition-colors" :class="isDark ? 'bg-transparent border-white/[0.06]' : 'bg-transparent border-gray-200'">
-        <div class="relative max-w-5xl mx-auto px-6 pt-6 pb-0">
+        <div class="relative max-w-7xl mx-auto px-6 pt-6 pb-0">
           <!-- Back button -->
-          <button @click="$emit('back')" class="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-emerald-400 transition-colors mb-6 cursor-pointer">
+          <button @click="$emit('back')" class="inline-flex items-center gap-2 text-xs hover:text-emerald-400 transition-colors mb-6 cursor-pointer" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Tournament
+            Back
           </button>
 
           <!-- Header info -->
@@ -164,32 +187,40 @@ function getScoreBadgeClass(match: Fixture) {
           </div>
         </div>
 
-        <div class="max-w-5xl mx-auto px-6 mt-4">
+        <div class="max-w-7xl mx-auto px-6 mt-4">
           <nav class="flex gap-6 border-b transition-colors" :class="isDark ? 'border-white/[0.08]' : 'border-gray-200'">
             <button
               @click="activeTab = 'squad'"
               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
-              :class="activeTab === 'squad' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
+              :class="activeTab === 'squad' ? 'border-emerald-500 text-emerald-500' : (isDark ? 'border-transparent text-gray-400 hover:text-gray-300' : 'border-transparent text-gray-500 hover:text-gray-700')"
             >
               Squad
             </button>
             <button
               @click="activeTab = 'matches'"
               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
-              :class="activeTab === 'matches' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
+              :class="activeTab === 'matches' ? 'border-emerald-500 text-emerald-500' : (isDark ? 'border-transparent text-gray-400 hover:text-gray-300' : 'border-transparent text-gray-500 hover:text-gray-700')"
             >
               Matches
+            </button>
+            <button
+              v-if="hasStandings"
+              @click="activeTab = 'standings'"
+              class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
+              :class="activeTab === 'standings' ? 'border-emerald-500 text-emerald-500' : (isDark ? 'border-transparent text-gray-400 hover:text-gray-300' : 'border-transparent text-gray-500 hover:text-gray-700')"
+            >
+              Standings
             </button>
           </nav>
         </div>
       </section>
 
       <!-- Details Content -->
-      <section class="max-w-5xl mx-auto px-4 py-8">
+      <section class="max-w-7xl mx-auto px-4 py-8">
         <!-- Squad Tab -->
         <div v-show="activeTab === 'squad'">
           <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl px-5 py-4">
-            <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 mb-4 border-b pb-3" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">Players</h3>
+            <h3 class="text-sm font-bold text-gray-500 mb-4 border-b pb-3" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">Players</h3>
             
             <div v-if="!participant.players || participant.players.length === 0" class="py-8 text-center text-gray-500 text-sm">
               No players listed for this team.
@@ -204,7 +235,7 @@ function getScoreBadgeClass(match: Fixture) {
                 </div>
                 <div class="flex flex-col overflow-hidden">
                   <span class="text-sm font-semibold truncate transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">{{ player.name }}</span>
-                  <span class="text-[11px] font-medium text-gray-400 uppercase tracking-widest">{{ player.position || 'Unknown' }}</span>
+                  <span class="text-[11px] font-medium uppercase tracking-widest" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ player.position || 'Unknown' }}</span>
                 </div>
               </div>
             </div>
@@ -215,7 +246,7 @@ function getScoreBadgeClass(match: Fixture) {
         <div v-show="activeTab === 'matches'">
           <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
             <div class="px-5 py-3.5 border-b" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-               <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400">Team Matches</h3>
+               <h3 class="text-sm font-bold text-gray-500">Team Matches</h3>
             </div>
             
             <div v-if="participantFixtures.length === 0" class="py-12 text-center text-gray-500 text-sm">
@@ -231,7 +262,7 @@ function getScoreBadgeClass(match: Fixture) {
                   <!-- Match Date -->
                   <div class="hidden sm:flex flex-col items-center justify-center text-center w-24">
                      <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-500/80">{{ formatFullDate(match.startTime) }}</span>
-                     <span class="text-[13px] text-gray-400 font-medium">{{ formatTime(match.startTime) }}</span>
+                     <span class="text-[13px] font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ formatTime(match.startTime) }}</span>
                   </div>
                   
                   <!-- Home -->
@@ -239,7 +270,7 @@ function getScoreBadgeClass(match: Fixture) {
                     <span class="text-sm font-semibold transition-colors truncate" :class="[match.homeTeamId === participant?.id ? (isDark ? 'text-white' : 'text-gray-900') : 'text-gray-500']">
                       {{ match.homeTeam?.customName || match.homeTeamPlaceholder || 'Home' }}
                     </span>
-                    <div class="w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden flex-shrink-0 bg-white/5 border border-white/5 flex items-center justify-center">
+                    <div class="w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border" :class="isDark ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'">
                       <img v-if="match.homeTeam?.logoUrl" :src="match.homeTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
                       <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.homeTeam?.customName || 'H').charAt(0) }}</span>
                     </div>
@@ -262,7 +293,7 @@ function getScoreBadgeClass(match: Fixture) {
                   
                   <!-- Away -->
                   <div class="flex-1 flex justify-start items-center gap-3">
-                    <div class="w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden flex-shrink-0 bg-white/5 border border-white/5 flex items-center justify-center">
+                    <div class="w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border" :class="isDark ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'">
                       <img v-if="match.awayTeam?.logoUrl" :src="match.awayTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
                       <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.awayTeam?.customName || 'A').charAt(0) }}</span>
                     </div>
@@ -272,6 +303,83 @@ function getScoreBadgeClass(match: Fixture) {
                   </div>
                 </div>
               </NuxtLink>
+            </div>
+          </div>
+        </div>
+
+        <!-- Standings Tab -->
+        <div v-show="activeTab === 'standings'">
+          <div v-for="(groupStandings, groupName) in standingsByGroup" :key="groupName" class="mb-6 last:mb-0">
+            <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
+              <!-- Group Header -->
+              <div class="px-5 py-3.5 border-b" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+                <h3 class="text-sm font-bold text-gray-500">
+                  Standings{{ groupName !== 'default' ? ` · ${groupName}` : '' }}
+                </h3>
+              </div>
+
+              <!-- Table -->
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'" class="border-b">
+                      <th class="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 w-8">#</th>
+                      <th class="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">Team</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden sm:table-cell">P</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden sm:table-cell">W</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden sm:table-cell">D</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden sm:table-cell">L</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden md:table-cell">GF</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden md:table-cell">GA</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">GD</th>
+                      <th class="text-center px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(row, index) in groupStandings"
+                      :key="row.id"
+                      class="transition-colors border-b last:border-b-0"
+                      :class="[
+                        isDark ? 'border-white/[0.03]' : 'border-gray-50',
+                        row.participant_id === participantId
+                          ? (isDark ? 'bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/20' : 'bg-emerald-50 ring-1 ring-inset ring-emerald-200')
+                          : (index % 2 === 0 ? (isDark ? 'bg-transparent' : 'bg-white') : (isDark ? 'bg-white/[0.02]' : 'bg-gray-50/50'))
+                      ]"
+                    >
+                      <td class="px-4 py-3 text-center font-bold text-gray-500 text-xs">{{ row.position || index + 1 }}</td>
+                      <td class="px-4 py-3">
+                        <div class="flex items-center gap-2.5">
+                          <div class="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border" :class="isDark ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'">
+                            <img v-if="row.participant?.logoUrl" :src="row.participant.logoUrl" class="w-full h-full object-cover" />
+                            <span v-else class="text-[9px] font-bold text-gray-400">{{ (row.participant?.customName || '?').charAt(0) }}</span>
+                          </div>
+                          <span
+                            class="font-semibold text-sm truncate max-w-[140px]"
+                            :class="[
+                              row.participant_id === participantId
+                                ? 'text-emerald-500 font-bold'
+                                : (isDark ? 'text-gray-200' : 'text-gray-800')
+                            ]"
+                          >
+                            {{ row.participant?.customName || 'Unknown' }}
+                          </span>
+                        </div>
+                      </td>
+                      <td class="text-center px-2 py-3 hidden sm:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.played }}</td>
+                      <td class="text-center px-2 py-3 hidden sm:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.wins }}</td>
+                      <td class="text-center px-2 py-3 hidden sm:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.draws }}</td>
+                      <td class="text-center px-2 py-3 hidden sm:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.losses }}</td>
+                      <td class="text-center px-2 py-3 hidden md:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.goalsFor }}</td>
+                      <td class="text-center px-2 py-3 hidden md:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.goalsAgainst }}</td>
+                      <td class="text-center px-2 py-3 font-semibold" :class="row.goalDiff > 0 ? 'text-emerald-500' : row.goalDiff < 0 ? 'text-red-500' : (isDark ? 'text-gray-500' : 'text-gray-400')">
+                        {{ row.goalDiff > 0 ? '+' : '' }}{{ row.goalDiff }}
+                      </td>
+                      <td class="text-center px-4 py-3 font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">{{ row.points }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
