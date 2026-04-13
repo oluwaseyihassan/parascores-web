@@ -124,6 +124,43 @@ const handleDeleteTournament = () => {
   })
 }
 
+// Start New Season logic
+const showSeasonModal = ref(false)
+const startingSeason = ref(false)
+const seasonState = reactive({
+  seasonName: '',
+  start_date: '',
+  end_date: ''
+})
+const seasonSchema = z.object({
+  seasonName: z.string().min(1, 'Season name is required'),
+  start_date: z.string().min(1, 'Start date is required'),
+  end_date: z.string().min(1, 'End date is required')
+})
+
+const handleStartSeason = async (event: FormSubmitEvent<any>) => {
+  startingSeason.value = true
+  try {
+    const res = await tournamentStore.startSeason(tournamentId.value, event.data)
+    useToast().add({ title: 'New season started successfully', color: 'success' })
+    showSeasonModal.value = false
+    
+    // Redirect to the new tournament season overview
+    if (res.data?.id) {
+      const router = useRouter()
+      router.push(`/tournaments/${res.data.id}`)
+    }
+  } catch (err: any) {
+    useToast().add({
+      title: 'Failed to start season',
+      description: err.data?.message || err.message,
+      color: 'error'
+    })
+  } finally {
+    startingSeason.value = false
+  }
+}
+
 // Generate fixtures
 const generateError = ref<string | null>(null)
 const showGenerateModal = ref(false)
@@ -2826,6 +2863,30 @@ const copyTournamentLink = async () => {
                 <div class="p-2">
                   <TournamentSettings :tournament="tournament" />
                   
+                  <UCard class="mt-8 border-indigo-200 dark:border-indigo-900/50" :ui="{ header: 'bg-indigo-50 dark:bg-indigo-900/20' }">
+                    <template #header>
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 text-indigo-500" />
+                        <span class="font-medium text-indigo-700 dark:text-indigo-400">Seasons</span>
+                      </div>
+                    </template>
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-white">Start New Season</h4>
+                        <p class="text-sm text-gray-500 mt-1">
+                          Clone this tournament's settings into a new season. Active teams and fixtures will not be copied.
+                        </p>
+                      </div>
+                      <UButton 
+                        color="neutral" 
+                        variant="soft" 
+                        icon="i-heroicons-document-duplicate"
+                        label="Start New Season" 
+                        @click="showSeasonModal = true" 
+                      />
+                    </div>
+                  </UCard>
+                  
                   <UCard class="mt-8 border-red-200 dark:border-red-900/50" :ui="{ header: 'bg-red-50 dark:bg-red-900/20' }">
                     <template #header>
                       <div class="flex items-center gap-2">
@@ -2864,6 +2925,66 @@ const copyTournamentLink = async () => {
       <p class="text-gray-500 mb-6">The tournament you're looking for doesn't exist or has been deleted.</p>
       <UButton to="/" variant="outline">Back to Dashboard</UButton>
     </div>
+
+    <!-- Start Season Modal -->
+    <UModal v-model:open="showSeasonModal">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-document-duplicate" class="w-5 h-5 text-indigo-500" />
+              <span class="font-semibold">Start New Season</span>
+            </div>
+            <p class="text-sm text-gray-500 mt-2">
+              This will create a new tournament copying the rules, format, logo, and settings of this tournament. Teams and fixtures will not be copied.
+            </p>
+          </template>
+
+          <UForm 
+            :schema="seasonSchema" 
+            :state="seasonState" 
+            @submit="handleStartSeason"
+            class="space-y-4"
+          >
+            <UFormField label="Season Name" name="seasonName" required>
+              <UInput 
+                v-model="seasonState.seasonName" 
+                placeholder="e.g. 2024/2025 or Season 3"
+              />
+            </UFormField>
+
+            <UFormField label="Start Date" name="start_date" required>
+              <UInput 
+                type="datetime-local" 
+                v-model="seasonState.start_date" 
+              />
+            </UFormField>
+
+            <UFormField label="End Date" name="end_date" required>
+              <UInput 
+                type="datetime-local" 
+                v-model="seasonState.end_date" 
+              />
+            </UFormField>
+
+            <div class="flex justify-end gap-2 pt-4">
+              <UButton 
+                label="Cancel" 
+                variant="ghost" 
+                color="neutral"
+                @click="showSeasonModal = false"
+              />
+              <UButton 
+                type="submit"
+                label="Create Season" 
+                icon="i-heroicons-arrow-right"
+                :loading="startingSeason"
+              />
+            </div>
+          </UForm>
+        </UCard>
+      </template>
+    </UModal>
   </div>
 
   <!-- Manage Players Modal -->
