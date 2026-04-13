@@ -101,8 +101,8 @@ export interface Organization {
   slug: string
   logoUrl?: string | null
   bannerUrl?: string | null
-  color?: string | null
   phone?: string | null
+
   location?: string | null
   website?: string | null
   isVerified: boolean
@@ -162,11 +162,17 @@ export interface Tournament {
   numberOfGroups?: number | null
   teamsPerGroup?: number | null
 
+  // Seasons
+  seasonName?: string | null
+  parent_id?: string | null
+
   // Relations
   groups?: Group[]
   standings?: Standing[]
   sponsors?: Sponsor[]
   socials?: Social[]
+  parent?: Tournament | null
+  seasons?: Tournament[]
 
   start_date: string
   end_date: string
