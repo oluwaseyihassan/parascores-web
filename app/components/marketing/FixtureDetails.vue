@@ -11,8 +11,16 @@ const props = defineProps<{
 }>()
 
 defineEmits(['back'])
-// Theme (injected from widget layout)
-const isDark = inject<Ref<boolean>>('widgetIsDark', ref(true))
+// Theme: use widget injection if available, otherwise follow app color mode
+const colorMode = useColorMode()
+const injectedDark = inject<Ref<boolean> | null>('widgetIsDark', null)
+const isDark = computed(() => injectedDark !== null ? injectedDark.value : colorMode.value === 'dark')
+
+const tabInactiveClass = computed(() =>
+  isDark.value
+    ? 'border-transparent text-gray-400 hover:text-gray-300'
+    : 'border-transparent text-gray-500 hover:text-gray-700'
+)
 
 // State
 const tournament = ref<Tournament | null>(null)
@@ -360,21 +368,21 @@ const isHomeEvent = (event: any) => {
             <button
               @click="activeTab = 'events'"
               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
-              :class="activeTab === 'events' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
+              :class="activeTab === 'events' ? 'border-emerald-500 text-emerald-400' : tabInactiveClass"
             >
               Match Events
             </button>
             <button
               @click="activeTab = 'info'"
               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
-              :class="activeTab === 'info' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
+              :class="activeTab === 'info' ? 'border-emerald-500 text-emerald-400' : tabInactiveClass"
             >
               Match Info
             </button>
             <button
               @click="activeTab = 'lineups'"
               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
-              :class="activeTab === 'lineups' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
+              :class="activeTab === 'lineups' ? 'border-emerald-500 text-emerald-400' : tabInactiveClass"
             >
               Lineups
             </button>
@@ -388,7 +396,7 @@ const isHomeEvent = (event: any) => {
         <div v-show="activeTab === 'events'">
           <div v-if="timelineEvents.length > 0" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl  overflow-hidden relative pb-10">
             <div class="px-3 md:px-5 py-4 md:py-6 flex flex-col items-center">
-              <h3 class="text-[14px] font-bold text-white mb-6 md:mb-8 relative z-10 z-[1]">Events</h3>
+              <h3 class="text-[14px] font-bold mb-6 md:mb-8 relative z-10 z-[1]" :class="isDark ? 'text-white' : 'text-gray-900'">Events</h3>
               
               <!-- Center Line (Removed) -->
 
