@@ -141,7 +141,7 @@ watch(() => props.open, async (isOpen) => {
     } else {
       matchTime.value = ''
       matchDateVal.value = null
-      matchTimeVal.value = '12:00'
+      matchTimeVal.value = ''
     }
     await loadMatchData(props.fixture)
   } else if (!isOpen) {
@@ -1035,7 +1035,10 @@ const downloadGraphic = async () => {
                 :disabled="loadingPlayers || updatingMatch"
                 @click="openCardModal('home')"
               >
-                <UIcon name="i-heroicons-stop" class="w-3 h-3" />
+                <span class="card-icons">
+                  <span class="card-icon card-icon--yellow" />
+                  <span class="card-icon card-icon--red" />
+                </span>
                 <span>Card</span>
               </button>
               <button
@@ -1065,7 +1068,10 @@ const downloadGraphic = async () => {
                 :disabled="loadingPlayers || updatingMatch"
                 @click="openCardModal('away')"
               >
-                <UIcon name="i-heroicons-stop" class="w-3 h-3" />
+                <span class="card-icons">
+                  <span class="card-icon card-icon--yellow" />
+                  <span class="card-icon card-icon--red" />
+                </span>
                 <span>Card</span>
               </button>
               <button
@@ -1907,6 +1913,23 @@ const downloadGraphic = async () => {
   border-color: rgba(245,158,11,0.2);
 }
 .mc-btn--card:hover:not(:disabled) { background: rgba(245,158,11,0.18); }
+
+.card-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.card-icon {
+  display: inline-block;
+  width: 7px;
+  height: 10px;
+  border-radius: 1.5px;
+}
+
+.card-icon--yellow { background: #facc15; }
+.card-icon--red    { background: #ef4444; }
 
 .mc-btn--minus {
   background: rgba(107,114,128,0.08);
