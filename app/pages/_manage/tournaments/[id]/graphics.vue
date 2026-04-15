@@ -29,7 +29,7 @@ const graphicType = ref<'match' | 'standing' | 'bracket' | 'matchday' | 'stats'>
 const playerStats = ref<any>(null)
 const selectedStatType = ref<'both' | 'scorers' | 'assists'>('both')
 const selectedGroup = ref<string>('all')
-const selectedRound = ref<number | undefined>(undefined)
+const selectedRound = ref<string | undefined>(undefined)
 
 // Computed
 const selectedFixture = computed(() => 
@@ -87,42 +87,70 @@ const fixtureOptions = computed(() => {
 
 // Group fixtures by round for accordion display
 const fixturesByRound = computed(() => {
-  const grouped: Record<number, typeof fixtureOptions.value> = {}
+  const grouped: Record<string, { label: string, round: number, roundName: string | null, fixtures: typeof fixtureOptions.value }> = {}
   
   fixtureOptions.value.forEach(f => {
     const round = f.round
-    if (!grouped[round]) {
-      grouped[round] = []
+    const roundName = f.roundName || null
+    const key = roundName ? `name:${roundName}` : `round:${round}`
+    
+    if (!grouped[key]) {
+      grouped[key] = {
+        label: roundName || `Round ${round}`,
+        round,
+        roundName,
+        fixtures: []
+      }
     }
-    grouped[round].push(f)
+    grouped[key].fixtures.push(f)
   })
   
   // Sort rounds and return as array of accordion items
-  return Object.keys(grouped)
-    .map(Number)
-    .sort((a, b) => a - b)
-    .map(round => {
-      // Use round name from the first fixture in the group if available
-      const roundName = grouped[round]?.[0]?.roundName || `Round ${round}`
+  return Object.values(grouped)
+    .sort((a, b) => {
+      if (a.round !== b.round) return a.round - b.round
+      return (a.roundName || '').localeCompare(b.roundName || '')
+    })
+    .map((group, index) => {
+      const safeSlot = `group-${index}`
       return {
-        label: roundName,
-        value: `round-${round}`,
-        slot: `round-${round}`,
-        fixtures: grouped[round]
+        label: group.label,
+        value: safeSlot,
+        slot: safeSlot,
+        fixtures: group.fixtures
       }
     })
 })
 
 // Available rounds for matchday selector
 const roundOptions = computed(() => {
-  const rounds = [...new Set(fixtures.value.map(f => f.round || 1))].sort((a, b) => a - b)
-  return rounds.map(r => {
-      // Find a fixture in this round to get the name
-      const fixture = fixtures.value.find(f => f.round === r)
-      return { 
-          label: fixture?.roundName || `Round ${r}`, 
-          value: r 
-      }
+  const optionsMap = new Map<string, { label: string, round: number, roundName: string | null, value: string }>()
+  
+  fixtures.value.forEach(f => {
+    const round = f.round || 1
+    const roundName = f.roundName || null
+    const label = roundName || `Round ${round}`
+    const key = roundName ? `name:${roundName}` : `round:${round}`
+    
+    if (!optionsMap.has(key)) {
+      optionsMap.set(key, { label, round, roundName, value: key })
+    }
+  })
+  
+  return Array.from(optionsMap.values()).sort((a, b) => {
+    if (a.round !== b.round) return a.round - b.round
+    return (a.roundName || '').localeCompare(b.roundName || '')
+  })
+})
+
+const selectedMatchdayData = computed(() => roundOptions.value.find(o => o.value === selectedRound.value))
+
+const matchdayFixtures = computed(() => {
+  if (!selectedMatchdayData.value) return []
+  return fixtures.value.filter(f => {
+    const round = f.round || 1
+    const roundName = f.roundName || null
+    return round === selectedMatchdayData.value!.round && roundName === selectedMatchdayData.value!.roundName
   })
 })
 
@@ -136,7 +164,7 @@ const canGenerate = computed(() => {
       return !!tournament.value
   }
   if (graphicType.value === 'matchday') {
-      return !!tournament.value && selectedRound.value !== undefined && fixtures.value.some(f => f.round === selectedRound.value)
+      return !!tournament.value && !!selectedMatchdayData.value && matchdayFixtures.value.length > 0
   }
   if (graphicType.value === 'stats') {
       return !!tournament.value && !!playerStats.value && (playerStats.value.topScorers?.length > 0 || playerStats.value.topAssists?.length > 0)
@@ -268,16 +296,16 @@ const generatePreview = async () => {
             },
             responseType: 'blob'
         })
-    } else if (graphicType.value === 'matchday' && selectedRound.value !== undefined) {
+    } else if (graphicType.value === 'matchday' && selectedMatchdayData.value) {
         // Get fixtures for the selected round
-        const roundFixtures = fixtures.value.filter(f => f.round === selectedRound.value)
+        const roundFixtures = matchdayFixtures.value
         
         response = await $fetch<Blob>('/api/graphics/matchday', {
             method: 'POST',
             body: {
                 fixtures: roundFixtures,
                 tournament: tournament.value,
-                round: selectedRound.value,
+                round: selectedMatchdayData.value.label,
                 sponsors: sponsorStore.sponsors,
                 socials: socialStore.socials
             },
@@ -330,8 +358,9 @@ const generatePreview = async () => {
 const getGraphicFilename = () => {
   if (graphicType.value === 'match' && selectedFixture.value) {
       return `match-${selectedFixture.value.id}.png`
-  } else if (graphicType.value === 'matchday' && tournament.value && selectedRound.value) {
-      return `${tournament.value.name}-round-${selectedRound.value}.png`
+  } else if (graphicType.value === 'matchday' && tournament.value && selectedMatchdayData.value) {
+      const slug = selectedMatchdayData.value.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+      return `${tournament.value.name}-${slug}.png`
   } else if (graphicType.value === 'stats' && tournament.value) {
       return `${tournament.value.name}-stats.png`
   } else if (tournament.value) {
@@ -573,9 +602,9 @@ onUnmounted(() => {
                         class="w-full"
                     />
                 </UFormGroup>
-                <div v-if="selectedRound !== undefined" class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm">
-                    <span class="text-gray-500">Matches in {{ roundOptions.find(r => r.value === selectedRound)?.label }}:</span>
-                    <span class="font-medium ml-2">{{ fixtures.filter(f => f.round === selectedRound).length }}</span>
+                <div v-if="selectedMatchdayData" class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm">
+                    <span class="text-gray-500">Matches in {{ selectedMatchdayData.label }}:</span>
+                    <span class="font-medium ml-2">{{ matchdayFixtures.length }}</span>
                 </div>
                 <p class="text-sm text-gray-500">
                     Generate a graphic showing all matches for a specific matchday/round.
