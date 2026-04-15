@@ -1020,6 +1020,7 @@ const addSponsorError = ref<string | null>(null)
 
 const addSponsorSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
+  description: z.string().max(200).optional().nullable().or(z.literal('')),
   logoUrl: z.string().url('Must be a valid URL').optional().nullable().or(z.literal('')),
   websiteUrl: z.string().url('Must be a valid URL').optional().nullable().or(z.literal(''))
 })
@@ -1028,6 +1029,7 @@ type AddSponsorSchema = z.output<typeof addSponsorSchema>
 
 const addSponsorState = reactive<Partial<AddSponsorSchema>>({
   name: '',
+  description: '',
   logoUrl: '',
   websiteUrl: ''
 })
@@ -1073,8 +1075,8 @@ const removeSponsorLogo = () => {
 
 const openAddSponsorModal = () => {
   addSponsorState.name = ''
+  addSponsorState.description = ''
   addSponsorState.logoUrl = ''
-  addSponsorState.websiteUrl = ''
   addSponsorState.websiteUrl = ''
   addSponsorError.value = null
   // Reset upload state
@@ -1111,6 +1113,7 @@ const handleAddSponsor = async (event: FormSubmitEvent<AddSponsorSchema>) => {
 
     await sponsorStore.addSponsor(tournamentId.value, {
       name: event.data.name,
+      description: event.data.description || null,
       logoUrl: finalLogoUrl || null,
       websiteUrl: event.data.websiteUrl || null
     })
@@ -1135,14 +1138,78 @@ const handleRemoveSponsor = (sponsorId: string) => {
         useToast().add({ title: 'Sponsor removed', color: 'success' })
       } catch (error: any) {
         const message = error.data?.message || error.message || 'Unknown error'
-        useToast().add({ 
-          title: 'Failed to remove sponsor', 
-          description: message, 
-          color: 'error' 
+        useToast().add({
+          title: 'Failed to remove sponsor',
+          description: message,
+          color: 'error'
         })
       }
     }
   })
+}
+
+// Edit Sponsor
+const showEditSponsorModal = ref(false)
+const editingSponsor = ref(false)
+const editSponsorError = ref<string | null>(null)
+const editSponsorId = ref<string | null>(null)
+
+const editSponsorState = reactive<Partial<AddSponsorSchema>>({
+  name: '',
+  description: '',
+  logoUrl: '',
+  websiteUrl: ''
+})
+
+const openEditSponsorModal = (sponsor: Sponsor) => {
+  editSponsorId.value = sponsor.id
+  editSponsorState.name = sponsor.name
+  editSponsorState.description = sponsor.description || ''
+  editSponsorState.logoUrl = sponsor.logoUrl || ''
+  editSponsorState.websiteUrl = sponsor.websiteUrl || ''
+  editSponsorError.value = null
+  removeSponsorLogo()
+  showEditSponsorModal.value = true
+}
+
+const handleEditSponsor = async (event: FormSubmitEvent<AddSponsorSchema>) => {
+  if (!editSponsorId.value) return
+  editingSponsor.value = true
+  editSponsorError.value = null
+
+  try {
+    let finalLogoUrl = event.data.logoUrl
+
+    if (sponsorLogoFile.value) {
+      uploadingSponsorLogo.value = true
+      try {
+        const formData = new FormData()
+        formData.append('file', sponsorLogoFile.value)
+        const uploadResponse = await $api<{success: boolean, data: { url: string, publicId: string }, message: string}>('/upload/image?folder=sponsors', {
+          method: 'POST',
+          body: formData
+        })
+        if (uploadResponse.data?.url) {
+          finalLogoUrl = uploadResponse.data.url
+        }
+      } finally {
+        uploadingSponsorLogo.value = false
+      }
+    }
+
+    await sponsorStore.updateSponsor(tournamentId.value, editSponsorId.value, {
+      name: event.data.name,
+      description: event.data.description || null,
+      logoUrl: finalLogoUrl || null,
+      websiteUrl: event.data.websiteUrl || null
+    })
+    showEditSponsorModal.value = false
+    useToast().add({ title: 'Sponsor updated', color: 'success' })
+  } catch (err: any) {
+    editSponsorError.value = err?.data?.message || err?.message || 'Failed to update sponsor'
+  } finally {
+    editingSponsor.value = false
+  }
 }
 
 // Social Management
@@ -2134,14 +2201,20 @@ const copyTournamentLink = async () => {
                             </a>
                           </div>
                         </div>
-                        <button 
-                          v-if="manageModes.sponsors"
-                          class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs shadow-lg transition-all z-10 hover:bg-red-600 hover:scale-110 active:scale-95"
-                          @click="handleRemoveSponsor(sponsor.id)"
-                          title="Remove"
-                        >
-                          ×
-                        </button>
+                        <template v-if="manageModes.sponsors">
+                          <button
+                            class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs shadow-lg transition-all z-10 hover:bg-red-600 hover:scale-110 active:scale-95"
+                            @click="handleRemoveSponsor(sponsor.id)"
+                            title="Remove"
+                          >×</button>
+                          <button
+                            class="absolute -top-1.5 right-4 w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-lg transition-all z-10 hover:bg-indigo-600 hover:scale-110 active:scale-95"
+                            @click="openEditSponsorModal(sponsor)"
+                            title="Edit"
+                          >
+                            <UIcon name="i-heroicons-pencil" class="w-3 h-3" />
+                          </button>
+                        </template>
                       </div>
                     </div>
                   </UCard>
@@ -2457,9 +2530,10 @@ const copyTournamentLink = async () => {
                         @click="handleClearFixtures"
                         label="Clear"
                       />
-                      <UButton 
-                        size="xs" 
-                        variant="ghost" 
+                      <UButton
+                        v-if="!fixtures.length"
+                        size="xs"
+                        variant="ghost"
                         icon="i-heroicons-sparkles"
                         :loading="generating"
                         :disabled="participants.length < 2"
@@ -2548,106 +2622,15 @@ const copyTournamentLink = async () => {
                         </template>
                         
                         <template #content="{ item }">
-                          <div class="space-y-2 p-4 pt-2">
-                             <div 
-                              v-for="fixture in item.fixtures" 
+                          <div class="space-y-1.5 px-2 pb-3 pt-1">
+                            <FixtureRow
+                              v-for="fixture in item.fixtures"
                               :key="fixture.id"
-                              class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
-                            >
-                              <div class="w-full sm:flex-1 sm:w-auto">
-                                <div class="flex items-center gap-2 text-sm min-w-0">
-                                  <div class="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                                    <span class="font-medium text-gray-900 dark:text-white truncate">
-                                      {{ fixture.homeTeam?.customName || 'TBD' }}
-                                    </span>
-                                    <div class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
-                                      <img 
-                                        v-if="fixture.homeTeam?.logoUrl" 
-                                        :src="fixture.homeTeam.logoUrl" 
-                                        class="w-full h-full object-cover"
-                                      />
-                                      <span v-else class="text-[10px] font-medium text-gray-600 dark:text-gray-300">
-                                        {{ (fixture.homeTeam?.customName || 'T').charAt(0).toUpperCase() }}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  
-                                  <span class="text-gray-400 px-2 shrink-0">vs</span>
-                                  
-                                  <div class="flex items-center gap-2 flex-1 min-w-0 justify-start">
-                                    <div class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
-                                      <img 
-                                        v-if="fixture.awayTeam?.logoUrl" 
-                                        :src="fixture.awayTeam.logoUrl" 
-                                        class="w-full h-full object-cover"
-                                      />
-                                      <span v-else class="text-[10px] font-medium text-gray-600 dark:text-gray-300">
-                                        {{ (fixture.awayTeam?.customName || 'T').charAt(0).toUpperCase() }}
-                                      </span>
-                                    </div>
-                                    <span class="font-medium text-gray-900 dark:text-white truncate">
-                                      {{ fixture.awayTeam?.customName || 'TBD' }}
-                                    </span>
-                                  </div>
-                                </div>
-                                <p v-if="fixture.startTime" class="text-xs text-gray-500 mt-1">
-                                  {{ new Date(fixture.startTime).toLocaleDateString() }}
-                                </p>
-                              </div>
-                              
-                              <div 
-                                v-if="fixture.status === 'COMPLETED' || fixture.status === 'LIVE'"
-                                class="flex items-center gap-2 px-3"
-                              >
-                                <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                  {{ fixture.homeScore ?? 0 }}
-                                </span>
-                                <span class="text-gray-400">-</span>
-                                <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                  {{ fixture.awayScore ?? 0 }}
-                                </span>
-                              </div>
-                              
-                              <div class="flex items-center justify-end w-full sm:w-auto shrink-0 gap-2 mt-1 sm:mt-0">
-                                <UButton 
-                                  v-if="fixture.status === 'SCHEDULED' && fixture.homeTeamId && fixture.awayTeamId"
-                                  size="xs" 
-                                  color="success" 
-                                  variant="soft"
-                                  icon="i-heroicons-play"
-                                  :loading="updatingMatch"
-                                  @click.stop="startMatch(fixture)"
-                                >
-                                  Start
-                                </UButton>
-                                
-                                <UButton 
-                                  v-if="fixture.status === 'SCHEDULED'"
-                                  size="xs" 
-                                  color="neutral" 
-                                  variant="soft"
-                                  icon="i-heroicons-pencil"
-                                  @click.stop="openMatchControl(fixture)"
-                                >
-                                  Edit
-                                </UButton>
-                                
-                                <UButton 
-                                  v-if="fixture.status === 'LIVE' || fixture.status === 'COMPLETED'"
-                                  size="xs" 
-                                  color="warning" 
-                                  variant="soft"
-                                  icon="i-heroicons-adjustments-horizontal"
-                                  @click.stop="openMatchControl(fixture)"
-                                >
-                                  Control
-                                </UButton>
-                                
-                                <UBadge :color="fixtureStatusColors[fixture.status]" variant="subtle" size="sm">
-                                  {{ fixture.status }}
-                                </UBadge>
-                              </div>
-                            </div>
+                              :fixture="fixture"
+                              :updating-match="updatingMatch"
+                              @start="startMatch"
+                              @control="openMatchControl"
+                            />
                           </div>
                         </template>
                       </UAccordion>
@@ -2729,111 +2712,15 @@ const copyTournamentLink = async () => {
                       </template>
                       
                       <template #content="{ item }">
-                        <div class="space-y-2 p-4 pt-2">
-                           <div 
-                            v-for="fixture in item.fixtures" 
+                        <div class="space-y-1.5 px-2 pb-3 pt-1">
+                          <FixtureRow
+                            v-for="fixture in item.fixtures"
                             :key="fixture.id"
-                            class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
-                          >
-                            <!-- Match Info -->
-                            <div class="w-full sm:flex-1 sm:w-auto">
-                              <div class="flex items-center gap-2 text-sm min-w-0">
-                                <div class="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                                  <span class="font-medium text-gray-900 dark:text-white truncate">
-                                    {{ fixture.homeTeam?.customName || 'TBD' }}
-                                  </span>
-                                  <div class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
-                                    <img 
-                                      v-if="fixture.homeTeam?.logoUrl" 
-                                      :src="fixture.homeTeam.logoUrl" 
-                                      class="w-full h-full object-cover"
-                                    />
-                                    <span v-else class="text-[10px] font-medium text-gray-600 dark:text-gray-300">
-                                      {{ (fixture.homeTeam?.customName || 'T').charAt(0).toUpperCase() }}
-                                    </span>
-                                  </div>
-                                </div>
-                                
-                                <span class="text-gray-400 px-2 shrink-0">vs</span>
-                                
-                                <div class="flex items-center gap-2 flex-1 min-w-0 justify-start">
-                                  <div class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
-                                    <img 
-                                      v-if="fixture.awayTeam?.logoUrl" 
-                                      :src="fixture.awayTeam.logoUrl" 
-                                      class="w-full h-full object-cover"
-                                    />
-                                    <span v-else class="text-[10px] font-medium text-gray-600 dark:text-gray-300">
-                                      {{ (fixture.awayTeam?.customName || 'T').charAt(0).toUpperCase() }}
-                                    </span>
-                                  </div>
-                                  <span class="font-medium text-gray-900 dark:text-white truncate">
-                                    {{ fixture.awayTeam?.customName || 'TBD' }}
-                                  </span>
-                                </div>
-                              </div>
-                              <p v-if="fixture.startTime" class="text-xs text-gray-500 mt-1">
-                                {{ new Date(fixture.startTime).toLocaleDateString() }}
-                              </p>
-                            </div>
-                            
-                            <!-- Score + Actions -->
-                            <div class="flex items-center justify-end w-full sm:w-auto shrink-0 gap-2 mt-1 sm:mt-0">
-                              <div 
-                                v-if="fixture.status === 'COMPLETED' || fixture.status === 'LIVE'"
-                                class="flex items-center gap-2 px-3"
-                              >
-                                <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                  {{ fixture.homeScore ?? 0 }}
-                                </span>
-                                <span class="text-gray-400">-</span>
-                                <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                  {{ fixture.awayScore ?? 0 }}
-                                </span>
-                              </div>
-                              
-                              <!-- Start Match Button (for SCHEDULED) -->
-                              <UButton 
-                                v-if="fixture.status === 'SCHEDULED' && fixture.homeTeamId && fixture.awayTeamId"
-                                size="xs" 
-                                color="success" 
-                                variant="soft"
-                                icon="i-heroicons-play"
-                                :loading="updatingMatch"
-                                @click.stop="startMatch(fixture)"
-                              >
-                                Start
-                              </UButton>
-
-                              <UButton 
-                                v-if="fixture.status === 'SCHEDULED'"
-                                size="xs" 
-                                color="neutral" 
-                                variant="soft"
-                                icon="i-heroicons-pencil"
-                                @click.stop="openMatchControl(fixture)"
-                              >
-                                Edit
-                              </UButton>
-                              
-                              <!-- Control Match Button (for LIVE) -->
-                              <UButton 
-                                v-if="fixture.status === 'LIVE' || fixture.status === 'COMPLETED'"
-                                size="xs" 
-                                color="warning" 
-                                variant="soft"
-                                icon="i-heroicons-adjustments-horizontal"
-                                @click.stop="openMatchControl(fixture)"
-                              >
-                                Control
-                              </UButton>
-                              
-                              <!-- Status Badge -->
-                              <UBadge :color="fixtureStatusColors[fixture.status]" variant="subtle" size="sm">
-                                {{ fixture.status }}
-                              </UBadge>
-                            </div>
-                          </div>
+                            :fixture="fixture"
+                            :updating-match="updatingMatch"
+                            @start="startMatch"
+                            @control="openMatchControl"
+                          />
                         </div>
                       </template>
                     </UAccordion>
@@ -3060,27 +2947,18 @@ const copyTournamentLink = async () => {
             color="success"
           >
             <template #description>
-              <div class="flex flex-col gap-2 mt-1">
+              <div class="flex flex-col items-start gap-3 mt-1">
                 <span class="text-sm">
-                  Share this link with players to allow them to join this team directly.
+                  Share a link with players to allow them to join this team directly.
                 </span>
-                <div v-if="inviteLoading" class="flex items-center gap-2 py-1">
-                  <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin text-success-500" />
-                  <span class="text-xs text-gray-500">Generating link...</span>
-                </div>
-                <div v-else-if="inviteLink" class="flex items-center gap-2 p-2 bg-white dark:bg-gray-900 border border-success-200 dark:border-success-900/50 rounded-lg">
-                  <span class="text-xs font-mono truncate flex-1 select-all text-gray-600 dark:text-gray-300">
-                    {{ inviteLink }}
-                  </span>
-                  <UButton
-                    color="success"
-                    variant="ghost"
-                    icon="i-heroicons-clipboard-document"
-                    size="xs"
-                    @click="copyInviteLink"
-                    title="Copy Link"
-                  />
-                </div>
+                <UButton
+                  color="success"
+                  variant="solid"
+                  size="sm"
+                  icon="i-heroicons-share"
+                  label="Share Link"
+                  @click="selectedParticipant && generateInviteLink(selectedParticipant)"
+                />
               </div>
             </template>
           </UAlert>
@@ -3618,10 +3496,19 @@ const copyTournamentLink = async () => {
           />
 
           <UFormField label="Name" name="name" required>
-            <UInput 
-              v-model="addSponsorState.name" 
+            <UInput
+              v-model="addSponsorState.name"
               placeholder="Sponsor name"
               icon="i-heroicons-building-office"
+            />
+          </UFormField>
+
+          <UFormField label="Description" name="description">
+            <UTextarea
+              v-model="addSponsorState.description"
+              placeholder="e.g. Official kit sponsor"
+              :rows="2"
+              autoresize
             />
           </UFormField>
 
@@ -3703,6 +3590,129 @@ const copyTournamentLink = async () => {
               label="Add Sponsor" 
               icon="i-heroicons-plus"
               :loading="addingSponsor"
+            />
+          </div>
+        </UForm>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Edit Sponsor Modal -->
+  <UModal v-model:open="showEditSponsorModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-building-storefront" class="w-5 h-5 text-indigo-500" />
+            <span class="font-semibold">Edit Sponsor</span>
+          </div>
+        </template>
+
+        <UForm
+          :schema="addSponsorSchema"
+          :state="editSponsorState"
+          @submit="handleEditSponsor"
+          class="space-y-4"
+        >
+          <UAlert
+            v-if="editSponsorError"
+            color="error"
+            variant="subtle"
+            icon="i-heroicons-exclamation-triangle"
+            :title="editSponsorError"
+            class="mb-4"
+          />
+
+          <UFormField label="Name" name="name" required>
+            <UInput
+              v-model="editSponsorState.name"
+              placeholder="Sponsor name"
+              icon="i-heroicons-building-office"
+            />
+          </UFormField>
+
+          <UFormField label="Description" name="description">
+            <UTextarea
+              v-model="editSponsorState.description"
+              placeholder="e.g. Official kit sponsor"
+              :rows="2"
+              autoresize
+            />
+          </UFormField>
+
+          <div class="space-y-2">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Sponsor Logo</span>
+            <div class="flex items-start gap-4">
+              <input
+                ref="sponsorLogoFileInput"
+                type="file"
+                accept="image/*"
+                class="hidden"
+                @change="handleSponsorLogoChange"
+              />
+              <button
+                type="button"
+                class="relative h-20 min-w-20 max-w-40 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 group bg-gray-50 dark:bg-gray-800"
+                @click="triggerSponsorLogoInput"
+                :disabled="uploadingSponsorLogo"
+              >
+                <img
+                  v-if="sponsorLogoPreview || editSponsorState.logoUrl"
+                  :src="sponsorLogoPreview || editSponsorState.logoUrl || undefined"
+                  alt="Logo preview"
+                  class="h-full w-auto object-contain mx-auto p-1"
+                />
+                <div
+                  v-else
+                  class="w-full h-full flex flex-col items-center justify-center text-gray-400 group-hover:text-indigo-500 transition-colors px-2"
+                >
+                  <UIcon name="i-heroicons-photo" class="w-6 h-6" />
+                  <span class="text-[10px] mt-1 font-medium whitespace-nowrap">Add Logo</span>
+                </div>
+                <div
+                  v-if="uploadingSponsorLogo"
+                  class="absolute inset-0 bg-black/50 flex items-center justify-center"
+                >
+                  <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 text-white animate-spin" />
+                </div>
+              </button>
+              <div class="flex-1 space-y-2">
+                <p class="text-xs text-gray-500 dark:text-gray-400">Max 5MB.</p>
+                <UButton
+                  v-if="sponsorLogoPreview || editSponsorState.logoUrl"
+                  size="xs"
+                  variant="ghost"
+                  color="error"
+                  icon="i-heroicons-trash"
+                  label="Remove"
+                  :disabled="uploadingSponsorLogo"
+                  @click="removeSponsorLogo(); editSponsorState.logoUrl = ''"
+                  class="px-0"
+                />
+              </div>
+            </div>
+          </div>
+
+          <UFormField label="Website URL" name="websiteUrl">
+            <UInput
+              v-model="editSponsorState.websiteUrl"
+              placeholder="https://sponsor-website.com"
+              icon="i-heroicons-globe-alt"
+            />
+          </UFormField>
+
+          <div class="flex justify-end gap-2 pt-4">
+            <UButton
+              label="Cancel"
+              variant="ghost"
+              color="neutral"
+              @click="showEditSponsorModal = false"
+            />
+            <UButton
+              type="submit"
+              label="Save Changes"
+              icon="i-heroicons-check"
+              :loading="editingSponsor"
             />
           </div>
         </UForm>
