@@ -27,13 +27,7 @@
         :class="isDark ? 'bg-gray-900/90 border-white/10 text-gray-400 hover:text-white' : 'bg-white/90 border-gray-200 text-gray-500 hover:text-gray-800'"
         class="flex items-center gap-1.5 px-2.5 py-1 border rounded-full text-[10px] transition-colors backdrop-blur-sm"
       >
-        <div class="w-3 h-3 bg-emerald-500 rounded-sm flex items-center justify-center">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-2 h-2 text-white">
-            <rect x="2" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="3"/>
-            <circle cx="8" cy="12" r="2" fill="currentColor"/>
-            <circle cx="16" cy="12" r="2" fill="currentColor"/>
-          </svg>
-        </div>
+        <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-3 w-auto object-contain" />
         Powered by ParaScores
       </a>
     </div>
