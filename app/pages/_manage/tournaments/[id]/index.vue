@@ -963,6 +963,101 @@ const groupStageAccordionItems = computed(() => {
   })
 })
 
+// Accordion items for the pure knockout bracket fixture list
+// Groups by roundName within each round so legs stay together per stage
+const knockoutAccordionItems = computed(() => {
+  const items: Array<{ label: string; stats: string; fixtures: Fixture[] }> = []
+
+  for (const round of rounds.value) {
+    const roundFixtures = (fixturesByRound.value[round] || [])
+      .slice()
+      .sort((a, b) => a.matchNumber - b.matchNumber)
+
+    // Group by roundName within this round (e.g. "Semi Final - Leg 1" / "Semi Final - Leg 2")
+    const byName = new Map<string, Fixture[]>()
+    for (const f of roundFixtures) {
+      const key = f.roundName || `Round ${f.round}`
+      if (!byName.has(key)) byName.set(key, [])
+      byName.get(key)!.push(f)
+    }
+
+    // Sort: Leg 1, Leg 2, ..., other rounds, Third Place Match, Final
+    const legKey = (name: string) => {
+      const leg = name.match(/Leg (\d+)/)?.[1]
+      if (leg) return parseInt(leg)
+      if (/^final$/i.test(name.trim())) return 10000
+      return 999
+    }
+    const sortedKeys = Array.from(byName.keys()).sort((a, b) => legKey(a) - legKey(b))
+
+    for (const label of sortedKeys) {
+      const fixtures = byName.get(label)!
+      const total = fixtures.length
+      const completed = fixtures.filter(f => f.status === FixtureStatus.COMPLETED).length
+      const live = fixtures.filter(f => f.status === FixtureStatus.LIVE).length
+
+      const parts: string[] = []
+      if (live > 0) parts.push(`🔴 ${live} Live`)
+      if (completed > 0) parts.push(`${completed}/${total} Completed`)
+      else if (total > 0) parts.push(`${total} Scheduled`)
+
+      items.push({
+        label,
+        stats: parts.length ? `(${parts.join(' • ')})` : '',
+        fixtures,
+      })
+    }
+  }
+
+  return items
+})
+
+// Same pattern for the hybrid knockout stage
+const hybridKnockoutAccordionItems = computed(() => {
+  const items: Array<{ label: string; stats: string; fixtures: Fixture[] }> = []
+
+  for (const round of knockoutRounds.value) {
+    const roundFixtures = (knockoutFixturesByRound.value[round] || [])
+      .slice()
+      .sort((a, b) => a.matchNumber - b.matchNumber)
+
+    const byName = new Map<string, Fixture[]>()
+    for (const f of roundFixtures) {
+      const key = f.roundName || `Round ${f.round}`
+      if (!byName.has(key)) byName.set(key, [])
+      byName.get(key)!.push(f)
+    }
+
+    const legKey = (name: string) => {
+      const leg = name.match(/Leg (\d+)/)?.[1]
+      if (leg) return parseInt(leg)
+      if (/^final$/i.test(name.trim())) return 10000
+      return 999
+    }
+    const sortedKeys = Array.from(byName.keys()).sort((a, b) => legKey(a) - legKey(b))
+
+    for (const label of sortedKeys) {
+      const fixtures = byName.get(label)!
+      const total = fixtures.length
+      const completed = fixtures.filter(f => f.status === FixtureStatus.COMPLETED).length
+      const live = fixtures.filter(f => f.status === FixtureStatus.LIVE).length
+
+      const parts: string[] = []
+      if (live > 0) parts.push(`🔴 ${live} Live`)
+      if (completed > 0) parts.push(`${completed}/${total} Completed`)
+      else if (total > 0) parts.push(`${total} Scheduled`)
+
+      items.push({
+        label,
+        stats: parts.length ? `(${parts.join(' • ')})` : '',
+        fixtures,
+      })
+    }
+  }
+
+  return items
+})
+
 // Match Control Modal
 const showMatchControlModal = ref(false)
 const selectedFixture = ref<Fixture | null>(null)
@@ -2584,18 +2679,58 @@ const copyTournamentLink = async () => {
                 
                 <!-- Fixtures Display -->
                 <template v-else>
-                  <!-- Knockout Bracket for knockout tournaments -->
-                  <KnockoutBracket
-                    v-if="tournament?.type === TournamentType.KNOCKOUT"
-                    :fixtures-by-round="fixturesByRound"
-                    :rounds="rounds"
-                    :get-round-display-name="fixtureStore.getRoundDisplayName"
-                    :updating-match="updatingMatch"
-                    :two-legs-knockout="tournament?.twoLegsKnockout"
-                    :third-place-match="tournament?.thirdPlaceMatch"
-                    @start-match="startMatch"
-                    @control-match="openMatchControl"
-                  />
+                  <!-- Knockout Fixture List + Bracket for knockout tournaments -->
+                  <template v-if="tournament?.type === TournamentType.KNOCKOUT">
+                    <!-- Fixture list collapsible -->
+                    <div class="mb-6">
+                      <div class="flex items-center gap-2 mb-3 px-1">
+                        <UIcon name="i-heroicons-list-bullet" class="w-4 h-4 text-gray-400" />
+                        <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Manage Fixtures</span>
+                      </div>
+                      <UAccordion
+                        :items="knockoutAccordionItems"
+                        class="w-full"
+                        :ui="{
+                          item: 'p-0 mb-3 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 transition-colors rounded-lg overflow-hidden',
+                          trigger: 'p-4 w-full flex items-center justify-between',
+                          label: 'w-full flex-1 min-w-0'
+                        }"
+                        multiple
+                        :default-open="true"
+                      >
+                        <template #default="{ item }">
+                          <div class="flex flex-col items-start gap-0.5 min-w-0 flex-1 text-left w-full">
+                            <span class="font-medium text-gray-900 dark:text-white whitespace-normal break-words">{{ item.label }}</span>
+                            <span v-if="item.stats" class="text-xs font-normal text-gray-500 dark:text-gray-400">
+                              {{ item.stats }}
+                            </span>
+                          </div>
+                        </template>
+                        <template #content="{ item }">
+                          <div class="space-y-1.5 px-2 pb-3 pt-1">
+                            <FixtureRow
+                              v-for="fixture in item.fixtures"
+                              :key="fixture.id"
+                              :fixture="fixture"
+                              :updating-match="updatingMatch"
+                              @start="startMatch"
+                              @control="openMatchControl"
+                            />
+                          </div>
+                        </template>
+                      </UAccordion>
+                    </div>
+
+                    <!-- Read-only bracket (below list) -->
+                    <KnockoutBracket
+                      :fixtures-by-round="fixturesByRound"
+                      :rounds="rounds"
+                      :get-round-display-name="fixtureStore.getRoundDisplayName"
+                      :two-legs-knockout="tournament?.twoLegsKnockout"
+                      :third-place-match="tournament?.thirdPlaceMatch"
+                      :readonly="true"
+                    />
+                  </template>
                   
                   <!-- Hybrid: Group stage list + Knockout bracket -->
                   <template v-else-if="tournament?.type === TournamentType.HYBRID">
@@ -2613,9 +2748,9 @@ const copyTournamentLink = async () => {
                         :default-open="true"
                       >
                         <template #default="{ item, open }">
-                          <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0 flex-1 text-left w-full">
+                          <div class="flex flex-col items-start gap-0.5 min-w-0 flex-1 text-left w-full">
                             <span class="font-medium text-gray-900 dark:text-white whitespace-normal break-words">{{ item.label }}</span>
-                            <span v-if="item.stats" class="text-xs sm:text-sm font-normal text-gray-500 dark:text-gray-400 shrink-0">
+                            <span v-if="item.stats" class="text-xs font-normal text-gray-500 dark:text-gray-400">
                               {{ item.stats }}
                             </span>
                           </div>
@@ -2659,19 +2794,59 @@ const copyTournamentLink = async () => {
                       />
                     </div>
 
-                    <!-- Knockout Bracket (shown after advancement) -->
-                    <div v-if="knockoutRounds.length > 0" class="mt-6">
-                      <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <!-- Knockout Stage (shown after advancement) -->
+                    <div v-if="knockoutRounds.length > 0" class="mt-6 space-y-6">
+                      <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
                         <UIcon name="i-heroicons-trophy" class="w-4 h-4 text-amber-500" />
                         Knockout Stage
                       </h4>
+
+                      <!-- Fixture list collapsible -->
+                      <div>
+                        <div class="flex items-center gap-2 mb-3 px-1">
+                          <UIcon name="i-heroicons-list-bullet" class="w-4 h-4 text-gray-400" />
+                          <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Manage Fixtures</span>
+                        </div>
+                        <UAccordion
+                          :items="hybridKnockoutAccordionItems"
+                          class="w-full"
+                          :ui="{
+                            item: 'p-0 mb-3 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 transition-colors rounded-lg overflow-hidden',
+                            trigger: 'p-4 w-full flex items-center justify-between',
+                            label: 'w-full flex-1 min-w-0'
+                          }"
+                          multiple
+                          :default-open="true"
+                        >
+                          <template #default="{ item }">
+                            <div class="flex flex-col items-start gap-0.5 min-w-0 flex-1 text-left w-full">
+                              <span class="font-medium text-gray-900 dark:text-white whitespace-normal break-words">{{ item.label }}</span>
+                              <span v-if="item.stats" class="text-xs font-normal text-gray-500 dark:text-gray-400">
+                                {{ item.stats }}
+                              </span>
+                            </div>
+                          </template>
+                          <template #content="{ item }">
+                            <div class="space-y-1.5 px-2 pb-3 pt-1">
+                              <FixtureRow
+                                v-for="fixture in item.fixtures"
+                                :key="fixture.id"
+                                :fixture="fixture"
+                                :updating-match="updatingMatch"
+                                @start="startMatch"
+                                @control="openMatchControl"
+                              />
+                            </div>
+                          </template>
+                        </UAccordion>
+                      </div>
+
+                      <!-- Read-only bracket -->
                       <KnockoutBracket
                         :fixtures-by-round="knockoutFixturesByRound"
                         :rounds="knockoutRounds"
                         :get-round-display-name="fixtureStore.getKnockoutRoundDisplayName"
-                        :updating-match="updatingMatch"
-                        @start-match="startMatch"
-                        @control-match="openMatchControl"
+                        :readonly="true"
                       />
                     </div>
                   </template>
