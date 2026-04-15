@@ -344,6 +344,7 @@ export interface Player {
 export interface Sponsor {
   id: string
   name: string
+  description?: string | null
   logoUrl?: string | null
   websiteUrl?: string | null
   tournament_id: string
