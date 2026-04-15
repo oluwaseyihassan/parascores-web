@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tournament, Fixture, Standing, Participant, Sponsor, Social } from '~/types'
+import type { Tournament, Fixture, Standing, Participant, Sponsor, Social, Venue } from '~/types'
 import { TournamentType, FixtureStatus, FixtureStage, ParticipantType } from '~/types'
 
 definePageMeta({
@@ -26,6 +26,7 @@ const participants = ref<Participant[]>([])
 const sponsors = ref<Sponsor[]>([])
 const selectedSponsor = ref<Sponsor | null>(null)
 const socials = ref<Social[]>([])
+const venues = ref<Venue[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const { toMain, toTournament } = useHost()
@@ -143,6 +144,7 @@ async function fetchData() {
         standings: any[];
         sponsors: Sponsor[];
         socials: Social[];
+        venues: Venue[];
       }
     }>(`/tournaments/${tournamentId}/overview`).catch(() => null)
     
@@ -163,6 +165,9 @@ async function fetchData() {
       
       // Handle socials
       socials.value = response.data.socials || []
+      
+      // Handle venues
+      venues.value = response.data.venues || []
       
       // Load player stats if applicable
       if (tournament.value.participantType === ParticipantType.TEAM) {
@@ -272,6 +277,19 @@ const filteredFixtures = computed(() => {
 const groupStageFixtures = computed(() => filteredFixtures.value.filter(f => f.stage === FixtureStage.GROUP_STAGE))
 const knockoutFixtures = computed(() => filteredFixtures.value.filter(f => f.stage === FixtureStage.KNOCKOUT))
 
+const uniqueVenues = computed(() => {
+  // Priority 1: Use the dedicated venues list from the API if available
+  if (venues.value && venues.value.length > 0) {
+    return venues.value.map(v => v.name).sort()
+  }
+  
+  // Priority 2: Fallback to deriving from fixture data (legacy or just-in-case)
+  const derived = fixtures.value
+    .map(f => f.venue)
+    .filter((v): v is string => !!v && v.trim() !== '')
+  return [...new Set(derived)].sort()
+})
+
 function groupByRound(list: Fixture[]) {
   const grouped: Record<string, { name: string; fixtures: Fixture[] }> = {}
   for (const fixture of list) {
@@ -329,95 +347,26 @@ const standingsByGroup = computed(() => {
   return grouped
 })
 
-// Bracket
+// Bracket — pass raw fixtures by round and let KnockoutBracket handle all grouping
 const bracketFixtures = computed(() => {
   if (isHybrid.value) return knockoutFixtures.value
   return fixtures.value
 })
 
-const bracketData = computed(() => {
+const bracketFixturesByRound = computed(() => {
   const grouped: Record<number, Fixture[]> = {}
   for (const f of bracketFixtures.value) {
     const r = f.round || 1
     if (!grouped[r]) grouped[r] = []
     grouped[r].push(f)
   }
-  
-  const sortedRounds = Object.keys(grouped).map(Number).sort((a, b) => a - b)
-  
-  const isTwoLegsKnockout = tournament.value?.twoLegsKnockout || false
-  const hasThirdPlaceMatch = tournament.value?.thirdPlaceMatch || false
-  const totalRounds = sortedRounds.length
-  
-  const matchups: Record<number, any[]> = {}
-  
-  const getAggregateStatus = (legs: Fixture[]): FixtureStatus => {
-    if (legs.some(f => f.status === FixtureStatus.LIVE)) return FixtureStatus.LIVE
-    if (legs.every(f => f.status === FixtureStatus.COMPLETED)) return FixtureStatus.COMPLETED
-    if (legs.some(f => f.status === FixtureStatus.SCHEDULED)) return FixtureStatus.SCHEDULED
-    return FixtureStatus.CANCELLED
-  }
-  
-  sortedRounds.forEach((round, roundIndex) => {
-    const isFinalRound = roundIndex === totalRounds - 1
-    const roundFixtures = grouped[round] || []
-    roundFixtures.sort((a, b) => a.matchNumber - b.matchNumber)
-    
-    const roundMatchups: any[] = []
-    
-    if (isTwoLegsKnockout && !isFinalRound) {
-      for (let i = 0; i < roundFixtures.length; i += 2) {
-        const f1 = roundFixtures[i]!
-        const f2 = roundFixtures[i + 1]
-        const legs = [f1]
-        if (f2) legs.push(f2)
-        
-        roundMatchups.push({
-          id: f1.id,
-          fixtures: legs,
-          isThirdPlace: false,
-          homeTeam: f1.homeTeam,
-          awayTeam: f1.awayTeam,
-          homeTeamPlaceholder: f1.homeTeamPlaceholder,
-          awayTeamPlaceholder: f1.awayTeamPlaceholder,
-          homeScore: legs.reduce((sum, f) => sum + (f.homeScore ?? 0), 0),
-          awayScore: legs.reduce((sum, f) => sum + (f.awayScore ?? 0), 0),
-          homePenaltyScore: f2?.homePenaltyScore ?? f1.homePenaltyScore,
-          awayPenaltyScore: f2?.awayPenaltyScore ?? f1.awayPenaltyScore,
-          status: getAggregateStatus(legs),
-          roundName: f1.roundName
-        })
-      }
-    } else {
-      for (let i = 0; i < roundFixtures.length; i++) {
-        const f = roundFixtures[i]!
-        const isThirdPlace = isFinalRound && hasThirdPlaceMatch && i === 1
-        roundMatchups.push({
-          id: f.id,
-          fixtures: [f],
-          isThirdPlace,
-          homeTeam: f.homeTeam,
-          awayTeam: f.awayTeam,
-          homeTeamPlaceholder: f.homeTeamPlaceholder,
-          awayTeamPlaceholder: f.awayTeamPlaceholder,
-          homeScore: f.homeScore ?? 0,
-          awayScore: f.awayScore ?? 0,
-          homePenaltyScore: f.homePenaltyScore,
-          awayPenaltyScore: f.awayPenaltyScore,
-          status: f.status,
-          roundName: f.roundName
-        })
-      }
-    }
-    
-    matchups[round] = roundMatchups
-  })
-  
-  return { rounds: sortedRounds, matchups }
+  Object.values(grouped).forEach(arr => arr.sort((a, b) => a.matchNumber - b.matchNumber))
+  return grouped
 })
 
-const bracketRounds = computed(() => bracketData.value.rounds)
-const bracketMatchups = computed(() => bracketData.value.matchups)
+const bracketRounds = computed(() =>
+  Object.keys(bracketFixturesByRound.value).map(Number).sort((a, b) => a - b)
+)
 
 // Collapsible rounds
 const collapsedRounds = ref<Set<string>>(new Set())
@@ -1115,11 +1064,12 @@ function getTeamCards(fixture: any, isHome: boolean) {
           </div>
           <div v-else class="px-4 pb-12">
             <KnockoutBracket
-              :fixtures-by-round="bracketMatchups"
+              :fixtures-by-round="bracketFixturesByRound"
               :rounds="bracketRounds"
-              :get-round-display-name="(round, index, total) => getRoundDisplayName(index, total, bracketMatchups[round]?.[0]?.roundName)"
+              :get-round-display-name="(round, index, total) => getRoundDisplayName(index, total, bracketFixturesByRound[round]?.[0]?.roundName)"
               :two-legs-knockout="tournament.twoLegsKnockout"
               :third-place-match="tournament.thirdPlaceMatch"
+              :readonly="true"
               @control-match="(fixture) => selectedFixtureId = fixture.id"
               @start-match="(fixture) => selectedFixtureId = fixture.id"
             />
@@ -1275,7 +1225,9 @@ function getTeamCards(fixture: any, isHome: boolean) {
                         {{ selectedSponsor.name }}
                       </h3>
 
-                      <p class="text-xs text-center text-gray-500 mb-5">Tournament Sponsor</p>
+                      <p class="text-xs text-center text-gray-500 mb-5">
+                        {{ selectedSponsor.description || 'Tournament Sponsor' }}
+                      </p>
 
                       <!-- Website Link -->
                       <a
@@ -1324,6 +1276,12 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 <div v-if="tournament.location" class="flex items-center justify-between px-5 py-3">
                   <span class="text-sm text-gray-500">Location</span>
                   <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ tournament.location }}</span>
+                </div>
+                <div v-if="uniqueVenues.length > 0" class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Venues</span>
+                  <span class="text-sm transition-colors text-right pl-4" :class="isDark ? 'text-gray-200' : 'text-gray-800'">
+                    {{ uniqueVenues.join(', ') }}
+                  </span>
                 </div>
               </div>
             </div>
