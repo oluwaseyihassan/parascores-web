@@ -93,16 +93,8 @@ async function handleLogout() {
     <!-- Left Sidebar (Desktop) -->
     <aside class="hidden lg:flex flex-col w-72 border-r border-gray-200 dark:border-white/[0.05] bg-white dark:bg-[#050505] p-6 h-screen overflow-y-auto hide-scrollbar shrink-0">
       <div class="mb-8">
-        <NuxtLink to="/" class="flex items-center gap-3 group">
-          <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform shrink-0">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white">
-              <rect x="2" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="2"/>
-              <circle cx="8" cy="12" r="2" fill="currentColor"/>
-              <circle cx="16" cy="12" r="2" fill="currentColor"/>
-              <path d="M12 9V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <span class="text-xl font-black tracking-tighter text-gray-900 dark:text-white">PARASCORES</span>
+        <NuxtLink to="/" class="flex items-center group">
+          <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-9 w-auto object-contain" />
         </NuxtLink>
       </div>
 
@@ -138,18 +130,7 @@ async function handleLogout() {
     <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-black relative">
       <!-- Top Bar -->
       <header class="h-20 border-b border-gray-200 dark:border-white/[0.05] bg-white/80 dark:bg-black/80 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-40">
-        <div class="flex items-center gap-6 flex-1">
-          <div class="flex-1 max-w-xl">
-            <div class="relative group">
-              <UIcon name="i-heroicons-magnifying-glass" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 transition-colors group-focus-within:text-emerald-400" />
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                class="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl pl-12 pr-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-600 text-gray-900 dark:text-gray-100"
-              />
-            </div>
-          </div>
-        </div>
+        <div class="flex items-center gap-6 flex-1"></div>
 
         <div class="flex items-center gap-4">
            
