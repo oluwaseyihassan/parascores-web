@@ -34,7 +34,7 @@ const statusDot: Record<string, string> = {
       <span v-if="fixture.startTime">
         {{ new Date(fixture.startTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) }}
       </span>
-      <span v-else class="opacity-0">—</span>
+      <span v-else class="fixture-unscheduled">TBD</span>
     </div>
 
     <!-- Teams + score -->
@@ -146,6 +146,25 @@ const statusDot: Record<string, string> = {
   text-align: center;
   line-height: 1.3;
   white-space: pre-line;
+}
+
+.fixture-unscheduled {
+  display: inline-block;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 4px;
+  padding: 1px 4px;
+  line-height: 1.6;
+}
+
+:root.dark .fixture-unscheduled {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  border-color: rgba(251, 191, 36, 0.2);
 }
 
 /* ── Main (teams + score) ────────────────────────────────── */
