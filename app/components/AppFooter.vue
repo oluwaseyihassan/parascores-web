@@ -5,16 +5,8 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1.2fr] gap-8 lg:gap-12 py-14">
         <!-- Brand Section -->
         <div class="max-w-[280px] md:col-span-2 lg:col-span-1 lg:max-w-none">
-          <div class="flex items-center gap-2 mb-4">
-            <div class="w-8 h-8 bg-emerald-500 rounded flex items-center justify-center">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white">
-                <rect x="2" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="2"/>
-                <circle cx="8" cy="12" r="2" fill="currentColor"/>
-                <circle cx="16" cy="12" r="2" fill="currentColor"/>
-                <path d="M12 9V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <span class="text-lg font-bold text-white tracking-tight">PARASCORES</span>
+          <div class="mb-4">
+            <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-8 w-auto object-contain" />
           </div>
           <p class="text-sm leading-relaxed text-gray-400">
             Empowering organizers with the tools they need to run world-class tournaments.
