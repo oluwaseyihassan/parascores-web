@@ -222,11 +222,8 @@ const handleLogout = async () => {
                 {{ authStore.currentOrganization.name }}
               </span>
             </template>
-            <div v-else class="flex items-center gap-2">
-              <div class="w-6 h-6 bg-indigo-500 rounded flex items-center justify-center">
-                <UIcon name="i-heroicons-bolt-20-solid" class="w-4 h-4 text-white" />
-              </div>
-              <span class="font-bold text-gray-800 dark:text-white">ParaScores</span>
+            <div v-else class="flex items-center">
+              <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-7 w-auto object-contain" />
             </div>
           </div>
         </header>
@@ -258,11 +255,8 @@ const handleLogout = async () => {
               {{ authStore.currentOrganization.name }}
             </span>
           </template>
-          <div v-else class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shadow-md shadow-indigo-500/20">
-              <UIcon name="i-heroicons-bolt-20-solid" class="w-5 h-5 text-white" />
-            </div>
-            <span class="font-bold text-lg tracking-tight">ParaScores</span>
+          <div v-else class="flex items-center">
+            <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-8 w-auto object-contain" />
           </div>
         </div>
         <UDropdownMenu :items="profileMenuItems">
