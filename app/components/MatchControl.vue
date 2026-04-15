@@ -700,9 +700,11 @@ const endMatch = async () => {
   
   updatingMatch.value = true
   try {
-    const penaltyData = isScoreTiedOrAggregateTied.value ? {
-      homePenaltyScore: selectedFixture.value.homePenaltyScore ?? 0,
-      awayPenaltyScore: selectedFixture.value.awayPenaltyScore ?? 0
+    const homePen = selectedFixture.value.homePenaltyScore
+    const awayPen = selectedFixture.value.awayPenaltyScore
+    const penaltyData = (isScoreTiedOrAggregateTied.value && homePen != null && awayPen != null) ? {
+      homePenaltyScore: homePen,
+      awayPenaltyScore: awayPen
     } : {}
 
     await fixtureStore.updateFixture(selectedFixture.value.id, {
@@ -932,523 +934,357 @@ const downloadGraphic = async () => {
   <!-- Match Control Modal -->
   <UModal v-model:open="internalOpen">
     <template #content>
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-heroicons-adjustments-horizontal" class="w-5 h-5 text-warning-500" />
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                Match Control
-              </h3>
-              <UBadge v-if="selectedFixture" :color="fixtureStatusColors[selectedFixture.status]" variant="subtle" size="sm">
-                {{ selectedFixture.status }}
-              </UBadge>
-            </div>
-            <UButton 
-              icon="i-heroicons-x-mark" 
-              variant="ghost" 
-              color="neutral" 
-              size="sm"
-              @click="closeModal"
-            />
-        </div>
-        </template>
+      <div class="mc-shell">
 
-        <div v-if="selectedFixture" class="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
-          <!-- Error Alert -->
+        <!-- ── Header ──────────────────────────────────────────── -->
+        <div class="mc-header">
+          <div class="mc-header__left">
+            <span class="mc-header__icon">
+              <UIcon name="i-heroicons-adjustments-horizontal" class="w-3.5 h-3.5" />
+            </span>
+            <span class="mc-header__title">Match Control</span>
+            <span
+              v-if="selectedFixture"
+              class="mc-status-chip"
+              :class="`mc-status-chip--${selectedFixture.status.toLowerCase()}`"
+            >
+              <span class="mc-status-chip__dot" />
+              {{ selectedFixture.status }}
+            </span>
+          </div>
+          <button class="mc-header__close" @click="closeModal">
+            <UIcon name="i-heroicons-x-mark" class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div v-if="selectedFixture" class="mc-body">
+
+          <!-- Alerts -->
           <UAlert
             v-if="errorMessage"
             icon="i-heroicons-exclamation-triangle"
             color="error"
             variant="soft"
             :title="errorMessage"
+            class="mb-4"
           />
-
-          <!-- Warning: no winner determined -->
           <UAlert
             v-if="needsPenaltyWarning"
             icon="i-heroicons-exclamation-triangle"
             color="warning"
             variant="soft"
             title="No winner — scores are tied"
-            description="This knockout match has no winner. Update the scores or add penalty shootout scores to determine a winner."
+            description="Add penalty shootout scores to determine a winner."
+            class="mb-4"
           >
             <template #actions>
-              <UButton
-                size="xs"
-                color="warning"
-                variant="soft"
-                icon="i-heroicons-bolt"
-                label="Add Penalties"
-                @click="showPenaltyOverride = true; showPenaltyCollapsible = true"
-              />
+              <UButton size="xs" color="warning" variant="soft" icon="i-heroicons-bolt" label="Add Penalties"
+                @click="showPenaltyOverride = true; showPenaltyCollapsible = true" />
             </template>
           </UAlert>
 
-          <!-- Teams Display -->
-          <div class="flex items-center justify-between gap-4">
-            <!-- Home Team -->
-            <div class="flex-1 text-center">
-              <div class="w-16 h-16 mx-auto rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden mb-2">
-                <img 
-                  v-if="selectedFixture.homeTeam?.logoUrl" 
-                  :src="selectedFixture.homeTeam.logoUrl" 
-                  class="w-full h-full object-cover"
-                />
-                <span v-else class="text-xl font-bold text-gray-600 dark:text-gray-300">
-                  {{ (selectedFixture.homeTeam?.customName || 'H').charAt(0).toUpperCase() }}
-                </span>
+          <!-- ── Scoreboard ──────────────────────────────────── -->
+          <div class="mc-scoreboard">
+            <!-- Home team -->
+            <div class="mc-team">
+              <div class="mc-team__logo">
+                <img v-if="selectedFixture.homeTeam?.logoUrl" :src="selectedFixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
+                <span v-else class="mc-team__initial">{{ (selectedFixture.homeTeam?.customName || 'H').charAt(0) }}</span>
               </div>
-              <p class="font-medium text-gray-900 dark:text-white truncate">
-                {{ selectedFixture.homeTeam?.customName || 'Home Team' }}
-              </p>
+              <span class="mc-team__name">{{ selectedFixture.homeTeam?.customName || 'Home' }}</span>
             </div>
 
-            <!-- VS -->
-            <div class="text-gray-400 font-medium">VS</div>
-
-            <!-- Away Team -->
-            <div class="flex-1 text-center">
-              <div class="w-16 h-16 mx-auto rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden mb-2">
-                <img 
-                  v-if="selectedFixture.awayTeam?.logoUrl" 
-                  :src="selectedFixture.awayTeam.logoUrl" 
-                  class="w-full h-full object-cover"
-                />
-                <span v-else class="text-xl font-bold text-gray-600 dark:text-gray-300">
-                  {{ (selectedFixture.awayTeam?.customName || 'A').charAt(0).toUpperCase() }}
-                </span>
+            <!-- Score -->
+            <div class="mc-score-block">
+              <div class="mc-score-numbers">
+                <span class="mc-score-val">{{ selectedFixture.homeScore ?? 0 }}</span>
+                <span class="mc-score-sep">–</span>
+                <span class="mc-score-val">{{ selectedFixture.awayScore ?? 0 }}</span>
               </div>
-              <p class="font-medium text-gray-900 dark:text-white truncate">
-                {{ selectedFixture.awayTeam?.customName || 'Away Team' }}
-              </p>
+              <div v-if="selectedFixture.homePenaltyScore != null || selectedFixture.awayPenaltyScore != null" class="mc-pen-badge">
+                <UIcon name="i-heroicons-bolt" class="w-2.5 h-2.5" />
+                <span>{{ selectedFixture.homePenaltyScore ?? 0 }} – {{ selectedFixture.awayPenaltyScore ?? 0 }} pen</span>
+              </div>
+              <div v-if="selectedFixture.startTime" class="mc-match-time">
+                {{ new Date(selectedFixture.startTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) }}
+                · {{ new Date(selectedFixture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) }}
+              </div>
+            </div>
+
+            <!-- Away team -->
+            <div class="mc-team mc-team--away">
+              <div class="mc-team__logo">
+                <img v-if="selectedFixture.awayTeam?.logoUrl" :src="selectedFixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
+                <span v-else class="mc-team__initial">{{ (selectedFixture.awayTeam?.customName || 'A').charAt(0) }}</span>
+              </div>
+              <span class="mc-team__name">{{ selectedFixture.awayTeam?.customName || 'Away' }}</span>
             </div>
           </div>
 
-          <!-- Match Schedule -->
-          <div v-if="['SCHEDULED', 'LIVE', 'COMPLETED'].includes(selectedFixture.status)" class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
-            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-              Match Time
-            </label>
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <div class="flex-1 flex flex-col sm:flex-row flex-wrap gap-2">
-                <!-- Date Picker -->
-                <UPopover class="w-full sm:flex-1">
-                  <UButton 
-                    variant="outline" 
-                    color="neutral"
-                    icon="i-heroicons-calendar"
-                    class="w-full justify-start h-10 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm"
-                    :class="!matchDateVal && 'text-gray-400'"
-                    :disabled="updatingTime"
-                  >
-                    {{ formatDateDisplay(matchDateVal) }}
-                  </UButton>
-                  <template #content>
-                    <UCalendar 
-                      v-model="matchDateVal" 
-                      :min-value="tournamentMinDate"
-                      :max-value="tournamentMaxDate"
-                    />
-                  </template>
-                </UPopover>
-                
-                <!-- Time Input -->
-                <div class="relative w-full sm:w-32">
-                  <UInput 
-                    type="time" 
-                    v-model="matchTimeVal"
-                    class="w-full h-10"
+          <!-- ── Score Controls ─────────────────────────────── -->
+          <div v-if="['LIVE', 'COMPLETED'].includes(selectedFixture.status)" class="mc-controls">
+            <!-- Home side -->
+            <div class="mc-ctrl-side">
+              <button class="mc-btn mc-btn--goal" :disabled="loadingPlayers || updatingMatch" @click="openGoalModal('home')">
+                <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5" />
+                <span>Goal</span>
+              </button>
+              <button
+                v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--card"
+                :disabled="loadingPlayers || updatingMatch"
+                @click="openCardModal('home')"
+              >
+                <UIcon name="i-heroicons-stop" class="w-3 h-3" />
+                <span>Card</span>
+              </button>
+              <button
+                v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--minus"
+                :disabled="(selectedFixture.homeScore ?? 0) <= 0 || updatingMatch"
+                @click="decrementScore('home')"
+              >
+                <UIcon name="i-heroicons-minus" class="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div v-if="loadingPlayers" class="mc-loading">
+              <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 animate-spin" />
+            </div>
+            <div v-else class="mc-ctrl-divider" />
+
+            <!-- Away side -->
+            <div class="mc-ctrl-side mc-ctrl-side--right">
+              <button class="mc-btn mc-btn--goal" :disabled="loadingPlayers || updatingMatch" @click="openGoalModal('away')">
+                <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5" />
+                <span>Goal</span>
+              </button>
+              <button
+                v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--card"
+                :disabled="loadingPlayers || updatingMatch"
+                @click="openCardModal('away')"
+              >
+                <UIcon name="i-heroicons-stop" class="w-3 h-3" />
+                <span>Card</span>
+              </button>
+              <button
+                v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--minus"
+                :disabled="(selectedFixture.awayScore ?? 0) <= 0 || updatingMatch"
+                @click="decrementScore('away')"
+              >
+                <UIcon name="i-heroicons-minus" class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <!-- ── Sections ────────────────────────────────────── -->
+          <div class="mc-sections">
+
+            <!-- Schedule -->
+            <div v-if="['SCHEDULED', 'LIVE', 'COMPLETED'].includes(selectedFixture.status)" class="mc-section">
+              <div class="mc-section__head">
+                <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 text-emerald-500" />
+                <span>Schedule</span>
+              </div>
+              <div class="mc-section__body">
+                <div class="flex flex-col sm:flex-row flex-wrap gap-2">
+                  <UPopover class="flex-1 min-w-0">
+                    <UButton variant="outline" color="neutral" icon="i-heroicons-calendar"
+                      class="w-full justify-start" :class="!matchDateVal && 'text-gray-400'" :disabled="updatingTime">
+                      {{ formatDateDisplay(matchDateVal) }}
+                    </UButton>
+                    <template #content>
+                      <UCalendar v-model="matchDateVal" :min-value="tournamentMinDate" :max-value="tournamentMaxDate" />
+                    </template>
+                  </UPopover>
+                  <UInput type="time" v-model="matchTimeVal" class="w-full sm:w-32" size="md" :disabled="updatingTime" />
+                  <USelect
+                    v-if="venueStore.venues.length"
+                    v-model="matchVenue"
+                    :items="venueOptions"
+                    value-key="value"
+                    placeholder="Select venue…"
+                    class="w-full sm:w-44"
                     size="md"
                     :disabled="updatingTime"
                   />
-                  <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
-                    <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+                </div>
+                <UButton color="primary" variant="solid" size="sm"
+                  :loading="updatingTime" :disabled="isUpdateDisabled"
+                  @click="updateMatchTime" class="mt-2 w-full sm:w-auto">
+                  Update Schedule
+                </UButton>
+              </div>
+            </div>
+
+            <!-- Penalty shootout -->
+            <div
+              v-if="['LIVE', 'COMPLETED'].includes(selectedFixture.status) && (isScoreTiedOrAggregateTied || hasPenalties || showPenaltyOverride)"
+              class="mc-section"
+            >
+              <button class="mc-section__toggle" @click="showPenaltyCollapsible = !showPenaltyCollapsible">
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-heroicons-bolt" class="w-3.5 h-3.5 text-amber-500" />
+                  <span>Penalty Shootout</span>
+                  <span class="mc-tag">Tie Breaker</span>
+                </div>
+                <UIcon :name="showPenaltyCollapsible ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" class="w-4 h-4 text-gray-400" />
+              </button>
+              <div v-if="showPenaltyCollapsible" class="mc-section__body">
+                <div class="flex items-end justify-center gap-8">
+                  <div class="flex flex-col items-center gap-1.5">
+                    <span class="mc-pen-label">{{ selectedFixture.homeTeam?.customName || 'Home' }}</span>
+                    <UInput v-model.number="selectedFixture.homePenaltyScore" type="number" :min="0" placeholder="0"
+                      class="w-20 text-center" :ui="{ base: 'text-center text-xl font-bold' }" />
+                  </div>
+                  <span class="text-gray-400 font-medium pb-2">–</span>
+                  <div class="flex flex-col items-center gap-1.5">
+                    <span class="mc-pen-label">{{ selectedFixture.awayTeam?.customName || 'Away' }}</span>
+                    <UInput v-model.number="selectedFixture.awayPenaltyScore" type="number" :min="0" placeholder="0"
+                      class="w-20 text-center" :ui="{ base: 'text-center text-xl font-bold' }" />
                   </div>
                 </div>
-
-                <!-- Venue Selector (only show if tournament has venues) -->
-                <USelect
-                  v-if="venueStore.venues.length"
-                  v-model="matchVenue"
-                  :items="venueOptions"
-                  value-key="value"
-                  placeholder="Select venue..."
-                  class="w-full sm:w-48 h-10"
-                  size="md"
-                  :disabled="updatingTime"
-                />
-              </div>
-              <UButton 
-                color="primary" 
-                variant="solid" 
-                size="md"
-                :loading="updatingTime"
-                :disabled="isUpdateDisabled"
-                @click="updateMatchTime"
-                class="w-full sm:w-auto min-w-[80px] h-10 justify-center shadow-sm whitespace-nowrap"
-              >
-                Update
-              </UButton>
-            </div>
-          </div>
-
-          <!-- Score Controls -->
-          <div class="flex items-center justify-center gap-8 py-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-            <!-- Home Score -->
-            <div class="flex flex-col items-center gap-2">
-              <div class="flex gap-2">
-                <UButton 
-                  icon="i-heroicons-plus" 
-                  size="md" 
-                  color="primary" 
-                  variant="soft"
-                  :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
-                  :loading="updatingMatch"
-                  @click="openGoalModal('home')"
-                />
-                <UButton 
-                  v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
-                  icon="i-heroicons-stop" 
-                  size="md" 
-                  color="warning" 
-                  variant="soft"
-                  :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
-                  :loading="updatingMatch"
-                  @click="openCardModal('home')"
-                />
-              </div>
-              <span class="text-4xl font-bold text-gray-900 dark:text-white min-w-[3rem] text-center">
-                {{ selectedFixture.homeScore ?? 0 }}
-              </span>
-              <UButton 
-                v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
-                icon="i-heroicons-minus" 
-                size="md" 
-                color="neutral" 
-                variant="soft"
-                :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || (selectedFixture.homeScore ?? 0) <= 0"
-                :loading="updatingMatch"
-                @click="decrementScore('home')"
-              />
-            </div>
-
-            <span class="text-2xl font-bold text-gray-400">-</span>
-
-            <!-- Away Score -->
-            <div class="flex flex-col items-center gap-2">
-              <div class="flex gap-2">
-                <UButton 
-                  icon="i-heroicons-plus" 
-                  size="md" 
-                  color="primary" 
-                  variant="soft"
-                  :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
-                  :loading="updatingMatch"
-                  @click="openGoalModal('away')"
-                />
-                <UButton 
-                  v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
-                  icon="i-heroicons-stop" 
-                  size="md" 
-                  color="warning" 
-                  variant="soft"
-                  :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || loadingPlayers"
-                  :loading="updatingMatch"
-                  @click="openCardModal('away')"
-                />
-              </div>
-              <span class="text-4xl font-bold text-gray-900 dark:text-white min-w-[3rem] text-center">
-                {{ selectedFixture.awayScore ?? 0 }}
-              </span>
-              <UButton 
-                v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
-                icon="i-heroicons-minus" 
-                size="md" 
-                color="neutral" 
-                variant="soft"
-                :disabled="!['LIVE', 'COMPLETED'].includes(selectedFixture.status) || (selectedFixture.awayScore ?? 0) <= 0"
-                :loading="updatingMatch"
-                @click="decrementScore('away')"
-              />
-            </div>
-          </div>
-
-          <!-- Penalty Shootout Controls (show if tied, penalties exist, or user toggled on) -->
-          <div 
-            v-if="['LIVE', 'COMPLETED'].includes(selectedFixture.status) && (isScoreTiedOrAggregateTied || hasPenalties || showPenaltyOverride)" 
-            class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden"
-          >
-            <button 
-              class="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              @click="showPenaltyCollapsible = !showPenaltyCollapsible"
-            >
-              <div class="flex items-center gap-2">
-                <UIcon name="i-heroicons-bolt" class="w-5 h-5 text-yellow-500" />
-                <span class="font-medium text-gray-900 dark:text-white">Penalty Shootout</span>
-                <UBadge color="neutral" variant="subtle" size="xs">Tie Breaker</UBadge>
-              </div>
-              <UIcon 
-                :name="showPenaltyCollapsible ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" 
-                class="w-5 h-5 text-gray-400"
-              />
-            </button>
-            
-            <div v-if="showPenaltyCollapsible" class="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 space-y-3">
-              <div class="flex items-center justify-center gap-8">
-                <!-- Home Penalties -->
-                <div class="flex flex-col items-center gap-2">
-                  <span class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Home</span>
-                  <UInput 
-                    v-model.number="selectedFixture.homePenaltyScore" 
-                    type="number" 
-                    :min="0"
-                    placeholder="0"
-                    class="w-20 text-center"
-                    :ui="{ base: 'text-center text-lg font-bold' }"
+                <div class="flex items-center justify-center gap-2 mt-3">
+                  <UButton
+                    v-if="selectedFixture.homePenaltyScore != null && selectedFixture.awayPenaltyScore != null"
+                    size="xs" color="success" variant="soft" icon="i-heroicons-check" label="Save Penalties"
+                    :loading="updatingMatch" @click="savePenalties"
+                  />
+                  <UButton
+                    v-if="hasPenalties && !isScoreTiedOrAggregateTied"
+                    size="xs" color="warning" variant="soft" icon="i-heroicons-x-circle" label="Clear"
+                    @click="selectedFixture!.homePenaltyScore = 0; selectedFixture!.awayPenaltyScore = 0"
                   />
                 </div>
-
-                <span class="text-gray-400 font-medium">vs</span>
-
-                <!-- Away Penalties -->
-                <div class="flex flex-col items-center gap-2">
-                  <span class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Away</span>
-                  <UInput 
-                    v-model.number="selectedFixture.awayPenaltyScore" 
-                    type="number" 
-                    :min="0"
-                    placeholder="0"
-                    class="w-20 text-center"
-                    :ui="{ base: 'text-center text-lg font-bold' }"
-                  />
-                </div>
+                <p class="text-xs text-center text-gray-400 dark:text-gray-500 mt-2">Penalty shootout scores to determine the winner.</p>
               </div>
-              
-              <!-- Save & Clear buttons -->
-              <div class="flex items-center justify-center gap-2 mt-3">
-                <UButton
-                  v-if="selectedFixture.homePenaltyScore != null && selectedFixture.awayPenaltyScore != null"
-                  size="xs"
-                  color="success"
-                  variant="soft"
-                  icon="i-heroicons-check"
-                  label="Save Penalties"
-                  :loading="updatingMatch"
-                  @click="savePenalties"
-                />
-                <!-- Clear Penalties button (only if penalties exist and scores are no longer tied) -->
-                <UButton
-                  v-if="hasPenalties && !isScoreTiedOrAggregateTied"
-                  size="xs"
-                  color="warning"
-                  variant="soft"
-                  icon="i-heroicons-x-circle"
-                  label="Clear"
-                  @click="selectedFixture!.homePenaltyScore = 0; selectedFixture!.awayPenaltyScore = 0"
-                />
-              </div>
-
-              <p class="text-xs text-center text-gray-500 mt-2">
-                Enter penalty shootout scores to determine the winner.
-              </p>
             </div>
-          </div>
 
-          <!-- Toggle to show penalty section on completed matches -->
-          <div 
-            v-if="selectedFixture.status === 'COMPLETED' && !isScoreTiedOrAggregateTied && !hasPenalties && !showPenaltyOverride"
-            class="flex justify-center"
-          >
-            <UButton
-              size="xs"
-              variant="link"
-              color="neutral"
-              icon="i-heroicons-bolt"
-              label="Edit Penalties"
-              @click="showPenaltyOverride = true"
-            />
-          </div>
+            <!-- Edit penalties toggle -->
+            <div v-if="selectedFixture.status === 'COMPLETED' && !isScoreTiedOrAggregateTied && !hasPenalties && !showPenaltyOverride" class="flex justify-center">
+              <UButton size="xs" variant="link" color="neutral" icon="i-heroicons-bolt" label="Edit Penalties" @click="showPenaltyOverride = true" />
+            </div>
 
-          <!-- Loading Players Indicator -->
-          <div v-if="loadingPlayers" class="text-center text-sm text-gray-500">
-            <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin inline mr-1" />
-            Loading players...
-          </div>
-
-          <!-- Match Events Collapsible (hidden for Individual tournaments) -->
-          <div 
-            v-if="tournament?.participantType !== ParticipantType.INDIVIDUAL"
-            class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden"
-          >
-            <button 
-              class="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              @click="showEventsCollapsible = !showEventsCollapsible"
-            >
-              <div class="flex items-center gap-2">
-                <UIcon name="i-heroicons-clipboard-document-list" class="w-5 h-5 text-indigo-500" />
-                <span class="font-medium text-gray-900 dark:text-white">Match Events</span>
-                <UBadge color="neutral" variant="subtle" size="xs">
-                  {{ matchEvents.length }}
-                </UBadge>
-              </div>
-              <UIcon 
-                :name="showEventsCollapsible ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" 
-                class="w-5 h-5 text-gray-400"
-              />
-            </button>
-            
-            <div v-if="showEventsCollapsible" class="p-3 space-y-2">
-              <!-- Loading Events -->
-              <div v-if="loadingEvents" class="flex items-center justify-center py-4 text-sm text-gray-500">
-                <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin mr-2" />
-                Loading events...
-              </div>
-              
-              <!-- No Events -->
-              <div v-else-if="matchEvents.length === 0" class="text-center py-4 text-sm text-gray-500">
-                No events recorded yet
-              </div>
-              
-              <div v-else class="space-y-4 max-h-[300px] overflow-y-auto px-4 py-4">
-                <div 
-                  v-for="event in [...matchEvents].sort((a, b) => (a.minute || 0) - (b.minute || 0))" 
-                  :key="event.id"
-                  class="w-full"
-                >
-                  <!-- Home Team Event -->
-                  <div v-if="event.participant_id === selectedFixture?.homeTeamId" class="flex items-center gap-3 w-full animate-in fade-in slide-in-from-left-4 duration-300">
-                    <!-- Minute -->
-                    <div class="w-8 h-8 shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm text-[11px] font-bold text-gray-600 dark:text-gray-400">
-                      {{ event.minute || '-' }}'
-                    </div>
-
-                    <!-- Event Info -->
-                    <div class="flex flex-col min-w-0">
-                      <div class="flex items-center gap-2">
-                        <span class="text-lg flex-shrink-0">
-                          <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-5 h-5 shadow-sm" :class="getEventColor(event.type)" />
-                          <UIcon v-else :name="getEventIcon(event.type)" :class="['w-5 h-5 drop-shadow-sm', getEventColor(event.type)]" />
-                        </span>
-                        <div class="text-sm truncate">
-                          <span class="font-medium text-gray-900 dark:text-white">{{ getPlayerName(event.playerId) || 'Unknown' }}</span>
-                          <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-500 ml-1">(P)</span>
-                          <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-gray-500 ml-1">(OG)</span>
+            <!-- Match Events -->
+            <div v-if="tournament?.participantType !== ParticipantType.INDIVIDUAL" class="mc-section">
+              <button class="mc-section__toggle" @click="showEventsCollapsible = !showEventsCollapsible">
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-heroicons-clipboard-document-list" class="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Match Events</span>
+                  <span class="mc-tag">{{ matchEvents.length }}</span>
+                </div>
+                <UIcon :name="showEventsCollapsible ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" class="w-4 h-4 text-gray-400" />
+              </button>
+              <div v-if="showEventsCollapsible" class="mc-events-body">
+                <div v-if="loadingEvents" class="flex items-center justify-center gap-2 py-6 text-sm text-gray-400">
+                  <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" /> Loading…
+                </div>
+                <div v-else-if="matchEvents.length === 0" class="py-6 text-center text-sm text-gray-400">
+                  No events recorded yet
+                </div>
+                <div v-else class="mc-events-list">
+                  <div
+                    v-for="event in [...matchEvents].sort((a, b) => (a.minute || 0) - (b.minute || 0))"
+                    :key="event.id"
+                  >
+                    <!-- Home event -->
+                    <div v-if="event.participant_id === selectedFixture?.homeTeamId" class="mc-event mc-event--home">
+                      <div class="mc-event__min">{{ event.minute || '–' }}'</div>
+                      <div class="mc-event__info">
+                        <div class="flex items-center gap-1.5">
+                          <IconsSoccerBallIcon v-if="['GOAL','PENALTY','OWN_GOAL'].includes(event.type)" class="w-4 h-4 flex-shrink-0" :class="getEventColor(event.type)" />
+                          <UIcon v-else :name="getEventIcon(event.type)" :class="['w-4 h-4 flex-shrink-0', getEventColor(event.type)]" />
+                          <span class="mc-event__player">{{ getPlayerName(event.playerId) || 'Unknown' }}</span>
+                          <span v-if="event.type === 'PENALTY'" class="mc-event__tag">(P)</span>
+                          <span v-if="event.type === 'OWN_GOAL'" class="mc-event__tag">(OG)</span>
+                        </div>
+                        <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="mc-event__assist">
+                          <IconsAssistIcon class="w-2.5 h-2.5 flex-shrink-0" /> {{ getPlayerName(event.relatedPlayerId) }}
                         </div>
                       </div>
-                      <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5 ml-7">
-                        <IconsAssistIcon class="w-2.5 h-2.5" /> {{ getPlayerName(event.relatedPlayerId) }}
-                      </div>
-                    </div>
-
-                    <!-- Action Button -->
-                    <div class="ml-auto">
                       <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'end' }">
-                         <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" />
+                        <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" />
                       </UDropdownMenu>
                     </div>
-                  </div>
-
-                  <!-- Away Team Event -->
-                  <div v-else-if="event.participant_id === selectedFixture?.awayTeamId" class="flex items-center gap-3 w-full justify-end animate-in fade-in slide-in-from-right-4 duration-300">
-                    <!-- Action Button -->
-                    <div class="mr-auto">
+                    <!-- Away event -->
+                    <div v-else-if="event.participant_id === selectedFixture?.awayTeamId" class="mc-event mc-event--away">
                       <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'start' }">
-                         <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" />
+                        <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" />
                       </UDropdownMenu>
-                    </div>
-
-                    <!-- Event Info -->
-                    <div class="flex flex-col min-w-0 items-end text-right">
-                      <div class="flex items-center gap-2">
-                        <div class="text-sm truncate order-2 sm:order-1">
-                          <span class="font-medium text-gray-900 dark:text-white">{{ getPlayerName(event.playerId) || 'Unknown' }}</span>
-                          <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-500 ml-1">(P)</span>
-                          <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-gray-500 ml-1">(OG)</span>
+                      <div class="mc-event__info mc-event__info--right">
+                        <div class="flex items-center justify-end gap-1.5">
+                          <span v-if="event.type === 'OWN_GOAL'" class="mc-event__tag">(OG)</span>
+                          <span v-if="event.type === 'PENALTY'" class="mc-event__tag">(P)</span>
+                          <span class="mc-event__player">{{ getPlayerName(event.playerId) || 'Unknown' }}</span>
+                          <IconsSoccerBallIcon v-if="['GOAL','PENALTY','OWN_GOAL'].includes(event.type)" class="w-4 h-4 flex-shrink-0" :class="getEventColor(event.type)" />
+                          <UIcon v-else :name="getEventIcon(event.type)" :class="['w-4 h-4 flex-shrink-0', getEventColor(event.type)]" />
                         </div>
-                        <span class="text-lg flex-shrink-0 order-1 sm:order-2">
-                          <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-5 h-5 shadow-sm" :class="getEventColor(event.type)" />
-                          <UIcon v-else :name="getEventIcon(event.type)" :class="['w-5 h-5 drop-shadow-sm', getEventColor(event.type)]" />
-                        </span>
+                        <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="mc-event__assist mc-event__assist--right">
+                          {{ getPlayerName(event.relatedPlayerId) }} <IconsAssistIcon class="w-2.5 h-2.5 flex-shrink-0" />
+                        </div>
                       </div>
-                      <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="text-[10px] text-gray-500 flex items-center justify-end gap-1 mt-0.5 mr-7">
-                        {{ getPlayerName(event.relatedPlayerId) }} <IconsAssistIcon class="w-2.5 h-2.5" />
-                      </div>
-                    </div>
-
-                    <!-- Minute -->
-                    <div class="w-8 h-8 shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm text-[11px] font-bold text-gray-600 dark:text-gray-400">
-                      {{ event.minute || '-' }}'
+                      <div class="mc-event__min">{{ event.minute || '–' }}'</div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
+          </div><!-- /mc-sections -->
+
+          <!-- ── Action Bar ──────────────────────────────────── -->
+          <div class="mc-action-bar">
+            <!-- Primary action -->
+            <div class="mc-action-bar__primary">
+              <template v-if="selectedFixture.status === 'SCHEDULED'">
+                <button
+                  v-if="!isLeg2 || leg1Completed"
+                  class="mc-primary-btn mc-primary-btn--start"
+                  :disabled="updatingMatch"
+                  @click="startMatch"
+                >
+                  <UIcon name="i-heroicons-play" class="w-4 h-4" />
+                  <span>{{ updatingMatch ? 'Starting…' : 'Start Match' }}</span>
+                </button>
+                <UTooltip text="Complete Leg 1 first to unlock" v-else>
+                  <button class="mc-primary-btn mc-primary-btn--locked" disabled>
+                    <UIcon name="i-heroicons-lock-closed" class="w-4 h-4" />
+                    <span>Leg 1 Pending</span>
+                  </button>
+                </UTooltip>
+              </template>
+              <button
+                v-if="selectedFixture.status === 'LIVE'"
+                class="mc-primary-btn mc-primary-btn--end"
+                :disabled="updatingMatch"
+                @click="endMatch"
+              >
+                <UIcon name="i-heroicons-flag" class="w-4 h-4" />
+                <span>{{ updatingMatch ? 'Ending…' : 'End Match' }}</span>
+              </button>
+            </div>
+
+            <!-- Secondary actions -->
+            <div class="mc-action-bar__secondary">
+              <button v-if="canShare" class="mc-sec-btn" :disabled="sharingMatch" @click="handleShareGraphic">
+                <UIcon name="i-heroicons-share" class="w-3.5 h-3.5" />
+                <span>Share</span>
+              </button>
+              <button class="mc-sec-btn" :disabled="downloading" @click="downloadGraphic">
+                <UIcon name="i-heroicons-arrow-down-tray" class="w-3.5 h-3.5" />
+                <span>Export</span>
+              </button>
+              <button class="mc-sec-btn" @click="closeModal">
+                <UIcon name="i-heroicons-x-mark" class="w-3.5 h-3.5" />
+                <span>Close</span>
+              </button>
+            </div>
           </div>
 
-          <!-- Match Info -->
-          <div v-if="selectedFixture.startTime" class="text-center text-sm text-gray-500">
-            Scheduled: {{ new Date(selectedFixture.startTime).toLocaleString() }}
-          </div>
-
-          <!-- Actions -->
-          <div class="flex justify-between gap-3 pt-2">
-            <template v-if="selectedFixture.status === 'SCHEDULED'">
-              <UButton 
-                v-if="!isLeg2 || leg1Completed"
-                label="Start Match" 
-                icon="i-heroicons-play"
-                color="success"
-                :loading="updatingMatch"
-                @click="startMatch"
-              />
-              <UTooltip text="Complete Leg 1 first to unlock" v-else>
-                <UButton 
-                  label="Leg 1 Pending"
-                  icon="i-heroicons-lock-closed"
-                  color="neutral"
-                  variant="soft"
-                  disabled
-                />
-              </UTooltip>
-            </template>
-            <UButton 
-              v-if="selectedFixture.status === 'LIVE'"
-              label="End Match" 
-              icon="i-heroicons-flag"
-              color="error"
-              :loading="updatingMatch"
-              @click="endMatch"
-            />
-            <UButton 
-              v-if="canShare"
-              label="Share" 
-              icon="i-heroicons-share" 
-              variant="soft"
-              color="primary"
-              class="ml-auto"
-              :loading="sharingMatch"
-              @click="handleShareGraphic"
-            />
-            <UButton 
-              label="Export" 
-              icon="i-heroicons-arrow-down-tray" 
-              variant="outline"
-              color="neutral"
-              :class="{ 'ml-auto': !canShare }"
-              :loading="downloading"
-              @click="downloadGraphic"
-            />
-            <UButton 
-              label="Close" 
-              variant="ghost" 
-              color="neutral"
-              class="ml-2"
-              @click="closeModal"
-            />
-          </div>
-        </div>
-      </UCard>
+        </div><!-- /mc-body -->
+      </div><!-- /mc-shell -->
     </template>
   </UModal>
 
@@ -1754,3 +1590,627 @@ const downloadGraphic = async () => {
     </template>
   </UModal>
 </template>
+
+<style scoped>
+/* ── Shell ─────────────────────────────────────────────────── */
+.mc-shell {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+:root.dark .mc-shell {
+  background: #141414;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.mc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+  flex-shrink: 0;
+}
+
+.mc-header__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mc-header__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+.mc-header__title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+
+.mc-header__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mc-header__close:hover {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+}
+
+/* Status chips */
+.mc-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.mc-status-chip__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mc-status-chip--live {
+  background: rgba(245,158,11,0.2);
+  color: #fbbf24;
+}
+.mc-status-chip--live .mc-status-chip__dot {
+  background: #fbbf24;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.mc-status-chip--scheduled {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.7);
+}
+.mc-status-chip--scheduled .mc-status-chip__dot { background: rgba(255,255,255,0.5); }
+
+.mc-status-chip--completed {
+  background: rgba(16,185,129,0.2);
+  color: #34d399;
+}
+.mc-status-chip--completed .mc-status-chip__dot { background: #34d399; }
+
+.mc-status-chip--cancelled {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.4);
+}
+.mc-status-chip--cancelled .mc-status-chip__dot { background: rgba(255,255,255,0.3); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ── Body ──────────────────────────────────────────────────── */
+.mc-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Scoreboard ────────────────────────────────────────────── */
+.mc-scoreboard {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 8px;
+  background: #f9fafb;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+:root.dark .mc-scoreboard {
+  background: rgba(255,255,255,0.04);
+}
+
+.mc-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mc-team__logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  border: 2px solid #d1d5db;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+:root.dark .mc-team__logo {
+  background: #1e1e1e;
+  border-color: rgba(255,255,255,0.1);
+}
+
+.mc-team__initial {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #6b7280;
+}
+
+:root.dark .mc-team__initial { color: #9ca3af; }
+
+.mc-team__name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #111827;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+:root.dark .mc-team__name { color: #f3f4f6; }
+
+/* Score block */
+.mc-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.mc-score-numbers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mc-score-val {
+  font-size: 2.25rem;
+  font-weight: 900;
+  color: #111827;
+  min-width: 2rem;
+  text-align: center;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+:root.dark .mc-score-val { color: #f9fafb; }
+
+.mc-score-sep {
+  font-size: 1.5rem;
+  color: #d1d5db;
+  font-weight: 300;
+  line-height: 1;
+}
+
+:root.dark .mc-score-sep { color: #4b5563; }
+
+.mc-pen-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #d97706;
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.2);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.mc-match-time {
+  font-size: 0.625rem;
+  color: #9ca3af;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ── Score Controls ────────────────────────────────────────── */
+.mc-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.mc-ctrl-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mc-ctrl-side--right {
+  justify-content: flex-end;
+}
+
+.mc-ctrl-divider {
+  width: 1px;
+  height: 28px;
+  background: #e5e7eb;
+  flex-shrink: 0;
+}
+
+:root.dark .mc-ctrl-divider { background: rgba(255,255,255,0.08); }
+
+.mc-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+/* Action buttons */
+.mc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.mc-btn:disabled { opacity: 0.4; cursor: default; }
+
+.mc-btn--goal {
+  background: rgba(16,185,129,0.1);
+  color: #059669;
+  border-color: rgba(16,185,129,0.2);
+}
+.mc-btn--goal:hover:not(:disabled) { background: rgba(16,185,129,0.18); }
+
+.mc-btn--card {
+  background: rgba(245,158,11,0.1);
+  color: #d97706;
+  border-color: rgba(245,158,11,0.2);
+}
+.mc-btn--card:hover:not(:disabled) { background: rgba(245,158,11,0.18); }
+
+.mc-btn--minus {
+  background: rgba(107,114,128,0.08);
+  color: #6b7280;
+  border-color: rgba(107,114,128,0.12);
+  padding: 5px 8px;
+}
+.mc-btn--minus:hover:not(:disabled) { background: rgba(107,114,128,0.14); }
+
+/* ── Sections ──────────────────────────────────────────────── */
+.mc-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mc-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+:root.dark .mc-section { border-color: rgba(255,255,255,0.07); }
+
+.mc-section__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+:root.dark .mc-section__head {
+  background: rgba(255,255,255,0.03);
+  color: #d1d5db;
+}
+
+.mc-section__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px;
+  background: #f9fafb;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s;
+  text-align: left;
+}
+
+.mc-section__toggle:hover { background: #f3f4f6; }
+
+:root.dark .mc-section__toggle {
+  background: rgba(255,255,255,0.03);
+  color: #d1d5db;
+}
+:root.dark .mc-section__toggle:hover { background: rgba(255,255,255,0.05); }
+
+.mc-section__body {
+  padding: 12px;
+  background: #fff;
+  border-top: 1px solid #f3f4f6;
+}
+
+:root.dark .mc-section__body {
+  background: rgba(255,255,255,0.01);
+  border-color: rgba(255,255,255,0.05);
+}
+
+/* Tag pill */
+.mc-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.575rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+:root.dark .mc-tag {
+  background: rgba(255,255,255,0.08);
+  color: #9ca3af;
+}
+
+/* Penalty labels */
+.mc-pen-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+}
+
+/* ── Events ────────────────────────────────────────────────── */
+.mc-events-body {
+  border-top: 1px solid #f3f4f6;
+}
+
+:root.dark .mc-events-body { border-color: rgba(255,255,255,0.05); }
+
+.mc-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.mc-event {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 6px;
+}
+
+.mc-event:hover { background: #f9fafb; }
+:root.dark .mc-event:hover { background: rgba(255,255,255,0.03); }
+
+.mc-event--away { justify-content: flex-end; }
+
+.mc-event__min {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+:root.dark .mc-event__min {
+  background: #1e1e1e;
+  border-color: rgba(255,255,255,0.08);
+  color: #9ca3af;
+}
+
+.mc-event__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.mc-event__info--right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.mc-event__player {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:root.dark .mc-event__player { color: #f3f4f6; }
+
+.mc-event__tag {
+  font-size: 0.625rem;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.mc-event__assist {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.6rem;
+  color: #9ca3af;
+  margin-top: 1px;
+  padding-left: 20px;
+}
+
+.mc-event__assist--right {
+  justify-content: flex-end;
+  padding-left: 0;
+  padding-right: 20px;
+}
+
+/* ── Action Bar ────────────────────────────────────────────── */
+.mc-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #f3f4f6;
+  flex-shrink: 0;
+}
+
+:root.dark .mc-action-bar { border-color: rgba(255,255,255,0.06); }
+
+.mc-action-bar__primary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mc-action-bar__secondary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* Primary action buttons */
+.mc-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 7px 16px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.mc-primary-btn:disabled { opacity: 0.5; cursor: default; }
+.mc-primary-btn:not(:disabled):active { transform: scale(0.97); }
+
+.mc-primary-btn--start {
+  background: #059669;
+  color: #fff;
+  border-color: #047857;
+  box-shadow: 0 2px 6px rgba(5,150,105,0.3);
+}
+.mc-primary-btn--start:hover:not(:disabled) { background: #047857; }
+
+.mc-primary-btn--end {
+  background: #dc2626;
+  color: #fff;
+  border-color: #b91c1c;
+  box-shadow: 0 2px 6px rgba(220,38,38,0.3);
+}
+.mc-primary-btn--end:hover:not(:disabled) { background: #b91c1c; }
+
+.mc-primary-btn--locked {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+:root.dark .mc-primary-btn--locked {
+  background: rgba(255,255,255,0.05);
+  color: #6b7280;
+  border-color: rgba(255,255,255,0.08);
+}
+
+/* Secondary action buttons */
+.mc-sec-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.mc-sec-btn:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.mc-sec-btn:disabled { opacity: 0.4; cursor: default; }
+
+:root.dark .mc-sec-btn {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.08);
+  color: #9ca3af;
+}
+:root.dark .mc-sec-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.07);
+  color: #d1d5db;
+}
+</style>
