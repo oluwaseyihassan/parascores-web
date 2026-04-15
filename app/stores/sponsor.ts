@@ -4,6 +4,7 @@ import type { ApiResponse } from './auth'
 
 export interface CreateSponsorData {
   name: string
+  description?: string | null
   logoUrl?: string | null
   websiteUrl?: string | null
 }
