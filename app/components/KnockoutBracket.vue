@@ -9,6 +9,7 @@ interface Props {
   updatingMatch?: boolean
   twoLegsKnockout?: boolean
   thirdPlaceMatch?: boolean
+  readonly?: boolean
 }
 
 const props = defineProps<Props>()
@@ -18,14 +19,6 @@ const emit = defineEmits<{
   'control-match': [fixture: Fixture]
 }>()
 
-// Fixture status colors
-const statusColors: Record<string, 'info' | 'success' | 'warning' | 'neutral'> = {
-  [FixtureStatus.SCHEDULED]: 'info',
-  [FixtureStatus.LIVE]: 'warning',
-  [FixtureStatus.COMPLETED]: 'success',
-  [FixtureStatus.CANCELLED]: 'neutral'
-}
-
 const getAggregateStatus = (fixtures: Fixture[]): FixtureStatus => {
   if (fixtures.some(f => f.status === FixtureStatus.LIVE)) return FixtureStatus.LIVE
   if (fixtures.every(f => f.status === FixtureStatus.COMPLETED)) return FixtureStatus.COMPLETED
@@ -33,27 +26,21 @@ const getAggregateStatus = (fixtures: Fixture[]): FixtureStatus => {
   return FixtureStatus.CANCELLED
 }
 
-// Group fixtures into Matchups (handles 2-legged ties)
 const matchupsByRound = computed(() => {
   const result: Record<number, any[]> = {}
-  
   const totalRounds = props.rounds.length
-  
+
   props.rounds.forEach((round, roundIndex) => {
     const isFinalRound = roundIndex === totalRounds - 1
     const roundFixtures = props.fixturesByRound[round] || []
-    
     const matchups: any[] = []
-    
+
     if (props.twoLegsKnockout && !isFinalRound) {
-      // Group by 2 for dual-leg matches
       for (let i = 0; i < roundFixtures.length; i += 2) {
         const f1 = roundFixtures[i]!
         const f2 = roundFixtures[i + 1]
-        
         const fixtures = [f1]
         if (f2) fixtures.push(f2)
-        
         matchups.push({
           id: f1.id,
           fixtures,
@@ -62,16 +49,10 @@ const matchupsByRound = computed(() => {
           awayTeam: f1.awayTeam,
           homeTeamPlaceholder: f1.homeTeamPlaceholder,
           awayTeamPlaceholder: f1.awayTeamPlaceholder,
-          // Aggregate scores accounting for home/away swap between legs
-          // Leg 1: home=TeamA, away=TeamB. Leg 2: home=TeamB, away=TeamA
-          // TeamA total = f1.homeScore + f2.awayScore
-          // TeamB total = f1.awayScore + f2.homeScore
           homeScore: (f1.homeScore ?? 0) + (f2 ? (f2.awayScore ?? 0) : 0),
           awayScore: (f1.awayScore ?? 0) + (f2 ? (f2.homeScore ?? 0) : 0),
-          // Sub-scores for display: [TeamA's goals in Leg1, TeamA's goals in Leg2]
           homeSubScores: [f1.homeScore, f2 ? f2.awayScore : null],
           awaySubScores: [f1.awayScore, f2 ? f2.homeScore : null],
-          // Penalties happen in Leg 2, but Leg 2 home = Leg 1 away, so swap
           homePenaltyScore: f2?.awayPenaltyScore ?? f1.homePenaltyScore,
           awayPenaltyScore: f2?.homePenaltyScore ?? f1.awayPenaltyScore,
           status: getAggregateStatus(fixtures),
@@ -80,10 +61,9 @@ const matchupsByRound = computed(() => {
         })
       }
     } else {
-      // Single leg logic (or final round)
       for (let i = 0; i < roundFixtures.length; i++) {
         const f = roundFixtures[i]!
-        const isThirdPlace = isFinalRound && props.thirdPlaceMatch && i === 1 // 2nd match in final round
+        const isThirdPlace = isFinalRound && props.thirdPlaceMatch && i === 1
         matchups.push({
           id: f.id,
           fixtures: [f],
@@ -102,14 +82,11 @@ const matchupsByRound = computed(() => {
         })
       }
     }
-    
     result[round] = matchups
   })
-  
   return result
 })
 
-// Separate final round into main matchups and third-place matchups
 const finalRoundMainMatchups = computed(() => {
   if (props.rounds.length === 0) return []
   const finalRound = props.rounds[props.rounds.length - 1]!
@@ -122,74 +99,43 @@ const thirdPlaceMatchups = computed(() => {
   return (matchupsByRound.value[finalRound] || []).filter((m: any) => m.isThirdPlace)
 })
 
-// Get total matchups in first round (used for grid scaling)
 const firstRoundMatches = computed(() => {
   if (props.rounds.length === 0) return 0
   return matchupsByRound.value[props.rounds[0]!]?.length || 0
 })
 
-// Get winner class for completed matches
-const getTeamClass = (matchup: any, isHome: boolean) => {
-  if (matchup.status !== FixtureStatus.COMPLETED) return ''
-  
+const getWinnerState = (matchup: any, isHome: boolean): 'winner' | 'loser' | 'none' => {
+  if (matchup.status !== FixtureStatus.COMPLETED) return 'none'
   const homeScore = matchup.homeScore ?? 0
   const awayScore = matchup.awayScore ?? 0
-  
   if (homeScore === awayScore) {
-    // Check penalties
     const homePen = matchup.homePenaltyScore ?? 0
     const awayPen = matchup.awayPenaltyScore ?? 0
-    
-    if (homePen === awayPen) return ''
-    
-    if (isHome) {
-      return homePen > awayPen ? 'bracket-winner' : 'bracket-loser'
-    } else {
-      return awayPen > homePen ? 'bracket-winner' : 'bracket-loser'
-    }
+    if (homePen === awayPen) return 'none'
+    return isHome ? (homePen > awayPen ? 'winner' : 'loser') : (awayPen > homePen ? 'winner' : 'loser')
   }
-  
-  if (isHome) {
-    return homeScore > awayScore ? 'bracket-winner' : 'bracket-loser'
-  } else {
-    return awayScore > homeScore ? 'bracket-winner' : 'bracket-loser'
-  }
+  return isHome ? (homeScore > awayScore ? 'winner' : 'loser') : (awayScore > homeScore ? 'winner' : 'loser')
 }
 
-// Get placeholder label for unknown team (e.g., "QF1 Winner")
-const getPlaceholderLabel = (matchup: any, isHome: boolean): string => {
-  if (isHome) {
-    return matchup.homeTeamPlaceholder || 'TBD'
-  } else {
-    return matchup.awayTeamPlaceholder || 'TBD'
-  }
-}
-
-// Detect completed matches with no clear winner (tied with no decisive penalties)
 const hasNoWinner = (matchup: any): boolean => {
   if (matchup.status !== FixtureStatus.COMPLETED) return false
   const homeScore = matchup.homeScore ?? 0
   const awayScore = matchup.awayScore ?? 0
   if (homeScore !== awayScore) return false
-  // Scores are tied — check penalties
   const homePen = matchup.homePenaltyScore ?? 0
   const awayPen = matchup.awayPenaltyScore ?? 0
   return homePen === awayPen
 }
 
-// Get team name to display
 const getTeamName = (matchup: any, isHome: boolean) => {
   const team = isHome ? matchup.homeTeam : matchup.awayTeam
-  
   if (team) {
     if (team.customName) return team.customName
     if (team.user?.name) return team.user.name
   }
-  
-  return getPlaceholderLabel(matchup, isHome)
+  return isHome ? (matchup.homeTeamPlaceholder || 'TBD') : (matchup.awayTeamPlaceholder || 'TBD')
 }
 
-// Calculate which grid rows a match spans
 const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
   const span = Math.pow(2, roundIndex)
   const start = matchIndex * span * 2 + 1
@@ -197,35 +143,58 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
   return `${start} / ${end}`
 }
 
-// Get the number of columns before the final column (for third-place offset)
-const finalColumnOffset = computed(() => {
-  // Each round except the last has a matches-column + a connector-column
-  // The last round just has a matches-column
-  // So offset = (rounds.length - 1) rounds * (200px + 48px)
-  return props.rounds.length - 1
-})
+const finalColumnOffset = computed(() => props.rounds.length - 1)
+
+const isTeamKnown = (matchup: any, isHome: boolean) => {
+  return isHome ? !!matchup.homeTeamId : !!matchup.awayTeamId
+}
+
+const getMatchTime = (matchup: any): string | null => {
+  return matchup.fixtures?.[0]?.startTime || null
+}
+
+const getMatchVenue = (matchup: any): string | null => {
+  return matchup.fixtures?.[0]?.venue || null
+}
+
+const formatMatchTime = (dateStr: string | null | undefined): string | null => {
+  if (!dateStr) return null
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return null
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) +
+      ' \u00b7 ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  } catch { return null }
+}
 </script>
 
 <template>
   <div class="bracket-container">
     <div class="bracket-scroll">
-      <!-- Headers row -->
-      <div class="bracket-headers">
+      <!-- Round headers — same grid template as the bracket so each header sits over its column -->
+      <div
+        class="bracket-headers"
+        :style="{
+          display: 'grid',
+          gridTemplateColumns: rounds.map((_, i) => i < rounds.length - 1 ? 'minmax(220px, 1fr) 52px' : 'minmax(220px, 1fr)').join(' '),
+        }"
+      >
         <template v-for="(round, roundIndex) in rounds" :key="`header-${round}`">
           <div class="bracket-header">
-            {{ getRoundDisplayName(round, roundIndex, rounds.length) }}
+            <span>{{ getRoundDisplayName(round, roundIndex, rounds.length) }}</span>
           </div>
-          <div v-if="roundIndex < rounds.length - 1" class="header-spacer"></div>
+          <!-- Empty cell for the connector column -->
+          <div v-if="roundIndex < rounds.length - 1" />
         </template>
       </div>
 
       <!-- Bracket grid -->
-      <div 
+      <div
         class="bracket-grid"
-        :style="{ 
+        :style="{
           '--total-rows': firstRoundMatches * 2,
           display: 'grid',
-          gridTemplateColumns: rounds.map((_, i) => i < rounds.length - 1 ? 'minmax(200px, 1fr) 48px' : 'minmax(200px, 1fr)').join(' '),
+          gridTemplateColumns: rounds.map((_, i) => i < rounds.length - 1 ? 'minmax(220px, 1fr) 52px' : 'minmax(220px, 1fr)').join(' '),
           gap: '0'
         }"
       >
@@ -233,162 +202,155 @@ const finalColumnOffset = computed(() => {
           <!-- Matches column -->
           <div class="matches-column">
             <template v-for="(matchup, matchIndex) in (roundIndex === rounds.length - 1 ? finalRoundMainMatchups : matchupsByRound[round])" :key="matchup.id">
-              <div 
+              <div
                 class="match-cell"
                 :style="{ gridRow: getMatchGridRow(roundIndex, matchIndex) }"
               >
-                <div class="flex flex-col w-full self-center">
-                  <div class="bracket-match">
-                    <!-- Home team -->
-                    <div 
-                      class="bracket-team"
-                      :class="getTeamClass(matchup, true)"
-                    >
-                      <div class="bracket-team-info">
-                        <span class="bracket-seed" v-if="matchup.homeTeam?.seed">
-                          {{ matchup.homeTeam.seed }}
-                        </span>
-                        <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0" v-if="matchup.homeTeam?.logoUrl">
-                          <img 
-                            :src="matchup.homeTeam.logoUrl" 
-                            class="w-full h-full object-cover"
-                          />
-                        </div>
-                        <span class="bracket-team-name">
-                          {{ getTeamName(matchup, true) }}
-                        </span>
-                      </div>
-                      <div class="flex items-center gap-2">
-                        <span v-if="matchup.homeSubScores" class="text-[0.65rem] font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap hidden sm:inline-block">
-                          ({{ matchup.homeSubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }})
-                        </span>
-                        <span class="bracket-score">
-                          <span v-if="matchup.homePenaltyScore !== null && matchup.homePenaltyScore !== undefined" class="text-xs font-normal text-gray-400 mr-1">
-                            ({{ matchup.homePenaltyScore }})
-                          </span>
-                          {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE 
-                            ? matchup.homeScore 
-                            : '-' }}
-                        </span>
-                      </div>
+                <div class="match-card" :class="{
+                  'match-card--live': matchup.status === FixtureStatus.LIVE,
+                  'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
+                }">
+                  <!-- Home team row -->
+                  <div class="team-row" :class="{
+                    'team-row--winner': getWinnerState(matchup, true) === 'winner',
+                    'team-row--loser': getWinnerState(matchup, true) === 'loser',
+                  }">
+                    <div class="team-avatar">
+                      <img v-if="matchup.homeTeam?.logoUrl" :src="matchup.homeTeam.logoUrl" class="team-avatar__img" />
+                      <span v-else class="team-avatar__initial">
+                        {{ getTeamName(matchup, true).charAt(0).toUpperCase() }}
+                      </span>
                     </div>
-                    
-                    <!-- Away team -->
-                    <div 
-                      class="bracket-team"
-                      :class="getTeamClass(matchup, false)"
-                    >
-                      <div class="bracket-team-info">
-                        <span class="bracket-seed" v-if="matchup.awayTeam?.seed">
-                          {{ matchup.awayTeam.seed }}
-                        </span>
-                        <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0" v-if="matchup.awayTeam?.logoUrl">
-                          <img 
-                            :src="matchup.awayTeam.logoUrl" 
-                            class="w-full h-full object-cover"
-                          />
-                        </div>
-                        <span class="bracket-team-name">
-                          {{ getTeamName(matchup, false) }}
-                        </span>
-                      </div>
-                      <div class="flex items-center gap-2">
-                        <span v-if="matchup.awaySubScores" class="text-[0.65rem] font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap hidden sm:inline-block">
-                          ({{ matchup.awaySubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }})
-                        </span>
-                        <span class="bracket-score">
-                          <span v-if="matchup.awayPenaltyScore !== null && matchup.awayPenaltyScore !== undefined" class="text-xs font-normal text-gray-400 mr-1">
-                            ({{ matchup.awayPenaltyScore }})
-                          </span>
-                          {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE 
-                            ? matchup.awayScore 
-                            : '-' }}
-                        </span>
-                      </div>
+                    <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, true) }">
+                      {{ getTeamName(matchup, true) }}
+                    </span>
+                    <div class="team-score-area">
+                      <span v-if="matchup.homeSubScores" class="sub-scores">
+                        {{ matchup.homeSubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }}
+                      </span>
+                      <span v-if="matchup.homePenaltyScore != null" class="pen-score">
+                        ({{ matchup.homePenaltyScore }})
+                      </span>
+                      <span class="score" :class="{
+                        'score--winner': getWinnerState(matchup, true) === 'winner',
+                        'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED,
+                      }">
+                        {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? matchup.homeScore : '-' }}
+                      </span>
                     </div>
-                    
-                    <!-- Match status and actions -->
-                    <div class="bracket-status">
-                      <!-- For dual legs: Show individual buttons? Better just control active match -->
+                  </div>
+
+                  <!-- Divider -->
+                  <div class="team-divider" />
+
+                  <!-- Away team row -->
+                  <div class="team-row" :class="{
+                    'team-row--winner': getWinnerState(matchup, false) === 'winner',
+                    'team-row--loser': getWinnerState(matchup, false) === 'loser',
+                  }">
+                    <div class="team-avatar">
+                      <img v-if="matchup.awayTeam?.logoUrl" :src="matchup.awayTeam.logoUrl" class="team-avatar__img" />
+                      <span v-else class="team-avatar__initial">
+                        {{ getTeamName(matchup, false).charAt(0).toUpperCase() }}
+                      </span>
+                    </div>
+                    <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, false) }">
+                      {{ getTeamName(matchup, false) }}
+                    </span>
+                    <div class="team-score-area">
+                      <span v-if="matchup.awaySubScores" class="sub-scores">
+                        {{ matchup.awaySubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }}
+                      </span>
+                      <span v-if="matchup.awayPenaltyScore != null" class="pen-score">
+                        ({{ matchup.awayPenaltyScore }})
+                      </span>
+                      <span class="score" :class="{
+                        'score--winner': getWinnerState(matchup, false) === 'winner',
+                        'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED,
+                      }">
+                        {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? matchup.awayScore : '-' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Match info: time & venue -->
+                  <div v-if="getMatchTime(matchup) || getMatchVenue(matchup)" class="match-info">
+                    <span v-if="getMatchTime(matchup)" class="match-info__item">
+                      <UIcon name="i-heroicons-calendar" class="match-info__icon" />
+                      {{ formatMatchTime(getMatchTime(matchup)) }}
+                    </span>
+                    <span v-if="getMatchVenue(matchup)" class="match-info__item">
+                      <UIcon name="i-heroicons-map-pin" class="match-info__icon" />
+                      {{ getMatchVenue(matchup) }}
+                    </span>
+                  </div>
+
+                  <!-- Footer: status + actions -->
+                  <div class="match-footer">
+                    <!-- Live indicator -->
+                    <div v-if="matchup.status === FixtureStatus.LIVE" class="status-live">
+                      <span class="live-dot" />
+                      <span>Live</span>
+                    </div>
+                    <div v-else-if="matchup.status === FixtureStatus.COMPLETED && !hasNoWinner(matchup)" class="status-done">
+                      <UIcon name="i-heroicons-check-circle" class="w-3 h-3" />
+                      <span>FT</span>
+                    </div>
+                    <div v-else-if="hasNoWinner(matchup)" class="status-warn">
+                      <UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3" />
+                      <span>No winner</span>
+                    </div>
+                    <div v-else class="status-sched">
+                      <UIcon name="i-heroicons-clock" class="w-3 h-3" />
+                      <span>Scheduled</span>
+                    </div>
+
+                    <!-- Actions -->
+                    <div v-if="!readonly" class="match-actions">
                       <template v-if="matchup.fixtures.length === 1">
-                        <UButton 
+                        <button
                           v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
-                          size="xs" 
-                          color="success" 
-                          variant="soft"
-                          icon="i-heroicons-play"
-                          :loading="updatingMatch"
+                          class="action-btn action-btn--start"
+                          :disabled="updatingMatch"
                           @click.stop="emit('start-match', matchup.fixtures[0])"
                         >
+                          <UIcon name="i-heroicons-play" class="w-3 h-3" />
                           Start
-                        </UButton>
-                        
-                        <UButton 
-                          v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED"
-                          size="xs" 
-                          color="warning" 
-                          variant="soft"
-                          icon="i-heroicons-adjustments-horizontal"
+                        </button>
+                        <button
+                          v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED"
+                          class="action-btn action-btn--control"
                           @click.stop="emit('control-match', matchup.fixtures[0])"
                         >
+                          <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />
                           Control
-                        </UButton>
+                        </button>
                       </template>
                       <template v-else>
-                        <!-- Sub-controls for each leg if there are multiple legs -->
-                        <div class="flex items-center gap-1 overflow-x-auto w-full justify-center px-1">
-                          <template v-for="(leg, i) in matchup.fixtures" :key="leg.id">
-                            <UButton 
-                              v-if="leg.status === FixtureStatus.SCHEDULED && leg.homeTeamId && leg.awayTeamId"
-                              size="xs" 
-                              color="success" 
-                              variant="soft"
-                              icon="i-heroicons-play"
-                              class="text-[10px] px-1.5 py-0.5 min-w-max"
-                              :loading="updatingMatch"
-                              @click.stop="emit('start-match', leg)"
-                            >
-                              Leg {{ (i as number) + 1 }}
-                            </UButton>
-                            <UButton 
-                              v-else-if="leg.status === FixtureStatus.LIVE || leg.status === FixtureStatus.COMPLETED"
-                              size="xs" 
-                              color="warning" 
-                              variant="soft"
-                              icon="i-heroicons-adjustments-horizontal"
-                              class="text-[10px] px-1.5 py-0.5 min-w-max"
-                              @click.stop="emit('control-match', leg)"
-                            >
-                              Leg {{ (i as number) + 1 }}
-                            </UButton>
-                            <UButton 
-                              v-else-if="leg.status === FixtureStatus.SCHEDULED"
-                              size="xs" 
-                              color="neutral" 
-                              variant="soft"
-                              icon="i-heroicons-clock"
-                              class="text-[10px] px-1.5 py-0.5 min-w-max"
-                              disabled
-                            >
-                              Leg {{ (i as number) + 1 }}
-                            </UButton>
-                          </template>
-                        </div>
+                        <template v-for="(leg, i) in matchup.fixtures" :key="leg.id">
+                          <button
+                            v-if="leg.status === FixtureStatus.SCHEDULED && leg.homeTeamId && leg.awayTeamId"
+                            class="action-btn action-btn--start"
+                            :disabled="updatingMatch"
+                            @click.stop="emit('start-match', leg)"
+                          >
+                            <UIcon name="i-heroicons-play" class="w-3 h-3" />
+                            L{{ (i as number) + 1 }}
+                          </button>
+                          <button
+                            v-else-if="leg.status === FixtureStatus.LIVE || leg.status === FixtureStatus.COMPLETED"
+                            class="action-btn action-btn--control"
+                            @click.stop="emit('control-match', leg)"
+                          >
+                            <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />
+                            L{{ (i as number) + 1 }}
+                          </button>
+                          <span v-else class="action-btn action-btn--disabled">
+                            <UIcon name="i-heroicons-clock" class="w-3 h-3" />
+                            L{{ (i as number) + 1 }}
+                          </span>
+                        </template>
                       </template>
-                      
-                      <!-- Status Badge -->
-                      <UBadge 
-                        :color="hasNoWinner(matchup) ? 'warning' : statusColors[matchup.status]" 
-                        variant="subtle" 
-                        size="xs"
-                        class="shrink-0"
-                      >
-                        <span v-if="hasNoWinner(matchup)" class="flex items-center gap-1">
-                          <UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3 animate-pulse" />
-                          NO WINNER
-                        </span>
-                        <span v-else>{{ matchup.status }}</span>
-                      </UBadge>
                     </div>
                   </div>
                 </div>
@@ -396,27 +358,23 @@ const finalColumnOffset = computed(() => {
             </template>
           </div>
 
-          <!-- Connector column (not after last round) -->
-          <div 
-            v-if="roundIndex < rounds.length - 1" 
-            class="connector-column"
-          >
-            <div 
-              v-for="(matchup, matchIndex) in (roundIndex === rounds.length - 1 ? [] : matchupsByRound[round])" 
+          <!-- Connector column -->
+          <div v-if="roundIndex < rounds.length - 1" class="connector-column">
+            <div
+              v-for="(matchup, matchIndex) in matchupsByRound[round]"
               :key="`conn-${matchup.id}`"
               class="connector-cell"
               :style="{ gridRow: getMatchGridRow(roundIndex, matchIndex) }"
             >
-              <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
-                <!-- Line from current match to the middle -->
-                <path 
+              <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                <path
                   v-if="matchIndex % 2 === 0"
-                  d="M 0 50 L 24 50 L 24 100" 
+                  d="M 0 50 L 26 50 L 26 100"
                   class="connector-line"
                 />
-                <path 
+                <path
                   v-else
-                  d="M 0 50 L 24 50 L 24 0 M 24 0 L 48 0" 
+                  d="M 0 50 L 26 50 L 26 0 M 26 0 L 52 0"
                   class="connector-line"
                 />
               </svg>
@@ -425,160 +383,88 @@ const finalColumnOffset = computed(() => {
         </template>
       </div>
 
-      <!-- 3rd Place Play-off section (rendered below the bracket, aligned to the final column) -->
+      <!-- 3rd Place Play-off -->
       <div v-if="thirdPlaceMatchups.length > 0" class="third-place-section" :style="{ '--offset-columns': finalColumnOffset }">
-        <div v-for="matchup in thirdPlaceMatchups" :key="matchup.id" class="third-place-wrapper">
-          <div class="text-[0.65rem] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center mb-2">
+        <div v-for="matchup in thirdPlaceMatchups" :key="matchup.id">
+          <div class="third-place-label">
+            <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-400" />
             3rd Place Play-off
           </div>
-          <div class="bracket-match">
-            <!-- Home team -->
-            <div 
-              class="bracket-team"
-              :class="getTeamClass(matchup, true)"
-            >
-              <div class="bracket-team-info">
-                <span class="bracket-seed" v-if="matchup.homeTeam?.seed">
-                  {{ matchup.homeTeam.seed }}
-                </span>
-                <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0" v-if="matchup.homeTeam?.logoUrl">
-                  <img 
-                    :src="matchup.homeTeam.logoUrl" 
-                    class="w-full h-full object-cover"
-                  />
-                </div>
-                <span class="bracket-team-name">
-                  {{ getTeamName(matchup, true) }}
-                </span>
+          <div class="match-card" :class="{
+            'match-card--live': matchup.status === FixtureStatus.LIVE,
+            'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
+          }">
+            <div class="team-row" :class="{
+              'team-row--winner': getWinnerState(matchup, true) === 'winner',
+              'team-row--loser': getWinnerState(matchup, true) === 'loser',
+            }">
+              <div class="team-avatar">
+                <img v-if="matchup.homeTeam?.logoUrl" :src="matchup.homeTeam.logoUrl" class="team-avatar__img" />
+                <span v-else class="team-avatar__initial">{{ getTeamName(matchup, true).charAt(0).toUpperCase() }}</span>
               </div>
-              <div class="flex items-center gap-2">
-                <span v-if="matchup.homeSubScores" class="text-[0.65rem] font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap hidden sm:inline-block">
-                  ({{ matchup.homeSubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }})
-                </span>
-                <span class="bracket-score">
-                  <span v-if="matchup.homePenaltyScore !== null && matchup.homePenaltyScore !== undefined" class="text-xs font-normal text-gray-400 mr-1">
-                    ({{ matchup.homePenaltyScore }})
-                  </span>
-                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE 
-                    ? matchup.homeScore 
-                    : '-' }}
+              <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, true) }">{{ getTeamName(matchup, true) }}</span>
+              <div class="team-score-area">
+                <span v-if="matchup.homePenaltyScore != null" class="pen-score">({{ matchup.homePenaltyScore }})</span>
+                <span class="score" :class="{
+                  'score--winner': getWinnerState(matchup, true) === 'winner',
+                  'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED,
+                }">
+                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? matchup.homeScore : '-' }}
                 </span>
               </div>
             </div>
-            
-            <!-- Away team -->
-            <div 
-              class="bracket-team"
-              :class="getTeamClass(matchup, false)"
-            >
-              <div class="bracket-team-info">
-                <span class="bracket-seed" v-if="matchup.awayTeam?.seed">
-                  {{ matchup.awayTeam.seed }}
-                </span>
-                <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0" v-if="matchup.awayTeam?.logoUrl">
-                  <img 
-                    :src="matchup.awayTeam.logoUrl" 
-                    class="w-full h-full object-cover"
-                  />
-                </div>
-                <span class="bracket-team-name">
-                  {{ getTeamName(matchup, false) }}
-                </span>
+            <div class="team-divider" />
+            <div class="team-row" :class="{
+              'team-row--winner': getWinnerState(matchup, false) === 'winner',
+              'team-row--loser': getWinnerState(matchup, false) === 'loser',
+            }">
+              <div class="team-avatar">
+                <img v-if="matchup.awayTeam?.logoUrl" :src="matchup.awayTeam.logoUrl" class="team-avatar__img" />
+                <span v-else class="team-avatar__initial">{{ getTeamName(matchup, false).charAt(0).toUpperCase() }}</span>
               </div>
-              <div class="flex items-center gap-2">
-                <span v-if="matchup.awaySubScores" class="text-[0.65rem] font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap hidden sm:inline-block">
-                  ({{ matchup.awaySubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }})
-                </span>
-                <span class="bracket-score">
-                  <span v-if="matchup.awayPenaltyScore !== null && matchup.awayPenaltyScore !== undefined" class="text-xs font-normal text-gray-400 mr-1">
-                    ({{ matchup.awayPenaltyScore }})
-                  </span>
-                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE 
-                    ? matchup.awayScore 
-                    : '-' }}
+              <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, false) }">{{ getTeamName(matchup, false) }}</span>
+              <div class="team-score-area">
+                <span v-if="matchup.awayPenaltyScore != null" class="pen-score">({{ matchup.awayPenaltyScore }})</span>
+                <span class="score" :class="{
+                  'score--winner': getWinnerState(matchup, false) === 'winner',
+                  'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED,
+                }">
+                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? matchup.awayScore : '-' }}
                 </span>
               </div>
             </div>
-            
-            <!-- Match status and actions -->
-            <div class="bracket-status">
-              <template v-if="matchup.fixtures.length === 1">
-                <UButton 
+            <div v-if="getMatchTime(matchup) || getMatchVenue(matchup)" class="match-info">
+              <span v-if="getMatchTime(matchup)" class="match-info__item">
+                <UIcon name="i-heroicons-calendar" class="match-info__icon" />
+                {{ formatMatchTime(getMatchTime(matchup)) }}
+              </span>
+              <span v-if="getMatchVenue(matchup)" class="match-info__item">
+                <UIcon name="i-heroicons-map-pin" class="match-info__icon" />
+                {{ getMatchVenue(matchup) }}
+              </span>
+            </div>
+            <div class="match-footer">
+              <div v-if="matchup.status === FixtureStatus.LIVE" class="status-live"><span class="live-dot" /><span>Live</span></div>
+              <div v-else-if="matchup.status === FixtureStatus.COMPLETED && !hasNoWinner(matchup)" class="status-done"><UIcon name="i-heroicons-check-circle" class="w-3 h-3" /><span>FT</span></div>
+              <div v-else-if="hasNoWinner(matchup)" class="status-warn"><UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3" /><span>No winner</span></div>
+              <div v-else class="status-sched"><UIcon name="i-heroicons-clock" class="w-3 h-3" /><span>Scheduled</span></div>
+              <div v-if="!readonly" class="match-actions">
+                <button
                   v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
-                  size="xs" 
-                  color="success" 
-                  variant="soft"
-                  icon="i-heroicons-play"
-                  :loading="updatingMatch"
+                  class="action-btn action-btn--start"
+                  :disabled="updatingMatch"
                   @click.stop="emit('start-match', matchup.fixtures[0])"
                 >
-                  Start
-                </UButton>
-                
-                <UButton 
-                  v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED"
-                  size="xs" 
-                  color="warning" 
-                  variant="soft"
-                  icon="i-heroicons-adjustments-horizontal"
+                  <UIcon name="i-heroicons-play" class="w-3 h-3" />Start
+                </button>
+                <button
+                  v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED"
+                  class="action-btn action-btn--control"
                   @click.stop="emit('control-match', matchup.fixtures[0])"
                 >
-                  Control
-                </UButton>
-              </template>
-              <template v-else>
-                <div class="flex items-center gap-1 overflow-x-auto w-full justify-center px-1">
-                  <template v-for="(leg, i) in matchup.fixtures" :key="leg.id">
-                    <UButton 
-                      v-if="leg.status === FixtureStatus.SCHEDULED && leg.homeTeamId && leg.awayTeamId"
-                      size="xs" 
-                      color="success" 
-                      variant="soft"
-                      icon="i-heroicons-play"
-                      class="text-[10px] px-1.5 py-0.5 min-w-max"
-                      :loading="updatingMatch"
-                      @click.stop="emit('start-match', leg)"
-                    >
-                      Leg {{ (i as number) + 1 }}
-                    </UButton>
-                    <UButton 
-                      v-else-if="leg.status === FixtureStatus.LIVE || leg.status === FixtureStatus.COMPLETED"
-                      size="xs" 
-                      color="warning" 
-                      variant="soft"
-                      icon="i-heroicons-adjustments-horizontal"
-                      class="text-[10px] px-1.5 py-0.5 min-w-max"
-                      @click.stop="emit('control-match', leg)"
-                    >
-                      Leg {{ (i as number) + 1 }}
-                    </UButton>
-                    <UButton 
-                      v-else-if="leg.status === FixtureStatus.SCHEDULED"
-                      size="xs" 
-                      color="neutral" 
-                      variant="soft"
-                      icon="i-heroicons-clock"
-                      class="text-[10px] px-1.5 py-0.5 min-w-max"
-                      disabled
-                    >
-                      Leg {{ (i as number) + 1 }}
-                    </UButton>
-                  </template>
-                </div>
-              </template>
-              
-              <UBadge 
-                :color="hasNoWinner(matchup) ? 'warning' : statusColors[matchup.status]" 
-                variant="subtle" 
-                size="xs"
-                class="shrink-0"
-              >
-                <span v-if="hasNoWinner(matchup)" class="flex items-center gap-1">
-                  <UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3 animate-pulse" />
-                  NO WINNER
-                </span>
-                <span v-else>{{ matchup.status }}</span>
-              </UBadge>
+                  <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />Control
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -588,66 +474,56 @@ const finalColumnOffset = computed(() => {
 </template>
 
 <style scoped>
+/* ── Layout ───────────────────────────────────────────────── */
 .bracket-container {
   width: 100%;
   overflow-x: auto;
-  padding: 1rem;
+  padding: 1.25rem;
 }
 
 .bracket-scroll {
   min-width: fit-content;
 }
 
+/* ── Round headers ────────────────────────────────────────── */
 .bracket-headers {
-  display: flex;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .bracket-header {
-  min-width: 200px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  display: flex;
+  justify-content: center;
+}
+
+.bracket-header span {
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-gray-500);
-  text-align: center;
-  padding: 0.5rem;
-  background: var(--color-gray-50);
-  border-radius: 0.5rem;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
 }
 
-.header-spacer {
-  width: 48px;
-  flex-shrink: 0;
+:root.dark .bracket-header span {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.08);
+  color: #9ca3af;
 }
 
-:root.dark .bracket-header {
-  background: var(--color-gray-800);
-  color: var(--color-gray-400);
-}
 
+/* ── Grid ─────────────────────────────────────────────────── */
 .bracket-grid {
   display: grid;
   width: 100%;
 }
 
-.third-place-section {
-  margin-top: 0.75rem;
-  /* Offset to align with the final column: skip (N-1) match columns and (N-1) connector columns */
-  margin-left: calc(var(--offset-columns) * (200px + 48px));
-  min-width: 200px;
-  max-width: 200px;
-}
-
-.third-place-wrapper {
-  display: flex;
-  flex-direction: column;
-}
-
 .matches-column {
   display: grid;
   grid-template-rows: repeat(var(--total-rows), 1fr);
-  min-width: 200px;
+  min-width: 220px;
   gap: 0;
 }
 
@@ -655,13 +531,299 @@ const finalColumnOffset = computed(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0.25rem 0;
+  padding: 6px 0;
 }
 
+/* ── Match card ───────────────────────────────────────────── */
+.match-card {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+
+.match-card:hover {
+  border-color: #10b981;
+  box-shadow: 0 0 0 1px rgba(16,185,129,0.15), 0 4px 16px rgba(0,0,0,0.08);
+}
+
+:root.dark .match-card {
+  background: #141414;
+  border-color: rgba(255,255,255,0.07);
+}
+
+:root.dark .match-card:hover {
+  border-color: rgba(16,185,129,0.5);
+  box-shadow: 0 0 0 1px rgba(16,185,129,0.12), 0 4px 20px rgba(0,0,0,0.4);
+}
+
+/* Live: pulsing left border */
+.match-card--live {
+  border-left: 2px solid #f59e0b;
+}
+
+.match-card--live::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 2px;
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+  animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Team row ─────────────────────────────────────────────── */
+.team-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.team-row--winner {
+  background: rgba(16,185,129,0.06);
+}
+
+
+.team-row--loser {
+  opacity: 0.38;
+}
+
+:root.dark .team-row--winner {
+  background: rgba(16,185,129,0.08);
+}
+
+/* ── Team avatar ──────────────────────────────────────────── */
+.team-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+}
+
+:root.dark .team-avatar {
+  background: #1f2937;
+  border-color: rgba(255,255,255,0.08);
+}
+
+.team-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.team-avatar__initial {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+/* ── Team name ────────────────────────────────────────────── */
+.team-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+:root.dark .team-name {
+  color: #f3f4f6;
+}
+
+.team-name--tbd {
+  color: #9ca3af;
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* ── Score area ───────────────────────────────────────────── */
+.team-score-area {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.sub-scores {
+  font-size: 0.6rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.pen-score {
+  font-size: 0.6rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.score {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #9ca3af;
+  min-width: 1.25rem;
+  text-align: center;
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  border-radius: 5px;
+  padding: 0.1rem 0.35rem;
+  line-height: 1.4;
+}
+
+:root.dark .score {
+  color: #6b7280;
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.06);
+}
+
+.score--active {
+  color: #374151;
+}
+
+:root.dark .score--active {
+  color: #e5e7eb;
+}
+
+.score--winner {
+  color: #059669 !important;
+  background: rgba(16,185,129,0.08) !important;
+  border-color: rgba(16,185,129,0.2) !important;
+}
+
+/* ── Team divider ─────────────────────────────────────────── */
+.team-divider {
+  height: 1px;
+  background: #f3f4f6;
+  margin: 0 0.6rem;
+}
+
+:root.dark .team-divider {
+  background: rgba(255,255,255,0.05);
+}
+
+/* ── Match footer ─────────────────────────────────────────── */
+.match-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.6rem;
+  background: #f9fafb;
+  border-top: 1px solid #f3f4f6;
+  gap: 0.5rem;
+}
+
+:root.dark .match-footer {
+  background: rgba(255,255,255,0.02);
+  border-top-color: rgba(255,255,255,0.04);
+}
+
+/* status chips */
+.status-live,
+.status-done,
+.status-warn,
+.status-sched {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-live  { color: #f59e0b; }
+.status-done  { color: #10b981; }
+.status-warn  { color: #f59e0b; }
+.status-sched { color: #6b7280; }
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* ── Action buttons ───────────────────────────────────────── */
+.match-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.action-btn--start {
+  background: rgba(16,185,129,0.12);
+  color: #059669;
+  border-color: rgba(16,185,129,0.2);
+}
+
+.action-btn--start:hover:not(:disabled) {
+  background: rgba(16,185,129,0.2);
+}
+
+.action-btn--control {
+  background: rgba(245,158,11,0.12);
+  color: #d97706;
+  border-color: rgba(245,158,11,0.2);
+}
+
+.action-btn--control:hover {
+  background: rgba(245,158,11,0.2);
+}
+
+.action-btn--disabled {
+  background: rgba(107,114,128,0.08);
+  color: #9ca3af;
+  border-color: rgba(107,114,128,0.12);
+  cursor: default;
+}
+
+/* ── Connectors ───────────────────────────────────────────── */
 .connector-column {
   display: grid;
   grid-template-rows: repeat(var(--total-rows), 1fr);
-  width: 48px;
+  width: 52px;
   flex-shrink: 0;
 }
 
@@ -678,179 +840,92 @@ const finalColumnOffset = computed(() => {
 }
 
 .connector-line {
-  stroke: #4b5563; /* gray-600 */
-  stroke-width: 2;
+  stroke: #e5e7eb;
+  stroke-width: 1.5;
   fill: none;
   vector-effect: non-scaling-stroke;
 }
+
 :root.dark .connector-line {
-  stroke: #9ca3af; /* gray-400 */
+  stroke: rgba(255,255,255,0.1);
 }
 
-.bracket-match {
-  width: 100%;
-  background: var(--color-gray-50);
-  border: 1px solid var(--color-gray-200);
-  border-radius: 0.5rem;
-  overflow: hidden;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+/* ── 3rd place ────────────────────────────────────────────── */
+.third-place-section {
+  margin-top: 1rem;
+  margin-left: calc(var(--offset-columns) * (220px + 52px));
+  min-width: 220px;
+  max-width: 220px;
 }
 
-.bracket-match:hover {
-  border-color: var(--color-primary-400);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-:root.dark .bracket-match {
-  background: var(--color-gray-800);
-  border-color: var(--color-gray-700);
-}
-
-:root.dark .bracket-match:hover {
-  border-color: var(--color-primary-500);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.bracket-team {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--color-gray-200);
-  transition: background-color 0.2s ease;
-}
-
-.bracket-team:last-of-type {
-  border-bottom: none;
-}
-
-:root.dark .bracket-team {
-  border-bottom-color: var(--color-gray-700);
-}
-
-.bracket-team-info {
+.third-place-label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.bracket-seed {
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: var(--color-gray-400);
-  background: var(--color-gray-200);
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  flex-shrink: 0;
-}
-
-:root.dark .bracket-seed {
-  background: var(--color-gray-700);
-  color: var(--color-gray-400);
-}
-
-.bracket-team-name {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-gray-900);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 110px;
-}
-
-:root.dark .bracket-team-name {
-  color: var(--color-white);
-}
-
-.bracket-score {
-  font-size: 0.875rem;
+  gap: 0.375rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  color: var(--color-gray-600);
-  min-width: 1.5rem;
-  text-align: center;
-  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+  margin-bottom: 0.5rem;
 }
 
-:root.dark .bracket-score {
-  color: var(--color-gray-300);
-}
-
-/* Winner/Loser styling */
-.bracket-winner {
-  background: var(--color-success-50);
-}
-
-.bracket-winner .bracket-team-name {
-  color: var(--color-success-700);
-  font-weight: 600;
-}
-
-.bracket-winner .bracket-score {
-  color: var(--color-success-700);
-}
-
-:root.dark .bracket-winner {
-  background: rgba(34, 197, 94, 0.15);
-}
-
-:root.dark .bracket-winner .bracket-team-name,
-:root.dark .bracket-winner .bracket-score {
-  color: var(--color-success-400);
-}
-
-.bracket-loser {
-  opacity: 0.6;
-}
-
-.bracket-loser .bracket-team-name {
-  text-decoration: line-through;
-}
-
-.bracket-status {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem;
-  background: var(--color-gray-100);
-}
-
-:root.dark .bracket-status {
-  background: var(--color-gray-900);
-}
-
-/* Responsive adjustments */
+/* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 768px) {
   .bracket-header,
   .matches-column {
-    min-width: 140px;
+    min-width: 160px;
   }
-  
+
   .header-spacer,
   .connector-column {
-    width: 24px;
+    width: 32px;
   }
-  
-  .bracket-team {
-    padding: 0.375rem 0.5rem;
-  }
-  
-  .bracket-team-name {
+
+  .team-name {
     font-size: 0.75rem;
-    max-width: 75px;
   }
-  
-  .bracket-score {
-    font-size: 0.8125rem;
-  }
-  
+
   .third-place-section {
-    margin-left: calc(var(--offset-columns) * (140px + 24px));
-    min-width: 140px;
-    max-width: 140px;
+    margin-left: calc(var(--offset-columns) * (160px + 32px));
+    min-width: 160px;
+    max-width: 160px;
   }
+}
+
+/* ── Match info (time & venue) ────────────────────────────── */
+.match-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  background: #f9fafb;
+  border-top: 1px solid #f3f4f6;
+}
+
+:root.dark .match-info {
+  background: rgba(255,255,255,0.02);
+  border-top-color: rgba(255,255,255,0.04);
+}
+
+.match-info__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.575rem;
+  font-weight: 500;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.match-info__icon {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 </style>
