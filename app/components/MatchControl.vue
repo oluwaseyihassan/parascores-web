@@ -43,6 +43,7 @@ const loadingPlayers = ref(false)
 const matchEvents = ref<MatchEvent[]>([])
 const loadingEvents = ref(false)
 const showEventsCollapsible = ref(true)
+const showScheduleCollapsible = ref(false)
 const showPenaltyCollapsible = ref(true)
 const showPenaltyOverride = ref(false)
 const errorMessage = ref<string | null>(null)
@@ -122,6 +123,7 @@ watch(() => props.open, async (isOpen) => {
     errorMessage.value = null
     selectedFixture.value = { ...props.fixture }
     matchVenue.value = props.fixture.venue || ''
+    showScheduleCollapsible.value = props.fixture.status === 'SCHEDULED'
     if (props.fixture.startTime) {
       // Format correctly for native comparison
       const date = new Date(props.fixture.startTime)
@@ -1092,11 +1094,14 @@ const downloadGraphic = async () => {
 
             <!-- Schedule -->
             <div v-if="['SCHEDULED', 'LIVE', 'COMPLETED'].includes(selectedFixture.status)" class="mc-section">
-              <div class="mc-section__head">
-                <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 text-emerald-500" />
-                <span>Schedule</span>
-              </div>
-              <div class="mc-section__body">
+              <button class="mc-section__toggle" @click="showScheduleCollapsible = !showScheduleCollapsible">
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Schedule</span>
+                </div>
+                <UIcon :name="showScheduleCollapsible ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" class="w-4 h-4 text-gray-400" />
+              </button>
+              <div v-if="showScheduleCollapsible" class="mc-section__body">
                 <div class="flex flex-col sm:flex-row flex-wrap gap-2">
                   <UPopover class="flex-1 min-w-0">
                     <UButton variant="outline" color="neutral" icon="i-heroicons-calendar"
@@ -1246,7 +1251,7 @@ const downloadGraphic = async () => {
           <div class="mc-action-bar">
             <!-- Primary action -->
             <div class="mc-action-bar__primary">
-              <template v-if="selectedFixture.status === 'SCHEDULED'">
+              <template v-if="selectedFixture.status === 'SCHEDULED' && selectedFixture.startTime">
                 <button
                   v-if="!isLeg2 || leg1Completed"
                   class="mc-primary-btn mc-primary-btn--start"
