@@ -901,10 +901,25 @@ const visibilityLabels: Record<Visibility, { label: string; icon: string }> = {
 const PLACEHOLDER_LOGO = 'https://res.cloudinary.com/djsnerfzp/image/upload/v1769695792/parascores_logo_placeholder.png'
 const PLACEHOLDER_BANNER = 'https://res.cloudinary.com/djsnerfzp/image/upload/v1769696842/parascores_banner_placeholder.png'
 
+const showTodayOnly = ref(false)
+
+const hasTodayFixtures = computed(() => {
+  const todayStr = new Date().toLocaleDateString('en-CA')
+  return fixtures.value.some(f => f.startTime && new Date(f.startTime).toLocaleDateString('en-CA') === todayStr)
+})
+
 // Accordion items for fixtures
 const accordionItems = computed(() => {
   return rounds.value.map(round => {
-    const roundFixtures = fixturesByRound.value[round] || []
+    let roundFixtures = fixturesByRound.value[round] || []
+    
+    if (showTodayOnly.value) {
+      const todayStr = new Date().toLocaleDateString('en-CA')
+      roundFixtures = roundFixtures.filter(f => f.startTime && new Date(f.startTime).toLocaleDateString('en-CA') === todayStr)
+    }
+    
+    if (showTodayOnly.value && roundFixtures.length === 0) return null
+
     const total = roundFixtures.length
     const completed = roundFixtures.filter(f => f.status === FixtureStatus.COMPLETED).length
     const live = roundFixtures.filter(f => f.status === FixtureStatus.LIVE).length
@@ -929,13 +944,21 @@ const accordionItems = computed(() => {
       color: 'neutral' as const,
       variant: 'soft' as const
     }
-  })
+  }).filter((item) => item !== null) as Array<{ label: string; stats: string; fixtures: Fixture[]; defaultOpen: boolean; color: any; variant: any }>
 })
 
 // Group-stage-only accordion items (for hybrid tournaments)
 const groupStageAccordionItems = computed(() => {
   return groupStageRounds.value.map(round => {
-    const roundFixtures = groupStageFixturesByRound.value[round] || []
+    let roundFixtures = groupStageFixturesByRound.value[round] || []
+    
+    if (showTodayOnly.value) {
+      const todayStr = new Date().toLocaleDateString('en-CA')
+      roundFixtures = roundFixtures.filter(f => f.startTime && new Date(f.startTime).toLocaleDateString('en-CA') === todayStr)
+    }
+    
+    if (showTodayOnly.value && roundFixtures.length === 0) return null
+
     const total = roundFixtures.length
     const completed = roundFixtures.filter(f => f.status === FixtureStatus.COMPLETED).length
     const live = roundFixtures.filter(f => f.status === FixtureStatus.LIVE).length
@@ -960,7 +983,7 @@ const groupStageAccordionItems = computed(() => {
       color: 'neutral' as const,
       variant: 'soft' as const
     }
-  })
+  }).filter((item) => item !== null) as Array<{ label: string; stats: string; fixtures: Fixture[]; defaultOpen: boolean; color: any; variant: any }>
 })
 
 // Accordion items for the pure knockout bracket fixture list
@@ -969,9 +992,14 @@ const knockoutAccordionItems = computed(() => {
   const items: Array<{ label: string; stats: string; fixtures: Fixture[] }> = []
 
   for (const round of rounds.value) {
-    const roundFixtures = (fixturesByRound.value[round] || [])
+    let roundFixtures = (fixturesByRound.value[round] || [])
       .slice()
       .sort((a, b) => a.matchNumber - b.matchNumber)
+
+    if (showTodayOnly.value) {
+      const todayStr = new Date().toLocaleDateString('en-CA')
+      roundFixtures = roundFixtures.filter(f => f.startTime && new Date(f.startTime).toLocaleDateString('en-CA') === todayStr)
+    }
 
     // Group by roundName within this round (e.g. "Semi Final - Leg 1" / "Semi Final - Leg 2")
     const byName = new Map<string, Fixture[]>()
@@ -1017,9 +1045,14 @@ const hybridKnockoutAccordionItems = computed(() => {
   const items: Array<{ label: string; stats: string; fixtures: Fixture[] }> = []
 
   for (const round of knockoutRounds.value) {
-    const roundFixtures = (knockoutFixturesByRound.value[round] || [])
+    let roundFixtures = (knockoutFixturesByRound.value[round] || [])
       .slice()
       .sort((a, b) => a.matchNumber - b.matchNumber)
+
+    if (showTodayOnly.value) {
+      const todayStr = new Date().toLocaleDateString('en-CA')
+      roundFixtures = roundFixtures.filter(f => f.startTime && new Date(f.startTime).toLocaleDateString('en-CA') === todayStr)
+    }
 
     const byName = new Map<string, Fixture[]>()
     for (const f of roundFixtures) {
@@ -2616,6 +2649,15 @@ const copyTournamentLink = async () => {
                       </UBadge>
                     </div>
                     <div class="flex items-center gap-1">
+                      <UButton
+                        v-if="fixtures.length"
+                        size="xs"
+                        :variant="showTodayOnly ? 'solid' : 'ghost'"
+                        :color="showTodayOnly ? 'primary' : 'neutral'"
+                        icon="i-heroicons-calendar"
+                        @click="showTodayOnly = !showTodayOnly"
+                        label="Today"
+                      />
                       <UButton 
                         v-if="fixtures.length"
                         size="xs" 
@@ -2677,6 +2719,15 @@ const copyTournamentLink = async () => {
                   </p>
                 </div>
                 
+                <!-- Today Empty State -->
+                <div v-else-if="showTodayOnly && !hasTodayFixtures" class="py-8 text-center text-gray-400">
+                  <UIcon name="i-heroicons-calendar" class="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No fixtures scheduled for today</p>
+                  <UButton size="sm" variant="soft" color="primary" class="mt-4" @click="showTodayOnly = false">
+                    View All Fixtures
+                  </UButton>
+                </div>
+                
                 <!-- Fixtures Display -->
                 <template v-else>
                   <!-- Knockout Fixture List + Bracket for knockout tournaments -->
@@ -2723,6 +2774,7 @@ const copyTournamentLink = async () => {
 
                     <!-- Read-only bracket (below list) -->
                     <KnockoutBracket
+                      v-if="!showTodayOnly"
                       :fixtures-by-round="fixturesByRound"
                       :rounds="rounds"
                       :get-round-display-name="fixtureStore.getRoundDisplayName"
@@ -2843,6 +2895,7 @@ const copyTournamentLink = async () => {
 
                       <!-- Read-only bracket -->
                       <KnockoutBracket
+                        v-if="!showTodayOnly"
                         :fixtures-by-round="knockoutFixturesByRound"
                         :rounds="knockoutRounds"
                         :get-round-display-name="fixtureStore.getKnockoutRoundDisplayName"
