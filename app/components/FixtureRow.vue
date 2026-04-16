@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Fixture } from '~/types'
 import { FixtureStatus } from '~/types'
+import { computed } from 'vue'
 
-defineProps<{
+const props = defineProps<{
   fixture: Fixture
   updatingMatch?: boolean
 }>()
@@ -25,20 +26,33 @@ const statusDot: Record<string, string> = {
   SCHEDULED: 'bg-gray-500',
   CANCELLED: 'bg-gray-600',
 }
+
+const hasActions = computed(() => {
+  return props.fixture.status !== FixtureStatus.CANCELLED
+})
 </script>
 
 <template>
-  <div class="fixture-row group">
-    <!-- Date -->
-    <div class="fixture-date">
-      <span v-if="fixture.startTime">
-        {{ new Date(fixture.startTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) }}
-      </span>
-      <span v-else class="fixture-unscheduled">TBD</span>
+  <div class="fixture-card group">
+    <!-- Top Row: Date and Status -->
+    <div class="fixture-card__header">
+      <div class="fixture-date">
+        <span v-if="fixture.startTime">
+          {{ new Date(fixture.startTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) }}
+          <span class="opacity-50">·</span>
+          {{ new Date(fixture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) }}
+        </span>
+        <span v-else class="fixture-unscheduled">TBD</span>
+      </div>
+      
+      <div v-if="fixture.status !== FixtureStatus.SCHEDULED || fixture.startTime" class="fixture-status" :class="statusColor[fixture.status]">
+        <span class="fixture-status__dot" :class="statusDot[fixture.status]" />
+        <span class="fixture-status__label">{{ fixture.status }}</span>
+      </div>
     </div>
 
-    <!-- Teams + score -->
-    <div class="fixture-main">
+    <!-- Middle Row: Teams + score -->
+    <div class="fixture-card__body">
       <!-- Home -->
       <div class="fixture-team fixture-team--home">
         <span class="fixture-team__name">{{ fixture.homeTeam?.customName || 'TBD' }}</span>
@@ -68,22 +82,15 @@ const statusDot: Record<string, string> = {
       </div>
     </div>
 
-    <!-- Status + actions -->
-    <div class="fixture-actions">
-      <!-- Status chip -->
-      <div v-if="fixture.status !== FixtureStatus.SCHEDULED || fixture.startTime" class="fixture-status" :class="statusColor[fixture.status]">
-        <span class="fixture-status__dot" :class="statusDot[fixture.status]" />
-        <span class="fixture-status__label">{{ fixture.status }}</span>
-      </div>
-
-      <!-- Action buttons -->
+    <!-- Bottom Row: Actions -->
+    <div v-if="hasActions" class="fixture-card__footer">
       <button
-        v-if="fixture.status === FixtureStatus.SCHEDULED && fixture.homeTeamId && fixture.awayTeamId"
+        v-if="fixture.status === FixtureStatus.SCHEDULED && fixture.homeTeamId && fixture.awayTeamId && fixture.startTime"
         class="fx-btn fx-btn--start"
         :disabled="updatingMatch"
         @click.stop="emit('start', fixture)"
       >
-        <UIcon name="i-heroicons-play" class="w-3 h-3" />
+        <UIcon name="i-heroicons-play" class="w-4 h-4" />
         <span>Start</span>
       </button>
 
@@ -92,73 +99,96 @@ const statusDot: Record<string, string> = {
         class="fx-btn fx-btn--edit"
         @click.stop="emit('control', fixture)"
       >
-        <UIcon name="i-heroicons-pencil" class="w-3 h-3" />
-        <span class="hidden sm:inline">Edit</span>
+        <UIcon name="i-heroicons-pencil" class="w-4 h-4" />
+        <span>Edit</span>
       </button>
 
       <button
-        v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED"
+        v-if="fixture.status === FixtureStatus.LIVE"
         class="fx-btn fx-btn--control"
         @click.stop="emit('control', fixture)"
       >
-        <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />
-        <span>Control</span>
+        <UIcon name="i-heroicons-adjustments-horizontal" class="w-4 h-4" />
+        <span>Control Match</span>
+      </button>
+
+      <button
+        v-if="fixture.status === FixtureStatus.COMPLETED"
+        class="fx-btn fx-btn--details"
+        @click.stop="emit('control', fixture)"
+      >
+        <UIcon name="i-heroicons-clipboard-document-list" class="w-4 h-4" />
+        <span>Match Details</span>
       </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* ── Row ─────────────────────────────────────────────────── */
-.fixture-row {
-  display: grid;
-  grid-template-columns: 36px 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 10px 10px 12px;
-  border-radius: 10px;
+/* ── Card Container ────────────────────────────────────────── */
+.fixture-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 12px;
   background: #f9fafb;
   border: 1px solid #f3f4f6;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
   position: relative;
 }
 
-.fixture-row:hover {
+.fixture-card:hover {
   border-color: #10b981;
   background: #f0fdf8;
+  transform: translateY(-1px);
 }
 
-:root.dark .fixture-row {
+:root.dark .fixture-card {
   background: rgba(255,255,255,0.03);
   border-color: rgba(255,255,255,0.05);
 }
 
-:root.dark .fixture-row:hover {
+:root.dark .fixture-card:hover {
   background: rgba(16,185,129,0.04);
   border-color: rgba(16,185,129,0.25);
 }
 
-/* ── Date column ─────────────────────────────────────────── */
+/* ── Top Row (Header) ────────────────────────────────────── */
+.fixture-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  padding-bottom: 12px;
+}
+
+:root.dark .fixture-card__header {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
 .fixture-date {
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   font-weight: 600;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+:root.dark .fixture-date {
   color: #9ca3af;
-  text-align: center;
-  line-height: 1.3;
-  white-space: pre-line;
 }
 
 .fixture-unscheduled {
-  display: inline-block;
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #f59e0b;
   background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.25);
   border-radius: 4px;
-  padding: 1px 4px;
-  line-height: 1.6;
+  padding: 2px 6px;
 }
 
 :root.dark .fixture-unscheduled {
@@ -167,20 +197,37 @@ const statusDot: Record<string, string> = {
   border-color: rgba(251, 191, 36, 0.2);
 }
 
-/* ── Main (teams + score) ────────────────────────────────── */
-.fixture-main {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-/* ── Team ────────────────────────────────────────────────── */
-.fixture-team {
+.fixture-status {
   display: flex;
   align-items: center;
   gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fixture-status__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Middle Row (Body) ───────────────────────────────────── */
+.fixture-card__body {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* ── Teams ───────────────────────────────────────────────── */
+.fixture-team {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -195,7 +242,7 @@ const statusDot: Record<string, string> = {
 }
 
 .fixture-team__name {
-  font-size: 0.8125rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #111827;
   white-space: nowrap;
@@ -209,8 +256,8 @@ const statusDot: Record<string, string> = {
 }
 
 .fixture-team__avatar {
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   flex-shrink: 0;
   background: #e5e7eb;
@@ -219,6 +266,7 @@ const statusDot: Record<string, string> = {
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 :root.dark .fixture-team__avatar {
@@ -227,7 +275,7 @@ const statusDot: Record<string, string> = {
 }
 
 .fixture-team__initial {
-  font-size: 0.625rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: #6b7280;
 }
@@ -236,15 +284,16 @@ const statusDot: Record<string, string> = {
 .fixture-scorebox {
   display: flex;
   align-items: center;
-  gap: 3px;
+  justify-content: center;
+  gap: 8px;
   flex-shrink: 0;
+  min-width: 60px;
 }
 
 .fixture-score {
-  font-size: 1rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: #111827;
-  min-width: 18px;
   text-align: center;
   line-height: 1;
 }
@@ -254,69 +303,48 @@ const statusDot: Record<string, string> = {
 }
 
 .fixture-score-sep {
-  font-size: 0.75rem;
+  font-size: 1rem;
   color: #9ca3af;
   font-weight: 400;
 }
 
 .fixture-vs {
-  font-size: 0.7rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #9ca3af;
   letter-spacing: 0.03em;
-  padding: 0 2px;
+  background: rgba(156, 163, 175, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
 }
 
-/* ── Actions ─────────────────────────────────────────────── */
-.fixture-actions {
+:root.dark .fixture-vs {
+  background: rgba(156, 163, 175, 0.15);
+}
+
+/* ── Bottom Row (Footer) ─────────────────────────────────── */
+.fixture-card__footer {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
 }
 
-/* status chip */
-.fixture-status {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.fixture-status__dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.fixture-status__label {
-  display: none;
-}
-
-@media (min-width: 480px) {
-  .fixture-status__label {
-    display: inline;
-  }
-}
-
-/* action buttons */
 .fx-btn {
-  display: inline-flex;
+  flex: 1;
+  display: flex;
   align-items: center;
-  gap: 3px;
-  font-size: 0.6rem;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.8rem;
   font-weight: 600;
-  padding: 0.22rem 0.5rem;
-  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.15s;
-  white-space: nowrap;
-  line-height: 1.5;
+  transition: all 0.2s;
+  line-height: 1.2;
 }
 
 .fx-btn--start {
@@ -324,54 +352,74 @@ const statusDot: Record<string, string> = {
   color: #059669;
   border-color: rgba(16,185,129,0.2);
 }
-.fx-btn--start:hover:not(:disabled) { background: rgba(16,185,129,0.18); }
+.fx-btn--start:hover:not(:disabled) { 
+  background: rgba(16,185,129,0.18); 
+  border-color: rgba(16,185,129,0.3);
+}
 .fx-btn--start:disabled { opacity: 0.5; cursor: default; }
 
 .fx-btn--edit {
   background: rgba(107,114,128,0.08);
-  color: #6b7280;
-  border-color: rgba(107,114,128,0.12);
+  color: #4b5563;
+  border-color: rgba(107,114,128,0.15);
 }
-.fx-btn--edit:hover { background: rgba(107,114,128,0.14); }
+.fx-btn--edit:hover { 
+  background: rgba(107,114,128,0.15); 
+  border-color: rgba(107,114,128,0.25);
+}
+:root.dark .fx-btn--edit {
+  color: #9ca3af;
+}
 
 .fx-btn--control {
   background: rgba(245,158,11,0.1);
   color: #d97706;
   border-color: rgba(245,158,11,0.2);
 }
-.fx-btn--control:hover { background: rgba(245,158,11,0.18); }
+.fx-btn--control:hover { 
+  background: rgba(245,158,11,0.18); 
+  border-color: rgba(245,158,11,0.3);
+}
 
+.fx-btn--details {
+  background: rgba(99, 102, 241, 0.1); /* Indigo */
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.2);
+}
+.fx-btn--details:hover { 
+  background: rgba(99, 102, 241, 0.18); 
+  border-color: rgba(99, 102, 241, 0.3);
+}
+:root.dark .fx-btn--details {
+  color: #818cf8;
+}
+
+/* Mobile Adjustments */
 @media (max-width: 480px) {
-  .fixture-row {
-    grid-template-columns: auto 1fr;
-    grid-template-rows: auto auto;
-    gap: 4px 8px;
+  .fixture-card__body {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
-
-  /* Teams + score spans full width on row 1 */
-  .fixture-main {
-    grid-column: 1 / -1;
-    grid-row: 1;
-  }
-
-  /* Date moves to row 2, left side */
-  .fixture-date {
-    grid-column: 1;
-    grid-row: 2;
-    align-self: center;
+  
+  .fixture-team {
+    justify-content: flex-start;
     text-align: left;
   }
-
-  /* Actions move to row 2, right side */
-  .fixture-actions {
-    grid-column: 2;
-    grid-row: 2;
-    justify-content: flex-end;
+  
+  .fixture-team--home {
+    flex-direction: row-reverse;
   }
-
-  /* Always show the status label on mobile */
-  .fixture-status__label {
-    display: inline;
+  
+  .fixture-scorebox {
+    margin: 8px 0;
+  }
+  
+  .fixture-card__footer {
+    flex-direction: column;
+  }
+  
+  .fx-btn {
+    width: 100%;
   }
 }
 </style>
