@@ -329,6 +329,8 @@ const hasPenalties = computed(() => {
 const needsPenaltyWarning = computed(() => {
   if (!selectedFixture.value) return false
   if (selectedFixture.value.status !== 'COMPLETED') return false
+  // Only show for knockout stage matches — draws are valid in group stage
+  if (selectedFixture.value.stage !== FixtureStage.KNOCKOUT) return false
   if (!isScoreTiedOrAggregateTied.value) return false
   
   // Check if penalties resolve the tie
