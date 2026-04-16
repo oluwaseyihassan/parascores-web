@@ -14,6 +14,8 @@ const setTheme = (theme: 'light' | 'dark' | 'system') => {
   colorMode.preference = theme
 }
 
+const sidebarCollapsed = ref(false)
+
 onMounted(() => {
   if (authStore.isAuthenticated && tournamentStore.followedTournaments.length === 0) {
     tournamentStore.fetchFollowedTournaments()
@@ -91,17 +93,35 @@ async function handleLogout() {
     <AuthLoadingOverlay :show="authLoading" />
 
     <!-- Left Sidebar (Desktop) -->
-    <aside class="hidden lg:flex flex-col w-72 border-r border-gray-200 dark:border-white/[0.05] bg-white dark:bg-[#050505] p-6 h-screen overflow-y-auto hide-scrollbar shrink-0">
-      <div class="mb-8">
-        <NuxtLink to="/" class="flex items-center group">
+    <aside 
+      :class="[sidebarCollapsed ? 'w-20 p-4' : 'w-72 p-6']"
+      class="hidden lg:flex flex-col border-r border-gray-200 dark:border-white/[0.05] bg-white dark:bg-[#050505] h-screen overflow-y-auto hide-scrollbar shrink-0 transition-all duration-300 ease-in-out relative"
+    >
+      <div class="flex items-center justify-between mb-8">
+        <NuxtLink v-if="!sidebarCollapsed" to="/" class="flex items-center group overflow-hidden">
           <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-9 w-auto object-contain" />
         </NuxtLink>
+        <UButton 
+          :icon="sidebarCollapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-left'" 
+          variant="ghost" 
+          color="neutral" 
+          size="sm"
+          class="hover:bg-gray-100 dark:hover:bg-white/10"
+          :class="sidebarCollapsed ? 'mx-auto' : ''"
+          @click="sidebarCollapsed = !sidebarCollapsed" 
+        />
       </div>
 
       <!-- Followed Tournaments Card -->
       <div class="bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] rounded-2xl flex-1 overflow-hidden flex flex-col min-h-0">
-        <div class="p-4 border-b border-gray-200 dark:border-white/[0.05] bg-gray-100 dark:bg-[#080808]">
+        <div 
+          v-if="!sidebarCollapsed"
+          class="p-4 border-b border-gray-200 dark:border-white/[0.05] bg-gray-100 dark:bg-[#080808]"
+        >
            <h3 class="font-bold text-sm text-gray-900 dark:text-gray-300">Followed Tournaments</h3>
+        </div>
+        <div v-else class="p-3 border-b border-gray-200 dark:border-white/[0.05] flex justify-center">
+           <UIcon name="i-heroicons-heart" class="w-5 h-5 text-emerald-500" />
         </div>
         
         <div class="flex-1 overflow-y-auto p-2 space-y-1 hide-scrollbar">
@@ -109,18 +129,29 @@ async function handleLogout() {
              <div v-for="i in 3" :key="i" class="h-8 bg-white/5 rounded-lg animate-pulse"></div>
           </div>
           <div v-else-if="tournamentStore.followedTournaments.length === 0" class="p-4 text-center mt-4">
-             <p class="text-xs text-gray-500">You aren't following any tournaments.</p>
+             <p v-if="!sidebarCollapsed" class="text-xs text-gray-500">You aren't following any tournaments.</p>
+             <UIcon v-else name="i-heroicons-information-circle" class="w-5 h-5 mx-auto text-gray-500" />
           </div>
-          <NuxtLink
-            v-else
-            v-for="t in tournamentStore.followedTournaments"
-            :key="t.id"
-            :to="toTournament(t as any)"
-            class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-200 dark:hover:bg-white/5 transition-colors group"
-          >
-            <UAvatar :src="t.logoUrl || t.bannerUrl || undefined" :alt="t.name" size="sm" class="shrink-0 bg-gray-200 dark:bg-white/5" />
-            <span class="text-sm font-bold text-gray-600 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white truncate">{{ t.name }}</span>
-          </NuxtLink>
+          <template v-else>
+            <UTooltip 
+              v-for="t in tournamentStore.followedTournaments"
+              :key="t.id"
+              :text="t.name"
+              :content="{ side: 'right' }"
+              :disabled="!sidebarCollapsed"
+            >
+              <NuxtLink
+                :to="toTournament(t as any)"
+                class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-200 dark:hover:bg-white/5 transition-colors group"
+                :class="sidebarCollapsed ? 'justify-center' : ''"
+              >
+                <UAvatar :src="t.logoUrl || t.bannerUrl || undefined" :alt="t.name" size="sm" class="shrink-0 bg-gray-200 dark:bg-white/5" />
+                <span v-if="!sidebarCollapsed" class="text-sm font-bold text-gray-600 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white truncate">
+                  {{ t.name }}
+                </span>
+              </NuxtLink>
+            </UTooltip>
+          </template>
         </div>
       </div>
 
@@ -129,8 +160,13 @@ async function handleLogout() {
     <!-- Main Wrapper -->
     <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-black relative">
       <!-- Top Bar -->
-      <header class="h-20 border-b border-gray-200 dark:border-white/[0.05] bg-white/80 dark:bg-black/80 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-40">
-        <div class="flex items-center gap-6 flex-1"></div>
+      <header class="h-14 border-b border-gray-200 dark:border-white/[0.05] bg-white/80 dark:bg-black/80 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-6 flex-1">
+          <NuxtLink to="/" class="flex items-center gap-2 group shrink-0">
+            <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-7 w-auto object-contain" />
+            <span class="font-black text-lg tracking-tighter text-gray-900 dark:text-white group-hover:text-emerald-500 transition-colors hidden sm:inline-block">ParaScores</span>
+          </NuxtLink>
+        </div>
 
         <div class="flex items-center gap-4">
            
@@ -143,7 +179,7 @@ async function handleLogout() {
                      v-if="user?.picture" 
                      :src="user.picture" 
                      size="sm" 
-                     class="ring-1 ring-emerald-500/30 shrink-0 cursor-pointer"
+                     class="shrink-0 cursor-pointer"
                    />
                    <UAvatar 
                      v-else 
@@ -172,7 +208,7 @@ async function handleLogout() {
       </main>
 
       <!-- Mobile Bottom Nav -->
-      <nav class="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/95 dark:bg-black/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/[0.05] flex items-center justify-around px-4 z-50">
+      <nav class="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-black/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/[0.05] flex items-center justify-around px-4 z-50">
         <NuxtLink 
           v-for="link in navLinks" 
           :key="link.to" 
