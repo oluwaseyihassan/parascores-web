@@ -71,7 +71,7 @@ const statusDot: Record<string, string> = {
     <!-- Status + actions -->
     <div class="fixture-actions">
       <!-- Status chip -->
-      <div class="fixture-status" :class="statusColor[fixture.status]">
+      <div v-if="fixture.status !== FixtureStatus.SCHEDULED || fixture.startTime" class="fixture-status" :class="statusColor[fixture.status]">
         <span class="fixture-status__dot" :class="statusDot[fixture.status]" />
         <span class="fixture-status__label">{{ fixture.status }}</span>
       </div>
