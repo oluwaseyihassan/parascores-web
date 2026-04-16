@@ -30,7 +30,9 @@ const venues = ref<Venue[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const { toMain, toTournament } = useHost()
-const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats'>('info')
+const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats'>(
+  (route.query.tab as any) || 'info'
+)
 const selectedFixtureId = ref<string | null>(null)
 const selectedParticipantId = ref<string | null>(null)
 
@@ -58,9 +60,16 @@ const loadPlayerStats = async () => {
   }
 }
 
-watch(activeTab, () => {
+watch(activeTab, (newTab) => {
   selectedFixtureId.value = null
   selectedParticipantId.value = null
+  router.replace({ query: { ...route.query, tab: newTab } })
+})
+
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && newTab !== activeTab.value) {
+    activeTab.value = newTab as any
+  }
 })
 
 // Establish Live Stream connection to receive realtime push notifications
@@ -210,6 +219,21 @@ const isHybrid = computed(() => tournament.value?.type === TournamentType.HYBRID
 const showBracketTab = computed(() => {
   if (!tournament.value) return false
   return tournament.value.type === TournamentType.KNOCKOUT || tournament.value.type === TournamentType.HYBRID
+})
+
+// Validate active tab to prevent forced routing to unavailable tabs
+watchEffect(() => {
+  if (!tournament.value || loading.value) return
+  
+  const validTabs = ['info', 'fixtures', 'standings', 'bracket', 'participants', 'stats']
+  if (!validTabs.includes(activeTab.value)) {
+    activeTab.value = 'info'
+  }
+  
+  if (activeTab.value === 'bracket' && !showBracketTab.value) activeTab.value = 'info'
+  else if (activeTab.value === 'standings' && standings.value.length === 0) activeTab.value = 'info'
+  else if (activeTab.value === 'participants' && participants.value.length === 0) activeTab.value = 'info'
+  else if (activeTab.value === 'stats' && !isTeams.value) activeTab.value = 'info'
 })
 
 // Follow Feature
