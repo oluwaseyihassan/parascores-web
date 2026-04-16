@@ -7,14 +7,14 @@ const props = defineProps<{
 }>()
 
 const columns = [
-  { accessorKey: 'position', header: 'Pos', meta: { class: { th: 'w-12 text-center', td: 'w-12 text-center' } } },
-  { accessorKey: 'participant', header: 'Team', meta: { class: { th: 'min-w-[150px]', td: 'min-w-[150px]' } } },
-  { accessorKey: 'played', header: 'P', meta: { class: { th: 'w-12 text-center', td: 'w-12 text-center' } } },
-  { accessorKey: 'wins', header: 'W', meta: { class: { th: 'w-12 text-center hidden sm:table-cell', td: 'w-12 text-center hidden sm:table-cell' } } },
-  { accessorKey: 'draws', header: 'D', meta: { class: { th: 'w-12 text-center hidden sm:table-cell', td: 'w-12 text-center hidden sm:table-cell' } } },
-  { accessorKey: 'losses', header: 'L', meta: { class: { th: 'w-12 text-center hidden sm:table-cell', td: 'w-12 text-center hidden sm:table-cell' } } },
-  { accessorKey: 'goalDiff', header: 'GD', meta: { class: { th: 'w-16 text-center hidden md:table-cell', td: 'w-16 text-center hidden md:table-cell' } } },
-  { accessorKey: 'points', header: 'Pts', meta: { class: { th: 'w-12 text-center font-bold', td: 'w-12 text-center font-bold' } } }
+  { accessorKey: 'position', header: 'Pos', meta: { class: { th: 'w-8 sm:w-12 text-center px-1 sm:px-3 text-[11px] sm:text-xs', td: 'w-8 sm:w-12 text-center px-1 sm:px-3 text-xs sm:text-sm' } } },
+  { accessorKey: 'participant', header: 'Team', meta: { class: { th: 'min-w-[100px] sm:min-w-[150px] px-1 sm:px-3 text-[11px] sm:text-xs', td: 'min-w-[100px] sm:min-w-[150px] px-1 sm:px-3' } } },
+  { accessorKey: 'played', header: 'P', meta: { class: { th: 'w-6 sm:w-12 text-center px-0.5 sm:px-3 text-[11px] sm:text-xs', td: 'w-6 sm:w-12 text-center px-0.5 sm:px-3 text-xs sm:text-sm' } } },
+  { accessorKey: 'wins', header: 'W', meta: { class: { th: 'w-6 sm:w-12 text-center px-0.5 sm:px-3 text-[11px] sm:text-xs', td: 'w-6 sm:w-12 text-center px-0.5 sm:px-3 text-xs sm:text-sm' } } },
+  { accessorKey: 'draws', header: 'D', meta: { class: { th: 'w-6 sm:w-12 text-center px-0.5 sm:px-3 text-[11px] sm:text-xs', td: 'w-6 sm:w-12 text-center px-0.5 sm:px-3 text-xs sm:text-sm' } } },
+  { accessorKey: 'losses', header: 'L', meta: { class: { th: 'w-6 sm:w-12 text-center px-0.5 sm:px-3 text-[11px] sm:text-xs', td: 'w-6 sm:w-12 text-center px-0.5 sm:px-3 text-xs sm:text-sm' } } },
+  { accessorKey: 'goalDiff', header: 'GD', meta: { class: { th: 'w-8 sm:w-16 text-center px-0.5 sm:px-3 text-[11px] sm:text-xs', td: 'w-8 sm:w-16 text-center px-0.5 sm:px-3 text-xs sm:text-sm' } } },
+  { accessorKey: 'points', header: 'Pts', meta: { class: { th: 'w-8 sm:w-12 text-center font-bold px-1 sm:px-3 text-[11px] sm:text-xs', td: 'w-8 sm:w-12 text-center font-bold px-1 sm:px-3 text-xs sm:text-sm' } } }
 ]
 
 // Helper to cast row type in template slots
