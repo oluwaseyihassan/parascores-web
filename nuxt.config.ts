@@ -27,17 +27,17 @@ export default defineNuxtConfig({
       icons: [
         {
           src: 'pwa-192x192.png',
-          sizes: '640x640',
+          sizes: '192x192',
           type: 'image/png'
         },
         {
           src: 'pwa-512x512.png',
-          sizes: '640x640',
+          sizes: '512x512',
           type: 'image/png'
         },
         {
           src: 'pwa-512x512.png',
-          sizes: '640x640',
+          sizes: '512x512',
           type: 'image/png',
           purpose: 'maskable'
         }
