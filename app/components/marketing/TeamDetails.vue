@@ -255,49 +255,57 @@ function getScoreBadgeClass(match: Fixture) {
             
             <div v-else class="divide-y" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
               <NuxtLink v-for="match in participantFixtures" :key="match.id" :to="toMain(`/t/${tournament.customName || tournament.id}/fixture/${match.id}`)"
-                  class="flex items-center justify-between p-4 md:p-5 transition-colors group hover:bg-white/[0.02]"
+                  class="block p-4 md:p-5 transition-colors group"
                   :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
                 
-                <div class="flex items-center gap-4 flex-1">
-                  <!-- Match Date -->
-                  <div class="hidden sm:flex flex-col items-center justify-center text-center w-24">
+                <!-- Mobile: Date above match row -->
+                <div class="sm:hidden flex items-center gap-2 mb-2.5">
+                  <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-500/80">{{ formatFullDate(match.startTime) }}</span>
+                  <span class="text-[11px]" :class="isDark ? 'text-gray-600' : 'text-gray-300'">·</span>
+                  <span class="text-[11px] font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ formatTime(match.startTime) }}</span>
+                  <span v-if="match.status === 'LIVE'" class="ml-auto text-[10px] font-bold text-emerald-500 uppercase tracking-widest animate-pulse">Live</span>
+                </div>
+
+                <div class="flex items-center gap-2 sm:gap-4">
+                  <!-- Desktop: Date column -->
+                  <div class="hidden sm:flex flex-col items-center justify-center text-center w-24 flex-shrink-0">
                      <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-500/80">{{ formatFullDate(match.startTime) }}</span>
                      <span class="text-[13px] font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ formatTime(match.startTime) }}</span>
                   </div>
                   
                   <!-- Home -->
-                  <div class="flex-1 flex justify-end items-center gap-3">
-                    <span class="text-sm font-semibold transition-colors truncate" :class="[match.homeTeamId === participant?.id ? (isDark ? 'text-white' : 'text-gray-900') : 'text-gray-500']">
+                  <div class="flex-1 flex justify-end items-center gap-1.5 sm:gap-3 min-w-0">
+                    <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="[match.homeTeamId === participant?.id ? (isDark ? 'text-white' : 'text-gray-900') : 'text-gray-500']">
                       {{ match.homeTeam?.customName || match.homeTeamPlaceholder || 'Home' }}
                     </span>
-                    <div class="w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border" :class="isDark ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border" :class="isDark ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'">
                       <img v-if="match.homeTeam?.logoUrl" :src="match.homeTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
                       <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.homeTeam?.customName || 'H').charAt(0) }}</span>
                     </div>
                   </div>
                   
                   <!-- Score -->
-                  <div class="flex-shrink-0 w-20 text-center">
+                  <div class="flex-shrink-0 w-14 sm:w-20 text-center">
                     <template v-if="match.status === 'COMPLETED' || match.status === 'LIVE'">
-                      <div class="inline-flex px-2 py-1 rounded min-w-[50px] justify-center text-sm font-bold tracking-wider whitespace-nowrap" :class="getScoreBadgeClass(match)">
+                      <div class="inline-flex px-1.5 sm:px-2 py-1 rounded min-w-[42px] sm:min-w-[50px] justify-center text-xs sm:text-sm font-bold tracking-wider whitespace-nowrap" :class="getScoreBadgeClass(match)">
                          {{ match.homeScore ?? 0 }} - {{ match.awayScore ?? 0 }}
                       </div>
                     </template>
                     <template v-else-if="match.status === 'CANCELLED'">
-                      <span class="text-xs text-red-500 font-bold">CANC</span>
+                      <span class="text-[10px] sm:text-xs text-red-500 font-bold">CANC</span>
                     </template>
                     <template v-else>
-                      <span class="text-gray-500 text-sm font-bold">- : -</span>
+                      <span class="text-gray-500 text-xs sm:text-sm font-bold">- : -</span>
                     </template>
                   </div>
                   
                   <!-- Away -->
-                  <div class="flex-1 flex justify-start items-center gap-3">
-                    <div class="w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border" :class="isDark ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'">
+                  <div class="flex-1 flex justify-start items-center gap-1.5 sm:gap-3 min-w-0">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border" :class="isDark ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'">
                       <img v-if="match.awayTeam?.logoUrl" :src="match.awayTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
                       <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.awayTeam?.customName || 'A').charAt(0) }}</span>
                     </div>
-                    <span class="text-sm font-semibold transition-colors truncate" :class="[match.awayTeamId === participant?.id ? (isDark ? 'text-white' : 'text-gray-900') : 'text-gray-500']">
+                    <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="[match.awayTeamId === participant?.id ? (isDark ? 'text-white' : 'text-gray-900') : 'text-gray-500']">
                       {{ match.awayTeam?.customName || match.awayTeamPlaceholder || 'Away' }}
                     </span>
                   </div>
