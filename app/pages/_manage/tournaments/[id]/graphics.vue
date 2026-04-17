@@ -30,6 +30,21 @@ const playerStats = ref<any>(null)
 const selectedStatType = ref<'both' | 'scorers' | 'assists'>('both')
 const selectedGroup = ref<string>('all')
 const selectedRound = ref<string | undefined>(undefined)
+const activeAccordion = ref<string[]>([])
+
+const getRoundPriority = (name: string | null) => {
+  if (!name) return 0
+  const n = name.toLowerCase()
+  if (n.includes('final')) {
+    if (n.includes('semi')) return 10
+    if (n.includes('quarter')) return 5
+    if (n.includes('third')) return 15
+    return 20 // Final is highest
+  }
+  if (n.includes('round of 16')) return 2
+  if (n.includes('round of 32')) return 1
+  return 0
+}
 
 // Computed
 const selectedFixture = computed(() => 
@@ -109,7 +124,10 @@ const fixturesByRound = computed(() => {
   return Object.values(grouped)
     .sort((a, b) => {
       if (a.round !== b.round) return a.round - b.round
-      return (a.roundName || '').localeCompare(b.roundName || '')
+      const pA = getRoundPriority(a.roundName)
+      const pB = getRoundPriority(b.roundName)
+      if (pA !== pB) return pA - pB
+      return (a.roundName || '').localeCompare(b.roundName || '', undefined, { numeric: true, sensitivity: 'base' })
     })
     .map((group, index) => {
       const safeSlot = `group-${index}`
@@ -139,7 +157,10 @@ const roundOptions = computed(() => {
   
   return Array.from(optionsMap.values()).sort((a, b) => {
     if (a.round !== b.round) return a.round - b.round
-    return (a.roundName || '').localeCompare(b.roundName || '')
+    const pA = getRoundPriority(a.roundName)
+    const pB = getRoundPriority(b.roundName)
+    if (pA !== pB) return pA - pB
+    return (a.roundName || '').localeCompare(b.roundName || '', undefined, { numeric: true, sensitivity: 'base' })
   })
 })
 
