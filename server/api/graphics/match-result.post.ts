@@ -9,12 +9,17 @@ export default defineEventHandler(async (event) => {
   try {
     const { match, homeTeam, awayTeam, tournament, events = [], sponsors = [], socials = [] } = body
 
-    if (!match || !homeTeam || !awayTeam) {
+    if (!match || !tournament) {
         throw createError({
             statusCode: 400,
-            statusMessage: 'Missing match or team data'
+            statusMessage: 'Missing match or tournament data'
         })
     }
+
+    const homeName = homeTeam?.customName || match.homeTeamPlaceholder || 'Home Team'
+    const awayName = awayTeam?.customName || match.awayTeamPlaceholder || 'Away Team'
+    const homeLogo = homeTeam?.logoUrl
+    const awayLogo = awayTeam?.logoUrl
 
     // Fetch fonts (Inter + Roboto Mono for scores)
     let fontData: ArrayBuffer
@@ -68,9 +73,10 @@ export default defineEventHandler(async (event) => {
   const awayScore = match.awayScore ?? 0
   
   // Calculate dynamic height based on number of goals
+  // Calculate dynamic height based on number of goals
   const goalEvents = events.filter((e: any) => e.type === 'GOAL' || e.type === 'PENALTY' || e.type === 'OWN_GOAL')
-  const homeGoalCount = goalEvents.filter((e: any) => e.participantId === homeTeam.id || e.participant_id === homeTeam.id).length
-  const awayGoalCount = goalEvents.filter((e: any) => e.participantId === awayTeam.id || e.participant_id === awayTeam.id).length
+  const homeGoalCount = goalEvents.filter((e: any) => (homeTeam && (e.participantId === homeTeam.id || e.participant_id === homeTeam.id))).length
+  const awayGoalCount = goalEvents.filter((e: any) => (awayTeam && (e.participantId === awayTeam.id || e.participant_id === awayTeam.id))).length
   const maxGoals = Math.max(homeGoalCount, awayGoalCount, 0)
   // Ensure enough base height to fit the scorecard AND full footer (sponsors + socials)
   const baseHeight = 800
@@ -238,33 +244,33 @@ export default defineEventHandler(async (event) => {
                                 props: {
                                     style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '300px' },
                                     children: [
-                                        homeTeam.logoUrl ? {
+                                        homeLogo ? {
                                             type: 'img',
-                                            props: { src: homeTeam.logoUrl, width: 120, height: 120, style: { objectFit: 'contain' } }
+                                            props: { src: homeLogo, width: 120, height: 120, style: { objectFit: 'contain' } }
                                         } : {
                                             type: 'div',
                                             props: {
                                                 style: { width: 120, height: 120, borderRadius: '60px', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', fontWeight: 'bold' },
-                                                children: (homeTeam.customName || 'H').charAt(0).toUpperCase()
+                                                children: homeName.charAt(0).toUpperCase()
                                             }
                                         },
                                         {
                                             type: 'span',
                                             props: {
-                                                children: homeTeam.customName || 'Home Team',
+                                                children: homeName,
                                                 style: { fontSize: '32px', fontWeight: 'bold', textAlign: 'center' }
                                             }
                                         }
                                     ]
                                 }
                             },
-                            // Score
+                            // Score or VS
                             {
                                 type: 'div',
                                 props: {
                                     style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' },
                                     children: [
-                                        {
+                                        (match.status === 'COMPLETED' || match.status === 'LIVE') ? {
                                             type: 'div',
                                             props: {
                                                 style: { display: 'flex', alignItems: 'center', gap: '40px' },
@@ -291,6 +297,12 @@ export default defineEventHandler(async (event) => {
                                                         }
                                                     }
                                                 ]
+                                            }
+                                        } : {
+                                            type: 'span',
+                                            props: {
+                                                children: 'VS',
+                                                style: { fontSize: '84px', fontWeight: 'bold', color: '#6b7280', letterSpacing: '4px' }
                                             }
                                         },
                                         // Full Time indicator for completed matches
@@ -327,20 +339,20 @@ export default defineEventHandler(async (event) => {
                                  props: {
                                     style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '300px' },
                                     children: [
-                                        awayTeam.logoUrl ? {
+                                        awayLogo ? {
                                             type: 'img',
-                                            props: { src: awayTeam.logoUrl, width: 120, height: 120, style: { objectFit: 'contain' } }
+                                            props: { src: awayLogo, width: 120, height: 120, style: { objectFit: 'contain' } }
                                         } : {
                                             type: 'div',
                                             props: {
                                                 style: { width: 120, height: 120, borderRadius: '60px', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', fontWeight: 'bold' },
-                                                children: (awayTeam.customName || 'A').charAt(0).toUpperCase()
+                                                children: awayName.charAt(0).toUpperCase()
                                             }
                                         },
                                         {
                                             type: 'span',
                                             props: {
-                                                children: awayTeam.customName || 'Away Team',
+                                                children: awayName,
                                                 style: { fontSize: '32px', fontWeight: 'bold', textAlign: 'center' }
                                             }
                                         }
@@ -369,7 +381,7 @@ export default defineEventHandler(async (event) => {
                           props: {
                             style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: 1, maxWidth: '350px', gap: '6px' },
                             children: events
-                              .filter((e: any) => (e.type === 'GOAL' || e.type === 'PENALTY' || e.type === 'OWN_GOAL') && (e.participantId === homeTeam.id || e.participant_id === homeTeam.id))
+                              .filter((e: any) => (e.type === 'GOAL' || e.type === 'PENALTY' || e.type === 'OWN_GOAL') && homeTeam && (e.participantId === homeTeam.id || e.participant_id === homeTeam.id))
                               .sort((a: any, b: any) => (a.minute || 0) - (b.minute || 0))
                               .map((goal: any) => ({
                                 type: 'span',
@@ -386,7 +398,7 @@ export default defineEventHandler(async (event) => {
                           props: {
                             style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1, maxWidth: '350px', gap: '6px' },
                             children: events
-                              .filter((e: any) => (e.type === 'GOAL' || e.type === 'PENALTY' || e.type === 'OWN_GOAL') && (e.participantId === awayTeam.id || e.participant_id === awayTeam.id))
+                              .filter((e: any) => (e.type === 'GOAL' || e.type === 'PENALTY' || e.type === 'OWN_GOAL') && awayTeam && (e.participantId === awayTeam.id || e.participant_id === awayTeam.id))
                               .sort((a: any, b: any) => (a.minute || 0) - (b.minute || 0))
                               .map((goal: any) => ({
                                 type: 'span',
@@ -463,7 +475,7 @@ export default defineEventHandler(async (event) => {
   const pngBuffer = pngData.asPng()
 
   setResponseHeader(event, 'Content-Type', 'image/png')
-  const filename = `${homeTeam.customName || 'Home'}-vs-${awayTeam.customName || 'Away'}-${match.id || 'result'}`.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+  const filename = `${homeName}-vs-${awayName}-${match.id || 'result'}`.replace(/[^a-z0-9]/gi, '_').toLowerCase()
   setResponseHeader(event, 'Content-Disposition', `attachment; filename="${filename}.png"`)
 
     return pngBuffer
