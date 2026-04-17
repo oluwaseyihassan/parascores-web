@@ -72,8 +72,8 @@ const showGroupSelector = computed(() => {
 
 const fixtureOptions = computed(() => {
   return fixtures.value.map(f => {
-    const home = f.homeTeam?.customName || 'TBD'
-    const away = f.awayTeam?.customName || 'TBD'
+    const home = f.homeTeam?.customName || f.homeTeamPlaceholder || 'TBD'
+    const away = f.awayTeam?.customName || f.awayTeamPlaceholder || 'TBD'
     const date = f.startTime ? new Date(f.startTime).toLocaleDateString() : 'Unscheduled'
     return {
       label: `${home} vs ${away} (${date})`,
@@ -170,8 +170,8 @@ const canGenerate = computed(() => {
       return !!tournament.value && !!playerStats.value && (playerStats.value.topScorers?.length > 0 || playerStats.value.topAssists?.length > 0)
   }
   if (!selectedFixture.value) return false
-  // Check if teams exist (at least basics)
-  return !!selectedFixture.value.homeTeamId && !!selectedFixture.value.awayTeamId
+  // For match results, we always allow it now as the backend handles TBDs
+  return true
 })
 
 // Methods
