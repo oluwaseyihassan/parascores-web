@@ -130,9 +130,12 @@ async function handleLogout() {
           <div v-if="tournamentStore.followedLoading" class="p-4 space-y-3">
              <div v-for="i in 3" :key="i" class="h-8 bg-white/5 rounded-lg animate-pulse"></div>
           </div>
-          <div v-else-if="tournamentStore.followedTournaments.length === 0" class="p-4 text-center mt-4">
-             <p v-if="!sidebarCollapsed" class="text-xs text-gray-500">You aren't following any tournaments.</p>
-             <UIcon v-else name="i-heroicons-information-circle" class="w-5 h-5 mx-auto text-gray-500" />
+          <div v-else-if="tournamentStore.followedTournaments.length === 0" 
+               class="text-center"
+               :class="sidebarCollapsed ? 'hidden' : 'p-6 mt-4'">
+             <p class="text-xs text-gray-500 leading-relaxed">
+               You aren't following any tournaments.
+             </p>
           </div>
           <template v-else>
             <UTooltip 
