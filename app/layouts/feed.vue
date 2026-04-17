@@ -97,8 +97,11 @@ async function handleLogout() {
       :class="[sidebarCollapsed ? 'w-20 p-4' : 'w-72 p-6']"
       class="hidden lg:flex flex-col border-r border-gray-200 dark:border-white/[0.05] bg-white dark:bg-[#050505] h-screen overflow-y-auto hide-scrollbar shrink-0 transition-all duration-300 ease-in-out relative"
     >
-      <div class="flex items-center justify-between mb-8">
-        <NuxtLink to="/" class="flex items-center group overflow-hidden" :class="sidebarCollapsed ? 'justify-center mx-auto' : ''">
+      <div 
+        class="flex items-center mb-8"
+        :class="sidebarCollapsed ? 'flex-col gap-4' : 'justify-between'"
+      >
+        <NuxtLink to="/" class="flex items-center group overflow-hidden transition-all duration-300">
           <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" :class="sidebarCollapsed ? 'h-6' : 'h-9'" class="w-auto object-contain" />
         </NuxtLink>
         <UButton 
@@ -106,8 +109,7 @@ async function handleLogout() {
           variant="ghost" 
           color="neutral" 
           size="sm"
-          class="hover:bg-gray-100 dark:hover:bg-white/10"
-          :class="sidebarCollapsed ? 'mx-auto' : ''"
+          class="hover:bg-gray-100 dark:hover:bg-white/10 shrink-0"
           @click="sidebarCollapsed = !sidebarCollapsed" 
         />
       </div>
