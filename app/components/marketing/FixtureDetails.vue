@@ -144,6 +144,7 @@ function getEventIcon(type: MatchEventType) {
     case MatchEventType.GOAL: return '⚽'
     case MatchEventType.OWN_GOAL: return '⚽'
     case MatchEventType.PENALTY: return '🎯'
+    case MatchEventType.MISSED_PENALTY: return '❌'
     case MatchEventType.YELLOW_CARD: return '🟨'
     case MatchEventType.RED_CARD: return '🟥'
     case MatchEventType.SUBSTITUTION: return '🔄'
@@ -157,6 +158,7 @@ function getEventLabel(type: MatchEventType) {
     case MatchEventType.GOAL: return 'Goal'
     case MatchEventType.OWN_GOAL: return 'Own Goal'
     case MatchEventType.PENALTY: return 'Penalty'
+    case MatchEventType.MISSED_PENALTY: return 'Missed Penalty'
     case MatchEventType.YELLOW_CARD: return 'Yellow Card'
     case MatchEventType.RED_CARD: return 'Red Card'
     case MatchEventType.SUBSTITUTION: return 'Substitution'
@@ -431,6 +433,7 @@ const isHomeEvent = (event: any) => {
                               <span v-else class="break-all min-w-0 text-left md:text-right">
                                 {{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}
                                 <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-400 font-normal ml-0.5">(P)</span>
+                                <span v-if="event.type === 'MISSED_PENALTY'" class="text-xs text-red-500 font-normal ml-0.5">(Missed)</span>
                                 <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-red-500 font-normal ml-0.5">(OG)</span>
                               </span>
                               
@@ -491,6 +494,7 @@ const isHomeEvent = (event: any) => {
                               <span v-else class="break-all min-w-0 text-right md:text-left">
                                 {{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}
                                 <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-400 font-normal ml-0.5">(P)</span>
+                                <span v-if="event.type === 'MISSED_PENALTY'" class="text-xs text-red-500 font-normal ml-0.5">(Missed)</span>
                                 <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-red-500 font-normal ml-0.5">(OG)</span>
                               </span>
                               
