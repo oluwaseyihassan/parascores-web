@@ -200,11 +200,15 @@ onMounted(() => {
 // SEO
 watchEffect(() => {
   if (tournament.value) {
+    const imageUrl = tournament.value.logoUrl || tournament.value.bannerUrl || 'https://www.parascores.com/og-image.png'
     useSeoMeta({
       title: `${tournament.value.name} | ParaScores`,
       description: tournament.value.description || `Follow ${tournament.value.name} live scores, fixtures, standings, and brackets.`,
       ogTitle: `${tournament.value.name} | ParaScores`,
       ogDescription: tournament.value.description || `Follow ${tournament.value.name} live scores, fixtures, standings, and brackets.`,
+      ogImage: imageUrl,
+      twitterCard: 'summary_large_image',
+      twitterImage: imageUrl
     })
   }
 })
