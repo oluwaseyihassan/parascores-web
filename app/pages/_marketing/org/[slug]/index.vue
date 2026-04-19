@@ -165,9 +165,19 @@ async function loadMore(newPage: number) {
 // SEO
 watchEffect(() => {
   if (organization.value) {
+    const defaultImage = 'https://www.parascores.com/og-image.png'
+    const imageUrl = organization.value.logoUrl || defaultImage
+    const title = `${organization.value.name} | ParaScores`
+    const description = `View public tournaments hosted by ${organization.value.name}`
+
     useSeoMeta({
-      title: `${organization.value.name} | ParaScores`,
-      description: `View public tournaments hosted by ${organization.value.name}`,
+      title,
+      description,
+      ogTitle: title,
+      ogDescription: description,
+      ogImage: imageUrl,
+      twitterCard: 'summary_large_image',
+      twitterImage: imageUrl
     })
   }
 })
