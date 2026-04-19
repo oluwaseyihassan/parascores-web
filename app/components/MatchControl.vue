@@ -1056,6 +1056,24 @@ const downloadGraphic = async () => {
               </button>
               <button
                 v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--penalty"
+                :disabled="loadingPlayers || updatingMatch"
+                @click="openGoalModal('home', MatchEventType.PENALTY)"
+              >
+                <IconsSoccerBallIcon class="w-3.5 h-3.5" />
+                <span>Penalty</span>
+              </button>
+              <button
+                v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--og"
+                :disabled="loadingPlayers || updatingMatch"
+                @click="openGoalModal('home', MatchEventType.OWN_GOAL)"
+              >
+                <IconsSoccerBallIcon class="w-3.5 h-3.5" />
+                <span>OG</span>
+              </button>
+              <button
+                v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
                 class="mc-btn mc-btn--miss"
                 :disabled="loadingPlayers || updatingMatch"
                 @click="openGoalModal('home', MatchEventType.MISSED_PENALTY)"
@@ -1095,6 +1113,24 @@ const downloadGraphic = async () => {
                   <span class="card-icon card-icon--red" />
                 </span>
                 <span>Card</span>
+              </button>
+              <button
+                v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--penalty"
+                :disabled="loadingPlayers || updatingMatch"
+                @click="openGoalModal('away', MatchEventType.PENALTY)"
+              >
+                <IconsSoccerBallIcon class="w-3.5 h-3.5" />
+                <span>Penalty</span>
+              </button>
+              <button
+                v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--og"
+                :disabled="loadingPlayers || updatingMatch"
+                @click="openGoalModal('away', MatchEventType.OWN_GOAL)"
+              >
+                <IconsSoccerBallIcon class="w-3.5 h-3.5" />
+                <span>OG</span>
               </button>
               <button
                 v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
@@ -1893,6 +1929,7 @@ const downloadGraphic = async () => {
   flex: 1;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -1946,6 +1983,18 @@ const downloadGraphic = async () => {
   color: #ef4444;
 }
 .mc-btn--miss:hover:not(:disabled) { background: rgba(239, 68, 68, 0.1); }
+
+.mc-btn--penalty {
+  border-color: rgba(107, 114, 128, 0.2);
+  color: #6b7280;
+}
+.mc-btn--penalty:hover:not(:disabled) { background: rgba(107, 114, 128, 0.1); }
+
+.mc-btn--og {
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+.mc-btn--og:hover:not(:disabled) { background: rgba(239, 68, 68, 0.1); }
 
 .mc-btn--card {
   background: rgba(245,158,11,0.1);
