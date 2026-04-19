@@ -3,21 +3,21 @@
     <div class="w-full max-w-lg">
       <UCard class="shadow-2xl">
         <!-- Logo -->
-        <div class="flex justify-center mb-4">
-          <div class="w-16 h-16 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <UIcon name="i-heroicons-trophy-solid" class="w-10 h-10 text-white" />
+        <div class="flex justify-center mb-6 mt-2">
+          <div class="w-20 h-20 bg-gradient-to-tr from-emerald-600 to-teal-400 rounded-2xl flex items-center justify-center shadow-[0_0_40px_-10px] shadow-emerald-500/50 backdrop-blur-sm border border-white/10 dark:border-white/5 transition-transform duration-500 hover:scale-105">
+            <UIcon name="i-heroicons-building-office-2-solid" class="w-10 h-10 text-white" />
           </div>
         </div>
 
         <!-- Header -->
-        <div class="text-center mb-8">
-          <h1 class="text-3xl font-bold text-heading mb-2">
-            {{ authStore.isOrganizer ? 'Create New Organization' : 'Become an Organizer' }}
+        <div class="text-center mb-10">
+          <h1 class="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-3">
+            {{ authStore.isOrganizer ? 'Create Workspace' : 'Become an Organizer' }}
           </h1>
-          <p class="text-muted text-sm px-4">
+          <p class="text-gray-500 dark:text-gray-400 text-sm px-4 font-medium leading-relaxed max-w-sm mx-auto">
             {{ authStore.isOrganizer 
-              ? 'Add another workspace to manage different sets of tournaments.' 
-              : 'To create and manage tournaments, we need a few details about you and your organization.' 
+              ? 'Add another organization namespace to manage different sets of tournaments.' 
+              : 'To create and manage tournaments, we need a few details about your organization.' 
             }}
           </p>
         </div>
@@ -105,20 +105,22 @@
             size="xl"
             block
             :loading="loading"
-            class="font-semibold py-4"
-            variant="green"
+            class="font-bold py-3.5 shadow-xl shadow-emerald-500/20 transition-all duration-300 hover:shadow-emerald-500/40 hover:-translate-y-0.5 active:translate-y-0 text-base"
+            color="primary"
           >
             {{ authStore.isOrganizer ? 'Create Organization' : 'Complete Onboarding' }}
           </UButton>
           
-          <div class="text-center mt-4">
+          <div class="text-center mt-6 mb-2">
              <UButton 
                 size="sm"
-                variant="link"
+                variant="ghost"
                 color="neutral"
+                icon="i-heroicons-arrow-left"
+                class="hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
                 @click="navigateTo('/', { external: true })"
              >
-                Return to Fan Portal
+                {{ authStore.isOrganizer ? 'Return to Dashboard' : 'Return to Fan Portal' }}
              </UButton>
           </div>
         </UForm>
