@@ -426,11 +426,15 @@ const confirmGoal = async () => {
   
   if (!participantId) return
   
-  // Update local state immediately
-  if (scoringTeam.value === 'home') {
-    selectedFixture.value.homeScore = (selectedFixture.value.homeScore ?? 0) + 1
-  } else {
-    selectedFixture.value.awayScore = (selectedFixture.value.awayScore ?? 0) + 1
+  // Update local state immediately (but only if it's a goal that counts towards the score)
+  const isScoringEvent = goalData.type === MatchEventType.GOAL || goalData.type === MatchEventType.OWN_GOAL || goalData.type === MatchEventType.PENALTY
+  
+  if (isScoringEvent) {
+    if (scoringTeam.value === 'home') {
+      selectedFixture.value.homeScore = (selectedFixture.value.homeScore ?? 0) + 1
+    } else {
+      selectedFixture.value.awayScore = (selectedFixture.value.awayScore ?? 0) + 1
+    }
   }
   
   updatingMatch.value = true
@@ -469,10 +473,12 @@ const confirmGoal = async () => {
     })
   } catch (error: any) {
     // Revert on error
-    if (scoringTeam.value === 'home') {
-      selectedFixture.value.homeScore = (selectedFixture.value.homeScore ?? 1) - 1
-    } else {
-      selectedFixture.value.awayScore = (selectedFixture.value.awayScore ?? 1) - 1
+    if (isScoringEvent) {
+      if (scoringTeam.value === 'home') {
+        selectedFixture.value.homeScore = (selectedFixture.value.homeScore ?? 1) - 1
+      } else {
+        selectedFixture.value.awayScore = (selectedFixture.value.awayScore ?? 1) - 1
+      }
     }
     useToast().add({ 
       title: 'Failed to record goal', 
@@ -484,9 +490,9 @@ const confirmGoal = async () => {
   }
 }
 
-const openGoalModal = (team: 'home' | 'away') => {
+const openGoalModal = (team: 'home' | 'away', type: MatchEventType = MatchEventType.GOAL) => {
   scoringTeam.value = team
-  goalData.type = MatchEventType.GOAL
+  goalData.type = type
   goalData.scorerId = undefined
   goalData.assisterId = undefined
   goalData.minute = null
@@ -591,7 +597,8 @@ const confirmDeleteEvent = async () => {
     await fixtureStore.deleteMatchEvent(event.id)
     
     // Update local score if it was a goal 
-    if (event.type === MatchEventType.GOAL && selectedFixture.value) {
+    const isScoringEvent = event.type === MatchEventType.GOAL || event.type === MatchEventType.OWN_GOAL || event.type === MatchEventType.PENALTY
+    if (isScoringEvent && selectedFixture.value) {
       if (event.participant_id === selectedFixture.value.homeTeamId) {
         selectedFixture.value.homeScore = Math.max(0, (selectedFixture.value.homeScore ?? 0) - 1)
       } else if (event.participant_id === selectedFixture.value.awayTeamId) {
@@ -790,6 +797,7 @@ const getEventIcon = (type: MatchEventType) => {
     case MatchEventType.GOAL: return 'i-heroicons-trophy'
     case MatchEventType.OWN_GOAL: return 'i-heroicons-exclamation-triangle'
     case MatchEventType.PENALTY: return 'i-heroicons-stop'
+    case MatchEventType.MISSED_PENALTY: return 'i-heroicons-x-circle'
     case MatchEventType.YELLOW_CARD: return 'i-heroicons-exclamation-circle'
     case MatchEventType.RED_CARD: return 'i-heroicons-x-circle'
     case MatchEventType.SUBSTITUTION: return 'i-heroicons-arrows-right-left'
@@ -803,6 +811,7 @@ const getEventColor = (type: MatchEventType) => {
     case MatchEventType.GOAL: return 'text-green-500'
     case MatchEventType.OWN_GOAL: return 'text-orange-500'
     case MatchEventType.PENALTY: return 'text-blue-500'
+    case MatchEventType.MISSED_PENALTY: return 'text-red-500'
     case MatchEventType.YELLOW_CARD: return 'text-yellow-500'
     case MatchEventType.RED_CARD: return 'text-red-500'
     case MatchEventType.SUBSTITUTION: return 'text-purple-500'
@@ -1046,6 +1055,15 @@ const downloadGraphic = async () => {
                 <span>Card</span>
               </button>
               <button
+                v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--miss"
+                :disabled="loadingPlayers || updatingMatch"
+                @click="openGoalModal('home', MatchEventType.MISSED_PENALTY)"
+              >
+                <UIcon name="i-heroicons-x-circle" class="w-3.5 h-3.5" />
+                <span>Miss</span>
+              </button>
+              <button
                 v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
                 class="mc-btn mc-btn--minus"
                 :disabled="(selectedFixture.homeScore ?? 0) <= 0 || updatingMatch"
@@ -1077,6 +1095,15 @@ const downloadGraphic = async () => {
                   <span class="card-icon card-icon--red" />
                 </span>
                 <span>Card</span>
+              </button>
+              <button
+                v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--miss"
+                :disabled="loadingPlayers || updatingMatch"
+                @click="openGoalModal('away', MatchEventType.MISSED_PENALTY)"
+              >
+                <UIcon name="i-heroicons-x-circle" class="w-3.5 h-3.5" />
+                <span>Miss</span>
               </button>
               <button
                 v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
@@ -1334,6 +1361,7 @@ const downloadGraphic = async () => {
               :items="[
                 { label: 'Normal Goal', value: 'GOAL' }, 
                 { label: 'Penalty', value: 'PENALTY' }, 
+                { label: 'Missed Penalty', value: 'MISSED_PENALTY' }, 
                 { label: 'Own Goal', value: 'OWN_GOAL' }
               ]"
               class="w-full"
@@ -1908,11 +1936,16 @@ const downloadGraphic = async () => {
 .mc-btn:disabled { opacity: 0.4; cursor: default; }
 
 .mc-btn--goal {
-  background: rgba(16,185,129,0.1);
-  color: #059669;
-  border-color: rgba(16,185,129,0.2);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: #10b981;
 }
 .mc-btn--goal:hover:not(:disabled) { background: rgba(16,185,129,0.18); }
+
+.mc-btn--miss {
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+.mc-btn--miss:hover:not(:disabled) { background: rgba(239, 68, 68, 0.1); }
 
 .mc-btn--card {
   background: rgba(245,158,11,0.1);
