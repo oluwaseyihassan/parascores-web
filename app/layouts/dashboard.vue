@@ -14,11 +14,15 @@ onMounted(async () => {
   }
 })
 
+const config = useRuntimeConfig()
+const frontendUrl = config.public.FRONT_END_URL
+
 // Mobile links (Keep simple)
 const mobileLinks = [
   { label: 'Home', icon: 'i-heroicons-home', to: '/' },
   { label: 'Organizations', icon: 'i-heroicons-building-office', to: '/organizations' },
-  { label: 'Live', icon: 'i-heroicons-signal', to: '/live', activeClass: 'text-red-500 animate-pulse' }
+  { label: 'Live', icon: 'i-heroicons-signal', to: '/live', activeClass: 'text-red-500 animate-pulse' },
+  { label: 'Fan Portal', icon: 'i-heroicons-globe-alt', to: `${frontendUrl}/`, external: true, target: '_blank' }
 ]
 
 // Desktop Sidebar links (Dynamic)
@@ -36,7 +40,8 @@ const sidebarLinks = computed(() => {
   return [
     ...base,
     ...tourneys,
-    { label: 'Live', icon: 'i-heroicons-signal', to: '/live', activeClass: 'text-red-500 animate-pulse', avatar: undefined }
+    { label: 'Live', icon: 'i-heroicons-signal', to: '/live', activeClass: 'text-red-500 animate-pulse', avatar: undefined },
+    { label: 'Fan Portal', icon: 'i-heroicons-globe-alt', to: `${frontendUrl}/`, external: true, target: '_blank', avatar: undefined }
   ]
 })
 
@@ -81,9 +86,6 @@ const profileMenuItems = computed(() => [
   }],
   [{ label: 'Log out', icon: 'i-heroicons-arrow-right-on-rectangle', onSelect: handleLogout }]
 ])
-
-const config = useRuntimeConfig()
-const frontendUrl = config.public.FRONT_END_URL
 
 const handleLogout = async () => {
   await authStore.logout()
