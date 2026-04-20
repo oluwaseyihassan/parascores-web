@@ -234,6 +234,39 @@ const startMatch = async () => {
   }
 }
 
+const undoStartMatch = async () => {
+  if (!selectedFixture.value) return
+  
+  updatingMatch.value = true
+  try {
+    await fixtureStore.updateFixture(selectedFixture.value.id, {
+      status: FixtureStatus.SCHEDULED
+    })
+    
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      status: FixtureStatus.SCHEDULED
+    }
+    
+    emit('fixture-updated', selectedFixture.value)
+    
+    useToast().add({ 
+      title: 'Match Un-started', 
+      description: 'The match has been reverted to SCHEDULED.',
+      icon: 'i-heroicons-arrow-uturn-left',
+      color: 'warning' 
+    })
+  } catch (error: any) {
+    useToast().add({ 
+      title: 'Failed to undo start', 
+      description: error?.data?.message || error?.message || 'Unknown error', 
+      color: 'error' 
+    })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
 const formatDateDisplay = (date: DateValue | null) => {
   if (!date) return 'Select date'
   return new Date(date.year, date.month - 1, date.day).toLocaleDateString('en-US', {
@@ -738,6 +771,36 @@ const endMatch = async () => {
     errorMessage.value = error?.data?.message || error?.message || 'Unknown error'
     useToast().add({ 
       title: 'Failed to end match', 
+      description: errorMessage.value || undefined,
+      color: 'error' 
+    })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const reopenMatch = async () => {
+  if (!selectedFixture.value) return
+  
+  updatingMatch.value = true
+  try {
+    await fixtureStore.updateFixture(selectedFixture.value.id, {
+      status: FixtureStatus.LIVE
+    })
+    
+    selectedFixture.value.status = FixtureStatus.LIVE
+    emit('fixture-updated', selectedFixture.value)
+    
+    useToast().add({ 
+      title: 'Match Reopened', 
+      description: 'The match has been set back to LIVE.',
+      icon: 'i-heroicons-arrow-path',
+      color: 'warning' 
+    })
+  } catch (error: any) {
+    errorMessage.value = error?.data?.message || error?.message || 'Unknown error'
+    useToast().add({ 
+      title: 'Failed to reopen match', 
       description: errorMessage.value || undefined,
       color: 'error' 
     })
@@ -1339,6 +1402,24 @@ const downloadGraphic = async () => {
               >
                 <UIcon name="i-heroicons-flag" class="w-4 h-4" />
                 <span>{{ updatingMatch ? 'Ending…' : 'End Match' }}</span>
+              </button>
+              <button
+                v-if="selectedFixture.status === 'COMPLETED'"
+                class="mc-primary-btn mc-primary-btn--reopen"
+                :disabled="updatingMatch"
+                @click="reopenMatch"
+              >
+                <UIcon name="i-heroicons-arrow-path" class="w-4 h-4" />
+                <span>{{ updatingMatch ? 'Reopening…' : 'Reopen Match' }}</span>
+              </button>
+              <button
+                v-if="selectedFixture.status === 'LIVE'"
+                class="mc-primary-btn mc-primary-btn--reopen"
+                :disabled="updatingMatch"
+                @click="undoStartMatch"
+              >
+                <UIcon name="i-heroicons-arrow-uturn-left" class="w-4 h-4" />
+                <span>{{ updatingMatch ? 'Undoing…' : 'Undo Start' }}</span>
               </button>
             </div>
 
@@ -2279,6 +2360,14 @@ const downloadGraphic = async () => {
   box-shadow: 0 2px 6px rgba(220,38,38,0.3);
 }
 .mc-primary-btn--end:hover:not(:disabled) { background: #b91c1c; }
+
+.mc-primary-btn--reopen {
+  background: #d97706;
+  color: #fff;
+  border-color: #b45309;
+  box-shadow: 0 2px 6px rgba(217,119,6,0.3);
+}
+.mc-primary-btn--reopen:hover:not(:disabled) { background: #b45309; }
 
 .mc-primary-btn--locked {
   background: #f3f4f6;
