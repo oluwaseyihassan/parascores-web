@@ -22,11 +22,17 @@ onMounted(() => {
   }
 })
 
-const navLinks = computed(() => [
-  { label: 'Feed', icon: 'i-heroicons-home', to: toMain('/') },
-  { label: 'Explore', icon: 'i-heroicons-magnifying-glass', to: toMain('/explore') },
-  { label: 'Following', icon: 'i-heroicons-heart', to: toMain('/following') },
-])
+const navLinks = computed(() => {
+  const links : any[] = [
+    { label: 'Feed', icon: 'i-heroicons-home', to: toMain('/') },
+    { label: 'Explore', icon: 'i-heroicons-magnifying-glass', to: toMain('/explore') },
+    { label: 'Following', icon: 'i-heroicons-heart', to: toMain('/following') },
+  ]
+  if (isAuthenticated.value) {
+    links.push({ label: 'Dashboard', icon: 'i-heroicons-squares-2x2', to: toManage('/'), external: true, target: '_blank' })
+  }
+  return links
+})
 
 const profileMenuItems = computed(() => {
   const items: any[][] = [
@@ -89,7 +95,7 @@ async function handleLogout() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100 font-sans flex overflow-hidden selection:bg-emerald-500/30">
+  <div class="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100 font-sans flex overflow-hidden selection:bg-emerald-500/30">
     <AuthLoadingOverlay :show="authLoading" />
 
     <!-- Left Sidebar (Desktop) -->
@@ -163,9 +169,9 @@ async function handleLogout() {
     </aside>
 
     <!-- Main Wrapper -->
-    <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-black relative">
+    <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-[#0a0a0a] relative">
       <!-- Top Bar -->
-      <header class="h-14 border-b border-gray-200 dark:border-white/[0.05] bg-white/80 dark:bg-black/80 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-40">
+      <header class="h-14 border-b border-gray-200 dark:border-white/[0.05] bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-40">
         <div class="flex items-center gap-6 flex-1">
           <NuxtLink to="/" class="flex items-center gap-2 group shrink-0">
             <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-7 w-auto object-contain" />
@@ -213,7 +219,7 @@ async function handleLogout() {
       </main>
 
       <!-- Mobile Bottom Nav -->
-      <nav class="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-black/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/[0.05] flex items-center justify-around px-4 z-50">
+      <nav class="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/[0.05] flex items-center justify-around px-4 z-50">
         <NuxtLink 
           v-for="link in navLinks" 
           :key="link.to" 
