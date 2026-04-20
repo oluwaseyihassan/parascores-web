@@ -5,9 +5,11 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+
   devServer: {
     port: 3001
   },
+
   modules: [
     "@nuxt/ui",
     "@nuxt/icon",
@@ -15,8 +17,10 @@ export default defineNuxtConfig({
     "@nuxtjs/color-mode",
     "@nuxtjs/i18n",
     "@nuxt/image",
-    "@vite-pwa/nuxt"
+    "@vite-pwa/nuxt",
+    '@sentry/nuxt/module'
   ],
+
   pwa: {
     registerType: 'autoUpdate',
     manifest: {
@@ -74,30 +78,28 @@ export default defineNuxtConfig({
       type: 'module'
     }
   },
+
   icon: {
     serverBundle: {
       collections: ['heroicons']
     }
   },
+
   css: ["@/assets/css/main.css"],
+
   vite: {
     plugins: [tailwindcss()],
     server: {
       allowedHosts: ['manage.lvh.me']
     }
   },
+
   colorMode: {
     classSuffix: "",
     preference: "dark",
     fallback: "light",
   },
-  runtimeConfig: {
-    public: {
-      API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:3000/api',
-      DASHBOARD_URL: process.env.DASHBOARD_URL || 'http://manage.lvh.me:3001',
-      FRONT_END_URL: process.env.FRONTEND_URL || 'http://lvh.me:3001'
-    }
-  },
+
   // hooks: {
   //   'pages:extend'(pages) {
   //     const authPageIndex = pages.findIndex(page => page.path === '/auth')
@@ -116,4 +118,22 @@ export default defineNuxtConfig({
   //     })
   //   }
   // }
+  runtimeConfig: {
+    public: {
+      API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:3000/api',
+      DASHBOARD_URL: process.env.DASHBOARD_URL || 'http://manage.lvh.me:3001',
+      FRONT_END_URL: process.env.FRONTEND_URL || 'http://lvh.me:3001',
+      SENTRY_DSN: process.env.SENTRY_DSN || '',
+    }
+  },
+
+  sentry: {
+    org: 'parascores',
+    project: 'javascript-nuxt',
+    autoInjectServerSentry: 'top-level-import'
+  },
+
+  sourcemap: {
+    client: 'hidden'
+  }
 })
