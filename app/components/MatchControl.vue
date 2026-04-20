@@ -2304,6 +2304,7 @@ const downloadGraphic = async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 16px;
   padding-top: 14px;
@@ -2316,12 +2317,14 @@ const downloadGraphic = async () => {
 .mc-action-bar__primary {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .mc-action-bar__secondary {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
   margin-left: auto;
 }
