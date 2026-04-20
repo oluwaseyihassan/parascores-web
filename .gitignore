@@ -23,3 +23,5 @@ logs
 .env.*
 !.env.example
 .claude
+# Sentry Config File
+.env.sentry-build-plugin
