@@ -16,6 +16,8 @@ const participantStore = useParticipantStore()
 const fixtureStore = useFixtureStore()
 const standingStore = useStandingStore()
 const sponsorStore = useSponsorStore()
+const authStore = useAuthStore()
+const groupStore = useGroupStore()
 const socialStore = useSocialStore()
 const venueStore = useVenueStore()
 const { currentTournament: tournament, loading, error } = storeToRefs(tournamentStore)
@@ -75,6 +77,13 @@ onMounted(async () => {
         socials.value = response.data.socials
         venues.value = response.data.venues
         
+        // Initialize groups
+        if (response.data.tournament.groups) {
+          groupStore.groups = response.data.tournament.groups
+        } else if (tournamentId.value) {
+          groupStore.fetchGroups(tournamentId.value)
+        }
+
         // Load stats if applicable
         if (response.data.tournament.participantType === ParticipantType.TEAM) {
           loadPlayerStats()
@@ -92,7 +101,7 @@ onMounted(async () => {
 // Check if standings should be shown
 const showStandings = computed(() => {
   if (!tournament.value) return false
-  return [TournamentType.ROUND_ROBIN, TournamentType.GROUP, TournamentType.HYBRID].includes(tournament.value.type)
+  return [TournamentType.ROUND_ROBIN, TournamentType.GROUP, TournamentType.HYBRID, TournamentType.LEAGUE].includes(tournament.value.type)
 })
 
 // Delete Tournament logic
@@ -107,7 +116,7 @@ const handleDeleteTournament = () => {
     onConfirm: async () => {
       deletingTournament.value = true
       try {
-        await tournamentStore.deleteTournament(tournamentId.value)
+        await tournamentStore.deleteTournament(tournament.value?.id || tournamentId.value)
         useToast().add({ title: 'Tournament deleted successfully', color: 'success' })
         const router = useRouter()
         router.push('/')
@@ -141,7 +150,7 @@ const seasonSchema = z.object({
 const handleStartSeason = async (event: FormSubmitEvent<any>) => {
   startingSeason.value = true
   try {
-    const res = await tournamentStore.startSeason(tournamentId.value, event.data)
+    const res = await tournamentStore.startSeason(tournament.value?.id || tournamentId.value, event.data)
     useToast().add({ title: 'New season started successfully', color: 'success' })
     showSeasonModal.value = false
     
@@ -167,7 +176,8 @@ const showGenerateModal = ref(false)
 const generateConfig = reactive({
   teamsPerGroup: null as number | null,
   numberOfGroups: null as number | null,
-  doubleRoundRobin: false
+  doubleRoundRobin: false,
+  useExistingGroups: false
 })
 
 const openGenerateModal = () => {
@@ -175,10 +185,11 @@ const openGenerateModal = () => {
   generateConfig.teamsPerGroup = null
   generateConfig.numberOfGroups = null
   generateConfig.doubleRoundRobin = false
+  generateConfig.useExistingGroups = false
   generateError.value = null
   
   // If not a group or round robin tournament, proceed directly
-  if (tournament.value?.type !== TournamentType.GROUP && tournament.value?.type !== TournamentType.ROUND_ROBIN && tournament.value?.type !== TournamentType.HYBRID) {
+  if (tournament.value?.type !== TournamentType.GROUP && tournament.value?.type !== TournamentType.ROUND_ROBIN && tournament.value?.type !== TournamentType.HYBRID && tournament.value?.type !== TournamentType.LEAGUE) {
     handleGenerateFixtures()
   } else {
     showGenerateModal.value = true
@@ -194,16 +205,17 @@ const handleGenerateFixtures = async () => {
   
   generateError.value = null
   try {
-    await fixtureStore.generateFixtures(tournamentId.value, {
-      teamsPerGroup: generateConfig.teamsPerGroup || undefined,
-      numberOfGroups: generateConfig.numberOfGroups || undefined,
-      doubleRoundRobin: generateConfig.doubleRoundRobin
+    await fixtureStore.generateFixtures(tournament.value?.id || tournamentId.value, {
+      teamsPerGroup: generateConfig.useExistingGroups ? undefined : (generateConfig.teamsPerGroup || undefined),
+      numberOfGroups: generateConfig.useExistingGroups ? undefined : (generateConfig.numberOfGroups || undefined),
+      doubleRoundRobin: generateConfig.doubleRoundRobin,
+      useExistingGroups: generateConfig.useExistingGroups
     })
     
     showGenerateModal.value = false
     
     // Auto-refresh fixtures
-    await fixtureStore.fetchFixtures(tournamentId.value)
+    await fixtureStore.fetchFixtures(tournament.value?.id || tournamentId.value)
     
     // Refresh standings if applicable
     if (showStandings.value) {
@@ -231,9 +243,9 @@ const handleClearFixtures = () => {
     color: 'error',
     onConfirm: async () => {
       try {
-        await fixtureStore.deleteAllFixtures(tournamentId.value)
+        await fixtureStore.deleteAllFixtures(tournament.value?.id || tournamentId.value)
         // Refresh standings as they are cleared on backend
-        await standingStore.fetchStandings(tournamentId.value)
+        await standingStore.fetchStandings(tournament.value?.id || tournamentId.value)
         useToast().add({ title: 'Fixtures cleared successfully', color: 'success' })
       } catch (err: any) {
         useToast().add({ 
@@ -244,6 +256,364 @@ const handleClearFixtures = () => {
       }
     }
   })
+}
+
+// Group Management state
+const newGroupName = ref('')
+const addingGroup = ref(false)
+const groupSearchQuery = ref('')
+
+const handleAddGroup = async () => {
+  if (!newGroupName.value.trim()) return
+  addingGroup.value = true
+  try {
+    await groupStore.createGroup({
+      name: newGroupName.value,
+      tournament_id: tournament.value?.id || tournamentId.value
+    })
+    newGroupName.value = ''
+    useToast().add({ title: 'Group created successfully', color: 'success' })
+  } catch (err: any) {
+    useToast().add({ 
+      title: 'Failed to create group', 
+      description: err.message || 'Unknown error', 
+      color: 'error' 
+    })
+  } finally {
+    addingGroup.value = false
+  }
+}
+
+const handleRenameGroup = (group: any) => {
+  openPromptModal({
+    title: 'Rename Group',
+    label: 'Group Name',
+    initialValue: group.name,
+    confirmLabel: 'Rename',
+    onConfirm: async (newName) => {
+      if (newName && newName !== group.name) {
+        await groupStore.updateGroup(group.id, { name: newName })
+        useToast().add({ title: 'Group renamed', color: 'success' })
+      }
+    }
+  })
+}
+
+const handleDeleteGroup = (groupId: string) => {
+  openConfirmModal({
+    title: 'Delete Group',
+    description: 'Are you sure you want to delete this group? All participants in this group will become unassigned.',
+    confirmLabel: 'Delete Group',
+    color: 'error',
+    onConfirm: async () => {
+      try {
+        await groupStore.deleteGroup(groupId)
+        // Update local participants list to reflect they are now unassigned
+        participants.value.forEach(p => {
+          if (p.groupId === groupId) p.groupId = null
+        })
+        // Refresh standings
+        standingStore.fetchStandings(tournament.value?.id || tournamentId.value)
+        useToast().add({ title: 'Group deleted', color: 'success' })
+      } catch (err: any) {
+        useToast().add({ title: 'Delete failed', description: err.message, color: 'error' })
+      }
+    }
+  })
+}
+
+const handleAssignToGroup = async (participantId: string, groupId: string | null) => {
+  try {
+    await groupStore.assignParticipant(participantId, groupId)
+    // Synchronize local participants list
+    const participant = participants.value.find(p => p.id === participantId)
+    if (participant) {
+      participant.groupId = groupId
+
+      const participantName = participant.customName || participant.user?.name || participant.team?.name || 'Team'
+      const group = groupId ? groupStore.groups.find(g => g.id === groupId) : null
+      const groupName = group?.name || 'group'
+
+      useToast().add({ 
+        title: groupId 
+          ? `${participantName} assigned to ${groupName}` 
+          : `${participantName} removed from group`, 
+        color: 'success' 
+      })
+    }
+    // Refresh standings to show newborn records
+    standingStore.fetchStandings(tournament.value?.id || tournamentId.value)
+  } catch (err: any) {
+    useToast().add({ title: 'Operation failed', description: err.message, color: 'error' })
+  }
+}
+
+const unassignedParticipants = computed(() => {
+  if (!participants.value) return []
+  return participants.value.filter(p => !p.groupId)
+})
+
+const getParticipantGroup = (participantId: string) => {
+  const p = participants.value.find(p => p.id === participantId)
+  if (!p || !p.groupId) return null
+  return groupStore.groups.find(g => g.id === p.groupId) || null
+}
+
+const getGroupParticipants = (groupId: string) => {
+  return participants.value.filter(p => p.groupId === groupId)
+}
+
+const getParticipantById = (id: string) => participants.value.find(p => p.id === id)
+
+// Manual Fixture Creation
+const showAddFixtureModal = ref(false)
+const addingFixture = ref(false)
+const addFixtureKeepOpen = ref(false)
+const addFixtureState = reactive({
+  homeTeamId: '' as string,
+  awayTeamId: '' as string,
+  round: 1,
+  roundName: '' as string,
+  startTime: '' as string,
+  venue: '' as string,
+  groupId: '' as string,
+  stage: undefined as FixtureStage | undefined,
+  doubleRoundRobin: false
+})
+
+const openAddFixtureModal = () => {
+  addFixtureState.homeTeamId = ''
+  addFixtureState.awayTeamId = ''
+  // Default round to the next available
+  const maxRound = fixtures.value.length > 0 ? Math.max(...fixtures.value.map(f => f.round)) : 0
+  addFixtureState.round = maxRound + 1
+  addFixtureState.roundName = ''
+  addFixtureState.startTime = ''
+  addFixtureState.venue = ''
+  addFixtureState.groupId = groupStore.groups[0]?.id || ''
+  
+  // Set default stage based on tournament type
+  if (tournament.value?.type === TournamentType.KNOCKOUT) {
+    addFixtureState.stage = FixtureStage.KNOCKOUT
+  } else if (tournament.value?.type === TournamentType.HYBRID || tournament.value?.type === TournamentType.GROUP || tournament.value?.type === TournamentType.LEAGUE) {
+    addFixtureState.stage = FixtureStage.GROUP_STAGE
+  } else {
+    addFixtureState.stage = undefined
+  }
+
+  addFixtureKeepOpen.value = false
+  showAddFixtureModal.value = true
+}
+
+const participantOptionsAll = computed(() => {
+  return participants.value.map(p => ({
+    label: p.customName || p.user?.name || p.team?.name || 'Unnamed',
+    value: p.id,
+    groupId: p.groupId,
+    avatar: p.logoUrl ? { src: p.logoUrl } : undefined
+  }))
+})
+
+const homeParticipantOptions = computed(() => {
+  let items = participantOptionsAll.value
+  if (addFixtureState.groupId) {
+    items = items.filter(p => p.groupId === addFixtureState.groupId)
+  }
+  return items.filter(p => p.value !== addFixtureState.awayTeamId)
+})
+
+const awayParticipantOptions = computed(() => {
+  let items = participantOptionsAll.value
+  if (addFixtureState.groupId) {
+    items = items.filter(p => p.groupId === addFixtureState.groupId)
+  }
+  return items.filter(p => p.value !== addFixtureState.homeTeamId)
+})
+
+const roundNameOptions = computed(() => {
+  const type = tournament.value?.type
+  const totalTeamCount = participants.value.length
+  const options: { label: string; value: string; round: number }[] = []
+
+  // Calculate the relevant team count for group stage rounds
+  let groupStageTeamCount = totalTeamCount
+  if (type === TournamentType.GROUP || type === TournamentType.HYBRID || type === TournamentType.LEAGUE) {
+    if (addFixtureState.groupId) {
+      // Use the size of the specific selected group
+      groupStageTeamCount = participants.value.filter(p => p.groupId === addFixtureState.groupId).length
+    } else {
+      // Use the size of the largest group as a default
+      const groupCounts = new Map<string, number>()
+      participants.value.forEach(p => {
+        if (p.groupId) {
+          groupCounts.set(p.groupId, (groupCounts.get(p.groupId) || 0) + 1)
+        }
+      })
+      if (groupCounts.size > 0) {
+        groupStageTeamCount = Math.max(...groupCounts.values())
+      }
+    }
+  }
+
+  if (type === TournamentType.ROUND_ROBIN || type === TournamentType.GROUP || type === TournamentType.HYBRID || type === TournamentType.LEAGUE) {
+    // Generate matchday names
+    const oneWayRoundCount = Math.max(groupStageTeamCount - 1, 1)
+    const roundCount = addFixtureState.doubleRoundRobin ? 2 * oneWayRoundCount : oneWayRoundCount
+    for (let i = 1; i <= roundCount; i++) {
+      const name = `Matchday ${i}`
+      options.push({ label: name, value: name, round: i })
+    }
+  }
+
+  if (type === TournamentType.KNOCKOUT || type === TournamentType.HYBRID) {
+    // Generate knockout round names
+    const totalRounds = Math.ceil(Math.log2(totalTeamCount))
+    const bracketSize = Math.pow(2, totalRounds)
+    const gpOneWayRoundCount = Math.max(groupStageTeamCount - 1, 1)
+    const baseRoundOffset = type === TournamentType.HYBRID ? (addFixtureState.doubleRoundRobin ? 2 * gpOneWayRoundCount : gpOneWayRoundCount) : 0
+
+    for (let i = 1; i <= totalRounds; i++) {
+      const roundsFromFinal = totalRounds - i
+      let name: string
+      switch (roundsFromFinal) {
+        case 0: name = 'Final'; break
+        case 1: name = 'Semi Final'; break
+        case 2: name = 'Quarter Final'; break
+        default:
+          const teamsInRound = bracketSize / Math.pow(2, i - 1)
+          name = `Round of ${teamsInRound}`
+      }
+      
+      const roundNum = baseRoundOffset + i
+      const isFinal = roundsFromFinal === 0
+      
+      if (tournament.value?.twoLegsKnockout && !isFinal) {
+        options.push({ label: `${name} - Leg 1`, value: `${name} - Leg 1`, round: roundNum })
+        options.push({ label: `${name} - Leg 2`, value: `${name} - Leg 2`, round: roundNum })
+      } else {
+        options.push({ label: name, value: name, round: roundNum })
+      }
+    }
+
+    if (tournament.value?.thirdPlaceMatch) {
+      options.push({ label: 'Third Place Match', value: 'Third Place Match', round: baseRoundOffset + totalRounds + 1 })
+    }
+  }
+
+  // Fallback if no options were generated
+  if (options.length === 0) {
+    for (let i = 1; i <= 10; i++) {
+      options.push({ label: `Matchday ${i}`, value: `Matchday ${i}`, round: i })
+    }
+  }
+
+  return options
+})
+
+// Watch roundName to auto-set round number and stage
+watch(() => addFixtureState.roundName, (val) => {
+  if (!val) return
+  
+  const option = roundNameOptions.value.find(o => o.value === val)
+  if (option) {
+    addFixtureState.round = option.round
+  }
+
+  // Auto-set stage based on round name
+  const name = val.toLowerCase()
+  if (name.includes('matchday')) {
+    addFixtureState.stage = FixtureStage.GROUP_STAGE
+  } else if (
+    name.includes('final') || 
+    name.includes('semi') || 
+    name.includes('quarter') || 
+    name.includes('round of') || 
+    name.includes('third place')
+  ) {
+    addFixtureState.stage = FixtureStage.KNOCKOUT
+  }
+})
+
+// Auto-resolve group and stage
+watch(() => addFixtureState.homeTeamId, (val) => {
+  if (val && !addFixtureState.groupId) {
+    const p = participants.value.find(p => p.id === val)
+    if (p?.groupId) {
+      addFixtureState.groupId = p.groupId
+    }
+  }
+})
+
+watch(() => addFixtureState.awayTeamId, (val) => {
+  if (val && !addFixtureState.groupId) {
+    const p = participants.value.find(p => p.id === val)
+    if (p?.groupId) {
+      addFixtureState.groupId = p.groupId
+    }
+  }
+})
+
+watch(() => addFixtureState.groupId, (val) => {
+  if (val && (addFixtureState.stage === undefined || addFixtureState.stage === null)) {
+    addFixtureState.stage = FixtureStage.GROUP_STAGE
+  }
+})
+
+const groupOptions = computed(() => {
+  return groupStore.groups.map(g => ({ label: g.name, value: g.id }))
+})
+
+const fixtureStageOptions = [
+  { label: 'Group Stage', value: FixtureStage.GROUP_STAGE },
+  { label: 'Knockout', value: FixtureStage.KNOCKOUT }
+]
+
+const venueOptions = computed(() => {
+  return venues.value.map(v => ({ label: v.name, value: v.name }))
+})
+
+const handleAddFixture = async () => {
+  if (!addFixtureState.homeTeamId || !addFixtureState.awayTeamId) {
+    useToast().add({ title: 'Please select both Home and Away teams', color: 'error' })
+    return
+  }
+  if (addFixtureState.homeTeamId === addFixtureState.awayTeamId) {
+    useToast().add({ title: 'Home and Away teams must be different', color: 'error' })
+    return
+  }
+  addingFixture.value = true
+  try {
+    await fixtureStore.createFixture({
+      tournament_id: tournament.value?.id || tournamentId.value,
+      homeTeamId: addFixtureState.homeTeamId,
+      awayTeamId: addFixtureState.awayTeamId,
+      round: addFixtureState.round,
+      roundName: addFixtureState.roundName || undefined,
+      startTime: addFixtureState.startTime || undefined,
+      venue: addFixtureState.venue || undefined,
+      groupId: addFixtureState.groupId || undefined,
+      stage: addFixtureState.stage || undefined
+    })
+    
+    // Re-fetch fixtures to get fully populated data (with team relations)
+    await fixtureStore.fetchFixtures(tournament.value?.id || tournamentId.value)
+    
+    useToast().add({ title: 'Fixture created successfully', color: 'success' })
+    
+    if (addFixtureKeepOpen.value) {
+      // Reset for another fixture but keep round
+      addFixtureState.homeTeamId = ''
+      addFixtureState.awayTeamId = ''
+      addFixtureState.startTime = ''
+      addFixtureState.venue = ''
+    } else {
+      showAddFixtureModal.value = false
+    }
+  } catch (err: any) {
+    useToast().add({ title: 'Failed to create fixture', description: err?.data?.message || err?.message, color: 'error' })
+  } finally {
+    addingFixture.value = false
+  }
 }
 
 // Advance to Knockout Stage (Hybrid)
@@ -433,7 +803,7 @@ const handleTeamExcelUpload = async (event: Event) => {
       }).filter(t => t.customName)
 
       if (teamsToUpload.length > 0) {
-        await participantStore.addParticipantsBulk(tournamentId.value, { participants: teamsToUpload })
+        await participantStore.addParticipantsBulk(tournament.value?.id || tournamentId.value, { participants: teamsToUpload })
         useToast().add({ title: `Added ${teamsToUpload.length} participants successfully`, color: 'success' })
       } else {
         useToast().add({ title: 'No valid participants found in Excel', color: 'error' })
@@ -880,6 +1250,7 @@ const tournamentStatus = computed(() => {
 // Type labels
 const typeLabels: Record<TournamentType, string> = {
   [TournamentType.KNOCKOUT]: 'Knockout',
+  [TournamentType.LEAGUE]: 'League',
   [TournamentType.ROUND_ROBIN]: 'Round Robin',
   [TournamentType.GROUP]: 'Group Stage',
   [TournamentType.HYBRID]: 'Hybrid (Group + Knockout)',
@@ -937,14 +1308,16 @@ const accordionItems = computed(() => {
     }
     
     return {
+      value: `round-${round}`,
       label,
       stats,
       fixtures: roundFixtures,
       defaultOpen: true,
       color: 'neutral' as const,
-      variant: 'soft' as const
+      variant: 'soft' as const,
+      slot: 'content'
     }
-  }).filter((item) => item !== null) as Array<{ label: string; stats: string; fixtures: Fixture[]; defaultOpen: boolean; color: any; variant: any }>
+  }).filter((item) => item !== null) as Array<{ value: string; label: string; stats: string; fixtures: Fixture[]; defaultOpen: boolean; color: any; variant: any; slot: string }>
 })
 
 // Group-stage-only accordion items (for hybrid tournaments)
@@ -976,20 +1349,22 @@ const groupStageAccordionItems = computed(() => {
     }
     
     return {
+      value: `gs-round-${round}`,
       label,
       stats,
       fixtures: roundFixtures,
       defaultOpen: true,
       color: 'neutral' as const,
-      variant: 'soft' as const
+      variant: 'soft' as const,
+      slot: 'content'
     }
-  }).filter((item) => item !== null) as Array<{ label: string; stats: string; fixtures: Fixture[]; defaultOpen: boolean; color: any; variant: any }>
+  }).filter((item) => item !== null) as Array<{ value: string; label: string; stats: string; fixtures: Fixture[]; defaultOpen: boolean; color: any; variant: any; slot: string }>
 })
 
 // Accordion items for the pure knockout bracket fixture list
 // Groups by roundName within each round so legs stay together per stage
 const knockoutAccordionItems = computed(() => {
-  const items: Array<{ label: string; stats: string; fixtures: Fixture[] }> = []
+  const items: Array<{ value: string; label: string; stats: string; fixtures: Fixture[]; slot: string }> = []
 
   for (const round of rounds.value) {
     let roundFixtures = (fixturesByRound.value[round] || [])
@@ -1030,9 +1405,11 @@ const knockoutAccordionItems = computed(() => {
       else if (total > 0) parts.push(`${total} Scheduled`)
 
       items.push({
+        value: `ko-${round}-${label}`,
         label,
         stats: parts.length ? `(${parts.join(' • ')})` : '',
         fixtures,
+        slot: 'content'
       })
     }
   }
@@ -1042,7 +1419,7 @@ const knockoutAccordionItems = computed(() => {
 
 // Same pattern for the hybrid knockout stage
 const hybridKnockoutAccordionItems = computed(() => {
-  const items: Array<{ label: string; stats: string; fixtures: Fixture[] }> = []
+  const items: Array<{ value: string; label: string; stats: string; fixtures: Fixture[]; slot: string }> = []
 
   for (const round of knockoutRounds.value) {
     let roundFixtures = (knockoutFixturesByRound.value[round] || [])
@@ -1081,9 +1458,11 @@ const hybridKnockoutAccordionItems = computed(() => {
       else if (total > 0) parts.push(`${total} Scheduled`)
 
       items.push({
+        value: `hko-${round}-${label}`,
         label,
         stats: parts.length ? `(${parts.join(' • ')})` : '',
         fixtures,
+        slot: 'content'
       })
     }
   }
@@ -1572,6 +1951,15 @@ const tabItems = computed(() => {
     }
   ]
 
+  // Add Groups tab for Group/Hybrid tournaments
+  if (tournament.value?.type === TournamentType.GROUP || tournament.value?.type === TournamentType.HYBRID) {
+    items.splice(2, 0, {
+      slot: 'groups',
+      label: 'Groups',
+      icon: 'i-heroicons-rectangle-group'
+    })
+  }
+
   if (showStandings.value) {
     items.push({
       slot: 'standings',
@@ -1633,6 +2021,43 @@ const openConfirmModal = (options: {
     }
   }
   confirmModalState.isOpen = true
+}
+
+// Shared Prompt Modal State
+const promptModalState = reactive({
+  isOpen: false,
+  title: '',
+  label: '',
+  value: '',
+  confirmLabel: 'OK',
+  cancelLabel: 'Cancel',
+  onConfirm: async (val: string) => {},
+  loading: false
+})
+
+const openPromptModal = (options: {
+  title: string
+  label: string
+  initialValue?: string
+  confirmLabel?: string
+  cancelLabel?: string
+  onConfirm: (value: string) => Promise<void> | void
+}) => {
+  promptModalState.title = options.title
+  promptModalState.label = options.label
+  promptModalState.value = options.initialValue || ''
+  promptModalState.confirmLabel = options.confirmLabel || 'OK'
+  promptModalState.cancelLabel = options.cancelLabel || 'Cancel'
+  promptModalState.onConfirm = async (val: string) => {
+    promptModalState.loading = true
+    try {
+      await options.onConfirm(val)
+    } finally {
+      promptModalState.loading = false
+      promptModalState.isOpen = false
+    }
+  }
+  promptModalState.isOpen = true
 }
 
 // QR Code Feature
@@ -2604,6 +3029,173 @@ const copyTournamentLink = async () => {
               </UCard>
             </template>
 
+            <!-- Groups Tab -->
+            <template #groups>
+              <div class="mt-4 space-y-6">
+                <!-- Group Creation & Stats -->
+                <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                      <UIcon name="i-heroicons-rectangle-group" class="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 class="font-semibold text-gray-900 dark:text-white">Tournament Groups</h3>
+                      <p class="text-xs text-gray-500">{{ groupStore.groups.length }} Groups · {{ participants.length }} Participants</p>
+                    </div>
+                  </div>
+                  
+                  <div class="flex w-full md:w-auto gap-2">
+                    <UInput 
+                      v-model="newGroupName" 
+                      placeholder="New group name..." 
+                      class="flex-1 md:w-48"
+                      @keyup.enter="handleAddGroup"
+                    />
+                    <UButton 
+                      color="primary" 
+                      icon="i-heroicons-plus" 
+                      label="Add Group" 
+                      :loading="addingGroup"
+                      :disabled="!newGroupName.trim()"
+                      @click="handleAddGroup" 
+                    />
+                  </div>
+                </div>
+
+                <!-- Unassigned Participants Pool -->
+                <UCard 
+                  v-if="unassignedParticipants.length > 0"
+                  class="border-dashed border-2 border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20"
+                >
+                  <template #header>
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-heroicons-user-plus" class="w-4 h-4 text-amber-500" />
+                        <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          Unassigned Participants ({{ unassignedParticipants.length }})
+                        </span>
+                      </div>
+                    </div>
+                  </template>
+                  
+                  <div class="flex flex-wrap gap-2">
+                    <div 
+                      v-for="participant in unassignedParticipants" 
+                      :key="participant.id"
+                      class="flex items-center gap-2 bg-white dark:bg-gray-800 pl-2 pr-1 py-1 rounded-lg border border-gray-200 dark:border-gray-700 text-sm shadow-sm transition-all hover:border-indigo-300 dark:hover:border-indigo-600"
+                    >
+                      <UAvatar 
+                        :src="participant.logoUrl || undefined" 
+                        :alt="participant.customName || '?'" 
+                        size="xs"
+                        class="bg-gray-100 dark:bg-gray-700"
+                      />
+                      <span class="max-w-[120px] truncate font-medium text-gray-700 dark:text-gray-200">{{ participant.customName || 'Unnamed' }}</span>
+                      
+                      <UDropdownMenu
+                        :items="[groupStore.groups.map(g => ({ label: g.name, icon: 'i-heroicons-arrow-right', onSelect: () => handleAssignToGroup(participant.id, g.id) }))]"
+                        :content="{ align: 'end' }"
+                      >
+                        <UButton 
+                          size="xs" 
+                          variant="ghost" 
+                          color="neutral" 
+                          icon="i-heroicons-chevron-right" 
+                          class="ml-1"
+                        />
+                      </UDropdownMenu>
+                    </div>
+                  </div>
+                </UCard>
+
+                <!-- Groups Grid -->
+                <div v-if="groupStore.groups.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div 
+                    v-for="group in groupStore.groups" 
+                    :key="group.id"
+                    class="group flex flex-col"
+                  >
+                    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden flex flex-col h-full hover:shadow-md transition-shadow">
+                      <!-- Group Header -->
+                      <div class="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/30">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+                          <h4 class="font-bold text-gray-900 dark:text-white truncate">{{ group.name }}</h4>
+                          <span class="text-xs text-gray-400 font-normal">({{ getGroupParticipants(group.id).length }})</span>
+                        </div>
+                        
+                        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <UButton 
+                            size="xs" 
+                            variant="ghost" 
+                            color="neutral" 
+                            icon="i-heroicons-pencil" 
+                            @click="handleRenameGroup(group)"
+                          />
+                          <UButton 
+                            size="xs" 
+                            variant="ghost" 
+                            color="error" 
+                            icon="i-heroicons-trash" 
+                            @click="handleDeleteGroup(group.id)"
+                          />
+                        </div>
+                      </div>
+
+                      <!-- Group Content (Teams) -->
+                      <div class="p-3 flex-1 space-y-2 max-h-[300px] overflow-y-auto">
+                        <div 
+                          v-for="participant in getGroupParticipants(group.id)" 
+                          :key="participant.id"
+                          class="flex items-center justify-between gap-2 p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-750 text-sm hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                        >
+                          <div class="flex items-center gap-2 min-w-0">
+                            <UAvatar 
+                              :src="participant.logoUrl || undefined" 
+                              :alt="participant.customName || '?'" 
+                              size="xs"
+                              class="bg-gray-100 dark:bg-gray-700 shrink-0"
+                            />
+                            <span class="truncate font-medium text-gray-700 dark:text-gray-200">
+                              {{ participant.customName || 'Unnamed' }}
+                            </span>
+                          </div>
+                          <UButton 
+                            size="xs" 
+                            variant="ghost" 
+                            color="error" 
+                            icon="i-heroicons-x-mark" 
+                            @click="handleAssignToGroup(participant.id, null)" 
+                          />
+                        </div>
+
+                        <div 
+                          v-if="getGroupParticipants(group.id).length === 0"
+                          class="flex flex-col items-center justify-center py-8 text-center text-gray-400"
+                        >
+                          <UIcon name="i-heroicons-user-group" class="w-8 h-8 mb-2 opacity-20" />
+                          <p class="text-xs">No teams assigned yet</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Empty State Groups -->
+                <div v-else class="text-center py-20 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+                  <div class="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                    <UIcon name="i-heroicons-rectangle-group" class="w-10 h-10 text-gray-300 dark:text-gray-600" />
+                  </div>
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">No groups created</h3>
+                  <p class="text-gray-500 max-w-xs mx-auto mt-1 mb-6">Create groups manually to organize your tournament participants.</p>
+                  <div class="max-w-xs mx-auto flex gap-2">
+                    <UInput v-model="newGroupName" placeholder="e.g. Group A" class="flex-1" />
+                    <UButton color="primary" label="Create Group" @click="handleAddGroup" />
+                  </div>
+                </div>
+              </div>
+            </template>
+
             <!-- Standings Tab -->
              <template #standings>
               <UCard v-if="showStandings" :loading="standingsLoading" class="mt-4">
@@ -2618,7 +3210,7 @@ const copyTournamentLink = async () => {
                 </template>
 
                 <!-- Group Stage (Multiple Tables) -->
-                <div v-if="(tournament.type === 'GROUP' || tournament.type === 'HYBRID') && Object.keys(standingStore.getStandingsByGroup).length > 0" class="space-y-6">
+                <div v-if="(tournament.type === TournamentType.GROUP || tournament.type === TournamentType.HYBRID || tournament.type === TournamentType.LEAGUE) && Object.keys(standingStore.getStandingsByGroup).length > 0" class="space-y-6">
                   <div v-for="(groupStandings, groupName) in standingStore.getStandingsByGroup" :key="groupName">
                     <h4 v-if="groupName !== 'default'" class="text-sm font-medium text-gray-500 mb-3 px-1">
                       {{ groupName }}
@@ -2659,16 +3251,14 @@ const copyTournamentLink = async () => {
                         label="Today"
                       />
                       <UButton 
-                        v-if="fixtures.length"
                         size="xs" 
                         variant="ghost" 
-                        color="error"
-                        icon="i-heroicons-trash"
-                        @click="handleClearFixtures"
-                        label="Clear"
+                        icon="i-heroicons-plus"
+                        @click="openAddFixtureModal"
+                        :disabled="participants.length < 2"
+                        label="Add"
                       />
                       <UButton
-                        v-if="!fixtures.length"
                         size="xs"
                         variant="ghost"
                         icon="i-heroicons-sparkles"
@@ -2676,6 +3266,15 @@ const copyTournamentLink = async () => {
                         :disabled="participants.length < 2"
                         @click="openGenerateModal"
                         label="Generate"
+                      />
+                      <UButton 
+                        v-if="fixtures.length"
+                        size="xs" 
+                        variant="ghost" 
+                        color="error"
+                        icon="i-heroicons-trash"
+                        @click="handleClearFixtures"
+                        label="Clear"
                       />
                     </div>
                   </div>
@@ -2703,17 +3302,27 @@ const copyTournamentLink = async () => {
                 <div v-else-if="!fixtures.length" class="py-8 text-center text-gray-400">
                   <UIcon name="i-heroicons-calendar-days" class="w-12 h-12 mx-auto mb-2" />
                   <p>No fixtures scheduled</p>
-                  <p class="text-sm mb-4">Generate fixtures after adding participants</p>
-                  <UButton 
-                    v-if="participants.length >= 2"
-                    size="sm" 
-                    variant="outline" 
-                    icon="i-heroicons-sparkles"
-                    :loading="generating"
-                    @click="openGenerateModal"
-                  >
-                    Generate Fixtures
-                  </UButton>
+                  <p class="text-sm mb-4">Generate fixtures automatically or add them manually</p>
+                  <div v-if="participants.length >= 2" class="flex items-center justify-center gap-3">
+                    <UButton 
+                      size="sm" 
+                      variant="outline" 
+                      icon="i-heroicons-sparkles"
+                      :loading="generating"
+                      @click="openGenerateModal"
+                    >
+                      Generate Fixtures
+                    </UButton>
+                    <UButton 
+                      size="sm" 
+                      variant="outline" 
+                      color="neutral"
+                      icon="i-heroicons-plus"
+                      @click="openAddFixtureModal"
+                    >
+                      Add Manually
+                    </UButton>
+                  </div>
                   <p v-else class="text-xs text-gray-400 mt-2">
                     Need at least 2 participants
                   </p>
@@ -3621,8 +4230,20 @@ const copyTournamentLink = async () => {
             class="mb-4"
           />
 
+          <!-- Use Existing Groups Option -->
+          <div 
+            v-if="(tournament?.type === 'GROUP' || tournament?.type === 'HYBRID') && groupStore.groups.length > 0" 
+            class="flex items-center justify-between p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30"
+          >
+            <div>
+              <p class="font-medium text-indigo-900 dark:text-indigo-300">Use Existing Groups</p>
+              <p class="text-sm text-indigo-700/70 dark:text-indigo-400/70">Re-use the {{ groupStore.groups.length }} groups you have already set up</p>
+            </div>
+            <USwitch v-model="generateConfig.useExistingGroups" />
+          </div>
+
           <!-- Group Stage Config -->
-          <div v-if="tournament?.type === 'GROUP' || tournament?.type === 'HYBRID'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div v-if="(tournament?.type === 'GROUP' || tournament?.type === 'HYBRID') && !generateConfig.useExistingGroups" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UFormField label="Teams Per Group" name="teamsPerGroup">
               <UInput 
                 v-model.number="generateConfig.teamsPerGroup" 
@@ -3654,8 +4275,13 @@ const copyTournamentLink = async () => {
             <USwitch v-model="generateConfig.doubleRoundRobin" />
           </div>
 
-          <div v-if="tournament?.type === 'GROUP' || tournament?.type === 'HYBRID'" class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg text-sm text-gray-500">
-            <p v-if="generateConfig.teamsPerGroup && participants.length">
+
+
+          <div v-if="(tournament?.type === 'GROUP' || tournament?.type === 'HYBRID')" class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg text-sm text-gray-500">
+            <p v-if="generateConfig.useExistingGroups">
+              The system will use your existing groups and team assignments.
+            </p>
+            <p v-else-if="generateConfig.teamsPerGroup && participants.length">
               With {{ participants.length }} participants and {{ generateConfig.teamsPerGroup }} teams per group, 
               you will have roughly {{ Math.ceil(participants.length / generateConfig.teamsPerGroup) }} groups.
             </p>
@@ -3680,6 +4306,159 @@ const copyTournamentLink = async () => {
               icon="i-heroicons-sparkles"
               :loading="generating"
               @click="handleGenerateFixtures"
+            />
+          </div>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Add Fixture Modal -->
+  <UModal v-model:open="showAddFixtureModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+              Add Fixture
+            </h3>
+            <UButton 
+              icon="i-heroicons-x-mark" 
+              variant="ghost" 
+              color="neutral" 
+              size="sm"
+              @click="showAddFixtureModal = false"
+            />
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <p class="text-sm text-gray-500">
+            Manually create a fixture by selecting the home and away teams.
+          </p>
+
+          <div 
+            v-if="tournament?.type === 'ROUND_ROBIN' || tournament?.type === 'GROUP' || tournament?.type === 'HYBRID' || tournament?.type === 'LEAGUE'"
+            class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800"
+          >
+            <div>
+              <p class="text-sm font-medium text-gray-900 dark:text-white">Double Round Robin</p>
+              <p class="text-xs text-gray-500">Enable to show double the number of matchdays</p>
+            </div>
+            <USwitch v-model="addFixtureState.doubleRoundRobin" />
+          </div>
+
+          <!-- Group & Stage (for GROUP/HYBRID tournaments) -->
+          <div 
+            v-if="(tournament?.type === 'GROUP' || tournament?.type === 'HYBRID') && groupOptions.length" 
+            class="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
+            <UFormField label="Group" name="groupId">
+              <USelectMenu
+                v-model="addFixtureState.groupId"
+                :items="groupOptions"
+                value-key="value"
+                placeholder="Select group (optional)"
+              />
+            </UFormField>
+
+            <UFormField v-if="tournament?.type === TournamentType.HYBRID || tournament?.type === TournamentType.GROUP" label="Stage" name="stage">
+              <USelectMenu
+                v-model="addFixtureState.stage"
+                :items="fixtureStageOptions"
+                value-key="value"
+                disabled
+                placeholder="Select stage (optional)"
+              />
+            </UFormField>
+          </div>
+
+          <!-- Teams -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <UFormField label="Home Team" name="homeTeamId" required>
+              <USelectMenu
+                v-model="addFixtureState.homeTeamId"
+                :items="homeParticipantOptions"
+                value-key="value"
+                placeholder="Select home team"
+              />
+            </UFormField>
+
+            <UFormField label="Away Team" name="awayTeamId" required>
+              <USelectMenu
+                v-model="addFixtureState.awayTeamId"
+                :items="awayParticipantOptions"
+                value-key="value"
+                placeholder="Select away team"
+              />
+            </UFormField>
+          </div>
+
+          <!-- Round & Round Name -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <UFormField label="Round Name" name="roundName">
+              <USelectMenu
+                v-model="addFixtureState.roundName"
+                :items="roundNameOptions"
+                value-key="value"
+                placeholder="Select round"
+              />
+            </UFormField>
+
+            <UFormField label="Round Number" name="round">
+              <UInput 
+                v-model.number="addFixtureState.round" 
+                type="number" 
+                :min="1"
+                disabled
+                placeholder="1"
+              />
+            </UFormField>
+          </div>
+
+          <!-- Start Time & Venue -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <UFormField label="Start Time" name="startTime">
+              <UInput 
+                v-model="addFixtureState.startTime" 
+                type="datetime-local"
+              />
+            </UFormField>
+
+            <UFormField label="Venue" name="venue">
+              <USelectMenu
+                v-model="addFixtureState.venue"
+                :items="venueOptions"
+                value-key="value"
+                searchable
+                creatable
+                placeholder="Select or enter venue"
+              />
+            </UFormField>
+          </div>
+
+
+          <!-- Add Another toggle -->
+          <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+            <div>
+              <p class="text-sm font-medium text-gray-900 dark:text-white">Add Another</p>
+              <p class="text-xs text-gray-500">Keep the modal open to add more fixtures</p>
+            </div>
+            <USwitch v-model="addFixtureKeepOpen" />
+          </div>
+
+          <div class="flex justify-end gap-3 pt-4">
+            <UButton 
+              label="Cancel" 
+              variant="ghost" 
+              color="neutral"
+              @click="showAddFixtureModal = false"
+            />
+            <UButton 
+              label="Add Fixture" 
+              icon="i-heroicons-plus"
+              :loading="addingFixture"
+              @click="handleAddFixture"
             />
           </div>
         </div>
@@ -4060,6 +4839,52 @@ const copyTournamentLink = async () => {
               :label="confirmModalState.confirmLabel"
               :loading="confirmModalState.loading"
               @click="confirmModalState.onConfirm"
+            />
+          </div>
+        </template>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Generic Prompt Modal -->
+  <UModal v-model:open="promptModalState.isOpen" :ui="{ content: 'sm:max-w-md' }">
+    <template #content>
+      <UCard :ui="{ root: 'divide-y divide-gray-100 dark:divide-gray-800' }">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white">
+              {{ promptModalState.title }}
+            </h3>
+            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="promptModalState.isOpen = false" />
+          </div>
+        </template>
+
+        <div class="py-4">
+          <UFormField :label="promptModalState.label">
+            <UInput 
+              v-model="promptModalState.value" 
+              class="w-full" 
+              autofocus 
+              @keyup.enter="promptModalState.onConfirm(promptModalState.value)"
+            />
+          </UFormField>
+        </div>
+
+        <template #footer>
+          <div class="flex items-center justify-end gap-3">
+            <UButton 
+              color="neutral" 
+              variant="ghost" 
+              :label="promptModalState.cancelLabel" 
+              @click="promptModalState.isOpen = false" 
+              :disabled="promptModalState.loading"
+            />
+            <UButton 
+              color="primary" 
+              :label="promptModalState.confirmLabel"
+              :loading="promptModalState.loading"
+              @click="promptModalState.onConfirm(promptModalState.value)"
+              :disabled="!promptModalState.value"
             />
           </div>
         </template>
