@@ -45,9 +45,14 @@ const hasActions = computed(() => {
         <span v-else class="fixture-unscheduled">TBD</span>
       </div>
       
-      <div v-if="fixture.status !== FixtureStatus.SCHEDULED || fixture.startTime" class="fixture-status" :class="statusColor[fixture.status]">
-        <span class="fixture-status__dot" :class="statusDot[fixture.status]" />
-        <span class="fixture-status__label">{{ fixture.status }}</span>
+      <div v-if="fixture.status !== FixtureStatus.SCHEDULED || fixture.startTime || fixture.group" class="fixture-status flex items-center gap-2">
+        <div v-if="fixture.group" class="fixture-group-badge">
+          {{ fixture.group.name }}
+        </div>
+        <div v-if="fixture.status !== FixtureStatus.SCHEDULED || fixture.startTime" :class="statusColor[fixture.status]" class="flex items-center gap-1.5">
+          <span class="fixture-status__dot" :class="statusDot[fixture.status]" />
+          <span class="fixture-status__label">{{ fixture.status }}</span>
+        </div>
       </div>
     </div>
 
@@ -200,11 +205,29 @@ const hasActions = computed(() => {
 .fixture-status {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.fixture-group-badge {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+:root.dark .fixture-group-badge {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  border-color: rgba(99, 102, 241, 0.3);
 }
 
 .fixture-status__dot {
