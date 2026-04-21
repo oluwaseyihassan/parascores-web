@@ -19,6 +19,7 @@ export enum Visibility {
 
 export enum TournamentType {
   KNOCKOUT = 'KNOCKOUT',
+  LEAGUE = 'LEAGUE',
   ROUND_ROBIN = 'ROUND_ROBIN',
   GROUP = 'GROUP',
   FRIENDLY = 'FRIENDLY',
