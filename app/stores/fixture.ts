@@ -13,6 +13,31 @@ export interface UpdateFixtureData {
   venue?: string | null
 }
 
+export interface CreateFixtureData {
+  tournament_id: string
+  homeTeamId: string
+  awayTeamId: string
+  round: number
+  roundName?: string | null
+  matchNumber?: number
+  startTime?: string | null
+  venue?: string | null
+  groupId?: string | null
+  stage?: string | null
+}
+
+export interface GenerateFixturesOptions {
+  startDate?: string
+  intervalMinutes?: number
+  shuffleParticipants?: boolean
+  clearExisting?: boolean
+  numberOfGroups?: number
+  teamsPerGroup?: number
+  doubleRoundRobin?: boolean
+  groupAssignments?: Record<string, string[]>
+  useExistingGroups?: boolean
+}
+
 export const useFixtureStore = defineStore('fixture', () => {
   const fixtures = ref<Fixture[]>([])
   const liveFixtures = ref<Fixture[]>([])
@@ -81,7 +106,7 @@ export const useFixtureStore = defineStore('fixture', () => {
 
   // Stage-aware getters for hybrid tournaments
   const groupStageFixtures = computed(() =>
-    fixtures.value.filter(f => f.stage === FixtureStage.GROUP_STAGE)
+    fixtures.value.filter(f => f.stage === FixtureStage.GROUP_STAGE || !f.stage)
   )
 
   const knockoutFixtures = computed(() =>
@@ -190,7 +215,7 @@ export const useFixtureStore = defineStore('fixture', () => {
   }
 
   // Generate fixtures for a tournament
-  async function generateFixtures(tournamentId: string, options?: { teamsPerGroup?: number; numberOfGroups?: number; doubleRoundRobin?: boolean }) {
+  async function generateFixtures(tournamentId: string, options?: GenerateFixturesOptions) {
     generating.value = true
     error.value = null
     try {
@@ -394,6 +419,28 @@ export const useFixtureStore = defineStore('fixture', () => {
     }
   }
 
+  // Create a single fixture manually
+  async function createFixture(data: CreateFixtureData) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<Fixture>>(`/fixtures`, {
+        method: 'POST',
+        body: data,
+      })
+      if (response.data) {
+        fixtures.value.push(response.data)
+      }
+      return response
+    } catch (err: any) {
+      error.value = err.data?.message || err.message || 'Failed to create fixture'
+      console.error('Create fixture failed:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Clear local fixtures state
   function clearFixtures() {
     fixtures.value = []
@@ -434,6 +481,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     deleteMatchEvent,
     clearFixtures,
     deleteAllFixtures,
-    advanceToKnockout
+    advanceToKnockout,
+    createFixture
   }
 })
