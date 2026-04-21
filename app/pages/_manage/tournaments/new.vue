@@ -250,8 +250,9 @@ watch(() => state.customName, (val) => {
 // Options
 const tournamentTypes = [
   { label: 'Knockout', value: TournamentType.KNOCKOUT, description: 'Single elimination bracket' },
+  { label: 'League', value: TournamentType.LEAGUE, description: 'Classic league format' },
   { label: 'Round Robin', value: TournamentType.ROUND_ROBIN, description: 'Everyone plays everyone' },
-  { label: 'Group Stage (League)', value: TournamentType.GROUP, description: 'Groups without knockout stage' },
+  { label: 'Group Stage', value: TournamentType.GROUP, description: 'Multiple groups without knockout' },
   { label: 'Hybrid (Group + Knockout)', value: TournamentType.HYBRID, description: 'Group Stage followed by Knockout Stage' },
   { label: 'Friendly / Single Match', value: TournamentType.FRIENDLY, description: 'Single matches, friendly games' }
 ]
