@@ -632,6 +632,24 @@ const canAdvance = computed(() => {
   
   const allGroupsComplete = groupMatches.every(f => f.status === FixtureStatus.COMPLETED)
   if (!allGroupsComplete) return false
+
+  // Validate that we have at least a single round robin across all groups
+  const groupParticipantCounts = new Map<string, number>()
+  participants.value.forEach(p => {
+    if (p.groupId) {
+      groupParticipantCounts.set(p.groupId, (groupParticipantCounts.get(p.groupId) || 0) + 1)
+    }
+  })
+
+  let expectedMinMatches = 0
+  groupParticipantCounts.forEach(count => {
+    if (count >= 2) {
+      expectedMinMatches += (count * (count - 1)) / 2
+    }
+  })
+
+  // If we have fewer matches than a single round robin, don't allow advancement yet
+  if (groupMatches.length < expectedMinMatches) return false
   
   // Check if already advanced (knockout matches exist)
   const knockoutMatches = fixtures.value.filter(f => f.stage === FixtureStage.KNOCKOUT)
