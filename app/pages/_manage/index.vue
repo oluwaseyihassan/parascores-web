@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
+import { TournamentType } from '~/types'
 
 definePageMeta({
   middleware: ['require-organizer'],
@@ -65,9 +66,12 @@ const formatDate = (dateString: string) => {
 // Get tournament type badge color
 const getTypeBadgeColor = (type: string) => {
   switch (type) {
-    case 'KNOCKOUT': return 'red'
-    case 'LEAGUE': return 'blue'
-    case 'ROUND_ROBIN': return 'green'
+    case TournamentType.KNOCKOUT: return 'red'
+    case TournamentType.LEAGUE: return 'blue'
+    case TournamentType.GROUP: return 'purple'
+    case TournamentType.ROUND_ROBIN: return 'blue'
+    case TournamentType.HYBRID: return 'orange'
+    case TournamentType.FRIENDLY: return 'green'
     default: return 'gray'
   }
 }
@@ -87,11 +91,12 @@ const PLACEHOLDER_BANNER = 'https://res.cloudinary.com/djsnerfzp/image/upload/v1
 
 function getTypeBadgeStyle(type: string) {
   switch (type) {
-    case 'KNOCKOUT': return 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30'
-    case 'ROUND_ROBIN': return 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30'
-    case 'GROUP': return 'bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-500/30'
-    case 'HYBRID': return 'bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/30'
-    case 'FRIENDLY': return 'bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30'
+    case TournamentType.KNOCKOUT: return 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30'
+    case TournamentType.LEAGUE: return 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30'
+    case TournamentType.ROUND_ROBIN: return 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30'
+    case TournamentType.GROUP: return 'bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-500/30'
+    case TournamentType.HYBRID: return 'bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/30'
+    case TournamentType.FRIENDLY: return 'bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30'
     default: return 'bg-gray-500/20 text-gray-700 dark:text-gray-400 border-gray-500/30'
   }
 }
