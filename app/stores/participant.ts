@@ -6,6 +6,7 @@ export interface CreateParticipantData {
   customName: string
   logoUrl?: string | null
   seed?: number | null
+  groupId?: string | null
 }
 
 export interface CreatePlayerData {
