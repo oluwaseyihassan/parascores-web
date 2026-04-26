@@ -18,6 +18,7 @@ export interface PaginatedResponse<T> {
 }
 
 export const useTournamentStore = defineStore('tournament', () => {
+  const { extractErrorMessage } = useErrors()
   const tournaments = ref<Tournament[]>([])
   const followedTournaments = ref<Tournament[]>([])
   const currentTournament = ref<Tournament | null>(null)
@@ -70,8 +71,8 @@ export const useTournamentStore = defineStore('tournament', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to fetch tournaments'
-      console.error('Fetch tournaments failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Fetch tournaments failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -104,8 +105,8 @@ export const useTournamentStore = defineStore('tournament', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to fetch tournament'
-      console.error('Fetch tournament failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Fetch tournament failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -131,8 +132,8 @@ export const useTournamentStore = defineStore('tournament', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to create tournament'
-      console.error('Create tournament failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Create tournament failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -152,8 +153,8 @@ export const useTournamentStore = defineStore('tournament', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to start season'
-      console.error('Start season failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Start season failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -181,8 +182,8 @@ export const useTournamentStore = defineStore('tournament', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to update tournament'
-      console.error('Update tournament failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Update tournament failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -204,8 +205,8 @@ export const useTournamentStore = defineStore('tournament', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to delete tournament'
-      console.error('Delete tournament failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Delete tournament failed:', error.value)
       throw err
     } finally {
       loading.value = false
