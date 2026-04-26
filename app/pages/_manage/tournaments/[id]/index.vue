@@ -2629,7 +2629,7 @@ const copyTournamentLink = async () => {
               </div>
             </template>
 
-            <div class="py-4">
+            <div class="py-4 max-h-[calc(100dvh-250px)] overflow-y-auto px-1">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
                 <!-- Auto Option -->
                 <button 
@@ -2680,7 +2680,7 @@ const copyTournamentLink = async () => {
 
               <!-- Manual Selection: Team list grouped by standings -->
               <div v-if="manualSelection">
-                <div class="space-y-4 max-h-80 overflow-y-auto">
+                <div class="space-y-4">
                   <div v-for="(groupStandings, groupName) in standingStore.getStandingsByGroup" :key="groupName">
                     <h4 v-if="groupName !== 'default'" class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
                       {{ groupName }}
