@@ -9,6 +9,7 @@ definePageMeta({
 
 const authStore = useAuthStore()
 const { user: currentUser, activeOrganizationId } = storeToRefs(authStore)
+const { handleError } = useErrors()
 
 const handleSwitch = (id: string) => {
   authStore.setActiveOrganization(id)
@@ -54,7 +55,7 @@ const fetchMembers = async (orgId: string) => {
     const response = await $api<{success: boolean, data: any[]}>(`/organizations/${orgId}/members`)
     membersMap.value[orgId] = response.data
   } catch (error) {
-    console.error('Failed to load members:', error)
+    handleError(error, { title: 'Failed to load members', toast: false })
   } finally {
     loadingMembers.value[orgId] = false
   }
@@ -75,11 +76,7 @@ const handleInvite = async (orgId: string) => {
         inviteEmail.value = ''
         fetchMembers(orgId)
     } catch (error: any) {
-        useToast().add({ 
-            title: 'Invite failed', 
-            description: error.data?.message || 'User not found', 
-            color: 'error' 
-        })
+        handleError(error, { title: 'Invite failed' })
     } finally {
         inviting.value = false
     }
@@ -94,7 +91,7 @@ const handleUpdateRole = async (orgId: string, userId: string, role: string) => 
         useToast().add({ title: 'Role updated', color: 'success' })
         fetchMembers(orgId)
     } catch (error: any) {
-        useToast().add({ title: 'Update failed', description: error.data?.message, color: 'error' })
+        handleError(error, { title: 'Update failed' })
     }
 }
 
@@ -112,7 +109,7 @@ const handleRemoveMember = async (orgId: string, userId: string) => {
                 useToast().add({ title: 'Member removed', color: 'success' })
                 fetchMembers(orgId)
             } catch (error: any) {
-                useToast().add({ title: 'Removal failed', description: error.data?.message, color: 'error' })
+                handleError(error, { title: 'Removal failed' })
             }
         }
     })
@@ -181,7 +178,7 @@ const handleUpdateBranding = async (orgId: string) => {
         useToast().add({ title: 'Branding updated', color: 'success' })
         await authStore.fetchUser()
     } catch (error: any) {
-        useToast().add({ title: 'Update failed', description: error.data?.message, color: 'error' })
+        handleError(error, { title: 'Update failed' })
     } finally {
         updatingBranding.value = false
     }
@@ -199,13 +196,9 @@ const handleLogoUpload = async (event: Event, orgId: string) => {
       method: 'POST',
       body: formData
     })
-    brandingStates.value[orgId].logoUrl = response.data.url
+     brandingStates.value[orgId].logoUrl = response.data.url
   } catch (error: any) {
-    useToast().add({ 
-      title: 'Upload failed', 
-      description: error.data?.message || 'Failed to upload image', 
-      color: 'error' 
-    })
+    handleError(error, { title: 'Upload failed' })
   }
 }
 
@@ -277,9 +270,10 @@ const handleRequestDeleteCode = async () => {
     )
     deleteCounts.value = response.data
     deleteStep.value = 2
+    deleteStep.value = 2
     useToast().add({ title: 'Code sent', description: 'Check your email for the verification code', color: 'success' })
   } catch (error: any) {
-    useToast().add({ title: 'Failed', description: error.data?.message || 'Could not send verification code', color: 'error' })
+    handleError(error, { title: 'Failed to send code' })
   } finally {
     requestingCode.value = false
   }
@@ -306,7 +300,7 @@ const handleConfirmDelete = async () => {
     }
     expandedOrgId.value = null
   } catch (error: any) {
-    useToast().add({ title: 'Delete failed', description: error.data?.message || 'Invalid or expired code', color: 'error' })
+    handleError(error, { title: 'Delete failed' })
   } finally {
     confirmingDelete.value = false
   }
