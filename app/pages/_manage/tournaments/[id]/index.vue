@@ -741,6 +741,47 @@ const advanceError = ref<string | null>(null)
 const manualSelection = ref(false)
 const selectedParticipantIds = ref<string[]>([])
 
+// ── Advance Modal LocalStorage persistence ───────────────────
+const ADVANCE_STORAGE_KEY = computed(() => `atk-progress-${tournamentId.value}`)
+
+const saveAdvanceProgress = () => {
+  try {
+    const data = {
+      manualSelection: manualSelection.value,
+      selectedParticipantIds: selectedParticipantIds.value,
+      savedAt: Date.now()
+    }
+    localStorage.setItem(ADVANCE_STORAGE_KEY.value, JSON.stringify(data))
+  } catch { /* quota exceeded or SSR */ }
+}
+
+const loadAdvanceProgress = (): boolean => {
+  try {
+    const raw = localStorage.getItem(ADVANCE_STORAGE_KEY.value)
+    if (!raw) return false
+    const data = JSON.parse(raw)
+    // Expire after 24 hours
+    if (Date.now() - data.savedAt > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(ADVANCE_STORAGE_KEY.value)
+      return false
+    }
+    manualSelection.value = data.manualSelection || false
+    selectedParticipantIds.value = data.selectedParticipantIds || []
+    return true
+  } catch {
+    return false
+  }
+}
+
+const clearAdvanceProgress = () => {
+  try { localStorage.removeItem(ADVANCE_STORAGE_KEY.value) } catch {}
+}
+
+// Auto-save advance modal state
+watch([manualSelection, selectedParticipantIds], () => {
+  if (showAdvanceModal.value) saveAdvanceProgress()
+}, { deep: true })
+
 const canAdvance = computed(() => {
   if (tournament.value?.type !== TournamentType.HYBRID) return false
   
@@ -786,9 +827,15 @@ const toggleParticipant = (id: string) => {
 }
 
 const openAdvanceModal = () => {
-  manualSelection.value = false
-  selectedParticipantIds.value = []
   advanceError.value = null
+  // Try to restore saved progress first
+  const restored = loadAdvanceProgress()
+  if (restored) {
+    useToast().add({ title: 'Progress Restored', description: 'Your previous selection has been loaded.', color: 'neutral', icon: 'i-heroicons-arrow-path' })
+  } else {
+    manualSelection.value = false
+    selectedParticipantIds.value = []
+  }
   showAdvanceModal.value = true
 }
 
@@ -809,6 +856,7 @@ const handleAdvanceKnockout = async () => {
     }
     
     showAdvanceModal.value = false
+    clearAdvanceProgress()
     
     // Refresh fully to be safe
     await fixtureStore.fetchFixtures(tournamentId.value)
