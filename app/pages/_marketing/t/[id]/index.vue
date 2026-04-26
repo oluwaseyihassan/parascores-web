@@ -17,6 +17,7 @@ const isDark = computed(() => colorMode.value === 'dark')
 // Stores
 const authStore = useAuthStore()
 const tournamentStore = useTournamentStore()
+const { handleError, extractErrorMessage } = useErrors()
 
 // State
 const tournament = ref<Tournament | null>(null)
@@ -155,7 +156,7 @@ async function fetchData() {
         socials: Social[];
         venues: Venue[];
       }
-    }>(`/tournaments/${tournamentId}/overview`).catch(() => null)
+    }>(`/tournaments/${tournamentId}/overview`)
     
     if (response?.data) {
       tournament.value = response.data.tournament
@@ -186,8 +187,8 @@ async function fetchData() {
       error.value = 'Tournament not found'
     }
   } catch (err: any) {
-    error.value = err?.message || 'Failed to load tournament'
-    console.error('Fetch tournament failed:', err)
+    error.value = extractErrorMessage(err)
+    handleError(err, { toast: false, report: true })
   } finally {
     loading.value = false
   }
@@ -282,7 +283,7 @@ async function toggleFollow() {
   } catch (err: any) {
     // Revert on failure
     isFollowing.value = wasFollowing
-    toast.add({ title: 'Error', description: err.data?.message || err.message || 'Could not update follow status.', color: 'error' })
+    handleError(err, { title: 'Error', report: true })
   } finally {
     togglingFollow.value = false
   }
