@@ -28,6 +28,7 @@ const fixtureStore = useFixtureStore()
 const standingStore = useStandingStore()
 const participantStore = useParticipantStore()
 const venueStore = useVenueStore()
+const { handleError, extractErrorMessage } = useErrors()
 
 // Local state
 const selectedFixture = ref<Fixture | null>(null)
@@ -224,11 +225,7 @@ const startMatch = async () => {
       color: 'success' 
     })
   } catch (error: any) {
-    useToast().add({ 
-      title: 'Failed to start match', 
-      description: error?.data?.message || error?.message || 'Unknown error', 
-      color: 'error' 
-    })
+    handleError(error, { title: 'Failed to start match' })
   } finally {
     updatingMatch.value = false
   }
@@ -257,11 +254,7 @@ const undoStartMatch = async () => {
       color: 'warning' 
     })
   } catch (error: any) {
-    useToast().add({ 
-      title: 'Failed to undo start', 
-      description: error?.data?.message || error?.message || 'Unknown error', 
-      color: 'error' 
-    })
+    handleError(error, { title: 'Failed to undo start' })
   } finally {
     updatingMatch.value = false
   }
@@ -429,11 +422,7 @@ const updateMatchTime = async () => {
       color: 'success' 
     })
   } catch (error: any) {
-    useToast().add({ 
-      title: 'Failed to update time', 
-      description: error.message || 'Unknown error', 
-      color: 'error' 
-    })
+    handleError(error, { title: 'Failed to update time' })
   } finally {
     updatingTime.value = false
   }
@@ -513,11 +502,7 @@ const confirmGoal = async () => {
         selectedFixture.value.awayScore = (selectedFixture.value.awayScore ?? 1) - 1
       }
     }
-    useToast().add({ 
-      title: 'Failed to record goal', 
-      description: error?.data?.message || error?.message || 'Unknown error', 
-      color: 'error' 
-    })
+    handleError(error, { title: 'Failed to record goal' })
   } finally {
     updatingMatch.value = false
   }
@@ -576,11 +561,7 @@ const confirmCard = async () => {
       color: cardData.type === MatchEventType.YELLOW_CARD ? 'warning' : 'error' 
     })
   } catch (error: any) {
-    useToast().add({ 
-      title: 'Failed to record card', 
-      description: error?.data?.message || error?.message || 'Unknown error', 
-      color: 'error' 
-    })
+    handleError(error, { title: 'Failed to record card' })
   } finally {
     updatingMatch.value = false
   }
@@ -610,7 +591,7 @@ const confirmEditEvent = async () => {
     await refreshMatchEvents()
     useToast().add({ title: 'Event Updated', color: 'success' })
   } catch (e: any) {
-    useToast().add({ title: 'Failed to update event', description: e?.data?.message || e?.message || 'Unknown error', color: 'error' })
+    handleError(e, { title: 'Failed to update event' })
   } finally {
     updatingMatch.value = false
   }
@@ -649,7 +630,7 @@ const confirmDeleteEvent = async () => {
     eventBeingDeleted.value = null
     useToast().add({ title: 'Event Deleted', color: 'success' })
   } catch (e: any) {
-    useToast().add({ title: 'Failed to delete event', description: e?.data?.message || e?.message || 'Unknown error', color: 'error' })
+    handleError(e, { title: 'Failed to delete event' })
   } finally {
     loadingEvents.value = false
   }
@@ -729,11 +710,7 @@ const decrementScore = async (team: 'home' | 'away') => {
     } else {
       selectedFixture.value.awayScore = currentScore
     }
-    useToast().add({ 
-      title: 'Failed to update score', 
-      description: error?.data?.message || error?.message || 'Unknown error', 
-      color: 'error' 
-    })
+    handleError(error, { title: 'Failed to update score' })
   } finally {
     updatingMatch.value = false
   }
@@ -761,19 +738,10 @@ const endMatch = async () => {
     emit('match-ended')
     closeModal()
     
-    useToast().add({ 
-      title: 'Match Ended', 
-      description: 'The match has been completed.',
-      icon: 'i-heroicons-check-circle',
-      color: 'success' 
-    })
+    useToast().add({ title: 'Match Ended', color: 'success' })
   } catch (error: any) {
-    errorMessage.value = error?.data?.message || error?.message || 'Unknown error'
-    useToast().add({ 
-      title: 'Failed to end match', 
-      description: errorMessage.value || undefined,
-      color: 'error' 
-    })
+    errorMessage.value = extractErrorMessage(error)
+    handleError(error, { title: 'Failed to end match' })
   } finally {
     updatingMatch.value = false
   }
@@ -798,12 +766,7 @@ const reopenMatch = async () => {
       color: 'warning' 
     })
   } catch (error: any) {
-    errorMessage.value = error?.data?.message || error?.message || 'Unknown error'
-    useToast().add({ 
-      title: 'Failed to reopen match', 
-      description: errorMessage.value || undefined,
-      color: 'error' 
-    })
+    handleError(error, { title: 'Failed to reopen match' })
   } finally {
     updatingMatch.value = false
   }
@@ -828,11 +791,7 @@ const savePenalties = async () => {
       color: 'success' 
     })
   } catch (error: any) {
-    useToast().add({ 
-      title: 'Failed to save penalties', 
-      description: error?.data?.message || error?.message || 'Unknown error', 
-      color: 'error' 
-    })
+    handleError(error, { title: 'Failed to save penalties' })
   } finally {
     updatingMatch.value = false
   }
@@ -950,11 +909,7 @@ const handleShareGraphic = async () => {
       const filename = `match-${selectedFixture.value?.id || 'result'}.png`
       await shareGraphicFn(blob, filename)
     } else {
-      useToast().add({
-        title: 'Generation Failed',
-        description: 'Could not generate graphic for sharing.',
-        color: 'error'
-      })
+      handleError(new Error('Could not generate graphic'), { title: 'Generation Failed' })
     }
   } finally {
     sharingMatch.value = false
@@ -994,12 +949,7 @@ const downloadGraphic = async () => {
       color: 'success'
     })
   } catch (e) {
-    console.error('Download failed', e)
-    useToast().add({
-      title: 'Generation Failed',
-      description: 'Could not generate graphic.',
-      color: 'error'
-    })
+    handleError(e, { title: 'Generation Failed', description: 'Could not generate graphic.' })
   } finally {
     downloading.value = false
   }
