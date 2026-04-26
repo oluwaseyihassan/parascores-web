@@ -39,6 +39,7 @@ export interface GenerateFixturesOptions {
 }
 
 export const useFixtureStore = defineStore('fixture', () => {
+  const { extractErrorMessage } = useErrors()
   const fixtures = ref<Fixture[]>([])
   const liveFixtures = ref<Fixture[]>([])
   const loading = ref(false)
@@ -206,8 +207,8 @@ export const useFixtureStore = defineStore('fixture', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to fetch fixtures'
-      console.error('Fetch fixtures failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Fetch fixtures failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -229,8 +230,8 @@ export const useFixtureStore = defineStore('fixture', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to generate fixtures'
-      console.error('Generate fixtures failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Generate fixtures failed:', error.value)
       throw err
     } finally {
       generating.value = false
@@ -238,13 +239,13 @@ export const useFixtureStore = defineStore('fixture', () => {
   }
 
   // Advance to knockout stage (for Hybrid tournaments)
-  async function advanceToKnockout(tournamentId: string, qualifiedParticipantIds?: string[]) {
+  async function advanceToKnockout(tournamentId: string, qualifiedParticipantIds?: string[], manualSeeding?: string[]) {
     generating.value = true
     error.value = null
     try {
       const response = await $api<ApiResponse<{ message: string; rounds: { round: number; roundName: string; fixtures: Fixture[] }[] }>>(`/fixtures/tournaments/${tournamentId}/groups/advance`, {
         method: 'POST',
-        body: { qualifiedParticipantIds }
+        body: { qualifiedParticipantIds, manualSeeding }
       })
       
       if (response.data?.rounds) {
@@ -267,8 +268,8 @@ export const useFixtureStore = defineStore('fixture', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to advance to knockout stage'
-      console.error('Advance to knockout failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Advance to knockout failed:', error.value)
       throw err
     } finally {
       generating.value = false
@@ -292,8 +293,8 @@ export const useFixtureStore = defineStore('fixture', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to update fixture'
-      console.error('Update fixture failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Update fixture failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -313,8 +314,8 @@ export const useFixtureStore = defineStore('fixture', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to fetch live fixtures'
-      console.error('Fetch live fixtures failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Fetch live fixtures failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -347,8 +348,8 @@ export const useFixtureStore = defineStore('fixture', () => {
       })
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to create match event'
-      console.error('Create match event failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Create match event failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -373,8 +374,8 @@ export const useFixtureStore = defineStore('fixture', () => {
       })
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to update match event'
-      console.error('Update match event failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Update match event failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -391,8 +392,8 @@ export const useFixtureStore = defineStore('fixture', () => {
       })
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to delete match event'
-      console.error('Delete match event failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Delete match event failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -400,19 +401,24 @@ export const useFixtureStore = defineStore('fixture', () => {
   }
 
   // Delete all fixtures for a tournament
-  async function deleteAllFixtures(tournamentId: string) {
+  async function deleteAllFixtures(tournamentId: string, stage?: string) {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<{ message: string }>>(`/fixtures/tournaments/${tournamentId}`, {
+      const url = stage ? `/fixtures/tournaments/${tournamentId}?stage=${stage}` : `/fixtures/tournaments/${tournamentId}`
+      const response = await $api<ApiResponse<{ message: string }>>(url, {
         method: 'DELETE',
       })
-      // Clear local state
-      fixtures.value = []
+      // Clear relevant local state
+      if (stage) {
+        fixtures.value = fixtures.value.filter(f => f.stage !== stage)
+      } else {
+        fixtures.value = []
+      }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to clear fixtures'
-      console.error('Clear fixtures failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Clear fixtures failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -433,8 +439,29 @@ export const useFixtureStore = defineStore('fixture', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to create fixture'
-      console.error('Create fixture failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Create fixture failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Delete a specific fixture
+  async function deleteFixture(fixtureId: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<{ message: string }>>(`/fixtures/${fixtureId}`, {
+        method: 'DELETE',
+      })
+      if (response.success) {
+        fixtures.value = fixtures.value.filter(f => f.id !== fixtureId)
+      }
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Delete fixture failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -481,6 +508,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     deleteMatchEvent,
     clearFixtures,
     deleteAllFixtures,
+    deleteFixture,
     advanceToKnockout,
     createFixture
   }
