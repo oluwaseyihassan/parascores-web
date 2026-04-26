@@ -12,6 +12,7 @@ definePageMeta({
 const tournamentStore = useTournamentStore()
 const authStore = useAuthStore()
 const router = useRouter()
+const { handleError } = useErrors()
 
 const isDirty = computed(() => {
   return state.name !== '' || state.sport !== '' || logoFile.value !== null || bannerFile.value !== null
@@ -179,6 +180,7 @@ const schema = z.object({
   maxParticipants: z.number().positive().optional().nullable(),
   autoApprove: z.boolean(),
   twoLegsKnockout: z.boolean().optional(),
+  doubleRoundRobin: z.boolean().optional(),
   thirdPlaceMatch: z.boolean().optional(),
   organization_id: z.string().min(1, 'Organization is required')
 })
@@ -201,6 +203,7 @@ const state = reactive<Partial<Schema>>({
   maxParticipants: null,
   autoApprove: false,
   twoLegsKnockout: false,
+  doubleRoundRobin: false,
   thirdPlaceMatch: false,
   organization_id: authStore.currentOrganization?.id || ''
 })
@@ -344,7 +347,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       await navigateTo(`/tournaments/${urlId}`)
     }
   } catch (err: any) {
-    error.value = err?.data?.message || err?.message || 'Failed to create tournament'
+    handleError(err, { title: 'Create Failed' })
   } finally {
     loading.value = false
   }
@@ -698,6 +701,20 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                     <p class="text-sm text-gray-500">Generate a playoff match for semi-final losers</p>
                   </div>
                   <USwitch v-model="state.thirdPlaceMatch" />
+                </div>
+             </div>
+          </template>
+
+          <template v-if="[TournamentType.ROUND_ROBIN, TournamentType.LEAGUE, TournamentType.GROUP, TournamentType.HYBRID].includes(state.type as any)">
+             <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                <h3 class="font-medium text-gray-900 dark:text-white">Round Robin / Group Options</h3>
+                
+                <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <div>
+                    <p class="font-medium text-gray-900 dark:text-white">Double Round Robin</p>
+                    <p class="text-sm text-gray-500">Teams will play each other twice (Home and Away)</p>
+                  </div>
+                  <USwitch v-model="state.doubleRoundRobin" />
                 </div>
              </div>
           </template>
