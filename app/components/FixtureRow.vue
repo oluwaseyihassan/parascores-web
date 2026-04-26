@@ -11,6 +11,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'start': [fixture: Fixture]
   'control': [fixture: Fixture]
+  'delete': [fixture: Fixture]
 }>()
 
 const statusColor: Record<string, string> = {
@@ -124,6 +125,15 @@ const hasActions = computed(() => {
       >
         <UIcon name="i-heroicons-clipboard-document-list" class="w-4 h-4" />
         <span>Match Details</span>
+      </button>
+
+      <!-- Delete Action (Always available if not cancelled) -->
+      <button
+        class="fx-btn fx-btn--delete"
+        @click.stop="emit('delete', fixture)"
+        title="Delete Fixture"
+      >
+        <UIcon name="i-heroicons-trash" class="w-4 h-4" />
       </button>
     </div>
   </div>
@@ -415,6 +425,18 @@ const hasActions = computed(() => {
 }
 :root.dark .fx-btn--details {
   color: #818cf8;
+}
+
+.fx-btn--delete {
+  flex: 0 0 auto;
+  width: 40px;
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.15);
+}
+.fx-btn--delete:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.25);
 }
 
 /* Mobile Adjustments */
