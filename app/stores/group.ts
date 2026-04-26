@@ -8,6 +8,7 @@ export interface CreateGroupData {
 }
 
 export const useGroupStore = defineStore('group', () => {
+  const { extractErrorMessage } = useErrors()
   const groups = ref<Group[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -25,8 +26,8 @@ export const useGroupStore = defineStore('group', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to fetch groups'
-      console.error('Fetch groups failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Fetch groups failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -47,8 +48,8 @@ export const useGroupStore = defineStore('group', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to create group'
-      console.error('Create group failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Create group failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -72,8 +73,8 @@ export const useGroupStore = defineStore('group', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to update group'
-      console.error('Update group failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Update group failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -91,8 +92,8 @@ export const useGroupStore = defineStore('group', () => {
       groups.value = groups.value.filter(g => g.id !== id)
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to delete group'
-      console.error('Delete group failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Delete group failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -122,8 +123,8 @@ export const useGroupStore = defineStore('group', () => {
       
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to assign participant'
-      console.error('Assign participant failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Assign participant failed:', error.value)
       throw err
     } finally {
       loading.value = false
