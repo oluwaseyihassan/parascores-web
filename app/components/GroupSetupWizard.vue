@@ -329,7 +329,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
           </div>
         </div>
 
-        <div class="p-8 max-h-[calc(100dvh-200px)] overflow-y-auto">
+        <div class="p-8 max-h-[calc(100dvh-230px)] overflow-y-auto scroll-smooth">
           <!-- Step 1: Config -->
           <div v-if="step === 1" class="max-w-md mx-auto space-y-6">
             <div class="bg-primary-50/50 dark:bg-primary-950/20 p-4 rounded-xl border border-primary-100 dark:border-primary-900/30 mb-8">
@@ -372,15 +372,6 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                    <p class="text-sm font-medium text-gray-900 dark:text-white">Randomize Initial Order</p>
                    <p class="text-xs text-gray-500">Shuffle teams before distributing them into groups.</p>
                 </div>
-            </div>
-
-            <div class="pt-8 pb-12 flex justify-end">
-              <UButton color="primary" @click="nextStep" size="lg">
-                {{ config.schedulingMethod === 'manual' ? 'Next: Review Groups' : 'Review & Generate' }}
-                <template #trailing>
-                  <UIcon name="i-heroicons-arrow-right" />
-                </template>
-              </UButton>
             </div>
           </div>
 
@@ -436,8 +427,127 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                   </div>
                 </div>
              </div>
+          </div>
 
-            <div class="pt-8 pb-12 flex justify-between border-t border-gray-100 dark:border-white/[0.05]">
+          <!-- Step 3: Manual Schedule -->
+          <div v-if="step === 3" class="space-y-6">
+             <div class="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-100 dark:border-white/5">
+                <h4 class="text-sm font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wider">Add New Fixture</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
+                   <UFormField label="Round / Matchday">
+                      <USelectMenu 
+                        v-model="addFixtureState.round" 
+                        :items="roundOptions" 
+                        value-key="value"
+                        class="w-full" 
+                      />
+                   </UFormField>
+                   
+                   <UFormField label="Home Team">
+                      <USelectMenu 
+                        v-model="addFixtureState.homeTeamId" 
+                        :items="homeParticipantOptions" 
+                        value-key="value"
+                        placeholder="Select team..."
+                        class="w-full"
+                      />
+                   </UFormField>
+
+                   <UFormField label="Away Team">
+                      <USelectMenu 
+                        v-model="addFixtureState.awayTeamId" 
+                        :items="awayParticipantOptions" 
+                        value-key="value"
+                        placeholder="Select team..."
+                        class="w-full"
+                      />
+                   </UFormField>
+
+                   <UFormField label="Date & Time">
+                      <UInput v-model="addFixtureState.startTime" type="datetime-local" class="w-full" />
+                   </UFormField>
+
+                   <UFormField label="Venue">
+                      <USelectMenu 
+                        v-model="addFixtureState.venue" 
+                        :items="venueOptions"
+                        value-key="value"
+                        searchable
+                        creatable
+                        placeholder="Select or enter venue"
+                        class="w-full"
+                      />
+                   </UFormField>
+                   
+                   <div class="flex justify-end">
+                      <UButton 
+                         icon="i-heroicons-plus" 
+                         label="Add Fixture" 
+                         @click="addManualFixture" 
+                         variant="solid"
+                         color="primary"
+                         block
+                      />
+                   </div>
+                </div>
+             </div>
+
+             <div class="space-y-3 px-1">
+                <div v-if="manualFixtures.length === 0" class="text-center py-12 border-2 border-dashed border-gray-100 dark:border-white/5 rounded-2xl">
+                   <UIcon name="i-heroicons-calendar" class="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                   <p class="text-sm text-gray-500">No manual fixtures added yet.</p>
+                </div>
+
+                <div 
+                   v-for="(f, index) in manualFixtures" 
+                   :key="index"
+                   class="flex items-center gap-4 p-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-white/5 rounded-xl shadow-sm group"
+                >
+                   <div class="flex flex-col items-center justify-center px-4 border-r border-gray-100 dark:border-white/5">
+                      <span class="text-[10px] font-bold text-gray-400 uppercase">MD</span>
+                      <span class="text-lg font-black text-primary-500">{{ f.round }}</span>
+                   </div>
+
+                   <div class="flex-1 flex items-center justify-center gap-4">
+                      <div class="flex-1 text-right font-medium truncate">{{ getParticipantById(f.homeTeamId)?.customName }}</div>
+                      <div class="text-[10px] font-bold text-gray-300 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded">VS</div>
+                      <div class="flex-1 text-left font-medium truncate">{{ getParticipantById(f.awayTeamId)?.customName }}</div>
+                   </div>
+
+                   <div class="text-xs text-gray-500 min-w-[200px] hidden sm:block">
+                      <div class="flex flex-col">
+                         <span>{{ new Date(f.startTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) }}</span>
+                         <span v-if="f.venue" class="text-[10px] text-gray-400 italic truncate max-w-[180px]">{{ f.venue }}</span>
+                      </div>
+                   </div>
+
+                   <UButton 
+                      icon="i-heroicons-trash" 
+                      color="error" 
+                      variant="ghost" 
+                      size="xs" 
+                      class="opacity-0 group-hover:opacity-100 transition-opacity"
+                      @click="removeManualFixture(index)"
+                   />
+                </div>
+             </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <div class="p-6 border-t border-gray-100 dark:border-white/[0.05] bg-white dark:bg-gray-900">
+            <!-- Step 1 Footer -->
+            <div v-if="step === 1" class="flex justify-end">
+              <UButton color="primary" @click="nextStep" size="lg">
+                {{ config.schedulingMethod === 'manual' ? 'Next: Review Groups' : 'Review & Generate' }}
+                <template #trailing>
+                  <UIcon name="i-heroicons-arrow-right" />
+                </template>
+              </UButton>
+            </div>
+
+            <!-- Step 2 Footer -->
+            <div v-if="step === 2" class="flex justify-between">
               <UButton color="neutral" variant="ghost" @click="step = 1">Back to Setup</UButton>
               <UButton 
                 color="primary" 
@@ -451,127 +561,24 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                 </template>
               </UButton>
             </div>
+
+            <!-- Step 3 Footer -->
+            <div v-if="step === 3" class="flex justify-between">
+              <UButton color="neutral" variant="ghost" @click="step = 2" :disabled="loading">Back to Groups</UButton>
+              <UButton 
+                color="success" 
+                @click="handleFinish" 
+                :loading="loading"
+                size="lg"
+              >
+                Finish & Generate Fixtures
+                <template #trailing>
+                  <UIcon name="i-heroicons-check" />
+                </template>
+              </UButton>
+            </div>
           </div>
-
-      <!-- Step 3: Manual Schedule -->
-      <div v-if="step === 3" class="space-y-6">
-         <div class="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-100 dark:border-white/5">
-            <h4 class="text-sm font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wider">Add New Fixture</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
-               <UFormField label="Round / Matchday">
-                  <USelectMenu 
-                    v-model="addFixtureState.round" 
-                    :items="roundOptions" 
-                    value-key="value"
-                    class="w-full" 
-                  />
-               </UFormField>
-               
-               <UFormField label="Home Team">
-                  <USelectMenu 
-                    v-model="addFixtureState.homeTeamId" 
-                    :items="homeParticipantOptions" 
-                    value-key="value"
-                    placeholder="Select team..."
-                    class="w-full"
-                  />
-               </UFormField>
-
-               <UFormField label="Away Team">
-                  <USelectMenu 
-                    v-model="addFixtureState.awayTeamId" 
-                    :items="awayParticipantOptions" 
-                    value-key="value"
-                    placeholder="Select team..."
-                    class="w-full"
-                  />
-               </UFormField>
-
-               <UFormField label="Date & Time">
-                  <UInput v-model="addFixtureState.startTime" type="datetime-local" class="w-full" />
-               </UFormField>
-
-               <UFormField label="Venue">
-                  <USelectMenu 
-                    v-model="addFixtureState.venue" 
-                    :items="venueOptions"
-                    value-key="value"
-                    searchable
-                    creatable
-                    placeholder="Select or enter venue"
-                    class="w-full"
-                  />
-               </UFormField>
-               
-               <div class="flex justify-end">
-                  <UButton 
-                     icon="i-heroicons-plus" 
-                     label="Add Fixture" 
-                     @click="addManualFixture" 
-                     variant="solid"
-                     color="primary"
-                     block
-                  />
-               </div>
-            </div>
-         </div>
-
-         <div class="space-y-3 px-1">
-            <div v-if="manualFixtures.length === 0" class="text-center py-12 border-2 border-dashed border-gray-100 dark:border-white/5 rounded-2xl">
-               <UIcon name="i-heroicons-calendar" class="w-10 h-10 text-gray-300 mx-auto mb-2" />
-               <p class="text-sm text-gray-500">No manual fixtures added yet.</p>
-            </div>
-
-            <div 
-               v-for="(f, index) in manualFixtures" 
-               :key="index"
-               class="flex items-center gap-4 p-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-white/5 rounded-xl shadow-sm group"
-            >
-               <div class="flex flex-col items-center justify-center px-4 border-r border-gray-100 dark:border-white/5">
-                  <span class="text-[10px] font-bold text-gray-400 uppercase">MD</span>
-                  <span class="text-lg font-black text-primary-500">{{ f.round }}</span>
-               </div>
-
-               <div class="flex-1 flex items-center justify-center gap-4">
-                  <div class="flex-1 text-right font-medium truncate">{{ getParticipantById(f.homeTeamId)?.customName }}</div>
-                  <div class="text-[10px] font-bold text-gray-300 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded">VS</div>
-                  <div class="flex-1 text-left font-medium truncate">{{ getParticipantById(f.awayTeamId)?.customName }}</div>
-               </div>
-
-               <div class="text-xs text-gray-500 min-w-[200px] hidden sm:block">
-                  <div class="flex flex-col">
-                     <span>{{ new Date(f.startTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) }}</span>
-                     <span v-if="f.venue" class="text-[10px] text-gray-400 italic truncate max-w-[180px]">{{ f.venue }}</span>
-                  </div>
-               </div>
-
-               <UButton 
-                  icon="i-heroicons-trash" 
-                  color="error" 
-                  variant="ghost" 
-                  size="xs" 
-                  class="opacity-0 group-hover:opacity-100 transition-opacity"
-                  @click="removeManualFixture(index)"
-               />
-            </div>
-         </div>
-
-         <div class="pt-8 pb-12 flex justify-between border-t border-gray-100 dark:border-white/[0.05]">
-            <UButton color="neutral" variant="ghost" @click="step = 2" :disabled="loading">Back to Groups</UButton>
-            <UButton 
-              color="success" 
-              @click="handleFinish" 
-              :loading="loading"
-              size="lg"
-            >
-              Finish & Generate Fixtures
-              <template #trailing>
-                <UIcon name="i-heroicons-check" />
-              </template>
-            </UButton>
-         </div>
-      </div>
-        </div>
+        </template>
       </UCard>
     </template>
   </UModal>
