@@ -3955,6 +3955,8 @@ const copyTournamentLink = async () => {
                         :fixtures-by-round="knockoutFixturesByRound"
                         :rounds="knockoutRounds"
                         :get-round-display-name="fixtureStore.getKnockoutRoundDisplayName"
+                        :two-legs-knockout="tournament?.twoLegsKnockout"
+                        :third-place-match="tournament?.thirdPlaceMatch"
                         :readonly="true"
                       />
                     </div>
