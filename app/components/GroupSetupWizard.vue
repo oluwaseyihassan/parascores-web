@@ -346,9 +346,10 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
 <template>
   <UModal :open="open" @update:open="closeWizard" :ui="{ content: 'sm:max-w-3xl' }">
     <template #content>
-      <UCard class="ring-0 shadow-none border-none overflow-hidden" :ui="{ body: 'p-0', header: 'p-0', footer: 'p-0' }">
+      <div class="flex flex-col overflow-hidden" style="max-height: 100dvh;">
         <!-- Header -->
-        <div class="p-6 border-b border-gray-100 dark:border-white/[0.05]">
+        <!-- Header (always visible) -->
+        <div class="p-6 border-b border-gray-100 dark:border-white/[0.05] shrink-0">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-bold text-gray-900 dark:text-white">Group Stage Setup</h3>
             <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" @click="closeWizard" />
@@ -385,7 +386,8 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
         </div>
 
         <!-- Steps 1 & 2: normal scrollable body -->
-        <div v-if="step !== 3" class="p-8 max-h-[calc(100dvh-230px)] overflow-y-auto scroll-smooth">
+        <!-- Steps 1 & 2: scrollable body -->
+        <div v-if="step !== 3" class="p-8 flex-1 min-h-0 overflow-y-auto scroll-smooth">
           <!-- Step 1: Config -->
           <div v-if="step === 1" class="max-w-md mx-auto space-y-6">
             <div class="bg-primary-50/50 dark:bg-primary-950/20 p-4 rounded-xl border border-primary-100 dark:border-primary-900/30 mb-8">
@@ -487,7 +489,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
         </div>
 
         <!-- Step 3: Manual Schedule — split layout: fixed form + scrollable list -->
-        <div v-if="step === 3" class="flex flex-col" style="max-height: calc(100dvh - 230px);">
+        <div v-if="step === 3" class="flex flex-col flex-1 min-h-0">
            <!-- Fixed form area -->
            <div class="p-6 border-b border-gray-100 dark:border-white/[0.05] bg-gray-50/80 dark:bg-gray-800/30 shrink-0">
               <h4 class="text-sm font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wider">Add New Fixture</h4>
@@ -597,52 +599,51 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
            </div>
         </div>
 
-        <template #footer>
-          <div class="p-6 border-t border-gray-100 dark:border-white/[0.05] bg-white dark:bg-gray-900">
-            <!-- Step 1 Footer -->
-            <div v-if="step === 1" class="flex justify-end">
-              <UButton color="primary" @click="nextStep" size="lg">
-                {{ config.schedulingMethod === 'manual' ? 'Next: Review Groups' : 'Review & Generate' }}
-                <template #trailing>
-                  <UIcon name="i-heroicons-arrow-right" />
-                </template>
-              </UButton>
-            </div>
-
-            <!-- Step 2 Footer -->
-            <div v-if="step === 2" class="flex justify-between">
-              <UButton color="neutral" variant="ghost" @click="step = 1">Back to Setup</UButton>
-              <UButton 
-                color="primary" 
-                @click="nextStep" 
-                :loading="loading"
-                size="lg"
-              >
-                {{ config.schedulingMethod === 'manual' ? 'Next: Schedule Fixtures' : 'Finish & Generate' }}
-                <template #trailing>
-                  <UIcon :name="config.schedulingMethod === 'manual' ? 'i-heroicons-arrow-right' : 'i-heroicons-check'" />
-                </template>
-              </UButton>
-            </div>
-
-            <!-- Step 3 Footer -->
-            <div v-if="step === 3" class="flex justify-between">
-              <UButton color="neutral" variant="ghost" @click="step = 2" :disabled="loading">Back to Groups</UButton>
-              <UButton 
-                color="success" 
-                @click="handleFinish" 
-                :loading="loading"
-                size="lg"
-              >
-                Finish & Generate Fixtures
-                <template #trailing>
-                  <UIcon name="i-heroicons-check" />
-                </template>
-              </UButton>
-            </div>
+        <!-- Footer (always visible) -->
+        <div class="p-6 border-t border-gray-100 dark:border-white/[0.05] bg-white dark:bg-gray-900 shrink-0">
+          <!-- Step 1 Footer -->
+          <div v-if="step === 1" class="flex justify-end">
+            <UButton color="primary" @click="nextStep" size="lg">
+              {{ config.schedulingMethod === 'manual' ? 'Next: Review Groups' : 'Review & Generate' }}
+              <template #trailing>
+                <UIcon name="i-heroicons-arrow-right" />
+              </template>
+            </UButton>
           </div>
-        </template>
-      </UCard>
+
+          <!-- Step 2 Footer -->
+          <div v-if="step === 2" class="flex justify-between">
+            <UButton color="neutral" variant="ghost" @click="step = 1">Back to Setup</UButton>
+            <UButton 
+              color="primary" 
+              @click="nextStep" 
+              :loading="loading"
+              size="lg"
+            >
+              {{ config.schedulingMethod === 'manual' ? 'Next: Schedule Fixtures' : 'Finish & Generate' }}
+              <template #trailing>
+                <UIcon :name="config.schedulingMethod === 'manual' ? 'i-heroicons-arrow-right' : 'i-heroicons-check'" />
+              </template>
+            </UButton>
+          </div>
+
+          <!-- Step 3 Footer -->
+          <div v-if="step === 3" class="flex justify-between">
+            <UButton color="neutral" variant="ghost" @click="step = 2" :disabled="loading">Back to Groups</UButton>
+            <UButton 
+              color="success" 
+              @click="handleFinish" 
+              :loading="loading"
+              size="lg"
+            >
+              Finish & Generate Fixtures
+              <template #trailing>
+                <UIcon name="i-heroicons-check" />
+              </template>
+            </UButton>
+          </div>
+        </div>
+      </div>
     </template>
   </UModal>
 </template>
