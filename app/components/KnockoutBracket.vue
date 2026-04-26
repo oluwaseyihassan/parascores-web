@@ -358,27 +358,26 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
             </template>
           </div>
 
-          <!-- Connector column -->
+          <!-- Connector column: pair up matches and draw bracket arms -->
           <div v-if="roundIndex < rounds.length - 1" class="connector-column">
-            <div
-              v-for="(matchup, matchIndex) in matchupsByRound[round]"
-              :key="`conn-${matchup.id}`"
-              class="connector-cell"
-              :style="{ gridRow: getMatchGridRow(roundIndex, matchIndex) }"
-            >
-              <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                <path
-                  v-if="matchIndex % 2 === 0"
-                  d="M 0 50 L 26 50 L 26 100"
-                  class="connector-line"
-                />
-                <path
-                  v-else
-                  d="M 0 50 L 26 50 L 26 0 M 26 0 L 52 0"
-                  class="connector-line"
-                />
-              </svg>
-            </div>
+            <!-- Render one connector per PAIR of matches (every 2 matches) -->
+            <template v-for="pairIndex in Math.ceil((matchupsByRound[round]?.length || 0) / 2)" :key="`conn-pair-${pairIndex}`">
+              <div
+                class="connector-pair"
+                :style="{
+                  gridRow: `${(pairIndex - 1) * Math.pow(2, roundIndex) * 4 + 1} / ${(pairIndex - 1) * Math.pow(2, roundIndex) * 4 + Math.pow(2, roundIndex) * 4 + 1}`
+                }"
+              >
+                <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                  <!-- Top match: horizontal right, then vertical down to midpoint -->
+                  <path d="M 0 25 L 26 25 L 26 50" class="connector-line" />
+                  <!-- Bottom match: horizontal right, then vertical up to midpoint -->
+                  <path d="M 0 75 L 26 75 L 26 50" class="connector-line" />
+                  <!-- Midpoint: horizontal line out to next round -->
+                  <path d="M 26 50 L 52 50" class="connector-line" />
+                </svg>
+              </div>
+            </template>
           </div>
         </template>
       </div>
@@ -482,7 +481,7 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
 }
 
 .bracket-scroll {
-  min-width: fit-content;
+  min-width: max-content;
 }
 
 /* ── Round headers ────────────────────────────────────────── */
@@ -827,7 +826,7 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
   flex-shrink: 0;
 }
 
-.connector-cell {
+.connector-pair {
   position: relative;
 }
 

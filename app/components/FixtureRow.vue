@@ -71,9 +71,16 @@ const hasActions = computed(() => {
       <!-- Score / vs -->
       <div class="fixture-scorebox">
         <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED">
-          <span class="fixture-score">{{ fixture.homeScore ?? 0 }}</span>
-          <span class="fixture-score-sep">–</span>
-          <span class="fixture-score">{{ fixture.awayScore ?? 0 }}</span>
+          <div class="flex flex-col items-center">
+             <div class="flex items-center gap-2">
+                <span class="fixture-score">{{ fixture.homeScore ?? 0 }}</span>
+                <span class="fixture-score-sep">–</span>
+                <span class="fixture-score">{{ fixture.awayScore ?? 0 }}</span>
+             </div>
+             <span v-if="fixture.homePenaltyScore != null || fixture.awayPenaltyScore != null" class="text-[10px] text-gray-500 font-semibold mt-0.5">
+                ({{ fixture.homePenaltyScore }} - {{ fixture.awayPenaltyScore }} pens)
+             </span>
+          </div>
         </template>
         <span v-else class="fixture-vs">vs</span>
       </div>

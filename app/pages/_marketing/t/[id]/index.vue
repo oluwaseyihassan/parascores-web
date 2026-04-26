@@ -880,9 +880,15 @@ function getTeamCards(fixture: any, isHome: boolean) {
                       <div class="flex flex-col items-center justify-center pl-4 border-l min-w-[3.5rem]" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                         <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED">
                           <div class="flex flex-col items-center gap-1">
-                            <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true, isDark)">{{ fixture.homeScore ?? 0 }}</span>
+                            <div class="flex items-baseline gap-1">
+                               <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true, isDark)">{{ fixture.homeScore ?? 0 }}</span>
+                               <span v-if="fixture.homePenaltyScore != null" class="text-[10px] font-semibold text-gray-400">({{ fixture.homePenaltyScore }})</span>
+                            </div>
                             <span class="text-[9px] font-bold text-gray-500/50 uppercase">-</span>
-                            <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, false, isDark)">{{ fixture.awayScore ?? 0 }}</span>
+                            <div class="flex items-baseline gap-1">
+                               <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, false, isDark)">{{ fixture.awayScore ?? 0 }}</span>
+                               <span v-if="fixture.awayPenaltyScore != null" class="text-[10px] font-semibold text-gray-400">({{ fixture.awayPenaltyScore }})</span>
+                            </div>
                           </div>
                         </template>
                         <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
@@ -996,9 +1002,15 @@ function getTeamCards(fixture: any, isHome: boolean) {
                         <div class="flex flex-col items-center justify-center pl-4 border-l min-w-[3.5rem]" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                           <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED">
                             <div class="flex flex-col items-center gap-1">
-                              <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true, isDark)">{{ fixture.homeScore ?? 0 }}</span>
+                              <div class="flex items-baseline gap-1">
+                                 <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true, isDark)">{{ fixture.homeScore ?? 0 }}</span>
+                                 <span v-if="fixture.homePenaltyScore != null" class="text-[10px] font-semibold text-gray-400">({{ fixture.homePenaltyScore }})</span>
+                              </div>
                               <span class="text-[9px] font-bold text-gray-500/50 uppercase">-</span>
-                              <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, false, isDark)">{{ fixture.awayScore ?? 0 }}</span>
+                              <div class="flex items-baseline gap-1">
+                                 <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, false, isDark)">{{ fixture.awayScore ?? 0 }}</span>
+                                 <span v-if="fixture.awayPenaltyScore != null" class="text-[10px] font-semibold text-gray-400">({{ fixture.awayPenaltyScore }})</span>
+                              </div>
                             </div>
                           </template>
                           <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
