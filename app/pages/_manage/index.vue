@@ -9,6 +9,7 @@ definePageMeta({
 
 const tournamentStore = useTournamentStore()
 const authStore = useAuthStore()
+const { handleError } = useErrors()
 const { tournaments, loading, pagination, hasMore, totalCount } = storeToRefs(tournamentStore)
 
 // View mode state
@@ -41,11 +42,7 @@ const togglePin = async (tournament: any) => {
       color: 'success'
     })
   } catch (err: any) {
-    useToast().add({
-      title: 'Failed to update pin status',
-      description: err.message,
-      color: 'error'
-    })
+    handleError(err, { title: 'Failed to update pin status' })
   }
 }
 
