@@ -6,6 +6,7 @@ definePageMeta({
 
 const authStore = useAuthStore()
 const { user, currentOrganization } = storeToRefs(authStore)
+const { handleError } = useErrors()
 
 // File upload
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -70,8 +71,7 @@ const uploadPicture = async () => {
     // Clear selection
     cancelUpload()
   } catch (error) {
-    console.error('Upload failed:', error)
-    alert('Failed to upload profile picture')
+    handleError(error, { title: 'Upload failed', description: 'Failed to upload profile picture' })
   } finally {
     uploading.value = false
   }
@@ -118,12 +118,7 @@ const handleUpdateProfile = async () => {
       isEditing.value = false
     }
   } catch (error: any) {
-    console.error('Update failed:', error)
-    useToast().add({ 
-      title: 'Failed to update profile', 
-      description: error.data?.message || error.message, 
-      color: 'error' 
-    })
+    handleError(error, { title: 'Failed to update profile' })
   } finally {
     updatingProfile.value = false
   }
@@ -156,8 +151,7 @@ const handleOrgLogoChange = async (event: Event) => {
       editState.organization_logo = response.data.url
     }
   } catch (error) {
-    console.error('Org logo upload failed:', error)
-    useToast().add({ title: 'Failed to upload organization logo', color: 'error' })
+    handleError(error, { title: 'Failed to upload organization logo' })
   } finally {
     uploadingOrgLogo.value = false
   }
@@ -181,7 +175,7 @@ const openPasswordModal = () => {
 
 const handleChangePassword = async () => {
   if (passwordState.newPassword !== passwordState.confirmPassword) {
-    useToast().add({ title: 'New passwords do not match', color: 'error' })
+    handleError(new Error('New passwords do not match'), { title: 'Validation Error' })
     return
   }
 
@@ -198,12 +192,7 @@ const handleChangePassword = async () => {
     useToast().add({ title: 'Password changed successfully', color: 'success' })
     showPasswordModal.value = false
   } catch (error: any) {
-    console.error('Password change failed:', error)
-    useToast().add({ 
-      title: 'Failed to change password', 
-      description: error.data?.message || error.message, 
-      color: 'error' 
-    })
+    handleError(error, { title: 'Failed to change password' })
   } finally {
     changingPassword.value = false
   }
