@@ -240,6 +240,7 @@ definePageMeta({
 const authStore = useAuthStore()
 const { loading } = storeToRefs(authStore)
 const { signup, googleSignup, resendVerificationEmail } = authStore
+const { extractErrorMessage, handleError } = useErrors()
 
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -282,8 +283,8 @@ const handleSignup = async (event: FormSubmitEvent<Schema>) => {
       error.value = response?.message || 'Signup failed'
     }
   } catch (err: any) {
-    console.error('Signup has failed:', err?.data?.message)
-    error.value = err?.data?.message || 'An unexpected error occurred'
+    error.value = extractErrorMessage(err)
+    handleError(err, { toast: false, title: 'Signup failed' })
   }
 }
 
@@ -303,7 +304,8 @@ const handleResendVerification = async () => {
       resendError.value = response?.message || 'Failed to resend verification email'
     }
   } catch (err: any) {
-    resendError.value = err?.data?.message || err?.message || 'Failed to resend verification email'
+    resendError.value = extractErrorMessage(err)
+    handleError(err, { toast: false, title: 'Resend verification failed' })
   } finally {
     resending.value = false
   }
