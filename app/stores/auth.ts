@@ -11,7 +11,9 @@ export interface ApiResponse <T>{
 }
 
 export const useAuthStore = defineStore('auth', () => {
+  const { extractErrorMessage } = useErrors()
   const user = ref<User | null>(null)
+  const error = ref<string | null>(null)
   const loading = ref(false)
   const authLoading = ref(true) // Tracks initial authentication check
   const activeOrganizationId = ref<string | null>(null)
@@ -48,6 +50,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(email: string, password: string) {
     loading.value = true
+    error.value = null
     try {
       const response = await $api<ApiResponse<User>>(`/auth/login`, {
         method: 'POST',
@@ -57,8 +60,10 @@ export const useAuthStore = defineStore('auth', () => {
         setUser(response.data)
       }
       return response
-    } catch (error: any) {
-      console.error('Login failed:', error?.message || error)
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Login failed:', error.value)
+      throw err
     } finally {
       loading.value = false
     }
@@ -83,6 +88,7 @@ async function signup(email: string, password: string, name: string) {
 
   async function fetchUser() {
     loading.value = true
+    error.value = null
     try {
       const response = await $api<ApiResponse<User>>(`/auth/profile`, {
         method: 'GET',
@@ -97,8 +103,9 @@ async function signup(email: string, password: string, name: string) {
         }
       }
       
-    } catch (error: any) {
-      console.error('Fetch user failed:', error?.message || 'Unknown error')
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Fetch user failed:', error.value)
     } finally {
       loading.value = false
       authLoading.value = false
@@ -107,14 +114,16 @@ async function signup(email: string, password: string, name: string) {
 
   async function googleSignup() {
     loading.value = true
+    error.value = null
     const config = useRuntimeConfig()
     const redirect_url = config.public.FRONT_END_URL
     try {
       return navigateTo(config.public.API_BASE_URL + `/auth/google?redirect_url=${redirect_url}`, {
           external: true
       })
-    } catch (error: any) {
-      console.error('Google signup failed:', error?.message || error)
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Google signup failed:', error.value)
     } finally {
       loading.value = false
     }
@@ -129,8 +138,9 @@ async function signup(email: string, password: string, name: string) {
         method: 'GET',
       })
       setUser(null)
-    } catch (error: any) {
-      console.error('Logout failed:', error?.message || error)
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Logout failed:', error.value)
     } finally {
       loading.value = false
     }
@@ -252,6 +262,7 @@ async function signup(email: string, password: string, name: string) {
   return {
     user,
     loading,
+    error,
     authLoading,
     isAuthenticated,
     organizations,
