@@ -34,9 +34,62 @@ const config = reactive({
 const selectedParticipantIds = ref<string[]>([])
 const bracketAssignments = ref<string[]>([]) // Array of participant IDs mapped to bracket slots
 
+// ── LocalStorage persistence ─────────────────────────────────
+const STORAGE_KEY = `kw-progress-${props.tournament.id}`
+
+const saveProgress = () => {
+  try {
+    const data = {
+      step: step.value,
+      config: { ...config },
+      selectedParticipantIds: selectedParticipantIds.value,
+      bracketAssignments: bracketAssignments.value,
+      savedAt: Date.now()
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch { /* quota exceeded or SSR */ }
+}
+
+const loadProgress = (): boolean => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return false
+    const data = JSON.parse(raw)
+    // Expire after 24 hours
+    if (Date.now() - data.savedAt > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(STORAGE_KEY)
+      return false
+    }
+    // Restore state
+    step.value = data.step || 1
+    Object.assign(config, data.config)
+    selectedParticipantIds.value = data.selectedParticipantIds || []
+    bracketAssignments.value = data.bracketAssignments || []
+    return true
+  } catch {
+    return false
+  }
+}
+
+const clearProgress = () => {
+  try { localStorage.removeItem(STORAGE_KEY) } catch {}
+}
+
+// Auto-save whenever key state changes
+watch([step, config, selectedParticipantIds, bracketAssignments], () => {
+  if (props.open) saveProgress()
+}, { deep: true })
+
 // Reset wizard when opened
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
+    // Try to restore saved progress first
+    const restored = loadProgress()
+    if (restored) {
+      toast.add({ title: 'Progress Restored', description: 'Your previous wizard progress has been loaded.', color: 'neutral', icon: 'i-heroicons-arrow-path' })
+      return
+    }
+
     step.value = 1
     
     // Calculate ideal bracket size based on participants
@@ -140,6 +193,7 @@ const handleFinish = async () => {
     }
     
     toast.add({ title: 'Brackets Created', color: 'success' })
+    clearProgress()
     emit('generated')
     closeWizard()
   } catch (error: any) {
@@ -248,9 +302,9 @@ const previewFixturesByRound = computed(() => {
     :ui="{ content: 'sm:max-w-2xl' }"
   >
     <template #content>
-      <UCard class="ring-0 shadow-none border-none overflow-hidden" :ui="{ body: 'p-0', header: 'p-0', footer: 'p-0' }">
-        <!-- Header -->
-        <div class="p-6 border-b border-gray-100 dark:border-white/[0.05]">
+      <div class="flex flex-col overflow-hidden" style="max-height: 100dvh;">
+        <!-- Header (always visible) -->
+        <div class="p-6 border-b border-gray-100 dark:border-white/[0.05] shrink-0">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-bold text-gray-900 dark:text-white">Knockout Bracket Setup</h3>
             <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" @click="closeWizard" />
@@ -270,7 +324,7 @@ const previewFixturesByRound = computed(() => {
           </div>
         </div>
 
-        <div class="p-6 max-h-[calc(100dvh-230px)] overflow-y-auto scroll-smooth">
+        <div class="p-6 flex-1 min-h-0 overflow-y-auto scroll-smooth">
           <!-- Step 1: Structure -->
           <div v-if="step === 1" class="space-y-6">
             <div class="text-center mb-4">
@@ -404,42 +458,41 @@ const previewFixturesByRound = computed(() => {
           </div>
         </div>
 
-        <template #footer>
-          <div class="p-6 border-t border-gray-100 dark:border-white/[0.05] bg-white dark:bg-gray-900">
-            <!-- Step 1 Footer -->
-            <div v-if="step === 1" class="flex justify-end">
-              <UButton color="primary" @click="goToSelection" size="lg">
-                Next: Select Teams
-                <template #trailing>
-                  <UIcon name="i-heroicons-arrow-right" />
-                </template>
-              </UButton>
-            </div>
-
-            <!-- Step 2 Footer -->
-            <div v-if="step === 2" class="flex justify-between">
-              <UButton color="neutral" variant="ghost" @click="step = 1">Back</UButton>
-              <UButton color="primary" @click="goToPairing" size="lg">
-                Next: Match Pairing
-                <template #trailing>
-                  <UIcon name="i-heroicons-arrow-right" />
-                </template>
-              </UButton>
-            </div>
-
-            <!-- Step 3 Footer -->
-            <div v-if="step === 3" class="flex justify-between">
-              <UButton color="neutral" variant="ghost" @click="step = 2" :disabled="loading">Back</UButton>
-              <UButton color="success" @click="handleFinish" :loading="loading" size="lg">
-                Finish & Generate Bracket
-                <template #trailing>
-                  <UIcon name="i-heroicons-check" />
-                </template>
-              </UButton>
-            </div>
+        <!-- Footer (always visible) -->
+        <div class="p-6 border-t border-gray-100 dark:border-white/[0.05] bg-white dark:bg-gray-900 shrink-0">
+          <!-- Step 1 Footer -->
+          <div v-if="step === 1" class="flex justify-end">
+            <UButton color="primary" @click="goToSelection" size="lg">
+              Next: Select Teams
+              <template #trailing>
+                <UIcon name="i-heroicons-arrow-right" />
+              </template>
+            </UButton>
           </div>
-        </template>
-      </UCard>
+
+          <!-- Step 2 Footer -->
+          <div v-if="step === 2" class="flex justify-between">
+            <UButton color="neutral" variant="ghost" @click="step = 1">Back</UButton>
+            <UButton color="primary" @click="goToPairing" size="lg">
+              Next: Match Pairing
+              <template #trailing>
+                <UIcon name="i-heroicons-arrow-right" />
+              </template>
+            </UButton>
+          </div>
+
+          <!-- Step 3 Footer -->
+          <div v-if="step === 3" class="flex justify-between">
+            <UButton color="neutral" variant="ghost" @click="step = 2" :disabled="loading">Back</UButton>
+            <UButton color="success" @click="handleFinish" :loading="loading" size="lg">
+              Finish & Generate Bracket
+              <template #trailing>
+                <UIcon name="i-heroicons-check" />
+              </template>
+            </UButton>
+          </div>
+        </div>
+      </div>
     </template>
   </UModal>
 </template>
