@@ -18,6 +18,7 @@
   import type { LayoutKey } from '#build/types/layouts'
 const authStore = useAuthStore()
 const route = useRoute()
+const { handleError } = useErrors()
 
 // 1. Hydrate User (Your existing code)
 // We use callOnce to make sure this runs on the server to check cookies
@@ -25,7 +26,7 @@ await callOnce(async () => {
   try {
     await authStore.fetchUser()
   } catch(err) {
-    console.log(err)
+    handleError(err, { toast: false, title: 'Hydration failed' })
   }
 })
 
