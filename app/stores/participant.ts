@@ -16,6 +16,7 @@ export interface CreatePlayerData {
 }
 
 export const useParticipantStore = defineStore('participant', () => {
+  const { extractErrorMessage } = useErrors()
   const participants = ref<Participant[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -33,8 +34,8 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to fetch participants'
-      console.error('Fetch participants failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Fetch participants failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -55,8 +56,8 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to add participant'
-      console.error('Add participant failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Add participant failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -77,8 +78,8 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to bulk add participants'
-      console.error('Bulk add participants failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Bulk add participants failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -102,8 +103,8 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to update participant'
-      console.error('Update participant failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Update participant failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -121,8 +122,8 @@ export const useParticipantStore = defineStore('participant', () => {
       participants.value = participants.value.filter(p => p.id !== id)
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to remove participant'
-      console.error('Remove participant failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Remove participant failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -137,7 +138,7 @@ export const useParticipantStore = defineStore('participant', () => {
       })
       return response.data || []
     } catch (err: any) {
-      console.error('Fetch participant players failed:', err)
+      console.error('Fetch participant players failed:', extractErrorMessage(err))
       return []
     }
   }
@@ -162,8 +163,8 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to add player'
-      console.error('Add player failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Add player failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -187,8 +188,8 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to bulk add players'
-      console.error('Bulk add players failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Bulk add players failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -216,8 +217,8 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to update player'
-      console.error('Update player failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Update player failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -245,8 +246,8 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to update player status'
-      console.error('Update player status failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Update player status failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -269,8 +270,8 @@ export const useParticipantStore = defineStore('participant', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to remove player'
-      console.error('Remove player failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Remove player failed:', error.value)
       throw err
     } finally {
       loading.value = false
