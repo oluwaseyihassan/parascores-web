@@ -36,11 +36,27 @@ const matchupsByRound = computed(() => {
     const matchups: any[] = []
 
     if (props.twoLegsKnockout && !isFinalRound) {
-      for (let i = 0; i < roundFixtures.length; i += 2) {
-        const f1 = roundFixtures[i]!
-        const f2 = roundFixtures[i + 1]
-        const fixtures = [f1]
-        if (f2) fixtures.push(f2)
+      // Group fixtures by their logical match pairing using matchNumber
+      // Leg 1 = odd matchNumber, Leg 2 = even matchNumber. Both map to Math.ceil(matchNumber / 2)
+      const matchupsMap = new Map<number, Fixture[]>()
+      for (const f of roundFixtures) {
+        // Fallback to matchNumber if missing (though it shouldn't be)
+        const logicalMatchId = f.matchNumber ? Math.ceil(f.matchNumber / 2) : 1
+        if (!matchupsMap.has(logicalMatchId)) matchupsMap.set(logicalMatchId, [])
+        matchupsMap.get(logicalMatchId)!.push(f)
+      }
+
+      // Sort by logicalMatchId to maintain bracket ordering (top to bottom)
+      const sortedLogicalIds = Array.from(matchupsMap.keys()).sort((a, b) => a - b)
+
+      for (const logicalMatchId of sortedLogicalIds) {
+        const fixtures = matchupsMap.get(logicalMatchId)!
+        // Sort within group so Leg 1 comes first (lowest matchNumber)
+        fixtures.sort((a, b) => a.matchNumber - b.matchNumber)
+        
+        const f1 = fixtures[0]!
+        const f2 = fixtures[1] // Might be undefined if user deleted Leg 2
+        
         matchups.push({
           id: f1.id,
           fixtures,
