@@ -1650,16 +1650,8 @@ const knockoutAccordionItems = computed(() => {
       if (roundFixtures.length === 0) continue
     }
 
-    // Group by roundName within this round (e.g. "Semi Final - Leg 1" / "Semi Final - Leg 2")
+    // Only add fixtures, don't pre-fill with skeleton if empty
     const byName = new Map<string, Fixture[]>()
-    
-    // Add skeleton labels for this round first to ensure order
-    const roundSkeleton = skeleton.filter(s => s.round === round)
-    roundSkeleton.forEach(s => {
-      if (!byName.has(s.label)) byName.set(s.label, [])
-    })
-
-    // Add actual fixtures
     for (const f of roundFixtures) {
       const key = f.roundName || `Round ${f.round}`
       if (!byName.has(key)) byName.set(key, [])
@@ -1723,12 +1715,6 @@ const hybridKnockoutAccordionItems = computed(() => {
 
     const byName = new Map<string, Fixture[]>()
     
-    // Add skeleton labels for this round first to ensure order
-    const roundSkeleton = skeleton.filter(s => s.round === round)
-    roundSkeleton.forEach(s => {
-      if (!byName.has(s.label)) byName.set(s.label, [])
-    })
-
     for (const f of roundFixtures) {
       const key = f.roundName || `Round ${f.round}`
       if (!byName.has(key)) byName.set(key, [])
