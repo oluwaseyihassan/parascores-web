@@ -133,6 +133,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const { loading } = storeToRefs(authStore)
 const { login, googleSignup } = authStore
+const { extractErrorMessage, handleError } = useErrors()
 
 const schema = z.object({
   email: z.string().email('Invalid email address'),
@@ -158,14 +159,7 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
     if (!response?.success) {
       error.value = response?.message || 'Login failed'
     } else {
-        // Redirect handled by auth store or middleware usually, 
-        // but if not, we might want to redirect here.
-        // Assuming auth store or middleware handles redirection on success or user watcher.
-        // Actually earlier conversation logs mentioned redirection logic issues, 
-        // but typically login simply sets user.
-        // If successful, we should probably redirect to dashboard if not already handled.
-        // Checking auth.ts, it doesn't redirect.
-        // I will add a redirect here to be safe and helpful.
+        // Redirect logic...
         console.log('Login successful')
         const redirect = route.query.redirect as string | undefined
         const router = useRouter()
@@ -177,8 +171,8 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
         }
     }
   } catch (err: any) {
-    console.error('Login failed:', err?.message)
-    error.value = err.message || 'An unexpected error occurred'
+    error.value = extractErrorMessage(err)
+    handleError(err, { toast: false, title: 'Login failed' })
   }
 }
 
