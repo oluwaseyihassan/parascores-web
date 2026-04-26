@@ -144,6 +144,7 @@ useSeoMeta({
   ogDescription: 'Get in touch with the ParaScores team for support, sales, or general inquiries.',
 })
 
+const { handleError } = useErrors()
 const toast = useToast()
 
 const schema = z.object({
@@ -183,13 +184,7 @@ async function onSubmit(event: any) {
       icon: 'i-heroicons-check-circle'
     })
   } catch (error: any) {
-    console.error('Failed to submit contact form:', error)
-    toast.add({
-      title: 'Submission Failed',
-      description: error.data?.message || 'Something went wrong. Please try again later.',
-      color: 'error',
-      icon: 'i-heroicons-exclamation-circle'
-    })
+    handleError(error, { title: 'Submission Failed' })
   } finally {
     status.value = 'idle'
   }
