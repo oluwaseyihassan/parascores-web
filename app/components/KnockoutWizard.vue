@@ -245,10 +245,10 @@ const previewFixturesByRound = computed(() => {
 <template>
   <UModal 
     v-model:open="isModalOpen"
-    :ui="{ content: 'sm:max-w-2xl bg-transparent shadow-none border-0' }"
+    :ui="{ content: 'sm:max-w-2xl' }"
   >
     <template #content>
-      <div class="bg-white dark:bg-gray-900 shadow-2xl rounded-xl overflow-hidden border border-gray-100 dark:border-white/[0.05]">
+      <UCard class="ring-0 shadow-none border-none overflow-hidden" :ui="{ body: 'p-0', header: 'p-0', footer: 'p-0' }">
         <!-- Header -->
         <div class="p-6 border-b border-gray-100 dark:border-white/[0.05]">
           <div class="flex items-center justify-between">
@@ -270,168 +270,176 @@ const previewFixturesByRound = computed(() => {
           </div>
         </div>
 
-        <div class="p-6">
+        <div class="p-6 max-h-[calc(100dvh-230px)] overflow-y-auto scroll-smooth">
           <!-- Step 1: Structure -->
           <div v-if="step === 1" class="space-y-6">
-          <div class="text-center mb-4">
-            <h4 class="font-medium text-gray-900 dark:text-white">Define Tournament Structure</h4>
-            <p class="text-sm text-gray-500">Pick how many teams will start in the knockout phase.</p>
-          </div>
+            <div class="text-center mb-4">
+              <h4 class="font-medium text-gray-900 dark:text-white">Define Tournament Structure</h4>
+              <p class="text-sm text-gray-500">Pick how many teams will start in the knockout phase.</p>
+            </div>
 
-          <UFormField label="Bracket Starting Size" description="Total slots in the first knockout round">
-            <USelect
-              v-model.number="config.bracketSize"
-              :items="[
-                { label: 'Round of 32 (32 Teams)', value: 32 },
-                { label: 'Round of 16 (16 Teams)', value: 16 },
-                { label: 'Quarter-Finals (8 Teams)', value: 8 },
-                { label: 'Semi-Finals (4 Teams)', value: 4 },
-                { label: 'Finals (2 Teams)', value: 2 }
-              ].filter(opt => opt.value <= 32 && (opt.value >= props.participants.length / 2))"
-              value-key="value"
-            />
-          </UFormField>
+            <UFormField label="Bracket Starting Size" description="Total slots in the first knockout round">
+              <USelect
+                v-model.number="config.bracketSize"
+                :items="[
+                  { label: 'Round of 32 (32 Teams)', value: 32 },
+                  { label: 'Round of 16 (16 Teams)', value: 16 },
+                  { label: 'Quarter-Finals (8 Teams)', value: 8 },
+                  { label: 'Semi-Finals (4 Teams)', value: 4 },
+                  { label: 'Finals (2 Teams)', value: 2 }
+                ].filter(opt => opt.value <= 32 && (opt.value >= props.participants.length / 2))"
+                value-key="value"
+                class="w-full"
+              />
+            </UFormField>
 
-          <!-- Settings Information -->
-          <div class="grid grid-cols-2 gap-4">
-            <div class="p-3 rounded-lg border border-gray-100 dark:border-white/[0.05] bg-gray-50/50 dark:bg-white/[0.02]">
-              <div class="text-[10px] uppercase font-bold text-gray-400 mb-1">Knockout Format</div>
-              <div class="flex items-center gap-2">
-                <UIcon 
-                  :name="tournament.twoLegsKnockout ? 'i-heroicons-check-circle-solid' : 'i-heroicons-x-circle'" 
-                  class="w-4 h-4"
-                  :class="tournament.twoLegsKnockout ? 'text-green-500' : 'text-gray-400'"
-                />
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ tournament.twoLegsKnockout ? 'Two-legged Matches' : 'Single Match' }}
-                </span>
+            <!-- Settings Information -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="p-3 rounded-xl border border-gray-100 dark:border-white/[0.05] bg-gray-50/50 dark:bg-white/[0.02]">
+                <div class="text-[10px] uppercase font-bold text-gray-400 mb-1">Knockout Format</div>
+                <div class="flex items-center gap-2">
+                  <UIcon 
+                    :name="tournament.twoLegsKnockout ? 'i-heroicons-check-circle-solid' : 'i-heroicons-x-circle'" 
+                    class="w-4 h-4"
+                    :class="tournament.twoLegsKnockout ? 'text-green-500' : 'text-gray-400'"
+                  />
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {{ tournament.twoLegsKnockout ? 'Two-legged Matches' : 'Single Match' }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="p-3 rounded-xl border border-gray-100 dark:border-white/[0.05] bg-gray-50/50 dark:bg-white/[0.02]">
+                <div class="text-[10px] uppercase font-bold text-gray-400 mb-1">Extra Matches</div>
+                <div class="flex items-center gap-2">
+                  <UIcon 
+                    :name="tournament.thirdPlaceMatch ? 'i-heroicons-check-circle-solid' : 'i-heroicons-x-circle'" 
+                    class="w-4 h-4"
+                    :class="tournament.thirdPlaceMatch ? 'text-green-500' : 'text-gray-400'"
+                  />
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {{ tournament.thirdPlaceMatch ? 'Third Place Play-off' : 'No Third Place' }}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div class="p-3 rounded-lg border border-gray-100 dark:border-white/[0.05] bg-gray-50/50 dark:bg-white/[0.02]">
-              <div class="text-[10px] uppercase font-bold text-gray-400 mb-1">Extra Matches</div>
-              <div class="flex items-center gap-2">
-                <UIcon 
-                  :name="tournament.thirdPlaceMatch ? 'i-heroicons-check-circle-solid' : 'i-heroicons-x-circle'" 
-                  class="w-4 h-4"
-                  :class="tournament.thirdPlaceMatch ? 'text-green-500' : 'text-gray-400'"
-                />
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ tournament.thirdPlaceMatch ? 'Third Place Play-off' : 'No Third Place' }}
-                </span>
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
+              <UIcon name="i-heroicons-information-circle" class="w-5 h-5 shrink-0" />
+              <p class="text-xs leading-relaxed">
+                These settings are based on the global tournament configuration. 
+                To change them, please visit the <strong>Tournament Settings</strong> page.
+              </p>
+            </div>
+          </div>
+
+          <!-- Step 2: Selection -->
+          <div v-if="step === 2" class="space-y-6">
+            <div class="text-center mb-4">
+              <h4 class="font-medium text-gray-900 dark:text-white">Select Participating Teams</h4>
+              <p class="text-sm text-gray-500">Choose the {{ config.bracketSize }} teams that will play in the brackets.</p>
+            </div>
+
+            <div class="p-2 border border-gray-100 dark:border-white/[0.05] rounded-xl">
+               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                 <div 
+                   v-for="p in participants" 
+                   :key="p.id"
+                   class="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.02] cursor-pointer transition-colors"
+                   @click="selectedParticipantIds.includes(p.id) ? selectedParticipantIds = selectedParticipantIds.filter(id => id !== p.id) : (selectedParticipantIds.length < config.bracketSize && selectedParticipantIds.push(p.id))"
+                 >
+                   <UCheckbox :model-value="selectedParticipantIds.includes(p.id)" />
+                   <UAvatar v-if="p.logoUrl" :src="p.logoUrl" size="xs" />
+                   <span class="text-sm truncate">{{ p.customName || p.user?.name || p.team?.name }}</span>
+                 </div>
+               </div>
+            </div>
+
+            <div class="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
+               <span class="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                 Teams Selected: {{ selectedParticipantIds.length }} / {{ config.bracketSize }}
+               </span>
+               <UButton size="xs" variant="ghost" color="primary" @click="selectedParticipantIds = []">Clear All</UButton>
+            </div>
+          </div>
+
+          <!-- Step 3: Pairing -->
+          <div v-if="step === 3" class="space-y-6">
+            <div class="flex items-center justify-between mb-4">
+              <div class="text-center flex-1">
+                <h4 class="font-medium text-gray-900 dark:text-white">Match Pairing</h4>
+                <p class="text-sm text-gray-500">Assign teams to their specific starting positions.</p>
               </div>
+              <UButton 
+                size="xs" 
+                variant="soft" 
+                color="neutral" 
+                icon="i-heroicons-arrows-right-left" 
+                label="Shuffle" 
+                @click="shufflePairings"
+              />
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 py-2">
+               <div v-for="i in config.bracketSize" :key="i" class="space-y-2">
+                 <div class="flex items-center justify-between px-1">
+                   <label class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">
+                     {{ getMatchLabel(i-1) }}
+                   </label>
+                   <span v-if="bracketAssignments[i-1] === 'bye'" class="text-[10px] font-medium text-amber-500 uppercase">Will be a Bye</span>
+                 </div>
+                 <USelectMenu
+                   :model-value="bracketAssignments[i-1]"
+                   @update:model-value="val => handlePairingChange(val as string, i-1)"
+                   :items="getParticipantOptions()"
+                   value-key="value"
+                   placeholder="Select team..."
+                   class="w-full"
+                   :ui="{ 
+                     base: (bracketAssignments[i-1] && bracketAssignments[i-1] !== 'bye') ? 'border-indigo-100 dark:border-indigo-900/30' : 'border-dashed border-gray-200 dark:border-white/10'
+                   }"
+                 />
+               </div>
             </div>
           </div>
-
-          <div class="flex items-start gap-2 p-3 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
-            <UIcon name="i-heroicons-information-circle" class="w-5 h-5 mt-0.5" />
-            <p class="text-xs">
-              These settings are based on the global tournament configuration. 
-              To change them, please visit the <strong>Tournament Settings</strong> page.
-            </p>
-          </div>
-
-          <div class="pt-4 flex justify-end">
-            <UButton color="primary" @click="goToSelection">
-              Next: Select Teams
-              <template #trailing>
-                <UIcon name="i-heroicons-arrow-right" />
-              </template>
-            </UButton>
-          </div>
         </div>
 
-        <!-- Step 2: Selection -->
-        <div v-if="step === 2" class="space-y-6">
-          <div class="text-center mb-4">
-            <h4 class="font-medium text-gray-900 dark:text-white">Select Participating Teams</h4>
-            <p class="text-sm text-gray-500">Choose the {{ config.bracketSize }} teams that will play in the brackets.</p>
-          </div>
-
-          <div class="max-h-80 overflow-y-auto p-2 border border-gray-100 dark:border-white/[0.05] rounded-lg">
-             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-               <div 
-                 v-for="p in participants" 
-                 :key="p.id"
-                 class="flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-white/[0.02] cursor-pointer"
-                 @click="selectedParticipantIds.includes(p.id) ? selectedParticipantIds = selectedParticipantIds.filter(id => id !== p.id) : (selectedParticipantIds.length < config.bracketSize && selectedParticipantIds.push(p.id))"
-               >
-                 <UCheckbox :model-value="selectedParticipantIds.includes(p.id)" />
-                 <UAvatar v-if="p.logoUrl" :src="p.logoUrl" size="xs" />
-                 <span class="text-sm truncate">{{ p.customName || p.user?.name || p.team?.name }}</span>
-               </div>
-             </div>
-          </div>
-
-          <div class="flex items-center justify-between p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-             <span class="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-               Teams Selected: {{ selectedParticipantIds.length }} / {{ config.bracketSize }}
-             </span>
-             <UButton size="xs" variant="ghost" color="primary" @click="selectedParticipantIds = []">Clear All</UButton>
-          </div>
-
-          <div class="pt-4 flex justify-between">
-            <UButton color="neutral" variant="ghost" @click="step = 1">Back</UButton>
-            <UButton color="primary" @click="goToPairing">
-              Next: Match Pairing
-              <template #trailing>
-                <UIcon name="i-heroicons-arrow-right" />
-              </template>
-            </UButton>
-          </div>
-        </div>
-
-        <!-- Step 3: Pairing -->
-        <div v-if="step === 3" class="space-y-6">
-          <div class="flex items-center justify-between mb-4">
-            <div class="text-center flex-1">
-              <h4 class="font-medium text-gray-900 dark:text-white">Match Pairing</h4>
-              <p class="text-sm text-gray-500">Assign teams to their specific starting positions.</p>
+        <template #footer>
+          <div class="p-6 border-t border-gray-100 dark:border-white/[0.05] bg-white dark:bg-gray-900">
+            <!-- Step 1 Footer -->
+            <div v-if="step === 1" class="flex justify-end">
+              <UButton color="primary" @click="goToSelection" size="lg">
+                Next: Select Teams
+                <template #trailing>
+                  <UIcon name="i-heroicons-arrow-right" />
+                </template>
+              </UButton>
             </div>
-            <UButton 
-              size="xs" 
-              variant="soft" 
-              color="neutral" 
-              icon="i-heroicons-arrows-right-left" 
-              label="Shuffle" 
-              @click="shufflePairings"
-            />
-          </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 max-h-96 overflow-y-auto pr-2 py-2">
-             <div v-for="i in config.bracketSize" :key="i" class="space-y-2">
-               <div class="flex items-center justify-between px-1">
-                 <label class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">
-                   {{ getMatchLabel(i-1) }}
-                 </label>
-                 <span v-if="bracketAssignments[i-1] === 'bye'" class="text-[10px] font-medium text-amber-500 uppercase">Will be a Bye</span>
-               </div>
-               <USelectMenu
-                 :model-value="bracketAssignments[i-1]"
-                 @update:model-value="val => handlePairingChange(val as string, i-1)"
-                 :items="getParticipantOptions()"
-                 value-key="value"
-                 placeholder="Select team..."
-                 class="w-full"
-                 :ui="{ 
-                   base: (bracketAssignments[i-1] && bracketAssignments[i-1] !== 'bye') ? 'border-indigo-100 dark:border-indigo-900/30' : 'border-dashed border-gray-200 dark:border-white/10'
-                 }"
-               />
-             </div>
-          </div>
+            <!-- Step 2 Footer -->
+            <div v-if="step === 2" class="flex justify-between">
+              <UButton color="neutral" variant="ghost" @click="step = 1">Back</UButton>
+              <UButton color="primary" @click="goToPairing" size="lg">
+                Next: Match Pairing
+                <template #trailing>
+                  <UIcon name="i-heroicons-arrow-right" />
+                </template>
+              </UButton>
+            </div>
 
-          <div class="pt-4 flex justify-between border-t border-gray-100 dark:border-white/[0.05]">
-            <UButton color="neutral" variant="ghost" @click="step = 2" :disabled="loading">Back</UButton>
-            <UButton color="success" @click="handleFinish" :loading="loading">
-              Finish & Generate Bracket
-              <template #trailing>
-                <UIcon name="i-heroicons-check" />
-              </template>
-            </UButton>
+            <!-- Step 3 Footer -->
+            <div v-if="step === 3" class="flex justify-between">
+              <UButton color="neutral" variant="ghost" @click="step = 2" :disabled="loading">Back</UButton>
+              <UButton color="success" @click="handleFinish" :loading="loading" size="lg">
+                Finish & Generate Bracket
+                <template #trailing>
+                  <UIcon name="i-heroicons-check" />
+                </template>
+              </UButton>
+            </div>
           </div>
-          </div>
-        </div>
-      </div>
+        </template>
+      </UCard>
     </template>
   </UModal>
 </template>
