@@ -153,8 +153,9 @@ export interface Tournament {
   isPinned?: boolean
   pendingRequestsCount?: number
 
-  // Advanced Knockout Options
+   // Advanced Options
   twoLegsKnockout?: boolean
+  doubleRoundRobin?: boolean
   thirdPlaceMatch?: boolean
 
   // Venues
