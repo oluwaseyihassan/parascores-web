@@ -9,6 +9,7 @@ const props = defineProps<{
 }>()
 
 const tournamentStore = useTournamentStore()
+const { handleError } = useErrors()
 
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -158,6 +159,7 @@ const schema = z.object({
   maxParticipants: z.number().positive().optional().nullable(),
   autoApprove: z.boolean(),
   twoLegsKnockout: z.boolean().optional(),
+  doubleRoundRobin: z.boolean().optional(),
   thirdPlaceMatch: z.boolean().optional()
 })
 
@@ -179,6 +181,7 @@ const state = reactive<Partial<Schema>>({
   maxParticipants: props.tournament.maxParticipants,
   autoApprove: props.tournament.autoApprove ?? false,
   twoLegsKnockout: props.tournament.twoLegsKnockout ?? false,
+  doubleRoundRobin: props.tournament.doubleRoundRobin ?? false,
   thirdPlaceMatch: props.tournament.thirdPlaceMatch ?? false
 })
 
@@ -344,13 +347,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       icon: 'i-heroicons-check-circle'
     })
   } catch (err: any) {
-    error.value = err?.data?.message || err?.message || 'Failed to update tournament'
-    useToast().add({
-      title: 'Update Failed',
-      description: error.value || 'Failed to update tournament',
-      color: 'error',
-      icon: 'i-heroicons-exclamation-triangle'
-    })
+    handleError(err, { title: 'Update Failed' })
   } finally {
     loading.value = false
   }
@@ -651,6 +648,20 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                     <p class="text-sm text-gray-500">Generate a playoff match for semi-final losers</p>
                   </div>
                   <USwitch v-model="state.thirdPlaceMatch" />
+                </div>
+             </div>
+          </template>
+
+          <template v-if="[TournamentType.ROUND_ROBIN, TournamentType.LEAGUE, TournamentType.GROUP, TournamentType.HYBRID].includes(state.type as any)">
+             <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                <h3 class="font-medium text-gray-900 dark:text-white">Round Robin / Group Options</h3>
+                
+                <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <div>
+                    <p class="font-medium text-gray-900 dark:text-white">Double Round Robin</p>
+                    <p class="text-sm text-gray-500">Teams will play each other twice (Home and Away)</p>
+                  </div>
+                  <USwitch v-model="state.doubleRoundRobin" />
                 </div>
              </div>
           </template>
