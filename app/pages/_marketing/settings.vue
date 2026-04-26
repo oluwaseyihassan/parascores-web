@@ -8,6 +8,7 @@ definePageMeta({
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
 const { toMain } = useHost()
+const { handleError } = useErrors()
 const toast = useToast()
 
 // Profile Logic
@@ -30,11 +31,7 @@ const handleUpdateProfile = async () => {
       isEditing.value = false
     }
   } catch (error: any) {
-    toast.add({ 
-      title: 'Update failed', 
-      description: error.data?.message || 'Please try again', 
-      color: 'error' 
-    })
+    handleError(error, { title: 'Update failed' })
   } finally {
     updatingProfile.value = false
   }
@@ -67,7 +64,7 @@ const handleAvatarChange = async (event: Event) => {
       toast.add({ title: 'Profile picture updated', color: 'success' })
     }
   } catch (err) {
-    toast.add({ title: 'Upload failed', color: 'error' })
+    handleError(err, { title: 'Upload failed' })
   } finally {
     uploading.value = false
   }
@@ -84,7 +81,7 @@ const passwordState = reactive({
 
 const handleChangePassword = async () => {
   if (passwordState.new !== passwordState.confirm) {
-    toast.add({ title: 'Passwords do not match', color: 'error' })
+    handleError(new Error('Passwords do not match'), { title: 'Validation Error' })
     return
   }
   
@@ -100,11 +97,7 @@ const handleChangePassword = async () => {
     toast.add({ title: 'Password changed successfully', color: 'success' })
     showPasswordModal.value = false
   } catch (err: any) {
-    toast.add({ 
-      title: 'Change failed', 
-      description: err.data?.message || 'Please check your current password', 
-      color: 'error' 
-    })
+    handleError(err, { title: 'Change failed' })
   } finally {
     changingPassword.value = false
   }
