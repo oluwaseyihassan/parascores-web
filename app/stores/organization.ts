@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import type { Organization, Tournament, ApiResponse, PaginatedResponse } from '../types'
 
 export const useOrganizationStore = defineStore('organization', () => {
+  const { extractErrorMessage } = useErrors()
   const currentOrganization = ref<Organization | null>(null)
   const organizationTournaments = ref<Tournament[]>([])
   
@@ -27,8 +28,8 @@ export const useOrganizationStore = defineStore('organization', () => {
       }
       return response
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Failed to fetch organization'
-      console.error('Fetch public organization failed:', err)
+      error.value = extractErrorMessage(err)
+      console.error('Fetch public organization failed:', error.value)
       throw err
     } finally {
       loading.value = false
@@ -53,7 +54,7 @@ export const useOrganizationStore = defineStore('organization', () => {
       }
       return response
     } catch (err: any) {
-      console.error('Fetch organization tournaments failed:', err)
+      console.error('Fetch organization tournaments failed:', extractErrorMessage(err))
       throw err
     } finally {
       loading.value = false
