@@ -128,6 +128,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const { handleError } = useErrors()
 const colorMode = useColorMode()
 const mapContainer = ref<HTMLElement | null>(null)
 let map: L.Map | null = null
@@ -253,7 +254,7 @@ async function fetchAddress(lat: number, lng: number) {
 
 async function locateMe() {
   if (!navigator.geolocation) {
-    toast.add({ title: 'Geolocation Not Supported', description: 'Your browser does not support location services.', color: 'error' })
+    handleError(new Error('Geolocation Not Supported'), { title: 'Geolocation Error' })
     return
   }
 
@@ -282,11 +283,7 @@ async function locateMe() {
           message = 'The request to get user location timed out.'
           break
       }
-      toast.add({ 
-        title: 'Location Error', 
-        description: message, 
-        color: 'error' 
-      })
+      handleError(new Error(message), { title: 'Location Error' })
       isLocating.value = false
     },
     { 
@@ -316,8 +313,7 @@ async function performSearch() {
     const data = await response.json()
     searchResults.value = data || []
   } catch (error) {
-    console.error('Failed to search location:', error)
-    toast.add({ title: 'Search Error', description: 'Could not connect to the location service.', color: 'error' })
+    handleError(error, { title: 'Search Error' })
   } finally {
     isSearching.value = false
   }
