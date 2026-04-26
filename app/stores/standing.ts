@@ -3,9 +3,11 @@ import type { Standing } from '~/types'
 import type { ApiResponse } from './auth'
 
 export const useStandingStore = defineStore('standing', () => {
+  const { extractErrorMessage } = useErrors()
   const standings = ref<Standing[]>([])
   const loading = ref(false)
   const generating = ref(false)
+  const error = ref<string | null>(null)
   
   // Fetch standings for a tournament
   async function fetchStandings(tournamentId: string) {
@@ -20,9 +22,10 @@ export const useStandingStore = defineStore('standing', () => {
         const data = response.data as any
         standings.value = Array.isArray(data) ? data : (data.standings || [])
       }
-    } catch (error: any) {
-      console.error('Failed to fetch standings:', error?.message || error)
-      throw error // Re-throw to handle in component
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Failed to fetch standings:', error.value)
+      throw err // Re-throw to handle in component
     } finally {
       loading.value = false
     }
@@ -44,9 +47,10 @@ export const useStandingStore = defineStore('standing', () => {
         standings.value = response.data || []
       }
       return response.data
-    } catch (error: any) {
-      console.error('Failed to generate standings:', error?.message || error)
-      throw error
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Failed to generate standings:', error.value)
+      throw err
     } finally {
       generating.value = false
     }
