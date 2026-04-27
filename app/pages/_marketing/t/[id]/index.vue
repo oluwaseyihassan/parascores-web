@@ -19,17 +19,8 @@ const authStore = useAuthStore()
 const tournamentStore = useTournamentStore()
 const { handleError, extractErrorMessage } = useErrors()
 
-// State
-const tournament = ref<Tournament | null>(null)
-const fixtures = ref<Fixture[]>([])
-const standings = ref<Standing[]>([])
-const participants = ref<Participant[]>([])
-const sponsors = ref<Sponsor[]>([])
+// State — fetched via useAsyncData for SSR support (SEO meta tags)
 const selectedSponsor = ref<Sponsor | null>(null)
-const socials = ref<Social[]>([])
-const venues = ref<Venue[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
 const { toMain, toTournament } = useHost()
 const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats'>(
   (route.query.tab as any) || 'info'
@@ -140,78 +131,82 @@ onBeforeUnmount(() => {
   window.removeEventListener('live-match-update', onLiveMatchUpdate)
 })
 
-// Fetch data
-async function fetchData() {
-  loading.value = true
-  error.value = null
-  try {
-    const response = await $publicApi<{
-      success: boolean;
-      data: {
-        tournament: Tournament;
-        participants: Participant[];
-        fixtures: Fixture[];
-        standings: any[];
-        sponsors: Sponsor[];
-        socials: Social[];
-        venues: Venue[];
-      }
-    }>(`/tournaments/${tournamentId}/overview`)
-    
-    if (response?.data) {
-      tournament.value = response.data.tournament
-      
-      // Handle fixtures
-      fixtures.value = response.data.fixtures || []
-      
-      // Handle standings
-      standings.value = response.data.standings || []
-      
-      // Handle participants
-      participants.value = response.data.participants || []
-      
-      // Handle sponsors
-      sponsors.value = response.data.sponsors || []
-      
-      // Handle socials
-      socials.value = response.data.socials || []
-      
-      // Handle venues
-      venues.value = response.data.venues || []
-      
-      // Load player stats if applicable
-      if (tournament.value.participantType === ParticipantType.TEAM) {
-        loadPlayerStats()
-      }
-    } else {
-      error.value = 'Tournament not found'
-    }
-  } catch (err: any) {
-    error.value = extractErrorMessage(err)
-    handleError(err, { toast: false, report: true })
-  } finally {
-    loading.value = false
-  }
-}
+// ── SSR-compatible data fetching ──────────────────────────────────
+// useAsyncData runs on BOTH server and client, ensuring meta tags
+// are present in the initial HTML for social media scrapers.
+const runtimeConfig = useRuntimeConfig()
 
-onMounted(() => {
-  fetchData()
+const { data: overviewData, status, error: fetchError } = await useAsyncData(
+  `tournament-overview-${tournamentId}`,
+  () => $fetch<{
+    success: boolean;
+    data: {
+      tournament: Tournament;
+      participants: Participant[];
+      fixtures: Fixture[];
+      standings: any[];
+      sponsors: Sponsor[];
+      socials: Social[];
+      venues: Venue[];
+    }
+  }>(`/tournaments/${tournamentId}/overview`, {
+    baseURL: runtimeConfig.public.API_BASE_URL as string,
+  }),
+  { lazy: false }
+)
+
+// Derived reactive state from the fetched data
+const tournament = computed(() => overviewData.value?.data?.tournament || null)
+const fixtures = ref<Fixture[]>(overviewData.value?.data?.fixtures || [])
+const standings = ref<Standing[]>(overviewData.value?.data?.standings as Standing[] || [])
+const participants = ref<Participant[]>(overviewData.value?.data?.participants || [])
+const sponsors = ref<Sponsor[]>(overviewData.value?.data?.sponsors || [])
+const socials = ref<Social[]>(overviewData.value?.data?.socials || [])
+const venues = ref<Venue[]>(overviewData.value?.data?.venues || [])
+const loading = computed(() => status.value === 'pending')
+const error = ref<string | null>(fetchError.value ? extractErrorMessage(fetchError.value) : (overviewData.value?.data ? null : 'Tournament not found'))
+
+// Sync refs when overviewData refreshes (e.g. client-side navigation)
+watch(overviewData, (newData) => {
+  if (newData?.data) {
+    fixtures.value = newData.data.fixtures || []
+    standings.value = (newData.data.standings as Standing[]) || []
+    participants.value = newData.data.participants || []
+    sponsors.value = newData.data.sponsors || []
+    socials.value = newData.data.socials || []
+    venues.value = newData.data.venues || []
+  }
 })
 
-// SEO
-watchEffect(() => {
-  if (tournament.value) {
-    const imageUrl = tournament.value.logoUrl || tournament.value.bannerUrl || 'https://www.parascores.com/og-image.png'
-    useSeoMeta({
-      title: `${tournament.value.name} | ParaScores`,
-      description: tournament.value.description || `Follow ${tournament.value.name} live scores, fixtures, standings, and brackets.`,
-      ogTitle: `${tournament.value.name} | ParaScores`,
-      ogDescription: tournament.value.description || `Follow ${tournament.value.name} live scores, fixtures, standings, and brackets.`,
-      ogImage: imageUrl,
-      twitterCard: 'summary_large_image',
-      twitterImage: imageUrl
-    })
+// Load player stats after mount (client-only, not needed for SEO)
+onMounted(() => {
+  if (tournament.value?.participantType === ParticipantType.TEAM) {
+    loadPlayerStats()
   }
+})
+
+// SEO — runs during SSR so meta tags are in the initial HTML
+const seoTitle = computed(() => tournament.value ? `${tournament.value.name} | ParaScores` : 'Tournament | ParaScores')
+const seoDescription = computed(() => tournament.value?.description || (tournament.value ? `Follow ${tournament.value.name} live scores, fixtures, standings, and brackets.` : 'Live tournament scores, fixtures, standings, and brackets on ParaScores.'))
+const seoImage = computed(() => tournament.value?.bannerUrl || tournament.value?.logoUrl || 'https://www.parascores.com/og-image.png')
+
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogImage: seoImage,
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
+  twitterImage: seoImage,
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: computed(() => `https://www.parascores.com/t/${tournamentId}`) }
+  ]
 })
 
 // Computed
