@@ -119,6 +119,7 @@
 </template>
 
 <script setup lang="ts">
+import type { Organization, ApiResponse } from '~/types'
 import { storeToRefs } from 'pinia'
 import { useOrganizationStore } from '~/stores/organization'
 
@@ -131,6 +132,7 @@ const route = useRoute()
 const router = useRouter()
 const orgStore = useOrganizationStore()
 const colorMode = useColorMode()
+const { extractErrorMessage } = useErrors()
 
 const isDark = computed(() => colorMode.value === 'dark')
 const slug = route.params.slug as string
@@ -140,16 +142,44 @@ const tabs = [
   { label: 'Tournaments', slot: 'tournaments', icon: 'i-heroicons-trophy' }
 ]
 
+// ── SSR-compatible org data fetching ──────────────────────────────
+// useAsyncData runs on BOTH server and client, ensuring meta tags
+// are present in the initial HTML for social media scrapers.
+const runtimeConfig = useRuntimeConfig()
+
+const { data: orgData, error: orgFetchError } = await useAsyncData(
+  `org-public-${slug}`,
+  () => $fetch<ApiResponse<Organization>>(`/organizations/public/${slug}`, {
+    baseURL: runtimeConfig.public.API_BASE_URL as string,
+  }),
+  { lazy: false }
+)
+
+// Hydrate the store with SSR-fetched data so the rest of the page works seamlessly
+if (orgData.value?.data) {
+  orgStore.currentOrganization = orgData.value.data
+}
+
+// Use store refs for template bindings (keeps reactivity for client-side updates)
 const { currentOrganization: organization, organizationTournaments: tournaments, loading, error, pagination } = storeToRefs(orgStore)
+
+// Set initial error from SSR fetch if needed
+if (orgFetchError.value) {
+  error.value = extractErrorMessage(orgFetchError.value)
+}
 
 const formattedDate = computed(() => {
   if (!organization.value?.created_at) return ''
   return new Date(organization.value.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 })
 
+// Tournaments are client-only (pagination, not needed for SEO)
 onMounted(async () => {
   try {
-    await orgStore.fetchPublicOrganization(slug)
+    // If org wasn't fetched during SSR (edge case), fetch now
+    if (!organization.value) {
+      await orgStore.fetchPublicOrganization(slug)
+    }
     await orgStore.fetchOrganizationTournaments(slug, 1)
   } catch (err) {
     console.error('Initial load failed:', err)
@@ -162,23 +192,27 @@ async function loadMore(newPage: number) {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-// SEO
-watchEffect(() => {
-  if (organization.value) {
-    const defaultImage = 'https://www.parascores.com/og-image.png'
-    const imageUrl = organization.value.logoUrl || defaultImage
-    const title = `${organization.value.name} | ParaScores`
-    const description = `View public tournaments hosted by ${organization.value.name}`
+// SEO — runs during SSR so meta tags are in the initial HTML
+const seoTitle = computed(() => organization.value ? `${organization.value.name} | ParaScores` : 'Organization | ParaScores')
+const seoDescription = computed(() => organization.value ? `View public tournaments hosted by ${organization.value.name}` : 'Explore tournaments on ParaScores.')
+const seoImage = computed(() => organization.value?.logoUrl || 'https://www.parascores.com/og-image.png')
 
-    useSeoMeta({
-      title,
-      description,
-      ogTitle: title,
-      ogDescription: description,
-      ogImage: imageUrl,
-      twitterCard: 'summary_large_image',
-      twitterImage: imageUrl
-    })
-  }
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogImage: seoImage,
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
+  twitterImage: seoImage,
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: computed(() => `https://www.parascores.com/org/${slug}`) }
+  ]
 })
 </script>
