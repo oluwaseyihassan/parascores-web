@@ -262,7 +262,7 @@
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Start/End match states
+                Quick home/away team swaps
               </li>
             </ul>
           </div>
@@ -281,15 +281,15 @@
             <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Win/Draw/Loss tracking
+                Points & goal difference
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Goal difference sorting
+                Head-to-head tiebreakers
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Group-by-group tables
+                Automatic promotion/relegation
               </li>
             </ul>
           </div>
@@ -308,15 +308,15 @@
             <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Custom team logos
+                Top scorers & assist kings
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Player positions & numbers
+                Player profiles & rosters
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Seeding for brackets
+                Team logos & branding
               </li>
             </ul>
           </div>
@@ -355,29 +355,29 @@
             </ul>
           </div>
 
-          <!-- Custom URLs -->
+          <!-- Personalized Fan Feed -->
           <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300">
             <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
               <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
               </svg>
             </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Custom URLs</h3>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Personalized Fan Feed</h3>
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium leading-relaxed">
-              Claim your unique tournament slug. Share a clean, professional link that's easy to remember.
+              Tailored experience for every fan. Follow your favorite teams and tournaments to get a customized feed of matches.
             </p>
             <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                parascores.com/your-league
+                Follow teams & leagues
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Unique custom names
+                Upcoming match reminders
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Professional branding
+                Custom feed algorithms
               </li>
             </ul>
           </div>
@@ -409,56 +409,56 @@
             </ul>
           </div>
 
-          <!-- Sponsors -->
+          <!-- Organization Pages -->
           <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300">
             <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
               <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
               </svg>
             </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Sponsor Integration</h3>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Organization Pages</h3>
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium leading-relaxed">
-              Add sponsor logos to your tournament. Show them on graphics and tournament pages.
+              Create an organization profile. Fans can follow your organization to get automatically notified about all your tournaments.
             </p>
             <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Upload sponsor logos
+                Organization following
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Link to sponsor websites
+                Custom branding & logos
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Auto-include in graphics
+                Public organization profiles
               </li>
             </ul>
           </div>
 
-          <!-- Social Links -->
+          <!-- Intuitive Setup Wizards -->
           <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300">
             <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
               <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
               </svg>
             </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Social Links</h3>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Intuitive Setup Wizards</h3>
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium leading-relaxed">
-              Connect your social media accounts. Display links on tournament pages and graphics.
+              Step-by-step wizards for group stages and knockout brackets. Seed teams and manually schedule fixtures with ease.
             </p>
             <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Twitter, Instagram, Facebook
+                Group assignment tools
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                YouTube, Twitch, Discord
+                Manual fixture scheduling
               </li>
               <li class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Custom website links
+                Bracket seeding
               </li>
             </ul>
           </div>
