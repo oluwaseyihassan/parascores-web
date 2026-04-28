@@ -204,6 +204,10 @@ const handleLogoUpload = async (event: Event, orgId: string) => {
 
 const logoInput = ref<HTMLInputElement | null>(null)
 
+const triggerUpload = (orgId: string) => {
+  document.getElementById('logo-input-' + orgId)?.click()
+}
+
 // Helper to initialize branding state when switching to branding tab
 watch(activeTabs, (newTabs) => {
     for (const [orgId, tab] of Object.entries(newTabs)) {
@@ -500,9 +504,9 @@ const handleConfirmDelete = async () => {
                                     size="xs" 
                                     icon="i-heroicons-camera" 
                                     class="rounded-lg font-bold"
-                                    @click="logoInput?.click()"
+                                    @click="triggerUpload(orgMember.organizationId)"
                                 />
-                                <input ref="logoInput" type="file" class="hidden" accept="image/*" @change="(e) => handleLogoUpload(e, orgMember.organizationId)" />
+                                <input :id="'logo-input-' + orgMember.organizationId" type="file" class="hidden" accept="image/*" @change="(e) => handleLogoUpload(e, orgMember.organizationId)" />
                             </div>
                         </div>
                     </div>
