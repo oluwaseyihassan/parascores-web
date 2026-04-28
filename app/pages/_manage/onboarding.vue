@@ -118,7 +118,7 @@
                 color="neutral"
                 icon="i-heroicons-arrow-left"
                 class="hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                @click="navigateTo('/', { external: true })"
+                @click="navigateTo(authStore.isOrganizer ? '/' : useRuntimeConfig().public.FRONT_END_URL, { external: true })"
              >
                 {{ authStore.isOrganizer ? 'Return to Dashboard' : 'Return to Fan Portal' }}
              </UButton>
