@@ -215,8 +215,9 @@
                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                
                <div class="absolute bottom-3 left-3 flex items-center gap-2">
-                 <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center border border-white/20 shadow-lg">
-                   <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-white" />
+                 <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center border border-white/20 shadow-lg overflow-hidden shrink-0">
+                   <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" />
+                   <UIcon v-else name="i-heroicons-trophy" class="w-5 h-5 text-white" />
                  </div>
                  <span class="text-xs font-bold text-white shadow-sm">{{ tournament.sport }}</span>
                </div>
@@ -275,8 +276,9 @@
                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                
                <div class="absolute bottom-3 left-3 flex items-center gap-2">
-                 <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center border border-white/20 shadow-lg">
-                   <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-white" />
+                 <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center border border-white/20 shadow-lg overflow-hidden shrink-0">
+                   <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" />
+                   <UIcon v-else name="i-heroicons-trophy" class="w-5 h-5 text-white" />
                  </div>
                  <span class="text-xs font-bold text-white shadow-sm">{{ tournament.sport }}</span>
                </div>
