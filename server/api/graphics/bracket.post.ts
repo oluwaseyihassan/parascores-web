@@ -100,12 +100,57 @@ export default defineEventHandler(async (event) => {
     // Construct Columns
     const columns = rounds.map((round, rIndex) => {
         const fixtures = fixturesByRound[round] || []
+        const isFinalRound = rIndex === rounds.length - 1
+        
+        let matchups: any[] = []
+        if (tournament.twoLegsKnockout && !isFinalRound) {
+            const matchupsMap = new Map<number, Fixture[]>()
+            for (const f of fixtures) {
+                const logicalMatchId = f.matchNumber ? Math.ceil(f.matchNumber / 2) : 1
+                if (!matchupsMap.has(logicalMatchId)) matchupsMap.set(logicalMatchId, [])
+                matchupsMap.get(logicalMatchId)!.push(f)
+            }
+            const sortedLogicalIds = Array.from(matchupsMap.keys()).sort((a, b) => a - b)
+            for (const logicalMatchId of sortedLogicalIds) {
+                const fixs = matchupsMap.get(logicalMatchId)!
+                fixs.sort((a, b) => a.matchNumber - b.matchNumber)
+                const f1 = fixs[0]!
+                const f2 = fixs[1]
+                matchups.push({
+                    homeTeam: f1.homeTeam,
+                    awayTeam: f1.awayTeam,
+                    homeTeamPlaceholder: f1.homeTeamPlaceholder,
+                    awayTeamPlaceholder: f1.awayTeamPlaceholder,
+                    homeScore: (f1.homeScore ?? 0) + (f2 ? (f2.awayScore ?? 0) : 0),
+                    awayScore: (f1.awayScore ?? 0) + (f2 ? (f2.homeScore ?? 0) : 0),
+                    homePenaltyScore: f2?.awayPenaltyScore ?? f1.homePenaltyScore,
+                    awayPenaltyScore: f2?.homePenaltyScore ?? f1.awayPenaltyScore,
+                    status: fixs.some(f => f.status === 'LIVE') ? 'LIVE' : (fixs.every(f => f.status === 'COMPLETED') ? 'COMPLETED' : 'SCHEDULED'),
+                    isDoubleLeg: true,
+                    fixtures: fixs
+                })
+            }
+        } else {
+            matchups = fixtures.map((f, index) => ({
+                  homeTeam: f.homeTeam,
+                  awayTeam: f.awayTeam,
+                  homeTeamPlaceholder: f.homeTeamPlaceholder,
+                  awayTeamPlaceholder: f.awayTeamPlaceholder,
+                  homeScore: f.homeScore,
+                  awayScore: f.awayScore,
+                  homePenaltyScore: f.homePenaltyScore,
+                  awayPenaltyScore: f.awayPenaltyScore,
+                  status: f.status,
+                  isDoubleLeg: false,
+                  fixtures: [f]
+            })).filter((_, index) => {
+               // Ignore 3rd place match so bracket connections don't break
+               return !(tournament.thirdPlaceMatch && isFinalRound && index === 1)
+            })
+        }
         
         // Prepare match cards
-        const matchCards = fixtures.map((fixture, mIndex) => {
-            const home = fixture.homeTeam
-            const away = fixture.awayTeam
-            
+        const matchCards = matchups.map((matchup, mIndex) => {
             const unit = matchHeight + matchGap
             const power = Math.pow(2, rIndex)
             const marginTop = mIndex === 0 ? (unit * (power - 1)) / 2 : 0
@@ -192,10 +237,10 @@ export default defineEventHandler(async (event) => {
                                     {
                                         type: 'div',
                                         props: {
-                                            style: { flex: 1, display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: '2px solid #374151', backgroundColor: getWinnerBg(fixture, true) },
+                                            style: { flex: 1, display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: '2px solid #374151', backgroundColor: getWinnerBg(matchup, true) },
                                             children: [
-                                                { type: 'span', props: { style: { flex: 1, fontSize: '24px', fontWeight: 600, color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }, children: getTeamName(fixture, true) } },
-                                                { type: 'span', props: { style: { fontSize: '28px', fontWeight: 700, color: 'white' }, children: getScore(fixture, true) } }
+                                                { type: 'span', props: { style: { flex: 1, fontSize: '24px', fontWeight: 600, color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }, children: getTeamName(matchup, true) } },
+                                                { type: 'span', props: { style: { fontSize: '24px', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }, children: getScore(matchup, true) } }
                                             ]
                                         }
                                     },
@@ -203,10 +248,10 @@ export default defineEventHandler(async (event) => {
                                     {
                                         type: 'div',
                                         props: {
-                                            style: { flex: 1, display: 'flex', alignItems: 'center', padding: '0 20px', backgroundColor: getWinnerBg(fixture, false) },
+                                            style: { flex: 1, display: 'flex', alignItems: 'center', padding: '0 20px', backgroundColor: getWinnerBg(matchup, false) },
                                             children: [
-                                                { type: 'span', props: { style: { flex: 1, fontSize: '24px', fontWeight: 600, color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }, children: getTeamName(fixture, false) } },
-                                                { type: 'span', props: { style: { fontSize: '28px', fontWeight: 700, color: 'white' }, children: getScore(fixture, false) } }
+                                                { type: 'span', props: { style: { flex: 1, fontSize: '24px', fontWeight: 600, color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }, children: getTeamName(matchup, false) } },
+                                                { type: 'span', props: { style: { fontSize: '24px', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }, children: getScore(matchup, false) } }
                                             ]
                                         }
                                     }
@@ -218,6 +263,9 @@ export default defineEventHandler(async (event) => {
                 }
             }
         })
+        
+        const rawRoundName = (fixtures[0] as any)?.roundName || getRoundLabel(rIndex, rounds.length)
+        const displayRoundName = rawRoundName.replace(/\s*-\s*Leg\s*\d+\s*$/i, '')
         
         return {
             type: 'div',
@@ -233,7 +281,7 @@ export default defineEventHandler(async (event) => {
                                 type: 'div',
                                 props: {
                                     style: { display: 'flex', justifyContent: 'center', width: '100%', textAlign: 'center', color: '#9ca3af', fontSize: '20px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '30px', letterSpacing: '0.05em' },
-                                    children: (fixtures[0] as any)?.roundName || getRoundLabel(rIndex, rounds.length)
+                                    children: displayRoundName
                                 }
                             },
                     ...matchCards
@@ -350,47 +398,72 @@ export default defineEventHandler(async (event) => {
 })
 
 // Helpers
-function getTeamName(fixture: Fixture, isHome: boolean) {
-    const team = isHome ? fixture.homeTeam : fixture.awayTeam
+function getTeamName(matchup: any, isHome: boolean) {
+    const team = isHome ? matchup.homeTeam : matchup.awayTeam
     if (team?.customName) return team.customName
-    const placeholder = isHome ? fixture.homeTeamPlaceholder : fixture.awayTeamPlaceholder
+    const placeholder = isHome ? matchup.homeTeamPlaceholder : matchup.awayTeamPlaceholder
     return placeholder || 'TBD'
 }
 
-function getScore(fixture: Fixture, isHome: boolean) {
-    if (fixture.status !== 'COMPLETED' && fixture.status !== 'LIVE') return '-'
+function getScore(matchup: any, isHome: boolean) {
+    if (matchup.status !== 'COMPLETED' && matchup.status !== 'LIVE') return '-'
     
-    const score = isHome ? (fixture.homeScore ?? 0) : (fixture.awayScore ?? 0)
-    const penaltyScore = isHome ? fixture.homePenaltyScore : fixture.awayPenaltyScore
+    const score = isHome ? (matchup.homeScore ?? 0) : (matchup.awayScore ?? 0)
+    const penaltyScore = isHome ? matchup.homePenaltyScore : matchup.awayPenaltyScore
     
     // Show penalty score if match went to penalties (scores are tied and penalty scores exist)
-    const homeScore = fixture.homeScore ?? 0
-    const awayScore = fixture.awayScore ?? 0
+    const homeScore = matchup.homeScore ?? 0
+    const awayScore = matchup.awayScore ?? 0
     const hasPenalties = homeScore === awayScore && 
-        (fixture.homePenaltyScore !== null && fixture.homePenaltyScore !== undefined) && 
-        (fixture.awayPenaltyScore !== null && fixture.awayPenaltyScore !== undefined)
+        (matchup.homePenaltyScore !== null && matchup.homePenaltyScore !== undefined) && 
+        (matchup.awayPenaltyScore !== null && matchup.awayPenaltyScore !== undefined)
     
-    if (hasPenalties && penaltyScore !== null && penaltyScore !== undefined) {
-        return `${score} (${penaltyScore})`
+    const subScores = []
+    if (matchup.isDoubleLeg && matchup.fixtures && matchup.fixtures[1]) {
+       const f1 = matchup.fixtures[0]
+       const f2 = matchup.fixtures[1]
+       const s1 = isHome ? f1.homeScore : f1.awayScore
+       const s2 = isHome ? f2.awayScore : f2.homeScore
+       if (s1 != null || s2 != null) {
+           subScores.push({
+               type: 'span',
+               props: {
+                   style: { fontSize: '16px', color: '#9ca3af', fontWeight: 500, marginRight: '8px' },
+                   children: `(${s1 ?? '-'}, ${s2 ?? '-'})`
+               }
+           })
+       }
     }
     
-    return score.toString()
+    let mainScore = score.toString()
+    if (hasPenalties && penaltyScore !== null && penaltyScore !== undefined) {
+        mainScore = `${score} [${penaltyScore}]`
+    }
+    
+    subScores.push({
+        type: 'span',
+        props: {
+           children: mainScore
+        }
+    })
+    
+    return subScores
 }
 
-function getWinnerBg(fixture: Fixture, isHome: boolean) {
-    if (fixture.status !== 'COMPLETED') return 'transparent'
+function getWinnerBg(matchup: any, isHome: boolean) {
+    if (matchup.status !== 'COMPLETED') return 'transparent'
     
     // Logic for winner
-    const home = fixture.homeScore ?? 0
-    const away = fixture.awayScore ?? 0
+    const home = matchup.homeScore ?? 0
+    const away = matchup.awayScore ?? 0
     
     let isWinner = false
     if (home > away) isWinner = isHome
     else if (away > home) isWinner = !isHome
     else {
         // Penalties?
-        const hp = fixture.homePenaltyScore ?? 0
-        const ap = fixture.awayPenaltyScore ?? 0
+        const hp = matchup.homePenaltyScore ?? 0
+        const ap = matchup.awayPenaltyScore ?? 0
         if (hp > ap) isWinner = isHome
         else if (ap > hp) isWinner = !isHome
     }
