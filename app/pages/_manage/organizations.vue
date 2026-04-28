@@ -171,9 +171,14 @@ const startBrandingEdit = (org: any) => {
 const handleUpdateBranding = async (orgId: string) => {
     updatingBranding.value = true
     try {
+        const payload = { ...brandingStates.value[orgId] }
+        if (!payload.website) delete payload.website
+        if (!payload.location) delete payload.location
+        if (!payload.logoUrl) delete payload.logoUrl
+
         await $api(`/organizations/${orgId}`, {
             method: 'PATCH',
-            body: brandingStates.value[orgId]
+            body: payload
         })
         useToast().add({ title: 'Branding updated', color: 'success' })
         await authStore.fetchUser()
