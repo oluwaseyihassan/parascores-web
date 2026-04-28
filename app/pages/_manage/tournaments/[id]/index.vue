@@ -107,6 +107,39 @@ const showStandings = computed(() => {
   return [TournamentType.ROUND_ROBIN, TournamentType.GROUP, TournamentType.HYBRID, TournamentType.LEAGUE].includes(tournament.value.type)
 })
 
+// Transfer Ownership logic
+const showTransferModal = ref(false)
+const transferringTournament = ref(false)
+const targetOrganizationId = ref<string>('')
+
+const availableOrganizationsForTransfer = computed(() => {
+  return authStore.organizations
+    .filter(orgMember => orgMember.organizationId !== tournament.value?.organization_id && (orgMember.role === 'OWNER' || orgMember.role === 'ADMIN'))
+    .map(orgMember => ({
+      label: orgMember.organization?.name || 'Unnamed Organization',
+      value: orgMember.organizationId
+    }))
+})
+
+const handleTransferTournament = async (event: FormSubmitEvent<any>) => {
+  if (!targetOrganizationId.value) return
+
+  transferringTournament.value = true
+  try {
+    await tournamentStore.updateTournament(tournament.value?.id || tournamentId.value, {
+      organization_id: targetOrganizationId.value
+    })
+    useToast().add({ title: 'Tournament transferred successfully', color: 'success' })
+    showTransferModal.value = false
+    const router = useRouter()
+    router.push('/')
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to transfer tournament' })
+  } finally {
+    transferringTournament.value = false
+  }
+}
+
 // Delete Tournament logic
 const deletingTournament = ref(false)
 
@@ -4071,6 +4104,30 @@ const copyTournamentLink = async () => {
                     </div>
                   </UCard>
                   
+                  <UCard class="mt-8 border-amber-200 dark:border-amber-900/50" :ui="{ header: 'bg-amber-50 dark:bg-amber-900/20' }">
+                    <template #header>
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-heroicons-arrows-right-left" class="w-5 h-5 text-amber-500" />
+                        <span class="font-medium text-amber-700 dark:text-amber-400">Transfer Ownership</span>
+                      </div>
+                    </template>
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-white">Transfer to another organization</h4>
+                        <p class="text-sm text-gray-500 mt-1">
+                          Move this tournament to another organization you are an admin of. You may lose access to it in this workspace.
+                        </p>
+                      </div>
+                      <UButton 
+                        color="neutral" 
+                        variant="soft" 
+                        icon="i-heroicons-arrows-right-left"
+                        label="Transfer Ownership" 
+                        @click="showTransferModal = true" 
+                      />
+                    </div>
+                  </UCard>
+                  
                   <UCard class="mt-8 border-red-200 dark:border-red-900/50" :ui="{ header: 'bg-red-50 dark:bg-red-900/20' }">
                     <template #header>
                       <div class="flex items-center gap-2">
@@ -4126,6 +4183,45 @@ const copyTournamentLink = async () => {
       <p class="text-gray-500 mb-6">The tournament you're looking for doesn't exist or has been deleted.</p>
       <UButton to="/" variant="outline">Back to Dashboard</UButton>
     </div>
+
+    <!-- Transfer Ownership Modal -->
+    <UModal v-model:open="showTransferModal">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-arrows-right-left" class="w-5 h-5 text-amber-500" />
+              <span class="font-semibold text-gray-900 dark:text-white">Transfer Tournament Ownership</span>
+            </div>
+            <p class="text-sm text-gray-500 mt-2">
+              Select an organization to transfer this tournament to. Only organizations where you have Admin or Owner permissions are listed.
+            </p>
+          </template>
+
+          <UForm 
+            :state="{}" 
+            @submit="handleTransferTournament"
+            class="space-y-4"
+          >
+            <UFormField label="Target Organization" name="targetOrganizationId" required>
+              <USelect
+                v-model="targetOrganizationId"
+                :items="availableOrganizationsForTransfer"
+                placeholder="Select an organization"
+                icon="i-heroicons-building-office"
+              />
+            </UFormField>
+
+            <div class="flex justify-end gap-3 mt-6">
+              <UButton color="neutral" variant="ghost" @click="showTransferModal = false">Cancel</UButton>
+              <UButton type="submit" color="neutral" :loading="transferringTournament" :disabled="!targetOrganizationId">
+                Transfer Ownership
+              </UButton>
+            </div>
+          </UForm>
+        </UCard>
+      </template>
+    </UModal>
 
     <!-- Start Season Modal -->
     <UModal v-model:open="showSeasonModal">
