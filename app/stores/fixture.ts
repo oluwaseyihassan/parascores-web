@@ -4,6 +4,10 @@ import { FixtureStage, FixtureStatus } from '../types'
 import type { ApiResponse } from './auth'
 
 export interface UpdateFixtureData {
+  homeTeamId?: string | null
+  awayTeamId?: string | null
+  homeTeamPlaceholder?: string | null
+  awayTeamPlaceholder?: string | null
   homeScore?: number | null
   awayScore?: number | null
   homePenaltyScore?: number | null

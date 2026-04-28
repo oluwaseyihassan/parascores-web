@@ -48,6 +48,7 @@ const showScheduleCollapsible = ref(false)
 const showPenaltyCollapsible = ref(true)
 const showPenaltyOverride = ref(false)
 const errorMessage = ref<string | null>(null)
+const swappingTeams = ref(false)
 
 // Goal scoring modal
 const showGoalModal = ref(false)
@@ -872,6 +873,61 @@ const refreshMatchEvents = async () => {
   }
 }
 
+const swapTeams = async () => {
+  if (!selectedFixture.value || swappingTeams.value) return
+  
+  swappingTeams.value = true
+  const f = selectedFixture.value
+  
+  try {
+    // Send swap to backend
+    await fixtureStore.updateFixture(f.id, {
+      homeTeamId: f.awayTeamId,
+      awayTeamId: f.homeTeamId,
+      homeScore: f.awayScore ?? 0,
+      awayScore: f.homeScore ?? 0,
+      homePenaltyScore: f.awayPenaltyScore ?? null,
+      awayPenaltyScore: f.homePenaltyScore ?? null,
+      homeTeamPlaceholder: f.awayTeamPlaceholder ?? null,
+      awayTeamPlaceholder: f.homeTeamPlaceholder ?? null,
+    })
+    
+    // Swap local state
+    const newFixture = {
+      ...f,
+      homeTeamId: f.awayTeamId,
+      awayTeamId: f.homeTeamId,
+      homeTeam: f.awayTeam,
+      awayTeam: f.homeTeam,
+      homeScore: f.awayScore ?? 0,
+      awayScore: f.homeScore ?? 0,
+      homePenaltyScore: f.awayPenaltyScore,
+      awayPenaltyScore: f.homePenaltyScore,
+      homeTeamPlaceholder: f.awayTeamPlaceholder,
+      awayTeamPlaceholder: f.homeTeamPlaceholder,
+    }
+    selectedFixture.value = newFixture
+    
+    // Swap players too
+    const tempPlayers = homePlayers.value
+    homePlayers.value = awayPlayers.value
+    awayPlayers.value = tempPlayers
+    
+    emit('fixture-updated', newFixture)
+    
+    useToast().add({
+      title: 'Teams Swapped',
+      description: 'Home and away teams have been swapped.',
+      icon: 'i-heroicons-arrows-right-left',
+      color: 'success'
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to swap teams' })
+  } finally {
+    swappingTeams.value = false
+  }
+}
+
 const closeModal = () => {
   emit('update:open', false)
 }
@@ -1031,6 +1087,16 @@ const downloadGraphic = async () => {
                 <UIcon name="i-heroicons-bolt" class="w-2.5 h-2.5" />
                 <span>{{ selectedFixture.homePenaltyScore ?? 0 }} – {{ selectedFixture.awayPenaltyScore ?? 0 }} pen</span>
               </div>
+              <!-- Swap Teams Button -->
+              <button
+                class="mc-swap-btn"
+                :disabled="swappingTeams || updatingMatch"
+                @click="swapTeams"
+                title="Swap home and away"
+              >
+                <UIcon :name="swappingTeams ? 'i-heroicons-arrow-path' : 'i-heroicons-arrows-right-left'" :class="['w-3 h-3', swappingTeams && 'animate-spin']" />
+                <span>Swap</span>
+              </button>
               <div v-if="selectedFixture.startTime" class="mc-match-time">
                 {{ new Date(selectedFixture.startTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) }}
                 · {{ new Date(selectedFixture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) }}
@@ -1939,6 +2005,42 @@ const downloadGraphic = async () => {
   border: 1px solid rgba(245,158,11,0.2);
   padding: 2px 6px;
   border-radius: 10px;
+}
+
+.mc-swap-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #9ca3af;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  padding: 2px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.mc-swap-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #4b5563;
+  border-color: #d1d5db;
+}
+
+.mc-swap-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+:root.dark .mc-swap-btn {
+  border-color: rgba(255,255,255,0.08);
+}
+:root.dark .mc-swap-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.05);
+  color: #d1d5db;
 }
 
 .mc-match-time {
