@@ -413,7 +413,10 @@ const previewFixturesByRound = computed(() => {
                <span class="text-sm font-bold text-indigo-700 dark:text-indigo-300">
                  Teams Selected: {{ selectedParticipantIds.length }} / {{ config.bracketSize }}
                </span>
-               <UButton size="xs" variant="ghost" color="primary" @click="selectedParticipantIds = []">Clear All</UButton>
+               <div class="flex items-center gap-2">
+                 <UButton size="xs" variant="ghost" color="primary" @click="selectedParticipantIds = participants.map(p => p.id)">Select All</UButton>
+                 <UButton size="xs" variant="ghost" color="primary" @click="selectedParticipantIds = []">Clear All</UButton>
+               </div>
             </div>
           </div>
 

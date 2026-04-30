@@ -449,6 +449,16 @@ function getRoundDisplayName(roundIndex: number, totalRounds: number, roundName?
     default: return `Round ${roundIndex + 1}`
   }
 }
+
+function getRoundName(fixture: Fixture) {
+  const name = fixture.roundName || `Round ${fixture.round}`
+  const legMatch = name.match(/Leg\s*(\d+)/i)
+  if (legMatch) {
+    const baseName = name.replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+    return `${baseName} (Leg ${legMatch[1]})`
+  }
+  return name
+}
 function getTeamClass(matchup: any, isHome: boolean, isDark: boolean) {
   if (matchup.status !== FixtureStatus.COMPLETED) return isDark ? 'text-gray-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'
   const hs = matchup.homeScore ?? 0
@@ -810,7 +820,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                     <!-- Header -->
                     <div class="flex items-center justify-between px-3.5 py-2 text-xs font-bold border-b transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] text-gray-500' : 'bg-gray-50 border-gray-100 text-gray-600'">
                       <span>
-                        {{ fixture.venue || fixture.group?.name || fixture.roundName || `Group ${round}` }}
+                        {{ fixture.venue ? `${getRoundName(fixture)} · ${fixture.venue}` : getRoundName(fixture) }}
                       </span>
                       <div class="flex items-center gap-2">
                         <span v-if="fixture.status === FixtureStatus.SCHEDULED" class="font-medium text-gray-400">
@@ -944,7 +954,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                       <!-- Header -->
                       <div class="flex items-center justify-between px-3.5 py-2 text-xs font-bold border-b transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] text-gray-500' : 'bg-gray-50 border-gray-100 text-gray-600'">
                         <span>
-                          {{ fixture.venue || fixture.group?.name || fixture.roundName || knockoutByRound[round]?.name || `Round ${round}` }}
+                          {{ fixture.venue ? `${getRoundName(fixture)} · ${fixture.venue}` : getRoundName(fixture) }}
                         </span>
                         <div class="flex items-center gap-2">
                           <span v-if="fixture.status === FixtureStatus.SCHEDULED" class="font-medium text-gray-400">

@@ -25,7 +25,7 @@ const generating = ref(false)
 const sharing = ref(false)
 const copying = ref(false)
 const error = ref<string | null>(null)
-const graphicType = ref<'match' | 'standing' | 'bracket' | 'matchday' | 'stats'>('match')
+const graphicType = ref<'match' | 'standing' | 'bracket' | 'matchday' | 'stats' | 'lineup'>('match')
 const playerStats = ref<any>(null)
 const selectedStatType = ref<'both' | 'scorers' | 'assists'>('both')
 const selectedGroup = ref<string>('all')
@@ -111,7 +111,7 @@ const fixturesByRound = computed(() => {
     
     if (!grouped[key]) {
       grouped[key] = {
-        label: roundName || `Round ${round}`,
+        label: (roundName || `Round ${round}`).replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim(),
         round,
         roundName,
         fixtures: []
@@ -147,7 +147,7 @@ const roundOptions = computed(() => {
   fixtures.value.forEach(f => {
     const round = f.round || 1
     const roundName = f.roundName || null
-    const label = roundName || `Round ${round}`
+    const label = (roundName || `Round ${round}`).replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
     const key = roundName ? `name:${roundName}` : `round:${round}`
     
     if (!optionsMap.has(key)) {
@@ -189,6 +189,9 @@ const canGenerate = computed(() => {
   }
   if (graphicType.value === 'stats') {
       return !!tournament.value && !!playerStats.value && (playerStats.value.topScorers?.length > 0 || playerStats.value.topAssists?.length > 0)
+  }
+  if (graphicType.value === 'lineup') {
+      return !!tournament.value && !!selectedFixture.value
   }
   if (!selectedFixture.value) return false
   // For match results, we always allow it now as the backend handles TBDs
@@ -254,7 +257,7 @@ const fetchData = async () => {
 
 const generatePreview = async () => {
   if (!tournament.value) return
-  if (graphicType.value === 'match' && !selectedFixture.value) return
+  if ((graphicType.value === 'match' || graphicType.value === 'lineup') && !selectedFixture.value) return
   
   generating.value = true
   error.value = null
@@ -284,6 +287,17 @@ const generatePreview = async () => {
                 awayTeam: selectedFixture.value.awayTeam,
                 tournament: tournament.value,
                 events: matchEvents,
+                sponsors: sponsorStore.sponsors,
+                socials: socialStore.socials
+            },
+            responseType: 'blob'
+        })
+    } else if (graphicType.value === 'lineup' && selectedFixture.value) {
+        response = await $fetch<Blob>('/api/graphics/lineup', {
+            method: 'POST',
+            body: {
+                fixture: selectedFixture.value,
+                tournament: tournament.value,
                 sponsors: sponsorStore.sponsors,
                 socials: socialStore.socials
             },
@@ -379,6 +393,8 @@ const generatePreview = async () => {
 const getGraphicFilename = () => {
   if (graphicType.value === 'match' && selectedFixture.value) {
       return `match-${selectedFixture.value.id}.png`
+  } else if (graphicType.value === 'lineup' && selectedFixture.value) {
+      return `lineup-${selectedFixture.value.id}.png`
   } else if (graphicType.value === 'matchday' && tournament.value && selectedMatchdayData.value) {
       const slug = selectedMatchdayData.value.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')
       return `${tournament.value.name}-${slug}.png`
@@ -436,7 +452,7 @@ const handleCopy = async () => {
 
 // Watchers
 watch(selectedFixtureId, () => {
-  if (selectedFixtureId.value && graphicType.value === 'match') {
+  if (selectedFixtureId.value && (graphicType.value === 'match' || graphicType.value === 'lineup')) {
     generatePreview()
   }
 })
@@ -508,6 +524,14 @@ onUnmounted(() => {
                   Match Result
                 </button>
                 <button 
+                  type="button"
+                  class="px-4 py-2 text-sm font-medium border rounded-md transition-colors shrink-0"
+                  :class="graphicType === 'lineup' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                  @click="graphicType = 'lineup'"
+                >
+                  Lineup
+                </button>
+                <button 
                   v-if="tournament && ['ROUND_ROBIN', 'GROUP', 'HYBRID'].includes(tournament.type)"
                   type="button"
                   class="px-4 py-2 text-sm font-medium border rounded-md transition-colors shrink-0"
@@ -546,7 +570,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Match List -->
-            <div v-if="graphicType === 'match'" class="space-y-2 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+            <div v-if="graphicType === 'match' || graphicType === 'lineup'" class="space-y-2 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
               <UAccordion :items="fixturesByRound" multiple>
                 <template v-for="roundData in fixturesByRound" :key="roundData.value" #[roundData.slot]>
                   <div class="space-y-2 p-2">
@@ -652,7 +676,7 @@ onUnmounted(() => {
                </p>
             </div>
           
-          <div v-if="graphicType === 'match' && selectedFixture" class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm space-y-2 mb-4 mt-4">
+          <div v-if="(graphicType === 'match' || graphicType === 'lineup') && selectedFixture" class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm space-y-2 mb-4 mt-4">
              <div class="flex justify-between">
                 <span class="text-gray-500">Status</span>
                 <UBadge :color="selectedFixture.status === 'LIVE' ? 'warning' : selectedFixture.status === 'COMPLETED' ? 'success' : 'neutral'" size="xs" variant="subtle">
@@ -715,9 +739,9 @@ onUnmounted(() => {
 
           <div class="flex-1 flex items-center justify-center bg-gray-100 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-800 min-h-[400px] overflow-hidden relative">
              <!-- Placeholder (Match Mode) -->
-             <div v-if="graphicType === 'match' && !selectedFixtureId" class="text-center text-gray-400">
+             <div v-if="(graphicType === 'match' || graphicType === 'lineup') && !selectedFixtureId" class="text-center text-gray-400">
                 <UIcon name="i-heroicons-cursor-arrow-rays" class="w-12 h-12 mx-auto mb-2" />
-                <p>Select a match to generate a graphic</p>
+                <p>Select a match to generate a {{ graphicType === 'match' ? 'result' : 'lineup' }} graphic</p>
              </div>
 
              <!-- Placeholder (Standings Mode) -->

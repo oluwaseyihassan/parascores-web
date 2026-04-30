@@ -135,7 +135,12 @@ function getScoreBadgeClass(match: Fixture) {
 
 function getRoundName(match: Fixture) {
   const name = match.roundName || `Round ${match.round}`
-  return name.replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+  const legMatch = name.match(/Leg\s*(\d+)/i)
+  if (legMatch) {
+    const baseName = name.replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+    return `${baseName} (Leg ${legMatch[1]})`
+  }
+  return name
 }
 </script>
 

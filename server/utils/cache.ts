@@ -23,7 +23,7 @@ export async function useGraphicsCache(event: any, generator: (body: any) => Pro
     const body = await readBody(event)
     
     // 2. Generate a hash of the body
-    const hash = createHash('sha256').update(JSON.stringify(body)).digest('hex')
+    const hash = createHash('sha256').update(JSON.stringify(body || {})).digest('hex')
     const filename = `${hash}-${suffix}.png`
     const filepath = join(CACHE_DIR, filename)
     
