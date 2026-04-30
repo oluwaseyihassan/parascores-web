@@ -318,7 +318,8 @@ function groupByRound(list: Fixture[]) {
   const grouped: Record<string, { name: string; fixtures: Fixture[] }> = {}
   for (const fixture of list) {
     const round = fixture.round || 1
-    const name = fixture.roundName || `Round ${round}`
+    const baseName = (fixture.roundName || `Round ${round}`).replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+    const name = baseName
     // Use composite key so fixtures with different roundNames in the same round get separate groups
     const key = `${round}::${name}`
     if (!grouped[key]) {
@@ -436,7 +437,9 @@ function getTypeBadgeClasses(type: string) {
   }
 }
 function getRoundDisplayName(roundIndex: number, totalRounds: number, roundName?: string | null) {
-  if (roundName) return roundName
+  if (roundName) {
+    return roundName.replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+  }
   const remaining = totalRounds - roundIndex
   switch (remaining) {
     case 1: return 'Final'
