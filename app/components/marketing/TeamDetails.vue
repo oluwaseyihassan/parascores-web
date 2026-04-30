@@ -162,7 +162,7 @@ function getRoundName(match: Fixture) {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
         </div>
-        <h3 class="text-lg font-semibold mb-2" :class="isDark ? 'text-white' : 'text-gray-900'">Team not found</h3>
+        <h3 class="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Team not found</h3>
         <p class="text-sm text-gray-400 mb-4">{{ error }}</p>
         <button @click="$emit('back')" class="text-sm text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer">
           ← Back
@@ -176,7 +176,7 @@ function getRoundName(match: Fixture) {
       <section class="relative overflow-hidden transition-colors" :class="isDark ? 'bg-transparent border-white/[0.06]' : 'bg-transparent border-gray-200'">
         <div class="relative max-w-7xl mx-auto px-6 pt-6 pb-0">
           <!-- Back button -->
-          <button @click="$emit('back')" class="inline-flex items-center gap-2 text-xs hover:text-emerald-400 transition-colors mb-6 cursor-pointer" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+          <button @click="$emit('back')" class="inline-flex items-center gap-2 text-xs hover:text-emerald-400 transition-colors mb-6 cursor-pointer text-gray-500 dark:text-gray-400">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
@@ -185,13 +185,13 @@ function getRoundName(match: Fixture) {
 
           <!-- Header info -->
           <div class="pb-6 flex flex-col items-center">
-            <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden mb-3 flex items-center justify-center ring-1 ring-white/10" :class="isDark ? 'bg-white/5' : 'bg-gray-100 ring-gray-200'">
+            <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden mb-3 flex items-center justify-center ring-1 bg-gray-100 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
               <img v-if="participant.logoUrl" :src="participant.logoUrl" class="w-full h-full object-cover p-2" />
               <span v-else class="text-3xl font-bold text-gray-400">
                 {{ (participant.customName || 'T').charAt(0).toUpperCase() }}
               </span>
             </div>
-            <h1 class="text-xl md:text-2xl font-bold transition-colors text-center" :class="isDark ? 'text-white' : 'text-gray-900'">
+            <h1 class="text-xl md:text-2xl font-bold transition-colors text-center text-gray-900 dark:text-white">
               {{ participant.customName || 'Unnamed Team' }}
             </h1>
           </div>
@@ -202,14 +202,14 @@ function getRoundName(match: Fixture) {
             <button
               @click="activeTab = 'squad'"
               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
-              :class="activeTab === 'squad' ? 'border-emerald-500 text-emerald-500' : (isDark ? 'border-transparent text-gray-400 hover:text-gray-300' : 'border-transparent text-gray-500 hover:text-gray-700')"
+              :class="activeTab === 'squad' ? 'border-emerald-500 text-emerald-500' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
             >
               Squad
             </button>
             <button
               @click="activeTab = 'matches'"
               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
-              :class="activeTab === 'matches' ? 'border-emerald-500 text-emerald-500' : (isDark ? 'border-transparent text-gray-400 hover:text-gray-300' : 'border-transparent text-gray-500 hover:text-gray-700')"
+              :class="activeTab === 'matches' ? 'border-emerald-500 text-emerald-500' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
             >
               Matches
             </button>
@@ -217,7 +217,7 @@ function getRoundName(match: Fixture) {
               v-if="hasStandings"
               @click="activeTab = 'standings'"
               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
-              :class="activeTab === 'standings' ? 'border-emerald-500 text-emerald-500' : (isDark ? 'border-transparent text-gray-400 hover:text-gray-300' : 'border-transparent text-gray-500 hover:text-gray-700')"
+              :class="activeTab === 'standings' ? 'border-emerald-500 text-emerald-500' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
             >
               Standings
             </button>
@@ -238,14 +238,13 @@ function getRoundName(match: Fixture) {
             
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div v-for="player in participant.players.filter(p => p.status === 'APPROVED')" :key="player.id" 
-                   class="flex items-center gap-3 p-3 rounded-lg transition-colors border"
-                   :class="isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'">
+                   class="flex items-center gap-3 p-3 rounded-lg transition-colors border bg-gray-50 border-gray-100 dark:bg-white/5 dark:border-white/5">
                 <div class="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-sm flex-shrink-0">
                   {{ player.number || '?' }}
                 </div>
                 <div class="flex flex-col overflow-hidden">
-                  <span class="text-sm font-semibold truncate transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">{{ player.name }}</span>
-                  <span class="text-[11px] font-medium uppercase tracking-widest" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ player.position || 'Unknown' }}</span>
+                  <span class="text-sm font-semibold truncate transition-colors text-gray-900 dark:text-white">{{ player.name }}</span>
+                  <span class="text-[11px] font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">{{ player.position || 'Unknown' }}</span>
                 </div>
               </div>
             </div>
@@ -271,9 +270,9 @@ function getRoundName(match: Fixture) {
                 <!-- Mobile: Date above match row -->
                 <div class="sm:hidden flex items-center gap-2 mb-2.5">
                   <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-500/80">{{ formatFullDate(match.startTime) }}</span>
-                  <span class="text-[11px]" :class="isDark ? 'text-gray-600' : 'text-gray-300'">·</span>
-                  <span class="text-[11px] font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ formatTime(match.startTime) }}</span>
-                  <span class="text-[11px]" :class="isDark ? 'text-gray-600' : 'text-gray-300'">·</span>
+                  <span class="text-[11px] text-gray-300 dark:text-gray-600">·</span>
+                  <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400">{{ formatTime(match.startTime) }}</span>
+                  <span class="text-[11px] text-gray-300 dark:text-gray-600">·</span>
                   <span class="text-[10px] font-bold text-gray-500 uppercase">{{ getRoundName(match) }}</span>
                   <span v-if="match.status === 'LIVE'" class="ml-auto text-[10px] font-bold text-emerald-500 uppercase tracking-widest animate-pulse">Live</span>
                 </div>
@@ -282,16 +281,16 @@ function getRoundName(match: Fixture) {
                   <!-- Desktop: Date column -->
                   <div class="hidden sm:flex flex-col items-center justify-center text-center w-24 flex-shrink-0">
                      <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-500/80">{{ formatFullDate(match.startTime) }}</span>
-                     <span class="text-[13px] font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ formatTime(match.startTime) }}</span>
+                     <span class="text-[13px] font-medium text-gray-500 dark:text-gray-400">{{ formatTime(match.startTime) }}</span>
                      <span class="text-[10px] font-bold text-gray-500 uppercase tracking-tight mt-0.5">{{ getRoundName(match) }}</span>
                   </div>
                   
                   <!-- Home -->
                   <div class="flex-1 flex justify-end items-center gap-1.5 sm:gap-3 min-w-0">
-                    <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="[match.homeTeamId === participant?.id ? (isDark ? 'text-white' : 'text-gray-900') : 'text-gray-500']">
+                    <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="match.homeTeamId === participant?.id ? 'text-gray-900 dark:text-white' : 'text-gray-500'">
                       {{ match.homeTeam?.customName || match.homeTeamPlaceholder || 'Home' }}
                     </span>
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border" :class="isDark ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border bg-gray-100 border-gray-200 dark:bg-white/5 dark:border-white/5">
                       <img v-if="match.homeTeam?.logoUrl" :src="match.homeTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
                       <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.homeTeam?.customName || 'H').charAt(0) }}</span>
                     </div>
@@ -314,11 +313,11 @@ function getRoundName(match: Fixture) {
                   
                   <!-- Away -->
                   <div class="flex-1 flex justify-start items-center gap-1.5 sm:gap-3 min-w-0">
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border" :class="isDark ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border bg-gray-100 border-gray-200 dark:bg-white/5 dark:border-white/5">
                       <img v-if="match.awayTeam?.logoUrl" :src="match.awayTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
                       <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.awayTeam?.customName || 'A').charAt(0) }}</span>
                     </div>
-                    <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="[match.awayTeamId === participant?.id ? (isDark ? 'text-white' : 'text-gray-900') : 'text-gray-500']">
+                    <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="match.awayTeamId === participant?.id ? 'text-gray-900 dark:text-white' : 'text-gray-500'">
                       {{ match.awayTeam?.customName || match.awayTeamPlaceholder || 'Away' }}
                     </span>
                   </div>
@@ -360,18 +359,17 @@ function getRoundName(match: Fixture) {
                     <tr
                       v-for="(row, index) in groupStandings"
                       :key="row.id"
-                      class="transition-colors border-b last:border-b-0"
+                      class="transition-colors border-b last:border-b-0 border-gray-50 dark:border-white/[0.03]"
                       :class="[
-                        isDark ? 'border-white/[0.03]' : 'border-gray-50',
                         row.participant_id === participantId
-                          ? (isDark ? 'bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/20' : 'bg-emerald-50 ring-1 ring-inset ring-emerald-200')
-                          : (index % 2 === 0 ? (isDark ? 'bg-transparent' : 'bg-white') : (isDark ? 'bg-white/[0.02]' : 'bg-gray-50/50'))
+                          ? 'bg-emerald-50 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:ring-emerald-500/20'
+                          : (index % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-gray-50/50 dark:bg-white/[0.02]')
                       ]"
                     >
                       <td class="px-4 py-3 text-center font-bold text-gray-500 text-xs">{{ row.position || index + 1 }}</td>
                       <td class="px-4 py-3">
                         <div class="flex items-center gap-2.5">
-                          <div class="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border" :class="isDark ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'">
+                          <div class="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border bg-gray-100 border-gray-200 dark:bg-white/5 dark:border-white/10">
                             <img v-if="row.participant?.logoUrl" :src="row.participant.logoUrl" class="w-full h-full object-cover" />
                             <span v-else class="text-[9px] font-bold text-gray-400">{{ (row.participant?.customName || '?').charAt(0) }}</span>
                           </div>
@@ -380,23 +378,23 @@ function getRoundName(match: Fixture) {
                             :class="[
                               row.participant_id === participantId
                                 ? 'text-emerald-500 font-bold'
-                                : (isDark ? 'text-gray-200' : 'text-gray-800')
+                                : 'text-gray-800 dark:text-gray-200'
                             ]"
                           >
                             {{ row.participant?.customName || 'Unknown' }}
                           </span>
                         </div>
                       </td>
-                      <td class="text-center px-2 py-3 hidden sm:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.played }}</td>
-                      <td class="text-center px-2 py-3 hidden sm:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.wins }}</td>
-                      <td class="text-center px-2 py-3 hidden sm:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.draws }}</td>
-                      <td class="text-center px-2 py-3 hidden sm:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.losses }}</td>
-                      <td class="text-center px-2 py-3 hidden md:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.goalsFor }}</td>
-                      <td class="text-center px-2 py-3 hidden md:table-cell" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ row.goalsAgainst }}</td>
-                      <td class="text-center px-2 py-3 font-semibold" :class="row.goalDiff > 0 ? 'text-emerald-500' : row.goalDiff < 0 ? 'text-red-500' : (isDark ? 'text-gray-500' : 'text-gray-400')">
+                       <td class="text-center px-2 py-3 hidden sm:table-cell text-gray-600 dark:text-gray-400">{{ row.played }}</td>
+                      <td class="text-center px-2 py-3 hidden sm:table-cell text-gray-600 dark:text-gray-400">{{ row.wins }}</td>
+                      <td class="text-center px-2 py-3 hidden sm:table-cell text-gray-600 dark:text-gray-400">{{ row.draws }}</td>
+                      <td class="text-center px-2 py-3 hidden sm:table-cell text-gray-600 dark:text-gray-400">{{ row.losses }}</td>
+                      <td class="text-center px-2 py-3 hidden md:table-cell text-gray-600 dark:text-gray-400">{{ row.goalsFor }}</td>
+                      <td class="text-center px-2 py-3 hidden md:table-cell text-gray-600 dark:text-gray-400">{{ row.goalsAgainst }}</td>
+                      <td class="text-center px-2 py-3 font-semibold" :class="row.goalDiff > 0 ? 'text-emerald-500' : row.goalDiff < 0 ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'">
                         {{ row.goalDiff > 0 ? '+' : '' }}{{ row.goalDiff }}
                       </td>
-                      <td class="text-center px-4 py-3 font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">{{ row.points }}</td>
+                       <td class="text-center px-4 py-3 font-bold text-gray-900 dark:text-white">{{ row.points }}</td>
                     </tr>
                   </tbody>
                 </table>

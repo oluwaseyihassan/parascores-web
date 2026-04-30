@@ -92,6 +92,20 @@ async function handleLogout() {
   await authStore.logout()
   navigateTo(toMain('/'), { external: true })
 }
+
+const themeIcon = computed(() => {
+  switch (colorMode.value) {
+    case 'light': return 'i-heroicons-sun'
+    case 'dark': return 'i-heroicons-moon'
+    default: return 'i-heroicons-computer-desktop'
+  }
+})
+
+const themeOptions = [
+  { label: 'Light', icon: 'i-heroicons-sun', onSelect: () => setTheme('light') },
+  { label: 'Dark', icon: 'i-heroicons-moon', onSelect: () => setTheme('dark') },
+  { label: 'System', icon: 'i-heroicons-computer-desktop', onSelect: () => setTheme('system') }
+]
 </script>
 
 <template>
@@ -179,9 +193,19 @@ async function handleLogout() {
           </NuxtLink>
         </div>
 
-        <div class="flex items-center gap-4">
-           
-           <!-- User Profile (All Screens) -->
+        <div class="flex items-center gap-2">
+           <!-- Theme Toggle (Visible to everyone) -->
+           <UDropdownMenu :items="[themeOptions]" :content="{ align: 'end', side: 'bottom', sideOffset: 8 }">
+             <UButton 
+               variant="ghost" 
+               color="neutral" 
+               size="sm"
+               :icon="themeIcon"
+               class="rounded-xl"
+             />
+           </UDropdownMenu>
+
+           <!-- User Profile -->
            <div>
              <div v-if="isAuthenticated" class="flex items-center">
                <UDropdownMenu :items="profileMenuItems" :content="{ align: 'end', side: 'bottom', sideOffset: 8 }">

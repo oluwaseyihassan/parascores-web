@@ -1095,9 +1095,9 @@ function getTeamCards(fixture: any, isHome: boolean) {
               <div class="border rounded-xl overflow-x-auto transition-colors bg-white shadow-sm border-gray-100 dark:bg-[#1a1a1a] dark:border-white/[0.06]">
                 <table class="w-full text-sm">
                   <thead>
-                    <tr class="border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-                      <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-bold text-gray-500 sticky left-0 z-20" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white'">#</th>
-                      <th class="text-left w-1/2 px-3 py-3 text-[11px] font-bold text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none" :class="isDark ? 'bg-[#1a1a1a]' : 'bg-white'">Team</th>
+                    <tr class="border-b transition-colors border-gray-100 dark:border-white/[0.06]">
+                      <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-bold text-gray-500 sticky left-0 z-20 bg-white dark:bg-[#1a1a1a]">#</th>
+                      <th class="text-left w-1/2 px-3 py-3 text-[11px] font-bold text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">Team</th>
                       <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">P</th>
                       <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">W</th>
                       <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">D</th>
@@ -1113,10 +1113,10 @@ function getTeamCards(fixture: any, isHome: boolean) {
                       v-for="(standing, index) in groupStandings" 
                       :key="standing.id"
                       @click="selectedParticipantId = standing.participant_id"
-                      class="border-t transition-colors cursor-pointer" :class="isDark ? 'border-white/[0.04] hover:bg-white/[0.04]' : 'border-gray-100 hover:bg-gray-100'"
+                      class="border-t transition-colors cursor-pointer border-gray-100 hover:bg-gray-100 dark:border-white/[0.04] dark:hover:bg-white/[0.04]"
                     >
-                      <td class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[13px] font-bold text-gray-500 sticky left-0 z-10" :class="[isDark ? 'bg-[#1a1a1a]' : 'bg-white']">{{ standing.position || index + 1 }}</td>
-                      <td class="text-left w-[170px] md:w-auto min-w-[170px] px-3 py-3 sticky left-[32px] md:left-[40px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none" :class="[isDark ? 'bg-[#1a1a1a]' : 'bg-white']">
+                      <td class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[13px] font-bold text-gray-500 sticky left-0 z-10 bg-white dark:bg-[#1a1a1a]">{{ standing.position || index + 1 }}</td>
+                      <td class="text-left w-[170px] md:w-auto min-w-[170px] px-3 py-3 sticky left-[32px] md:left-[40px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">
                         <div class="flex items-center gap-2 md:gap-2.5">
                           <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
                             <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
@@ -1124,7 +1124,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                               {{ (standing.participant?.customName || 'T').charAt(0) }}
                             </span>
                           </div>
-                          <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px]" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ standing.participant?.customName || 'Unknown' }}</span>
+                          <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px] text-gray-800 dark:text-gray-200">{{ standing.participant?.customName || 'Unknown' }}</span>
                         </div>
                       </td>
                       <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.played }}</td>
