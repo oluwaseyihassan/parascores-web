@@ -594,12 +594,12 @@ function getTeamCards(fixture: any, isHome: boolean) {
     <!-- Content -->
     <div v-else-if="tournament">
       <!-- Hero Banner -->
-      <section class="relative border-b" :class="isDark ? 'border-white/[0.05] bg-[#0A0A0A]' : 'border-gray-200 bg-white'">
+      <section class="relative border-b border-gray-200 dark:border-white/[0.05] bg-white dark:bg-[#0A0A0A]">
         <!-- Banner Background top strictly 200-250px -->
         <div class="h-48 md:h-64 relative w-full overflow-hidden">
           <img v-if="tournament.bannerUrl" :src="tournament.bannerUrl" class="w-full h-full object-cover" />
           <div v-else class="w-full h-full" :style="{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #020617 100%)' }"></div>
-          <div class="absolute inset-0 bg-gradient-to-t" :class="isDark ? 'from-[#0A0A0A] via-[#0A0A0A]/20 to-transparent' : 'from-white via-white/20 to-transparent'"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent dark:from-[#0A0A0A] dark:via-[#0A0A0A]/20 dark:to-transparent"></div>
           
           <!-- Back link over banner -->
           <div class="absolute top-6 inset-x-0 z-10 w-full">
@@ -618,7 +618,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
         <div class="max-w-7xl mx-auto px-4 sm:px-6 relative pb-8">
           <div class="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-end -mt-16 md:-mt-20">
             <!-- Logo overlapping -->
-            <div class="w-32 h-32 md:w-40 md:h-40 rounded-3xl overflow-hidden border-4 shadow-2xl flex-shrink-0 relative group z-10" :class="isDark ? 'bg-[#0A0A0A] border-[#0A0A0A]' : 'bg-white border-white'">
+            <div class="w-32 h-32 md:w-40 md:h-40 rounded-3xl overflow-hidden border-4 shadow-2xl flex-shrink-0 relative group z-10 bg-white border-white dark:bg-[#0A0A0A] dark:border-[#0A0A0A]">
               <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" :class="isDark ? 'bg-white/5' : 'bg-gray-50'" />
               <span v-else class="flex items-center justify-center w-full h-full text-5xl font-bold" :class="isDark ? 'text-white/40 bg-white/5' : 'text-gray-400 bg-gray-50'">
                 {{ tournament.name.charAt(0).toUpperCase() }}
@@ -637,7 +637,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
               </h1>
 
               <!-- Meta Info -->
-              <div class="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-3 text-sm font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+              <div class="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-3 text-sm font-medium text-gray-600 dark:text-gray-400">
                 <div v-if="tournament.organization" class="flex items-center gap-2">
                   <span>Hosted by</span>
                   <NuxtLink :to="toMain('/org/' + tournament.organization.slug)" class="flex items-center gap-2 px-2.5 py-1 rounded-lg transition-colors border cursor-pointer group" :class="isDark ? 'bg-white/5 hover:bg-white/10 border-white/5' : 'bg-gray-50 hover:bg-gray-100 border-gray-200'">
@@ -683,7 +683,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
       </section>
 
       <!-- Tabs -->
-      <section class="border-b sticky top-0 z-40 backdrop-blur-xl transition-colors" :class="isDark ? 'border-white/10 bg-[#0A0A0A]/80' : 'border-gray-200 bg-white/80'">
+      <section class="border-b sticky top-0 z-40 backdrop-blur-xl transition-colors border-gray-200 bg-white/80 dark:border-white/10 dark:bg-[#0A0A0A]/80">
         <div class="max-w-7xl mx-auto px-4 sm:px-6">
           <nav class="flex gap-6 -mb-px overflow-x-auto hide-scrollbar whitespace-nowrap">
             <button
@@ -826,7 +826,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
               <span class="text-xs font-bold text-gray-500">Group Stage</span>
             </div>
 
-            <div v-for="round in sortedRounds" :key="round" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'" class="border rounded-xl overflow-hidden transition-colors">
+            <div v-for="round in sortedRounds" :key="round" class="border rounded-xl overflow-hidden transition-colors bg-white shadow-sm border-gray-100 dark:bg-[#1a1a1a] dark:border-white/[0.06]">
               <!-- Round Header -->
               <button
                 @click="toggleRound(round)"
@@ -962,7 +962,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 <span class="text-xs font-bold text-gray-500">Knockout Stage</span>
               </div>
 
-              <div v-for="round in knockoutRounds" :key="'ko-' + round" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'" class="border rounded-xl overflow-hidden transition-colors">
+              <div v-for="round in knockoutRounds" :key="'ko-' + round" class="border rounded-xl overflow-hidden transition-colors bg-white shadow-sm border-gray-100 dark:bg-[#1a1a1a] dark:border-white/[0.06]">
                 <button
                   @click="toggleRound('ko::' + round)"
                   class="w-full flex items-center justify-between px-5 py-3 cursor-pointer select-none border-b"
@@ -1092,7 +1092,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                   {{ groupName }}
                 </h4>
               </div>
-              <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white shadow-sm border-gray-100'" class="border rounded-xl overflow-x-auto transition-colors">
+              <div class="border rounded-xl overflow-x-auto transition-colors bg-white shadow-sm border-gray-100 dark:bg-[#1a1a1a] dark:border-white/[0.06]">
                 <table class="w-full text-sm">
                   <thead>
                     <tr class="border-b transition-colors" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
@@ -1175,8 +1175,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :key="participant.id"
               type="button"
               @click="selectedParticipantId = participant.id"
-              :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] hover:bg-white/[0.02]' : 'bg-white shadow-sm border-gray-100 hover:bg-gray-50'"
-              class="border rounded-xl p-4 flex flex-col gap-4 transition-colors hover:border-emerald-500/30 group text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50 relative overflow-hidden"
+              :class="winnerId === participant.id ? 'border-amber-400 dark:border-amber-400/50' : 'border-gray-100 dark:border-white/[0.06] hover:border-emerald-500/30 dark:hover:border-emerald-500/50'"
+              class="bg-white shadow-sm hover:bg-gray-50 dark:bg-[#1a1a1a] dark:hover:bg-white/[0.02] border rounded-xl p-4 flex flex-col gap-4 transition-colors group text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50 relative overflow-hidden"
             >
               <!-- Winner Indicator -->
               <div v-if="winnerId === participant.id" class="absolute -top-1 -right-1 z-10">
@@ -1215,7 +1215,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
 
             <!-- About Section (First) -->
-            <div v-if="tournament.description || (socials && socials.length > 0)" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
+            <div v-if="tournament.description || (socials && socials.length > 0)" class="border rounded-xl overflow-hidden bg-white border-gray-200 shadow-sm dark:bg-[#1a1a1a] dark:border-white/[0.06]">
               <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                 <h3 class="text-sm font-bold text-gray-500">About</h3>
                 
@@ -1249,7 +1249,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
               </div>
             </div>
 
-            <div v-if="sponsors && sponsors.length > 0" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden mt-6">
+            <div v-if="sponsors && sponsors.length > 0" class="border rounded-xl overflow-hidden mt-6 bg-white border-gray-200 shadow-sm dark:bg-[#1a1a1a] dark:border-white/[0.06]">
               <div class="px-5 py-3.5 border-b transition-colors flex items-center gap-2" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                 <UIcon name="i-heroicons-building-office-2" class="w-4 h-4 text-gray-400" />
                 <h3 class="text-sm font-bold text-gray-500">Sponsors</h3>
