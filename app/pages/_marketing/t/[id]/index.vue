@@ -402,6 +402,39 @@ function toggleRound(round: string) {
   collapsedRounds.value = s
 }
 
+// Winner Indication
+const winnerId = computed(() => {
+  if (!fixtures.value.length) return null
+  if (fixtures.value.some(f => f.status === FixtureStatus.LIVE)) return null
+  
+  if (tournament.value?.type === TournamentType.KNOCKOUT || tournament.value?.type === TournamentType.HYBRID) {
+    const koFixtures = fixtures.value.filter(f => f.stage === FixtureStage.KNOCKOUT)
+    if (!koFixtures.length) return null
+    const maxRound = Math.max(...koFixtures.map(f => f.round))
+    const finalMatch = koFixtures.filter(f => f.round === maxRound).sort((a, b) => a.matchNumber - b.matchNumber)[0]
+    
+    if (finalMatch && finalMatch.status === FixtureStatus.COMPLETED) {
+      const hs = finalMatch.homeScore ?? 0
+      const as = finalMatch.awayScore ?? 0
+      if (hs > as) return finalMatch.homeTeamId
+      if (as > hs) return finalMatch.awayTeamId
+      const hp = finalMatch.homePenaltyScore ?? 0
+      const ap = finalMatch.awayPenaltyScore ?? 0
+      if (hp > ap) return finalMatch.homeTeamId
+      if (ap > hp) return finalMatch.awayTeamId
+    }
+  } else if (standings.value.length > 0 && fixtures.value.every(f => f.status === FixtureStatus.COMPLETED)) {
+    const top = [...standings.value].sort((a, b) => (a.position || 999) - (b.position || 999))[0]
+    return top?.participant_id
+  }
+  return null
+})
+
+const winnerParticipant = computed(() => {
+  if (!winnerId.value) return null
+  return participants.value.find(p => p.id === winnerId.value)
+})
+
 // Helpers
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -637,6 +670,12 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 >
                   {{ isFollowing ? 'Unfollow' : 'Follow' }}
                 </UButton>
+
+                <!-- Winner Badge in Hero -->
+                <div v-if="winnerParticipant" class="flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400 text-black font-black uppercase tracking-widest text-[11px] shadow-lg shadow-amber-400/20 animate-in zoom-in duration-500">
+                  <UIcon name="i-heroicons-trophy-solid" class="w-4 h-4" />
+                  Winner: {{ winnerParticipant.customName }}
+                </div>
               </div>
             </div>
           </div>
@@ -1137,10 +1176,17 @@ function getTeamCards(fixture: any, isHome: boolean) {
               type="button"
               @click="selectedParticipantId = participant.id"
               :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06] hover:bg-white/[0.02]' : 'bg-white shadow-sm border-gray-100 hover:bg-gray-50'"
-              class="border rounded-xl p-4 flex flex-col gap-4 transition-colors hover:border-emerald-500/30 group text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              class="border rounded-xl p-4 flex flex-col gap-4 transition-colors hover:border-emerald-500/30 group text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50 relative overflow-hidden"
             >
+              <!-- Winner Indicator -->
+              <div v-if="winnerId === participant.id" class="absolute -top-1 -right-1 z-10">
+                <div class="bg-amber-400 text-black px-2.5 py-1 rounded-bl-xl text-[9px] font-black uppercase tracking-widest shadow-sm">
+                  Winner
+                </div>
+              </div>
+              
               <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 transition-colors" :class="isDark ? 'bg-white/10' : 'bg-gray-100'">
+                <div class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 transition-colors relative" :class="isDark ? 'bg-white/10' : 'bg-gray-100'">
                   <img v-if="participant.logoUrl" :src="participant.logoUrl" class="w-full h-full object-cover" />
                   <span v-else class="flex items-center justify-center w-full h-full text-lg font-bold text-gray-500">
                     {{ (participant.customName || 'P').charAt(0).toUpperCase() }}
