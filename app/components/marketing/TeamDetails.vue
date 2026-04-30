@@ -132,6 +132,11 @@ function getScoreBadgeClass(match: Fixture) {
   if (myScore < oppScore) return 'bg-red-500 text-white'
   return 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
 }
+
+function getRoundName(match: Fixture) {
+  const name = match.roundName || `Round ${match.round}`
+  return name.replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+}
 </script>
 
 <template>
@@ -263,6 +268,8 @@ function getScoreBadgeClass(match: Fixture) {
                   <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-500/80">{{ formatFullDate(match.startTime) }}</span>
                   <span class="text-[11px]" :class="isDark ? 'text-gray-600' : 'text-gray-300'">·</span>
                   <span class="text-[11px] font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ formatTime(match.startTime) }}</span>
+                  <span class="text-[11px]" :class="isDark ? 'text-gray-600' : 'text-gray-300'">·</span>
+                  <span class="text-[10px] font-bold text-gray-500 uppercase">{{ getRoundName(match) }}</span>
                   <span v-if="match.status === 'LIVE'" class="ml-auto text-[10px] font-bold text-emerald-500 uppercase tracking-widest animate-pulse">Live</span>
                 </div>
 
@@ -271,6 +278,7 @@ function getScoreBadgeClass(match: Fixture) {
                   <div class="hidden sm:flex flex-col items-center justify-center text-center w-24 flex-shrink-0">
                      <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-500/80">{{ formatFullDate(match.startTime) }}</span>
                      <span class="text-[13px] font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ formatTime(match.startTime) }}</span>
+                     <span class="text-[10px] font-bold text-gray-500 uppercase tracking-tight mt-0.5">{{ getRoundName(match) }}</span>
                   </div>
                   
                   <!-- Home -->
