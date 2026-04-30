@@ -657,8 +657,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 </div>
               </div>
               
-              <!-- Follow Button -->
-              <div class="mt-5 flex gap-3">
+              <!-- Follow Button & Winner Badge -->
+              <div class="mt-5 flex flex-col sm:flex-row items-center gap-3">
                 <UButton
                   size="md"
                   :color="isFollowing ? 'neutral' : 'success'"
@@ -672,8 +672,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 </UButton>
 
                 <!-- Winner Badge in Hero -->
-                <div v-if="winnerParticipant" class="flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400 text-black font-black uppercase tracking-widest text-[11px] shadow-lg shadow-amber-400/20 animate-in zoom-in duration-500">
-                  <UIcon name="i-heroicons-trophy-solid" class="w-4 h-4" />
+                <div v-if="winnerParticipant" class="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400 text-black font-black uppercase tracking-widest text-[11px] shadow-lg shadow-amber-400/20 animate-in zoom-in duration-500 whitespace-nowrap">
+                  <UIcon name="i-heroicons-trophy-solid" class="w-4 h-4 shrink-0" />
                   Winner: {{ winnerParticipant.customName }}
                 </div>
               </div>
