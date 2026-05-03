@@ -492,6 +492,33 @@ function getRoundName(fixture: Fixture) {
   }
   return name
 }
+
+function getMatchAggregate(match: Fixture) {
+  if (match.status !== FixtureStatus.COMPLETED && match.status !== FixtureStatus.LIVE) return null
+  if (!match.roundName || !/leg\s*2/i.test(match.roundName)) return null
+
+  // Find Leg 1
+  const leg1 = fixtures.value.find(f => 
+    f.id !== match.id &&
+    f.round === match.round &&
+    f.stage === match.stage &&
+    /leg\s*1/i.test(f.roundName || '') &&
+    ((f.homeTeamId === match.homeTeamId && f.awayTeamId === match.awayTeamId) ||
+     (f.homeTeamId === match.awayTeamId && f.awayTeamId === match.homeTeamId))
+  )
+
+  if (leg1 && (leg1.status === FixtureStatus.COMPLETED || leg1.status === FixtureStatus.LIVE)) {
+    const leg1HomeScore = leg1.homeTeamId === match.homeTeamId ? (leg1.homeScore ?? 0) : (leg1.awayScore ?? 0)
+    const leg1AwayScore = leg1.awayTeamId === match.awayTeamId ? (leg1.awayScore ?? 0) : (leg1.homeScore ?? 0)
+    
+    const aggHome = (match.homeScore ?? 0) + leg1HomeScore
+    const aggAway = (match.awayScore ?? 0) + leg1AwayScore
+    
+    return `${aggHome}-${aggAway} agg`
+  }
+  return null
+}
+
 function getTeamClass(matchup: any, isHome: boolean, isDark: boolean) {
   if (matchup.status !== FixtureStatus.COMPLETED) return isDark ? 'text-gray-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'
   const hs = matchup.homeScore ?? 0
@@ -1057,6 +1084,9 @@ function getTeamCards(fixture: any, isHome: boolean) {
                               <div class="flex items-baseline gap-1">
                                  <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, false, isDark)">{{ fixture.awayScore ?? 0 }}</span>
                                  <span v-if="fixture.awayPenaltyScore != null" class="text-[10px] font-semibold text-gray-400">({{ fixture.awayPenaltyScore }})</span>
+                              </div>
+                              <div v-if="getMatchAggregate(fixture)" class="text-[9px] sm:text-[10px] font-bold text-emerald-500/80 mt-0.5 uppercase tracking-wider whitespace-nowrap">
+                                {{ getMatchAggregate(fixture) }}
                               </div>
                             </div>
                           </template>

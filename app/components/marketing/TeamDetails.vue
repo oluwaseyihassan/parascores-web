@@ -142,6 +142,31 @@ function getRoundName(match: Fixture) {
   }
   return name
 }
+
+function getMatchAggregate(match: Fixture) {
+  if (match.status !== 'COMPLETED' && match.status !== 'LIVE') return null
+  if (!match.roundName || !/leg\s*2/i.test(match.roundName)) return null
+
+  // Find Leg 1
+  const leg1 = participantFixtures.value.find(f => 
+    f.id !== match.id &&
+    f.round === match.round &&
+    /leg\s*1/i.test(f.roundName || '') &&
+    ((f.homeTeamId === match.homeTeamId && f.awayTeamId === match.awayTeamId) ||
+     (f.homeTeamId === match.awayTeamId && f.awayTeamId === match.homeTeamId))
+  )
+
+  if (leg1 && (leg1.status === 'COMPLETED' || leg1.status === 'LIVE')) {
+    const leg1HomeScore = leg1.homeTeamId === match.homeTeamId ? (leg1.homeScore ?? 0) : (leg1.awayScore ?? 0)
+    const leg1AwayScore = leg1.awayTeamId === match.awayTeamId ? (leg1.awayScore ?? 0) : (leg1.homeScore ?? 0)
+    
+    const aggHome = (match.homeScore ?? 0) + leg1HomeScore
+    const aggAway = (match.awayScore ?? 0) + leg1AwayScore
+    
+    return `${aggHome} - ${aggAway} agg`
+  }
+  return null
+}
 </script>
 
 <template>
@@ -297,10 +322,16 @@ function getRoundName(match: Fixture) {
                   </div>
                   
                   <!-- Score -->
-                  <div class="flex-shrink-0 w-14 sm:w-20 text-center">
+                  <div class="flex-shrink-0 w-14 sm:w-20 text-center flex flex-col items-center justify-center">
                     <template v-if="match.status === 'COMPLETED' || match.status === 'LIVE'">
                       <div class="inline-flex px-1.5 sm:px-2 py-1 rounded min-w-[42px] sm:min-w-[50px] justify-center text-xs sm:text-sm font-bold tracking-wider whitespace-nowrap" :class="getScoreBadgeClass(match)">
                          {{ match.homeScore ?? 0 }} - {{ match.awayScore ?? 0 }}
+                      </div>
+                      <div v-if="match.homePenaltyScore != null && match.awayPenaltyScore != null" class="text-[10px] sm:text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-wider">
+                        ({{ match.homePenaltyScore }}-{{ match.awayPenaltyScore }} p)
+                      </div>
+                      <div v-if="getMatchAggregate(match)" class="text-[9px] sm:text-[10px] font-bold text-emerald-500/80 mt-0.5 uppercase tracking-wider">
+                        {{ getMatchAggregate(match) }}
                       </div>
                     </template>
                     <template v-else-if="match.status === 'CANCELLED'">
