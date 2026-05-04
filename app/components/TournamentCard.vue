@@ -10,11 +10,11 @@
           <img
             v-if="tournament.logoUrl"
             :src="tournament.logoUrl"
-            :alt="tournament.customName || tournament.name"
+            :alt="tournament.name"
             class="w-full h-full object-cover"
           />
           <span v-else class="text-sm font-bold text-gray-400 dark:text-white">
-            {{ (tournament.customName || tournament.name).charAt(0).toUpperCase() }}
+            {{ tournament.name.charAt(0).toUpperCase() }}
           </span>
         </div>
         <div>
@@ -28,7 +28,7 @@
     <!-- Title & Desc -->
     <div class="flex-1">
       <h3 class="text-lg font-bold text-gray-900 dark:text-white leading-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
-        {{ tournament.customName || tournament.name }}
+        {{ tournament.name }}
       </h3>
     </div>
 
