@@ -36,10 +36,11 @@ export const useOrganizationStore = defineStore('organization', () => {
     }
   }
 
-  async function fetchOrganizationTournaments(slug: string, page: number = 1, limit: number = 12, append = false) {
+  async function fetchOrganizationTournaments(slug: string, page: number = 1, limit: number = 12, append = false, status?: string) {
     loading.value = true
     try {
-      const response = await $publicApi<PaginatedResponse<Tournament>>(`/tournaments/public?page=${page}&limit=${limit}&organizationSlug=${slug}`, {
+      const statusQuery = status ? `&status=${status}` : ''
+      const response = await $publicApi<PaginatedResponse<Tournament>>(`/tournaments/public?page=${page}&limit=${limit}&organizationSlug=${slug}${statusQuery}`, {
         method: 'GET',
       })
       if (response.data) {
