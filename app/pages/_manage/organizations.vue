@@ -162,6 +162,7 @@ const updatingBranding = ref(false)
 const startBrandingEdit = (org: any) => {
     brandingStates.value[org.id] = {
         name: org.name || '',
+        description: org.description || '',
         logoUrl: org.logoUrl || '',
         location: org.location || '',
         website: org.website || ''
@@ -213,12 +214,81 @@ const triggerUpload = (orgId: string) => {
   document.getElementById('logo-input-' + orgId)?.click()
 }
 
-// Helper to initialize branding state when switching to branding tab
+// ── Socials Logic ──────────────────────────────────────────────
+const PLATFORM_OPTIONS = [
+  { label: 'X (Twitter)', value: 'twitter', icon: '𝕏' },
+  { label: 'Instagram', value: 'instagram', icon: '📷' },
+  { label: 'Facebook', value: 'facebook', icon: '📘' },
+  { label: 'YouTube', value: 'youtube', icon: '▶️' },
+  { label: 'TikTok', value: 'tiktok', icon: '🎵' },
+  { label: 'LinkedIn', value: 'linkedin', icon: '💼' },
+  { label: 'Website', value: 'website', icon: '🌐' },
+]
+
+const socialsMap = ref<Record<string, any[]>>({})
+const loadingSocials = ref<Record<string, boolean>>({})
+const addingSocial = ref(false)
+const newSocial = ref<{ platform: string; url: string }>({ platform: 'twitter', url: '' })
+
+const fetchSocials = async (orgId: string) => {
+  loadingSocials.value[orgId] = true
+  try {
+    const response = await $api<{success: boolean, data: any[]}>(`/socials/organizations/${orgId}`)
+    socialsMap.value[orgId] = response.data
+  } catch (error) {
+    handleError(error, { title: 'Failed to load socials', toast: false })
+  } finally {
+    loadingSocials.value[orgId] = false
+  }
+}
+
+const handleAddSocial = async (orgId: string) => {
+  if (!newSocial.value.url) return
+  addingSocial.value = true
+  try {
+    await $api(`/socials/organizations/${orgId}`, {
+      method: 'POST',
+      body: { platform: newSocial.value.platform, url: newSocial.value.url }
+    })
+    useToast().add({ title: 'Social link added', color: 'success' })
+    newSocial.value = { platform: 'twitter', url: '' }
+    fetchSocials(orgId)
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to add social' })
+  } finally {
+    addingSocial.value = false
+  }
+}
+
+const handleRemoveSocial = async (orgId: string, socialId: string) => {
+  try {
+    await $api(`/socials/${socialId}`, { method: 'DELETE' })
+    useToast().add({ title: 'Social link removed', color: 'success' })
+    fetchSocials(orgId)
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to remove social' })
+  }
+}
+
+const getPlatformLabel = (value: string) => {
+  return PLATFORM_OPTIONS.find(p => p.value === value)?.label || value
+}
+
+const getPlatformIcon = (value: string) => {
+  return PLATFORM_OPTIONS.find(p => p.value === value)?.icon || '🔗'
+}
+
+// Helper to initialize branding state and fetch socials when switching to settings tab
 watch(activeTabs, (newTabs) => {
     for (const [orgId, tab] of Object.entries(newTabs)) {
-        if (tab === 'settings' && !brandingStates.value[orgId]) {
-            const org = authStore.organizations.find(o => o.organizationId === orgId)?.organization
-            if (org) startBrandingEdit(org)
+        if (tab === 'settings') {
+            if (!brandingStates.value[orgId]) {
+                const org = authStore.organizations.find(o => o.organizationId === orgId)?.organization
+                if (org) startBrandingEdit(org)
+            }
+            if (!socialsMap.value[orgId]) {
+                fetchSocials(orgId)
+            }
         }
     }
 }, { deep: true })
@@ -492,6 +562,10 @@ const handleConfirmDelete = async () => {
                     <UFormField label="Workspace Name">
                         <UInput v-model="brandingStates[orgMember.organizationId].name" placeholder="Organization name" />
                     </UFormField>
+
+                    <UFormField label="Bio / Description">
+                        <UTextarea v-model="brandingStates[orgMember.organizationId].description" placeholder="E.g., Digitizing grassroots sports tournaments across Nigeria" :rows="3" autoresize />
+                    </UFormField>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         
@@ -523,6 +597,78 @@ const handleConfirmDelete = async () => {
                         :loading="updatingBranding"
                         @click="handleUpdateBranding(orgMember.organizationId)"
                     />
+                </div>
+
+                <!-- Socials Section -->
+                <div class="space-y-4">
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Social Links</h4>
+                    
+                    <!-- Loading -->
+                    <div v-if="loadingSocials[orgMember.organizationId]" class="flex justify-center py-4">
+                        <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 animate-spin text-gray-400" />
+                    </div>
+
+                    <template v-else>
+                        <!-- Existing Socials List -->
+                        <div v-if="socialsMap[orgMember.organizationId]?.length" class="space-y-2">
+                            <div 
+                                v-for="social in socialsMap[orgMember.organizationId]" 
+                                :key="social.id"
+                                class="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 group transition-colors"
+                            >
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <span class="text-lg shrink-0">{{ getPlatformIcon(social.platform) }}</span>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-bold text-gray-900 dark:text-white">{{ getPlatformLabel(social.platform) }}</p>
+                                        <p class="text-xs text-gray-400 truncate">{{ social.url }}</p>
+                                    </div>
+                                </div>
+                                <UButton 
+                                    icon="i-heroicons-trash" 
+                                    variant="ghost" 
+                                    color="error" 
+                                    size="xs" 
+                                    square
+                                    class="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                    @click="handleRemoveSocial(orgMember.organizationId, social.id)"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Empty State -->
+                        <p v-else class="text-sm text-gray-400 italic py-2">No social links added yet.</p>
+
+                        <!-- Add Social Form -->
+                        <div class="flex gap-2 items-end">
+                            <UFormField label="Platform" class="w-40 shrink-0">
+                                <USelect 
+                                    v-model="newSocial.platform" 
+                                    :items="PLATFORM_OPTIONS.map(p => ({ label: p.icon + ' ' + p.label, value: p.value }))"
+                                    size="sm"
+                                />
+                            </UFormField>
+                            <UFormField label="URL" class="flex-1">
+                                <UInput 
+                                    v-model="newSocial.url" 
+                                    placeholder="https://twitter.com/yourorg" 
+                                    size="sm"
+                                    @keyup.enter="handleAddSocial(orgMember.organizationId)"
+                                >
+                                    <template #leading>
+                                        <UIcon name="i-heroicons-link" />
+                                    </template>
+                                </UInput>
+                            </UFormField>
+                            <UButton 
+                                label="Add" 
+                                color="primary" 
+                                size="sm"
+                                class="rounded-lg font-bold px-4 mb-px"
+                                :loading="addingSocial"
+                                @click="handleAddSocial(orgMember.organizationId)"
+                            />
+                        </div>
+                    </template>
                 </div>
 
                 <!-- Danger Zone -->
