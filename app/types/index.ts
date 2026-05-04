@@ -101,6 +101,7 @@ export interface Organization {
   id: string
   name: string
   slug: string
+  description?: string | null
   logoUrl?: string | null
   bannerUrl?: string | null
   phone?: string | null
@@ -113,6 +114,7 @@ export interface Organization {
   
   members?: OrganizationMember[]
   tournaments?: Tournament[]
+  socials?: Social[]
 }
 
 export interface OrganizationMember {
@@ -364,13 +366,15 @@ export interface Social {
   platform: string
   url: string
   handle?: string | null
-  tournament_id: string
+  tournament_id?: string | null
+  organization_id?: string | null
   
   created_at: string
   updated_at: string
   
   // Relations
   tournament?: Tournament | null
+  organization?: Organization | null
 }
 
 export interface Venue {
