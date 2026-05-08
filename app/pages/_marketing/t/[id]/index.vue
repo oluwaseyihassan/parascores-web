@@ -1154,7 +1154,18 @@ function getTeamCards(fixture: any, isHome: boolean) {
                               {{ (standing.participant?.customName || 'T').charAt(0) }}
                             </span>
                           </div>
-                          <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px] text-gray-800 dark:text-gray-200">{{ standing.participant?.customName || 'Unknown' }}</span>
+                          <div class="flex flex-col min-w-0">
+                            <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px] text-gray-800 dark:text-gray-200">{{ standing.participant?.customName || 'Unknown' }}</span>
+                            <NuxtLink 
+                              v-if="standing.participant?.team_id || standing.participant?.team?.id"
+                              :to="`/team/${standing.participant?.team_id || standing.participant?.team?.id}`"
+                              class="text-[9px] text-emerald-500 font-black uppercase tracking-widest hover:underline mt-0.5"
+                              @click.stop
+                            >
+                              Team History
+                            </NuxtLink>
+                          </div>
+
                         </div>
                       </td>
                       <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.played }}</td>
@@ -1226,6 +1237,15 @@ function getTeamCards(fixture: any, isHome: boolean) {
                   <h4 class="text-base font-semibold truncate transition-colors" :class="isDark ? 'text-gray-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'">
                     {{ participant.customName || 'Unknown' }}
                   </h4>
+                  <NuxtLink 
+                    v-if="participant.team_id || participant.team?.id"
+                    :to="`/team/${participant.team_id || participant.team?.id}`"
+                    class="text-[10px] text-emerald-500 font-bold hover:underline mt-1 inline-block"
+                    @click.stop
+                  >
+                    View Global Profile
+                  </NuxtLink>
+
                 </div>
               </div>
             </button>
