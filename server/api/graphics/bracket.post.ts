@@ -14,12 +14,13 @@ interface BracketBody {
     rounds: number[]
     sponsors?: any[]
     socials?: any[]
+    transparent?: boolean
 }
 
 export default defineEventHandler(async (event) => {
   return useGraphicsCache(event, async (body: BracketBody) => {
   try {
-    const { tournament, fixturesByRound, rounds, sponsors = [], socials = [] } = body
+    const { tournament, fixturesByRound, rounds, sponsors = [], socials = [], transparent = false } = body
 
     if (!tournament || !fixturesByRound || !rounds || rounds.length === 0) {
         throw createError({
@@ -64,38 +65,40 @@ export default defineEventHandler(async (event) => {
 
     // Background Layers
     const backgroundLayers = []
-    if (tournament.bannerUrl) {
-        backgroundLayers.push({
-          type: 'img',
-          props: {
-              src: tournament.bannerUrl,
-              width: width,
-              height: height,
-              style: {
-                  position: 'absolute',
-                  top: 0, left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  filter: 'blur(15px)',
-                  transform: 'scale(1.1)',
-                  opacity: 0.4
+    if (!transparent) {
+        if (tournament.bannerUrl) {
+            backgroundLayers.push({
+              type: 'img',
+              props: {
+                  src: tournament.bannerUrl,
+                  width: width,
+                  height: height,
+                  style: {
+                      position: 'absolute',
+                      top: 0, left: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      filter: 'blur(15px)',
+                      transform: 'scale(1.1)',
+                      opacity: 0.4
+                  }
               }
-          }
+            })
+        }
+        // Gradient always on top
+        backgroundLayers.push({
+            type: 'div',
+            props: {
+                style: {
+                    position: 'absolute',
+                    top: 0, left: 0,
+                    width: '100%', height: '100%',
+                    background: `linear-gradient(135deg, #111827 0%, ${tournament.bannerUrl ? 'rgba(17,24,39,0.9)' : '#1f2937'} 100%)`
+                }
+            }
         })
     }
-    // Gradient always on top
-    backgroundLayers.push({
-        type: 'div',
-        props: {
-            style: {
-                position: 'absolute',
-                top: 0, left: 0,
-                width: '100%', height: '100%',
-                background: `linear-gradient(135deg, #111827 0%, ${tournament.bannerUrl ? 'rgba(17,24,39,0.9)' : '#1f2937'} 100%)`
-            }
-        }
-    })
 
     // Construct Columns
     const columns = rounds.map((round, rIndex) => {
@@ -299,7 +302,7 @@ export default defineEventHandler(async (event) => {
             display: 'flex',
             width: '100%',
             height: '100%',
-            backgroundColor: '#111827',
+            backgroundColor: transparent ? 'transparent' : '#111827',
             fontFamily: 'Inter',
             position: 'relative'
           },

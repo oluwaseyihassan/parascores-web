@@ -7,7 +7,7 @@ import { useGraphicsCache } from '../../utils/cache'
 export default defineEventHandler(async (event) => {
   return useGraphicsCache(event, async (body: any) => {
   try {
-    const { fixtures, tournament, round, sponsors = [], socials = [] } = body
+    const { fixtures, tournament, round, sponsors = [], socials = [], transparent = false } = body
 
     if (!fixtures || !tournament || round === undefined) {
         throw createError({
@@ -73,50 +73,52 @@ export default defineEventHandler(async (event) => {
     // Background layers
     const backgroundLayers = []
     
-    if (tournament.bannerUrl) {
-        backgroundLayers.push({
-            type: 'img',
-            props: {
-                src: tournament.bannerUrl,
-                width: width,
-                height: height,
-                style: {
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    objectFit: 'cover',
-                    filter: 'blur(20px) brightness(0.4)',
+    if (!transparent) {
+        if (tournament.bannerUrl) {
+            backgroundLayers.push({
+                type: 'img',
+                props: {
+                    src: tournament.bannerUrl,
+                    width: width,
+                    height: height,
+                    style: {
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        objectFit: 'cover',
+                        filter: 'blur(20px) brightness(0.4)',
+                    }
                 }
-            }
-        })
-        backgroundLayers.push({
-            type: 'div',
-            props: {
-                style: {
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    backgroundColor: 'rgba(17, 24, 39, 0.85)'
+            })
+            backgroundLayers.push({
+                type: 'div',
+                props: {
+                    style: {
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: 'rgba(17, 24, 39, 0.85)'
+                    }
                 }
-            }
-        })
-    } else {
-        backgroundLayers.push({
-            type: 'div',
-            props: {
-                style: {
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    backgroundColor: '#111827',
-                    backgroundImage: 'radial-gradient(circle at 25% 0%, #312e81 0%, #111827 50%)',
+            })
+        } else {
+            backgroundLayers.push({
+                type: 'div',
+                props: {
+                    style: {
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: '#111827',
+                        backgroundImage: 'radial-gradient(circle at 25% 0%, #312e81 0%, #111827 50%)',
+                    }
                 }
-            }
-        })
+            })
+        }
     }
 
     // Round display name
@@ -321,7 +323,7 @@ export default defineEventHandler(async (event) => {
             width: '100%',
             position: 'relative',
             overflow: 'hidden',
-            backgroundColor: '#111827',
+            backgroundColor: transparent ? 'transparent' : '#111827',
             fontFamily: 'Inter',
           },
           children: [

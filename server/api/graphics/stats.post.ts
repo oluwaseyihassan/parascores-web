@@ -6,7 +6,7 @@ import { useGraphicsCache } from '../../utils/cache'
 export default defineEventHandler(async (event) => {
   return useGraphicsCache(event, async (body: any) => {
   try {
-    const { stats, statType = 'both', tournament, sponsors = [], socials = [] } = body
+    const { stats, statType = 'both', tournament, sponsors = [], socials = [], transparent = false } = body
 
     if (!stats || !tournament) {
         throw createError({
@@ -81,23 +81,25 @@ export default defineEventHandler(async (event) => {
   const height = baseHeight
 
   const backgroundLayers = []
-  if (tournament.bannerUrl) {
-      backgroundLayers.push({
-          type: 'img',
-          props: {
-              src: tournament.bannerUrl, width: width, height: height,
-              style: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(15px)', transform: 'scale(1.1)' }
-          }
-      })
-      backgroundLayers.push({
-          type: 'div',
-          props: { style: { display: 'flex', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(17, 24, 39, 0.8)' } }
-      })
-  } else {
-       backgroundLayers.push({
-          type: 'div',
-          props: { style: { display: 'flex', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: '#111827', backgroundImage: 'radial-gradient(circle at 25% 0%, #312e81 0%, #111827 50%)' } }
-      })
+  if (!transparent) {
+      if (tournament.bannerUrl) {
+          backgroundLayers.push({
+              type: 'img',
+              props: {
+                  src: tournament.bannerUrl, width: width, height: height,
+                  style: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(15px)', transform: 'scale(1.1)' }
+              }
+          })
+          backgroundLayers.push({
+              type: 'div',
+              props: { style: { display: 'flex', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(17, 24, 39, 0.8)' } }
+          })
+      } else {
+           backgroundLayers.push({
+              type: 'div',
+              props: { style: { display: 'flex', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: '#111827', backgroundImage: 'radial-gradient(circle at 25% 0%, #312e81 0%, #111827 50%)' } }
+          })
+      }
   }
 
   const renderStatRow = (item: any, index: number, color: string) => {
@@ -171,7 +173,7 @@ export default defineEventHandler(async (event) => {
     {
       type: 'div',
       props: {
-        style: { display: 'flex', height: '100%', width: '100%', position: 'relative', overflow: 'hidden', backgroundColor: '#111827', fontFamily: 'Inter' },
+        style: { display: 'flex', height: '100%', width: '100%', position: 'relative', overflow: 'hidden', backgroundColor: transparent ? 'transparent' : '#111827', fontFamily: 'Inter' },
         children: [
           ...backgroundLayers,
           {

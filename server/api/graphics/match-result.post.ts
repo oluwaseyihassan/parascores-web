@@ -7,7 +7,7 @@ import { useGraphicsCache } from '../../utils/cache'
 export default defineEventHandler(async (event) => {
   return useGraphicsCache(event, async (body: any) => {
   try {
-    const { match, homeTeam, awayTeam, tournament, events = [], sponsors = [], socials = [] } = body
+    const { match, homeTeam, awayTeam, tournament, events = [], sponsors = [], socials = [], transparent = false } = body
 
     if (!match || !tournament) {
         throw createError({
@@ -87,56 +87,58 @@ export default defineEventHandler(async (event) => {
   // Background Strategy
   const backgroundLayers = []
   
-  if (tournament.bannerUrl) {
-      // Blurred Banner Layer
-      backgroundLayers.push({
-          type: 'img',
-          props: {
-              src: tournament.bannerUrl,
-              width: width,
-              height: height,
-              style: {
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  filter: 'blur(15px)',
-                  transform: 'scale(1.1)', // Scale up to hide blurred edges
+  if (!transparent) {
+      if (tournament.bannerUrl) {
+          // Blurred Banner Layer
+          backgroundLayers.push({
+              type: 'img',
+              props: {
+                  src: tournament.bannerUrl,
+                  width: width,
+                  height: height,
+                  style: {
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      filter: 'blur(15px)',
+                      transform: 'scale(1.1)', // Scale up to hide blurred edges
+                  }
               }
-          }
-      })
-      // Dark Overlay Layer for contrast
-      backgroundLayers.push({
-          type: 'div',
-          props: {
-              style: {
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  backgroundColor: 'rgba(17, 24, 39, 0.8)' // dark-900 with high opacity
+          })
+          // Dark Overlay Layer for contrast
+          backgroundLayers.push({
+              type: 'div',
+              props: {
+                  style: {
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      backgroundColor: 'rgba(17, 24, 39, 0.8)' // dark-900 with high opacity
+                  }
               }
-          }
-      })
-  } else {
-       // Fallback Gradient Layer
-       backgroundLayers.push({
-          type: 'div',
-          props: {
-              style: {
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  backgroundColor: '#111827',
-                  backgroundImage: 'radial-gradient(circle at 25% 0%, #312e81 0%, #111827 50%)',
+          })
+      } else {
+           // Fallback Gradient Layer
+           backgroundLayers.push({
+              type: 'div',
+              props: {
+                  style: {
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      backgroundColor: '#111827',
+                      backgroundImage: 'radial-gradient(circle at 25% 0%, #312e81 0%, #111827 50%)',
+                  }
               }
-          }
-      })
+          })
+      }
   }
 
   const svg = await satori(
@@ -149,7 +151,7 @@ export default defineEventHandler(async (event) => {
           width: '100%',
           position: 'relative',
           overflow: 'hidden',
-          backgroundColor: '#111827',
+          backgroundColor: transparent ? 'transparent' : '#111827',
           fontFamily: 'Inter',
         },
         children: [
