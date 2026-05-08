@@ -219,6 +219,20 @@ function getMatchAggregate(match: Fixture) {
             <h1 class="text-xl md:text-2xl font-bold transition-colors text-center text-gray-900 dark:text-white">
               {{ participant.customName || 'Unnamed Team' }}
             </h1>
+
+            <div v-if="participant.team_id || participant.team?.id" class="mt-4 animate-in fade-in slide-in-from-top-1 duration-500 delay-200">
+               <UButton 
+                 :to="`/team/${participant.team_id || participant.team?.id}`" 
+                 size="sm" 
+                 variant="soft" 
+                 color="neutral"
+                 icon="i-heroicons-clock"
+                 class="rounded-full px-5 font-bold shadow-sm hover:scale-105 active:scale-95 transition-all"
+               >
+                 View Team Profile & History
+               </UButton>
+            </div>
+
           </div>
         </div>
 
