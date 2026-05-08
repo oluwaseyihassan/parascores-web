@@ -16,6 +16,7 @@ definePageMeta({
 const route = useRoute()
 const tournamentStore = useTournamentStore()
 const participantStore = useParticipantStore()
+const teamStore = useTeamStore()
 const fixtureStore = useFixtureStore()
 const standingStore = useStandingStore()
 const sponsorStore = useSponsorStore()
@@ -24,6 +25,12 @@ const groupStore = useGroupStore()
 const socialStore = useSocialStore()
 const venueStore = useVenueStore()
 const { handleError, extractErrorMessage } = useErrors()
+const toast = useToast()
+
+const copyToClipboard = (text: string) => {
+  navigator.clipboard.writeText(text)
+  toast.add({ title: 'Copied to clipboard', color: 'success' })
+}
 const { currentTournament: tournament, loading, error } = storeToRefs(tournamentStore)
 const { participants, loading: participantsLoading } = storeToRefs(participantStore)
 const { fixtures, fixturesByRound, rounds, knockoutFixturesByRound, knockoutRounds, groupStageFixturesByRound, groupStageRounds, loading: fixturesLoading, generating } = storeToRefs(fixtureStore)
@@ -56,6 +63,7 @@ const showKnockoutWizard = ref(false)
 const tournamentId = computed(() => route.params.id as string)
 
 onMounted(async () => {
+  teamStore.loadMyTeams()
   if (tournamentId.value) {
     loading.value = true
     error.value = null
@@ -959,10 +967,11 @@ const addParticipantSchema = z.object({
 
 type AddParticipantSchema = z.output<typeof addParticipantSchema>
 
-const addParticipantState = reactive<Partial<AddParticipantSchema>>({
+const addParticipantState = reactive<Partial<AddParticipantSchema & { teamId: string | null }>>({
   customName: '',
   seed: null,
-  logoUrl: null
+  logoUrl: null,
+  teamId: null
 })
 
 // Logo upload state
@@ -1317,6 +1326,7 @@ const resetAddForm = () => {
   addParticipantState.customName = ''
   addParticipantState.seed = null
   addParticipantState.logoUrl = null
+  addParticipantState.teamId = null
   removeLogo()
   addError.value = null
 }
@@ -1352,7 +1362,8 @@ const handleAddParticipant = async (event: FormSubmitEvent<AddParticipantSchema>
     await participantStore.addParticipant(tournamentId.value, {
       customName: event.data.customName,
       seed: event.data.seed,
-      logoUrl: logoUrl
+      logoUrl: logoUrl,
+      teamId: addParticipantState.teamId
     })
     showAddModal.value = false
     resetAddForm()
@@ -1371,7 +1382,8 @@ const editingParticipantId = ref<string | null>(null)
 
 const editParticipantState = reactive({
   customName: '',
-  logoUrl: null as string | null
+  logoUrl: null as string | null,
+  teamId: null as string | null
 })
 
 const editLogoFileInput = ref<HTMLInputElement | null>(null)
@@ -1414,6 +1426,7 @@ const openEditParticipantModal = (participant: Participant) => {
   editingParticipantId.value = participant.id
   editParticipantState.customName = participant.customName || ''
   editParticipantState.logoUrl = participant.logoUrl || null
+  editParticipantState.teamId = participant.team_id || participant.team?.id || null
   editParticipantError.value = null
   
   editLogoFile.value = null
@@ -1448,7 +1461,8 @@ const handleEditParticipant = async () => {
     
     await participantStore.updateParticipant(editingParticipantId.value, {
       customName: editParticipantState.customName,
-      logoUrl: finalLogoUrl
+      logoUrl: finalLogoUrl,
+      teamId: editParticipantState.teamId
     })
     
     useToast().add({ title: 'Participant updated successfully', color: 'success' })
@@ -1459,6 +1473,77 @@ const handleEditParticipant = async () => {
     editingParticipant.value = false
   }
 }
+
+// Link Code state
+const showLinkCodeModal = ref(false)
+const currentLinkCode = ref<string | null>(null)
+const currentLinkCodeExpiry = ref<string | null>(null)
+const generatingLinkCode = ref(false)
+
+const handleGenerateLinkCode = async (participantId: string) => {
+  generatingLinkCode.value = true
+  try {
+    const res = await $api<{ success: boolean, data: { code: string, expiresAt: string } }>(`/participants/${participantId}/generate-link-code`, {
+      method: 'POST'
+    })
+    currentLinkCode.value = res.data.code
+    currentLinkCodeExpiry.value = res.data.expiresAt
+    showLinkCodeModal.value = true
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to generate link code' })
+  } finally {
+    generatingLinkCode.value = false
+  }
+}
+
+const myTeamOptions = computed(() => {
+  return teamStore.teams.map(t => ({
+    name: t.name,
+    id: t.id,
+    avatar: t.logoUrl ? { src: t.logoUrl } : undefined
+  }))
+})
+
+async function searchTeams(query: string) {
+  if (!query) return myTeamOptions.value
+  const teams = await teamStore.searchAllTeams(query)
+  return teams.map(t => ({
+    name: t.name,
+    id: t.id,
+    avatar: t.logoUrl ? { src: t.logoUrl } : undefined
+  }))
+}
+
+// Store the currently selected team objects to help with auto-fill
+const selectedTeamForAdd = ref<any>(null)
+const selectedTeamForEdit = ref<any>(null)
+
+watch(() => addParticipantState.teamId, (val) => {
+  if (val) {
+    // We need to find the team details. If we have a selectedTeamForAdd, use it.
+    const team = selectedTeamForAdd.value || teamStore.teams.find(t => t.id === val)
+    if (team) {
+      addParticipantState.customName = team.name
+      if (team.logoUrl) {
+        addParticipantState.logoUrl = team.logoUrl
+        logoPreview.value = team.logoUrl
+      }
+    }
+  }
+})
+
+watch(() => editParticipantState.teamId, (val) => {
+  if (val) {
+    const team = selectedTeamForEdit.value || teamStore.teams.find(t => t.id === val)
+    if (team) {
+      editParticipantState.customName = team.name
+      if (team.logoUrl) {
+        editParticipantState.logoUrl = team.logoUrl
+        editLogoPreview.value = team.logoUrl
+      }
+    }
+  }
+})
 
 // Status badge colors
 const statusColors: Record<ParticipantStatus, 'success' | 'warning' | 'error' | 'neutral'> = {
@@ -3442,7 +3527,10 @@ const copyTournamentLink = async () => {
                       <UDropdownMenu 
                         :items="[[
                           { label: 'Edit', icon: 'i-heroicons-pencil-square', onSelect: () => openEditParticipantModal(participant) },
-                          ...(tournament?.participantType === ParticipantType.TEAM ? [{ label: 'Invite Link', icon: 'i-heroicons-link', onSelect: () => generateInviteLink(participant) }] : []),
+                          ...(tournament?.participantType === ParticipantType.TEAM ? [
+                            { label: 'Invite Players', icon: 'i-heroicons-user-plus', onSelect: () => generateInviteLink(participant) },
+                            { label: 'Link Profile Code', icon: 'i-heroicons-key', onSelect: () => handleGenerateLinkCode(participant.id), disabled: !!participant.team_id }
+                          ] : []),
                           { label: 'Delete', icon: 'i-heroicons-trash', onSelect: () => removeParticipant(participant), class: 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' }
                         ]]"
                         :content="{ align: 'end' }"
@@ -4243,6 +4331,43 @@ const copyTournamentLink = async () => {
           :groups="groupStore.groups"
           @finish="fixtureStore.fetchFixtures(tournament.id)"
         />
+        <!-- Link Code Modal -->
+    <UModal v-model:open="showLinkCodeModal">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-key" class="w-5 h-5 text-indigo-500" />
+              <span class="font-semibold text-gray-900 dark:text-white">Team Link Code</span>
+            </div>
+            <p class="text-sm text-gray-500 mt-2">
+              Share this code with the team manager. They can enter it on their team profile page to link it to this tournament entry.
+            </p>
+          </template>
+
+          <div class="flex flex-col items-center justify-center py-8 bg-gray-50 dark:bg-gray-950/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-800">
+            <span class="text-4xl font-bold tracking-[0.2em] text-indigo-600 dark:text-indigo-400 font-mono">
+              {{ currentLinkCode }}
+            </span>
+            <div class="mt-4 flex items-center gap-2 text-xs text-gray-500">
+              <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+              <span>Expires on {{ new Date(currentLinkCodeExpiry!).toLocaleDateString() }}</span>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 mt-6">
+            <UButton color="neutral" variant="ghost" @click="showLinkCodeModal = false">Close</UButton>
+            <UButton 
+              color="primary" 
+              icon="i-heroicons-document-duplicate"
+              @click="copyToClipboard(currentLinkCode!)"
+            >
+              Copy Code
+            </UButton>
+          </div>
+        </UCard>
+      </template>
+    </UModal>
       </div>
     </template>
 
@@ -4676,6 +4801,23 @@ const copyTournamentLink = async () => {
               </div>
             </div>
           </div>
+
+          <UFormField v-if="tournament?.participantType === 'TEAM'" label="Link to Team Profile" name="teamId">
+            <USelectMenu
+              v-model="addParticipantState.teamId"
+              :search="searchTeams"
+              value-key="id"
+              label-key="name"
+              placeholder="Search team profiles..."
+              @update:model-value="(val) => {
+                // Find the selected team object to store it for the watcher
+                searchTeams('').then(teams => {
+                  selectedTeamForAdd.value = teams.find(t => t.id === val)
+                })
+              }"
+            />
+          </UFormField>
+
           <UFormField 
             :label="tournament?.participantType === 'TEAM' ? 'Team Name' : 'Participant Name'" 
             name="customName" 
@@ -4806,6 +4948,22 @@ const copyTournamentLink = async () => {
               </div>
             </div>
           </div>
+
+          <UFormField v-if="tournament?.participantType === 'TEAM'" label="Link to Team Profile" name="teamId">
+            <USelectMenu
+              v-model="editParticipantState.teamId"
+              :search="searchTeams"
+              value-key="id"
+              label-key="name"
+              placeholder="Search team profiles..."
+              @update:model-value="(val) => {
+                searchTeams('').then(teams => {
+                  selectedTeamForEdit.value = teams.find(t => t.id === val)
+                })
+              }"
+            />
+          </UFormField>
+
           <UFormField 
             :label="tournament?.participantType === 'TEAM' ? 'Team Name' : 'Participant Name'" 
             name="customName" 
