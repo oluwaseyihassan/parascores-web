@@ -225,6 +225,31 @@ export const useParticipantStore = defineStore('participant', () => {
     }
   }
 
+  // Update participant status (approve/reject)
+  async function updateParticipantStatus(id: string, status: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<Participant>>(`/participants/${id}/status`, {
+        method: 'PATCH',
+        body: { status },
+      })
+      if (response.data) {
+        const index = participants.value.findIndex(p => p.id === id)
+        if (index !== -1) {
+          participants.value[index] = response.data
+        }
+      }
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Update participant status failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Update player status (approve/reject)
   async function updatePlayerStatus(participantId: string, playerId: string, status: string) {
     loading.value = true
@@ -294,6 +319,7 @@ export const useParticipantStore = defineStore('participant', () => {
     addParticipant,
     updateParticipant,
     removeParticipant,
+    updateParticipantStatus,
     addPlayer,
     addPlayersBulk,
     updatePlayer,
