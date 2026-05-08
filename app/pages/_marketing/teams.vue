@@ -29,6 +29,38 @@ const formState = reactive({
   logoUrl: ''
 })
 
+// Claim Participant state
+const showClaimModal = ref(false)
+const claimCode = ref('')
+const claimingParticipant = ref(false)
+const selectedTeamForClaim = ref<any>(null)
+
+const openClaim = (team: any) => {
+  selectedTeamForClaim.value = team
+  claimCode.value = ''
+  showClaimModal.value = true
+}
+
+const handleClaimParticipant = async () => {
+  if (!selectedTeamForClaim.value || !claimCode.value) return
+  
+  claimingParticipant.value = true
+  try {
+    await $api(`/teams/${selectedTeamForClaim.value.id}/claim-participant`, {
+      method: 'POST',
+      body: { code: claimCode.value }
+    })
+    toast.add({ title: 'Successfully linked team profile!', color: 'success' })
+    showClaimModal.value = false
+    claimCode.value = ''
+    teamStore.loadMyTeams()
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to claim participant' })
+  } finally {
+    claimingParticipant.value = false
+  }
+}
+
 const logoFileInput = ref<HTMLInputElement | null>(null)
 const logoFile = ref<File | null>(null)
 const logoPreview = ref<string | null>(null)
@@ -215,13 +247,24 @@ useSeoMeta({
             </div>
           </div>
 
-          <UButton 
-            icon="i-heroicons-pencil-square" 
-            color="neutral" 
-            variant="ghost" 
-            class="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" 
-            @click="openEdit(team)" 
-          />
+          <div class="flex items-center gap-1 shrink-0">
+            <UButton 
+              icon="i-heroicons-link" 
+              color="neutral" 
+              variant="soft" 
+              size="sm"
+              class="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" 
+              @click="openClaim(team)" 
+              title="Link to Tournament"
+            />
+            <UButton 
+              icon="i-heroicons-pencil-square" 
+              color="neutral" 
+              variant="ghost" 
+              class="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" 
+              @click="openEdit(team)" 
+            />
+          </div>
         </div>
       </UCard>
     </div>
@@ -289,6 +332,45 @@ useSeoMeta({
               </UButton>
             </div>
           </UForm>
+        </UCard>
+      </template>
+    </UModal>
+    <!-- Claim Participant Modal -->
+    <UModal v-model:open="showClaimModal">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-link" class="w-5 h-5 text-indigo-500" />
+              <span class="font-semibold text-gray-900 dark:text-white">Link to Tournament</span>
+            </div>
+            <p class="text-sm text-gray-500 mt-2">
+              Enter the 6-digit code provided by the tournament organizer to link <strong>{{ selectedTeamForClaim?.name }}</strong> to their tournament entry.
+            </p>
+          </template>
+
+          <UFormField label="Link Code" name="claimCode">
+            <UInput 
+              v-model="claimCode" 
+              placeholder="e.g. A1B2C3" 
+              size="lg"
+              class="font-mono text-center tracking-[0.2em]"
+              maxlength="6"
+              @keyup.enter="handleClaimParticipant"
+            />
+          </UFormField>
+
+          <div class="flex justify-end gap-3 mt-6">
+            <UButton color="neutral" variant="ghost" @click="showClaimModal = false">Cancel</UButton>
+            <UButton 
+              color="primary" 
+              :loading="claimingParticipant"
+              :disabled="!claimCode || claimCode.length < 6"
+              @click="handleClaimParticipant"
+            >
+              Link Profile
+            </UButton>
+          </div>
         </UCard>
       </template>
     </UModal>
