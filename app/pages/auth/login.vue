@@ -161,7 +161,7 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
     } else {
         // Redirect logic...
         console.log('Login successful')
-        const redirect = route.query.redirect as string | undefined
+        const redirect = (route.query.redirect || route.query.appRedirect) as string | undefined
         const router = useRouter()
 
         if (redirect && redirect.startsWith('/')) {
