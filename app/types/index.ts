@@ -433,6 +433,28 @@ export interface TeamInvite {
   createdBy?: Partial<User> | null
 }
 
+export interface TournamentInvite {
+  id: string
+  token: string
+  tournament_id: string
+  createdById: string
+  maxUses?: number | null
+  usedCount: number
+  expiresAt?: string | null
+  isActive: boolean
+  created_at: string
+  updated_at: string
+  
+  // Computed by API
+  isValid?: boolean
+  isExpired?: boolean
+  isMaxedOut?: boolean
+
+  // Relations
+  tournament?: Tournament | null
+  createdBy?: Partial<User> | null
+}
+
 // API Responses
 export interface ApiResponse<T> {
   success: boolean
