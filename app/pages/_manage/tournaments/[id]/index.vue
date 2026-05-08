@@ -5,6 +5,7 @@ import { Visibility, TournamentType, ParticipantType, ParticipantStatus, Fixture
 import type { Participant, Fixture, Sponsor, Social, Tournament, Venue } from '~/types'
 import GroupSetupWizard from '~/components/GroupSetupWizard.vue'
 import KnockoutWizard from '~/components/KnockoutWizard.vue'
+import TournamentInviteModal from '~/components/TournamentInviteModal.vue'
 import QrcodeVue from 'qrcode.vue'
 
 definePageMeta({
@@ -109,6 +110,7 @@ const showStandings = computed(() => {
 
 // Transfer Ownership logic
 const showTransferModal = ref(false)
+const showTournamentInviteModal = ref(false)
 const transferringTournament = ref(false)
 const targetOrganizationId = ref<string>('')
 
@@ -710,6 +712,31 @@ watch(() => addFixtureState.groupId, (val) => {
   }
 })
 
+// Clear selected teams if they are already scheduled in the newly selected round/stage/group
+watch([() => addFixtureState.round, () => addFixtureState.stage, () => addFixtureState.groupId], () => {
+  const teamsInRound = new Set()
+  fixtures.value.forEach(f => {
+    if (f.round === addFixtureState.round && f.stage === addFixtureState.stage) {
+      if (addFixtureState.stage === FixtureStage.GROUP_STAGE) {
+        if (f.groupId === addFixtureState.groupId) {
+          if (f.homeTeamId) teamsInRound.add(f.homeTeamId)
+          if (f.awayTeamId) teamsInRound.add(f.awayTeamId)
+        }
+      } else {
+        if (f.homeTeamId) teamsInRound.add(f.homeTeamId)
+        if (f.awayTeamId) teamsInRound.add(f.awayTeamId)
+      }
+    }
+  })
+  
+  if (addFixtureState.homeTeamId && teamsInRound.has(addFixtureState.homeTeamId)) {
+    addFixtureState.homeTeamId = ''
+  }
+  if (addFixtureState.awayTeamId && teamsInRound.has(addFixtureState.awayTeamId)) {
+    addFixtureState.awayTeamId = ''
+  }
+})
+
 const groupOptions = computed(() => {
   return groupStore.groups.map(g => ({ label: g.name, value: g.id }))
 })
@@ -1262,6 +1289,18 @@ const removeParticipant = (participant: Participant) => {
       }
     }
   })
+}
+
+const updateParticipantStatus = async (participantId: string, status: ParticipantStatus) => {
+  try {
+    await participantStore.updateParticipantStatus(participantId, status)
+    useToast().add({ 
+      title: status === ParticipantStatus.CONFIRMED ? 'Participant approved' : 'Participant rejected', 
+      color: status === ParticipantStatus.CONFIRMED ? 'success' : 'error' 
+    })
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to update status' })
+  }
 }
 
 
@@ -2286,12 +2325,14 @@ const handleRemoveVenue = (venueId: string, venueName: string) => {
 }
 
 // Pending requests calculation
-const totalPendingPlayers = computed(() => {
+const totalPendingRequests = computed(() => {
   if (!participants.value) return 0
-  return participants.value.reduce((total, p) => {
+  const pendingTeams = participants.value.filter(p => p.status === ParticipantStatus.PENDING).length
+  const pendingPlayers = participants.value.reduce((total, p) => {
     const pendingCount = p.players?.filter(pl => pl.status === 'PENDING').length || 0
     return total + pendingCount
   }, 0)
+  return pendingTeams + pendingPlayers
 })
 
 // Tab configuration
@@ -2308,7 +2349,7 @@ const tabItems = computed(() => {
       slot: 'participants',
       label: 'Participants',
       icon: 'i-heroicons-user-group',
-      badge: totalPendingPlayers.value > 0 ? totalPendingPlayers.value : undefined
+      badge: totalPendingRequests.value > 0 ? totalPendingRequests.value : undefined
     },
     {
       slot: 'fixtures',
@@ -2956,13 +2997,13 @@ const copyTournamentLink = async () => {
             <template #overview>
               <!-- Pending Requests Alert -->
               <UAlert 
-                v-if="totalPendingPlayers > 0"
+                v-if="totalPendingRequests > 0"
                 color="warning" 
                 variant="subtle"
                 icon="i-heroicons-exclamation-circle"
                 class="mt-4 border border-warning-200 dark:border-warning-900/50"
-                :title="`${totalPendingPlayers} Pending Join Request${totalPendingPlayers > 1 ? 's' : ''}`"
-                description="Players are waiting for your approval to join their teams. Review them in the Participants tab."
+                :title="`${totalPendingRequests} Pending Join Request${totalPendingRequests > 1 ? 's' : ''}`"
+                description="Teams or players are waiting for your approval to join. Review them in the Participants tab."
               >
                 <template #actions>
                   <UButton size="xs" color="warning" @click="activeTab = '1'">
@@ -3281,6 +3322,15 @@ const copyTournamentLink = async () => {
                       </UBadge>
                     </div>
                     <div class="flex items-center gap-2">
+                      <UButton 
+                        size="xs" 
+                        variant="ghost" 
+                        color="success"
+                        icon="i-heroicons-link" 
+                        @click="showTournamentInviteModal = true"
+                      >
+                        Invite
+                      </UButton>
                       <UDropdownMenu 
                         :items="[[
                           { label: 'Upload Excel', icon: 'i-heroicons-arrow-up-tray', onSelect: triggerTeamExcelUpload },
@@ -3405,7 +3455,27 @@ const copyTournamentLink = async () => {
                           class="opacity-70 flex-shrink-0"
                         />
                       </UDropdownMenu>
-                      <UBadge :color="statusColors[participant.status]" variant="subtle" size="sm">
+                      <div class="flex items-center gap-1" v-if="participant.status === ParticipantStatus.PENDING">
+                        <UButton 
+                          size="xs" 
+                          color="success" 
+                          variant="soft" 
+                          icon="i-heroicons-check"
+                          :loading="participantStore.loading"
+                          @click="updateParticipantStatus(participant.id, ParticipantStatus.CONFIRMED)"
+                          title="Approve"
+                        />
+                        <UButton 
+                          size="xs" 
+                          color="error" 
+                          variant="soft" 
+                          icon="i-heroicons-x-mark"
+                          :loading="participantStore.loading"
+                          @click="updateParticipantStatus(participant.id, ParticipantStatus.DECLINED)"
+                          title="Reject"
+                        />
+                      </div>
+                      <UBadge v-else :color="statusColors[participant.status]" variant="subtle" size="sm">
                         {{ participant.status }}
                       </UBadge>
                     </div>
@@ -4223,6 +4293,8 @@ const copyTournamentLink = async () => {
       </template>
     </UModal>
 
+      <TournamentInviteModal v-model="showTournamentInviteModal" :tournament-id="tournamentId" />
+      
     <!-- Start Season Modal -->
     <UModal v-model:open="showSeasonModal">
       <template #content>
