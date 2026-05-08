@@ -16,9 +16,9 @@ export const useHost = () => {
    * If we are on manage subdomain, it returns an absolute URL.
    * If we are already on main site, it returns a relative path for smooth navigation.
    */
-  const toMain = (path: string = '/') => {
+  const toMain = (path: string = '/', options: { absolute?: boolean } = {}) => {
     const cleanPath = path.startsWith('/') ? path : `/${path}`
-    if (isManage.value) {
+    if (isManage.value || options.absolute) {
       return `${frontendUrl}${cleanPath}`
     }
     return cleanPath
@@ -29,9 +29,9 @@ export const useHost = () => {
    * If we are on main site, it returns an absolute URL.
    * If we are already on dashboard, it returns a relative path.
    */
-  const toManage = (path: string = '/') => {
+  const toManage = (path: string = '/', options: { absolute?: boolean } = {}) => {
     const cleanPath = path.startsWith('/') ? path : `/${path}`
-    if (!isManage.value) {
+    if (!isManage.value || options.absolute) {
       return `${dashboardUrl}${cleanPath}`
     }
     return cleanPath
