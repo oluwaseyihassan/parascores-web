@@ -31,6 +31,7 @@ const selectedStatType = ref<'both' | 'scorers' | 'assists'>('both')
 const selectedGroup = ref<string>('all')
 const selectedRound = ref<string | undefined>(undefined)
 const activeAccordion = ref<string[]>([])
+const isTransparent = ref(false)
 
 const getRoundPriority = (name: string | null) => {
   if (!name) return 0
@@ -288,7 +289,8 @@ const generatePreview = async () => {
                 tournament: tournament.value,
                 events: matchEvents,
                 sponsors: sponsorStore.sponsors,
-                socials: socialStore.socials
+                socials: socialStore.socials,
+                transparent: isTransparent.value
             },
             responseType: 'blob'
         })
@@ -299,7 +301,8 @@ const generatePreview = async () => {
                 fixture: selectedFixture.value,
                 tournament: tournament.value,
                 sponsors: sponsorStore.sponsors,
-                socials: socialStore.socials
+                socials: socialStore.socials,
+                transparent: isTransparent.value
             },
             responseType: 'blob'
         })
@@ -327,7 +330,8 @@ const generatePreview = async () => {
                 fixturesByRound,
                 rounds,
                 sponsors: sponsorStore.sponsors,
-                socials: socialStore.socials
+                socials: socialStore.socials,
+                transparent: isTransparent.value
             },
             responseType: 'blob'
         })
@@ -342,7 +346,8 @@ const generatePreview = async () => {
                 tournament: tournament.value,
                 round: selectedMatchdayData.value.label,
                 sponsors: sponsorStore.sponsors,
-                socials: socialStore.socials
+                socials: socialStore.socials,
+                transparent: isTransparent.value
             },
             responseType: 'blob'
         })
@@ -354,7 +359,8 @@ const generatePreview = async () => {
                 statType: selectedStatType.value,
                 tournament: tournament.value,
                 sponsors: sponsorStore.sponsors,
-                socials: socialStore.socials
+                socials: socialStore.socials,
+                transparent: isTransparent.value
             },
             responseType: 'blob'
         })
@@ -375,7 +381,8 @@ const generatePreview = async () => {
                 tournament: tournament.value,
                 title,
                 sponsors: sponsorStore.sponsors,
-                socials: socialStore.socials
+                socials: socialStore.socials,
+                transparent: isTransparent.value
             },
             responseType: 'blob'
         })
@@ -460,6 +467,12 @@ watch(selectedFixtureId, () => {
 watch(graphicType, () => {
     previewUrl.value = null
     error.value = null
+})
+
+watch(isTransparent, () => {
+  if (canGenerate.value) {
+    generatePreview()
+  }
 })
 
 onMounted(() => {
@@ -567,6 +580,19 @@ onUnmounted(() => {
                   Stats
                 </button>
               </div>
+            </div>
+
+            <!-- Transparent Background Toggle -->
+            <div class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-800">
+              <UFormGroup>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Transparent Background</label>
+                    <p class="text-xs text-gray-500">Remove background for overlaying on your own graphics</p>
+                  </div>
+                  <USwitch v-model="isTransparent" />
+                </div>
+              </UFormGroup>
             </div>
 
             <!-- Match List -->
