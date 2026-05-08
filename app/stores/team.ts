@@ -27,6 +27,20 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
+  async function searchAllTeams(query?: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<{ success: boolean, data: Team[] }>(`/teams${query ? `?q=${encodeURIComponent(query)}` : ''}`)
+      return res.data
+    } catch (err: any) {
+      error.value = err.data?.message || 'Failed to search teams'
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function createTeam(data: { name: string, logoUrl?: string }) {
     loading.value = true
     error.value = null
@@ -69,6 +83,7 @@ export const useTeamStore = defineStore('team', () => {
     loading,
     error,
     loadMyTeams,
+    searchAllTeams,
     createTeam,
     updateTeam
   }
