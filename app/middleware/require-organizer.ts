@@ -7,7 +7,6 @@ export default defineNuxtRouteMiddleware((to, from) => {
   }
   
   // Condition B: If the user IS logged in, but is not an organizer
-  console.log(authStore.isOrganizer)
   if (!authStore.isOrganizer) {
     return navigateTo('/onboarding')
   }

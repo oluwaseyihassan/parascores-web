@@ -41,6 +41,12 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   const rootHost = host.replace(/^(manage\.|www\.)+/i, '')
 
   // --- LOGIC ---
+  
+  // 0. Redirect Tournament/Team Join links to the root host if hit on manage subdomain
+  // These routes only exist on the marketing site and should never be processed on manage.
+  if (isApp && (to.path.startsWith('/t-join/') || to.path.startsWith('/join/'))) {
+    return navigateTo(`${protocol}://${rootHost}${to.fullPath}`, { external: true })
+  }
 
   // A. Protect Dashboard (App Subdomain)
   // Logic: If on dashboard AND not logged in -> Go to Login
