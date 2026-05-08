@@ -42,7 +42,7 @@ const profileMenuItems = computed(() => {
       type: 'label',
       disabled: true
     }],
-    [{ label: 'Profile', icon: 'i-heroicons-user', to: '/profile' }],
+    [{ label: 'Profile', icon: 'i-heroicons-user', to: '/profile' }, { label: 'My Teams', icon: 'i-heroicons-user-group', to: '/teams' }],
   ]
 
   // Add Player Profile link if user has player profiles
