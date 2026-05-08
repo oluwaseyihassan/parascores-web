@@ -7,6 +7,7 @@ export interface CreateParticipantData {
   logoUrl?: string | null
   seed?: number | null
   groupId?: string | null
+  teamId?: string | null
 }
 
 export interface CreatePlayerData {
