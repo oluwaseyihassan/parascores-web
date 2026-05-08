@@ -191,6 +191,22 @@ watch([() => config.assignmentMethod, () => config.numberOfGroups, () => config.
     initializeGroups()
 })
 
+// Clear selected teams if they are already scheduled in the newly selected round
+watch(() => addFixtureState.round, (newRound) => {
+  const teamsInRound = new Set(
+    manualFixtures.value
+      .filter(f => f.round === newRound)
+      .flatMap(f => [f.homeTeamId, f.awayTeamId])
+  )
+  
+  if (addFixtureState.homeTeamId && teamsInRound.has(addFixtureState.homeTeamId)) {
+    addFixtureState.homeTeamId = ''
+  }
+  if (addFixtureState.awayTeamId && teamsInRound.has(addFixtureState.awayTeamId)) {
+    addFixtureState.awayTeamId = ''
+  }
+})
+
 
 const initializeGroups = () => {
   const groups: Record<string, string[]> = {}
