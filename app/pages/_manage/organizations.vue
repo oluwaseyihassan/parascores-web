@@ -169,6 +169,18 @@ const startBrandingEdit = (org: any) => {
     }
 }
 
+const frontEndUrl = useRuntimeConfig().public.FRONT_END_URL
+
+const copyPublicLink = async (slug: string) => {
+    const url = `${frontEndUrl}/org/${slug}`
+    try {
+        await navigator.clipboard.writeText(url)
+        useToast().add({ title: 'Public link copied!', color: 'success' })
+    } catch (err) {
+        useToast().add({ title: 'Failed to copy link', color: 'error' })
+    }
+}
+
 const handleUpdateBranding = async (orgId: string) => {
     updatingBranding.value = true
     try {
@@ -559,12 +571,32 @@ const handleConfirmDelete = async () => {
                 <!-- Branding Section -->
                 <div v-if="brandingStates[orgMember.organizationId]" class="space-y-4">
                     <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Branding</h4>
+
+                    <!-- Public Link Card -->
+                    <div v-if="orgMember.organization?.slug" class="p-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div class="flex-1 min-w-0 w-full">
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Public Organization Link</p>
+                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {{ frontEndUrl }}/org/{{ orgMember.organization.slug }}
+                            </p>
+                        </div>
+                        <UButton
+                            icon="i-heroicons-clipboard-document"
+                            color="primary"
+                            variant="soft"
+                            class="shrink-0 w-full sm:w-auto justify-center"
+                            @click="copyPublicLink(orgMember.organization.slug)"
+                        >
+                            Copy Link
+                        </UButton>
+                    </div>
+
                     <UFormField label="Workspace Name">
-                        <UInput v-model="brandingStates[orgMember.organizationId].name" placeholder="Organization name" />
+                        <UInput v-model="brandingStates[orgMember.organizationId].name" placeholder="Organization name" class="w-full" />
                     </UFormField>
 
                     <UFormField label="Bio / Description">
-                        <UTextarea v-model="brandingStates[orgMember.organizationId].description" placeholder="E.g., Digitizing grassroots sports tournaments across Nigeria" :rows="3" autoresize />
+                        <UTextarea v-model="brandingStates[orgMember.organizationId].description" placeholder="E.g., Digitizing grassroots sports tournaments across Nigeria" :rows="3" autoresize class="w-full" />
                     </UFormField>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
