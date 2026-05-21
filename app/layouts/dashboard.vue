@@ -59,7 +59,8 @@ const profileMenuItems = computed(() => [
     slot: 'account',
     disabled: true
   }],
-  [{ label: 'My profile', icon: 'i-heroicons-user-circle', to: '/profile' }],
+  [{ label: 'My profile', icon: 'i-heroicons-user-circle', to: '/profile' },
+   { label: 'Billing', icon: 'i-heroicons-credit-card', to: '/billing' }],
   [{
     label: 'Theme',
     icon: 'i-heroicons-paint-brush',
