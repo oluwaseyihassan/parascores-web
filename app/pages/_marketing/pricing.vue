@@ -36,7 +36,7 @@
       <!-- Glow Effect Behind Cards -->
       <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-96 bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
       
-      <div class="grid lg:grid-cols-3 gap-8 relative z-10 items-start">
+      <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto relative z-10 items-start">
         <div v-for="tier in tiers" :key="tier.name" 
           :class="['bg-white dark:bg-[#111827] rounded-2xl p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl flex flex-col transition-colors', 
             tier.popular ? 'border-2 border-emerald-500 shadow-xl shadow-emerald-500/10 lg:-mt-4 relative' : 'border border-gray-200 dark:border-white/10 hover:border-emerald-500/30 relative mt-4 shadow-sm']">
@@ -52,11 +52,15 @@
             <template v-if="tier.monthlyPrice === 'Custom'">
               <span class="text-4xl font-extrabold text-gray-900 dark:text-white">Custom</span>
             </template>
-            <template v-else>
-              <span class="text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight">${{ isYearly ? (tier.yearlyPrice as number) / 12 : tier.monthlyPrice }}</span>
+          <template v-else-if="tier.oneTime">
+              <span class="text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight">₦{{ (tier.monthlyPrice as number).toLocaleString() }}</span>
+              <span class="text-gray-500 dark:text-gray-400 font-bold ml-1">/tournament</span>
+          </template>
+          <template v-else>
+              <span class="text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight">₦{{ isYearly && tier.yearlyPrice ? Math.round((tier.yearlyPrice as number) / 12).toLocaleString() : (tier.monthlyPrice as number).toLocaleString() }}</span>
               <span class="text-gray-500 dark:text-gray-400 font-bold ml-1">/mo</span>
               <div v-if="isYearly && (tier.monthlyPrice as number) > 0" class="text-sm text-emerald-600 dark:text-emerald-400 mt-2 font-bold">
-                Billed ${{ tier.yearlyPrice }} yearly
+                Billed ₦{{ (tier.yearlyPrice as number).toLocaleString() }} yearly
               </div>
               <div v-else-if="(tier.monthlyPrice as number) > 0" class="text-sm text-gray-500 mt-2 opacity-0">
                 Spacer
@@ -67,21 +71,26 @@
           <UButton 
             block 
             size="lg" 
-            :to="tier.name === 'Enterprise' ? '/contact' : '/auth/signup'"
+            :to="tier.comingSoon ? undefined : getCtaLink(tier)"
+            :disabled="tier.comingSoon"
             :class="[
               'font-bold mb-8 h-12 flex items-center justify-center transition-all duration-200 shadow-sm rounded-xl',
-              tier.buttonColor === 'emerald' ? 'bg-emerald-500 hover:bg-emerald-600 text-white ring-0' : 'bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-900 dark:text-white border border-gray-200 dark:border-white/10'
+              tier.comingSoon 
+                ? 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-white/10 cursor-not-allowed' 
+                : (tier.buttonColor === 'emerald' ? 'bg-emerald-500 hover:bg-emerald-600 text-white ring-0' : 'bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-900 dark:text-white border border-gray-200 dark:border-white/10')
             ]"
           >
-            {{ tier.buttonText }}
+            {{ tier.comingSoon ? 'Coming Soon' : tier.buttonText }}
           </UButton>
 
           <div class="space-y-4 flex-grow border-t border-gray-100 dark:border-white/10 pt-6 mt-2">
             <div class="text-xs font-extrabold text-gray-400 dark:text-gray-500 tracking-widest uppercase">What's included:</div>
             <ul class="space-y-4">
-              <li v-for="feature in tier.features" :key="feature" class="flex items-start gap-3">
+              <li v-for="feature in tier.features" :key="feature.text" class="flex items-start gap-3">
                 <UIcon name="i-heroicons-check-circle" class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                <span class="text-sm text-gray-700 dark:text-gray-300 leading-tight font-medium">{{ feature }}</span>
+                <UTooltip :text="feature.tooltip" :content="{ side: 'top', align: 'center' }">
+                  <span class="text-sm text-gray-700 dark:text-gray-300 leading-tight font-medium border-b border-dashed border-gray-300 dark:border-white/10 cursor-help hover:text-emerald-500 transition-colors">{{ feature.text }}</span>
+                </UTooltip>
               </li>
             </ul>
           </div>
@@ -117,7 +126,16 @@ useSeoMeta({
   ogTitle: 'Pricing - ParaScores'
 })
 
+const authStore = useAuthStore()
+const { toManage } = useHost()
+
 const isYearly = ref(true)
+
+function getCtaLink(tier: any) {
+  if (tier.name === 'Enterprise') return '/contact?subject=Enterprise Inquiry'
+  if (authStore.isOrganizer) return toManage('/billing')
+  return '/auth/signup'
+}
 
 const tiers = [
   {
@@ -129,27 +147,45 @@ const tiers = [
     buttonColor: 'gray',
     popular: false,
     features: [
-      'Up to 3 active tournaments',
-      'Max 32 participants per tournament',
-      'Basic brackets and leaderboards',
-      'Standard email support'
+      { text: 'Up to 3 active tournaments', tooltip: 'Create and run up to 3 tournaments simultaneously. Completed tournaments do not count against this limit.' },
+      { text: 'Max 32 participants per tournament', tooltip: 'A maximum of 32 teams or players can join each tournament. Upgrade to Pro or Premium for unlimited participants.' },
+      { text: 'Basic brackets and leaderboards', tooltip: 'Includes single-elimination, double-elimination, and league/round-robin bracket formats.' },
+      { text: 'Standard email support', tooltip: 'Access to our help desk. We reply within 24-48 business hours.' }
+    ]
+  },
+  {
+    name: 'Per Tournament',
+    description: 'Upgrade a single tournament with premium features. One-time payment.',
+    monthlyPrice: 2000,
+    yearlyPrice: null,
+    buttonText: 'Upgrade a Tournament',
+    buttonColor: 'gray',
+    popular: false,
+    oneTime: true,
+    comingSoon: true,
+    features: [
+      { text: 'Unlimited participants', tooltip: 'No cap on the number of players or teams that can register or be added to this upgraded tournament.' },
+      { text: 'Custom branding & logos', tooltip: 'Upload organization and tournament logos, and display your brand prominently on all public pages.' },
+      { text: 'Advanced statistics', tooltip: 'Unlock in-depth team/player performance tracking, player stats, and visual charts.' },
+      { text: 'Priority email support', tooltip: 'Dedicated support queue. We guarantee a reply within 12 hours.' }
     ]
   },
   {
     name: 'Pro',
     description: 'For serious organizers running large-scale or frequent competitive events.',
-    monthlyPrice: 15,
-    yearlyPrice: 144, // 12/mo
+    monthlyPrice: 5000,
+    yearlyPrice: 48000,
     buttonText: 'Start Free 14-day Trial',
     buttonColor: 'emerald',
     popular: true,
+    comingSoon: true,
     features: [
-      'Unlimited active tournaments',
-      'Unlimited participants',
-      'Custom branding & logos',
-      'Advanced statistics & analytics',
-      'Priority email support',
-      'API Access (read-only)'
+      { text: 'Unlimited active tournaments', tooltip: 'Run as many simultaneous tournaments as you want without any restrictions.' },
+      { text: 'Unlimited participants', tooltip: 'No limits on the number of participating teams/players across all your tournaments.' },
+      { text: 'Custom branding & logos', tooltip: 'Upload organization and tournament logos, and display your brand prominently on all public pages.' },
+      { text: 'Advanced statistics & analytics', tooltip: 'Unlock detailed analytics, top goalscorers/scorers tracking, and performance dashboards.' },
+      { text: 'Priority email support', tooltip: 'Dedicated support queue. We guarantee a reply within 12 hours.' },
+      { text: 'API Access (read-only)', tooltip: 'Query tournament results, fixtures, standings, and participant details programmatically.' }
     ]
   },
   {
@@ -161,12 +197,12 @@ const tiers = [
     buttonColor: 'gray',
     popular: false,
     features: [
-      'Everything in Pro tier',
-      'White-labeling options',
-      'Dedicated Account Manager',
-      'SLA Support guarantee',
-      'Full API Access (Read/Write)',
-      'Custom integrations'
+      { text: "Everything in Pro tier", tooltip: "All capabilities of our Pro subscription plan included by default." },
+      { text: "White-labeling options", tooltip: "Remove ParaScores branding completely and run tournaments on your own custom domain." },
+      { text: "Dedicated Account Manager", tooltip: "Direct access to a technical account manager for setup, onboarding, and optimization help." },
+      { text: "SLA Support guarantee", tooltip: "Contractual service level agreement guaranteeing fast support response and uptime." },
+      { text: "Full API Access (Read/Write)", tooltip: "Create, update, and manage tournaments, fixtures, and scores programmatically via our REST API." },
+      { text: "Custom integrations", tooltip: "Sync scores and results directly to your existing internal database, custom apps, or websites." }
     ]
   }
 ]
@@ -182,7 +218,7 @@ const faqs = [
   },
   { 
     question: 'What payment methods do you accept?', 
-    answer: 'We securely accept all major credit cards (Visa, Mastercard, Amex), PayPal, as well as Apple Pay and Google Pay.' 
+    answer: 'We process payments securely through Paystack. You can pay using your debit/credit card (Visa, Mastercard, Verve), bank transfer, or mobile money.' 
   },
   { 
     question: 'Can I cancel my subscription?', 
