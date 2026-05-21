@@ -24,8 +24,10 @@ const authStore = useAuthStore()
 const groupStore = useGroupStore()
 const socialStore = useSocialStore()
 const venueStore = useVenueStore()
+const paymentStore = usePaymentStore()
 const { handleError, extractErrorMessage } = useErrors()
 const toast = useToast()
+const config = useRuntimeConfig()
 
 const copyToClipboard = (text: string) => {
   navigator.clipboard.writeText(text)
@@ -62,8 +64,31 @@ const loadPlayerStats = async () => {
 const showKnockoutWizard = ref(false)
 const tournamentId = computed(() => route.params.id as string)
 
+// Subscription / Premium state
+const { subscription, isPro } = storeToRefs(paymentStore)
+
+const showUpgradeBanner = computed(() => {
+  if (!tournament.value) return false
+  // Already premium (per-tournament or via org subscription)
+  if (tournament.value.isPremium) return false
+  if (isPro.value) return false
+  return true
+})
+
+const upgradingFromBanner = ref(false)
+
+async function handleUpgradeTournament() {
+  // Coming soon
+}
+
 onMounted(async () => {
   teamStore.loadMyTeams()
+
+  // Fetch subscription state for upgrade banner
+  if (authStore.currentOrganization?.id) {
+    paymentStore.fetchSubscription(authStore.currentOrganization.id).catch(() => {})
+  }
+
   if (tournamentId.value) {
     loading.value = true
     error.value = null
@@ -227,7 +252,7 @@ const openGenerateModal = () => {
   generateConfig.useExistingGroups = groupStore.groups.length > 0
   generateError.value = null
   
-  if (tournament.value?.type === TournamentType.GROUP || tournament.value?.type === TournamentType.ROUND_ROBIN || tournament.value?.type === TournamentType.HYBRID || tournament.value?.type === TournamentType.LEAGUE) {
+  if (tournament.value?.type === TournamentType.GROUP || tournament.value?.type === TournamentType.HYBRID || tournament.value?.type === TournamentType.LEAGUE) {
     showGroupWizard.value = true
   } else if (tournament.value?.type === TournamentType.KNOCKOUT) {
     showKnockoutWizard.value = true
@@ -1496,6 +1521,19 @@ const handleGenerateLinkCode = async (participantId: string) => {
   }
 }
 
+const handleUnlinkProfile = async (participant: Participant) => {
+  try {
+    await participantStore.updateParticipant(participant.id, { teamId: null } as any)
+    useToast().add({ title: 'Team profile unlinked', color: 'success' })
+    // Refresh participants
+    if (tournamentId.value) {
+      participantStore.fetchParticipants(tournamentId.value)
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to unlink profile' })
+  }
+}
+
 const myTeamOptions = computed(() => {
   return teamStore.teams.map(t => ({
     name: t.name,
@@ -1514,36 +1552,6 @@ async function searchTeams(query: string) {
   }))
 }
 
-// Store the currently selected team objects to help with auto-fill
-const selectedTeamForAdd = ref<any>(null)
-const selectedTeamForEdit = ref<any>(null)
-
-watch(() => addParticipantState.teamId, (val) => {
-  if (val) {
-    // We need to find the team details. If we have a selectedTeamForAdd, use it.
-    const team = selectedTeamForAdd.value || teamStore.teams.find(t => t.id === val)
-    if (team) {
-      addParticipantState.customName = team.name
-      if (team.logoUrl) {
-        addParticipantState.logoUrl = team.logoUrl
-        logoPreview.value = team.logoUrl
-      }
-    }
-  }
-})
-
-watch(() => editParticipantState.teamId, (val) => {
-  if (val) {
-    const team = selectedTeamForEdit.value || teamStore.teams.find(t => t.id === val)
-    if (team) {
-      editParticipantState.customName = team.name
-      if (team.logoUrl) {
-        editParticipantState.logoUrl = team.logoUrl
-        editLogoPreview.value = team.logoUrl
-      }
-    }
-  }
-})
 
 // Status badge colors
 const statusColors: Record<ParticipantStatus, 'success' | 'warning' | 'error' | 'neutral'> = {
@@ -1693,15 +1701,18 @@ const isFixturesOutdated = computed(() => {
   const tournamentTeamIds = new Set(currentParticipants.map(p => p.id))
   
   // 1. Check for rounds that shouldn't exist anymore (e.g. went from 8 teams to 4)
-  const expectedGroupRounds = expectedRounds.value.filter(r => r.stage === FixtureStage.GROUP_STAGE || !r.stage)
-  const actualGroupRounds = groupStageRounds.value
-  
-  // If we have more group rounds in DB than expected, it's outdated
-  if (actualGroupRounds.length > expectedGroupRounds.length) return true
-  
-  // For Round Robin / League / Groups: The counts should match exactly
-  if ([TournamentType.LEAGUE, TournamentType.ROUND_ROBIN, TournamentType.GROUP, TournamentType.HYBRID].includes(type)) {
-     if (actualGroupRounds.length !== expectedGroupRounds.length) return true
+  // Skip for pure knockout — those fixtures have no stage set and aren't group-based
+  if (type !== TournamentType.KNOCKOUT && type !== TournamentType.FRIENDLY) {
+    const expectedGroupRounds = expectedRounds.value.filter(r => r.stage === FixtureStage.GROUP_STAGE || !r.stage)
+    const actualGroupRounds = groupStageRounds.value
+    
+    // If we have more group rounds in DB than expected, it's outdated
+    if (actualGroupRounds.length > expectedGroupRounds.length) return true
+    
+    // For Round Robin / League / Groups: The counts should match exactly
+    if ([TournamentType.LEAGUE, TournamentType.ROUND_ROBIN, TournamentType.GROUP, TournamentType.HYBRID].includes(type)) {
+       if (actualGroupRounds.length !== expectedGroupRounds.length) return true
+    }
   }
 
   // 2. Check for "Orphan" participants in fixtures (teams that were deleted)
@@ -1839,12 +1850,16 @@ const knockoutAccordionItems = computed(() => {
   const items: Array<{ value: string; label: string; stats: string; fixtures: Fixture[]; slot: string; round: number; roundName: string }> = []
   const skeleton = expectedRounds.value.filter(r => r.stage === FixtureStage.KNOCKOUT)
   
-  // Use skeleton labels as base structure, plus any existing knockout rounds
-  const existingRounds = knockoutRounds.value
-  const allRoundNumbers = Array.from(new Set([...skeleton.map(r => r.round), ...existingRounds])).sort((a, b) => a - b)
+  // For pure knockout tournaments, fixtures don't have stage set — use all fixtures
+  // For hybrid tournaments, use only knockout-stage fixtures
+  const isHybrid = tournament.value?.type === TournamentType.HYBRID
+  const relevantFixturesByRound = isHybrid ? knockoutFixturesByRound.value : fixturesByRound.value
+  const relevantRounds = isHybrid ? knockoutRounds.value : rounds.value
+
+  const allRoundNumbers = Array.from(new Set([...skeleton.map(r => r.round), ...relevantRounds])).sort((a, b) => a - b)
 
   for (const round of allRoundNumbers) {
-    let roundFixtures = (knockoutFixturesByRound.value[round] || [])
+    let roundFixtures = (relevantFixturesByRound[round] || [])
       .slice()
       .sort((a, b) => a.matchNumber - b.matchNumber)
 
@@ -2705,6 +2720,13 @@ const copyTournamentLink = async () => {
               <UBadge v-if="tournamentStatus" :color="tournamentStatus.color" variant="subtle">
                 {{ tournamentStatus.label }}
               </UBadge>
+              <span 
+                v-if="tournament.isPremium || isPro"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm"
+              >
+                <UIcon name="i-heroicons-bolt-solid" class="w-3 h-3" />
+                Premium
+              </span>
             </div>
           </div>
           
@@ -2747,6 +2769,53 @@ const copyTournamentLink = async () => {
             :to="`/widgets?t=${tournament.customName || tournament.id}`"
             label="Widgets"
           />
+        </div>
+      </div>
+
+      <!-- Premium Upgrade Banner -->
+      <div
+        v-if="showUpgradeBanner"
+        class="mb-8 relative overflow-hidden rounded-2xl border border-amber-200/60 dark:border-amber-500/20 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-yellow-950/20 p-6 shadow-sm"
+      >
+        <!-- Decorative glow -->
+        <div class="absolute -top-10 -right-10 w-40 h-40 bg-amber-400/10 dark:bg-amber-400/5 rounded-full blur-3xl" />
+        <div class="absolute -bottom-8 -left-8 w-32 h-32 bg-orange-400/10 dark:bg-orange-400/5 rounded-full blur-2xl" />
+
+        <div class="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div class="flex items-center gap-4 flex-1 min-w-0">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
+              <UIcon name="i-heroicons-bolt-solid" class="w-6 h-6 text-white" />
+            </div>
+            <div class="min-w-0">
+              <h3 class="text-sm font-bold text-gray-900 dark:text-white">
+                Unlock Premium Features
+              </h3>
+              <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">
+                Get unlimited participants, custom branding, advanced stats, and more for this tournament.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+            <UButton
+              size="sm"
+              variant="solid"
+              class="font-bold bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-white/10 cursor-not-allowed flex-1 sm:flex-none"
+              icon="i-heroicons-bolt"
+              disabled
+            >
+              Upgrade — Coming Soon
+            </UButton>
+            <UButton
+              size="sm"
+              variant="ghost"
+              color="neutral"
+              class="font-bold flex-1 sm:flex-none"
+              to="/billing"
+            >
+              View Plans
+            </UButton>
+          </div>
         </div>
       </div>
       
@@ -3529,7 +3598,8 @@ const copyTournamentLink = async () => {
                           { label: 'Edit', icon: 'i-heroicons-pencil-square', onSelect: () => openEditParticipantModal(participant) },
                           ...(tournament?.participantType === ParticipantType.TEAM ? [
                             { label: 'Invite Players', icon: 'i-heroicons-user-plus', onSelect: () => generateInviteLink(participant) },
-                            { label: 'Link Profile Code', icon: 'i-heroicons-key', onSelect: () => handleGenerateLinkCode(participant.id), disabled: !!participant.team_id }
+                            { label: 'Link Profile Code', icon: 'i-heroicons-key', onSelect: () => handleGenerateLinkCode(participant.id), disabled: !!participant.team_id },
+                            ...(participant.team_id ? [{ label: 'Unlink Profile', icon: 'i-heroicons-link-slash', onSelect: () => handleUnlinkProfile(participant), class: 'text-amber-500' }] : [])
                           ] : []),
                           { label: 'Delete', icon: 'i-heroicons-trash', onSelect: () => removeParticipant(participant), class: 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' }
                         ]]"
@@ -4802,21 +4872,6 @@ const copyTournamentLink = async () => {
             </div>
           </div>
 
-          <UFormField v-if="tournament?.participantType === 'TEAM'" label="Link to Team Profile" name="teamId">
-            <USelectMenu
-              v-model="addParticipantState.teamId"
-              :search="searchTeams"
-              value-key="id"
-              label-key="name"
-              placeholder="Search team profiles..."
-              @update:model-value="(val) => {
-                // Find the selected team object to store it for the watcher
-                searchTeams('').then(teams => {
-                  selectedTeamForAdd.value = teams.find(t => t.id === val)
-                })
-              }"
-            />
-          </UFormField>
 
           <UFormField 
             :label="tournament?.participantType === 'TEAM' ? 'Team Name' : 'Participant Name'" 
@@ -4949,20 +5004,6 @@ const copyTournamentLink = async () => {
             </div>
           </div>
 
-          <UFormField v-if="tournament?.participantType === 'TEAM'" label="Link to Team Profile" name="teamId">
-            <USelectMenu
-              v-model="editParticipantState.teamId"
-              :search="searchTeams"
-              value-key="id"
-              label-key="name"
-              placeholder="Search team profiles..."
-              @update:model-value="(val) => {
-                searchTeams('').then(teams => {
-                  selectedTeamForEdit.value = teams.find(t => t.id === val)
-                })
-              }"
-            />
-          </UFormField>
 
           <UFormField 
             :label="tournament?.participantType === 'TEAM' ? 'Team Name' : 'Participant Name'" 
