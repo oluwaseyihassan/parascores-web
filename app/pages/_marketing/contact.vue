@@ -136,6 +136,9 @@
 <script setup lang="ts">
 import { z } from 'zod'
 
+import { ref, reactive, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+
 // SEO
 useSeoMeta({
   title: 'Contact Us - ParaScores',
@@ -144,6 +147,7 @@ useSeoMeta({
   ogDescription: 'Get in touch with the ParaScores team for support, sales, or general inquiries.',
 })
 
+const route = useRoute()
 const { handleError } = useErrors()
 const toast = useToast()
 
@@ -159,6 +163,12 @@ const state = reactive({
   email: '',
   subject: '',
   message: ''
+})
+
+onMounted(() => {
+  if (route.query.subject) {
+    state.subject = route.query.subject as string
+  }
 })
 
 const status = ref<'idle' | 'pending'>('idle')
