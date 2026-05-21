@@ -158,6 +158,8 @@ const schema = z.object({
   end_date: z.string().min(1, 'End date is required'),
   maxParticipants: z.number().positive().optional().nullable(),
   autoApprove: z.boolean(),
+  isPaidRegistration: z.boolean().optional(),
+  registrationFee: z.number().min(0, 'Registration fee must be positive').optional().nullable(),
   twoLegsKnockout: z.boolean().optional(),
   doubleRoundRobin: z.boolean().optional(),
   thirdPlaceMatch: z.boolean().optional()
@@ -180,6 +182,8 @@ const state = reactive<Partial<Schema>>({
   end_date: props.tournament.end_date,
   maxParticipants: props.tournament.maxParticipants,
   autoApprove: props.tournament.autoApprove ?? false,
+  isPaidRegistration: props.tournament.isPaidRegistration ?? false,
+  registrationFee: props.tournament.registrationFee ? props.tournament.registrationFee / 100 : null,
   twoLegsKnockout: props.tournament.twoLegsKnockout ?? false,
   doubleRoundRobin: props.tournament.doubleRoundRobin ?? false,
   thirdPlaceMatch: props.tournament.thirdPlaceMatch ?? false
@@ -336,6 +340,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       customName: event.data.customName || null,
       description: event.data.description || null,
       location: event.data.location || null,
+      isPaidRegistration: !!event.data.isPaidRegistration,
+      registrationFee: event.data.isPaidRegistration && event.data.registrationFee 
+        ? Math.round(event.data.registrationFee * 100) 
+        : 0,
       logoUrl,
       bannerUrl,
     } as unknown as Partial<Tournament>)
@@ -770,6 +778,30 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               <p class="text-sm text-gray-500">When enabled, players joining via invite link are added immediately. When disabled, you must manually approve each request in the "Manage Players" section to ensure roster integrity.</p>
             </div>
             <USwitch v-model="state.autoApprove" />
+          </div>
+
+          <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 opacity-60">
+            <div class="flex-1 pr-4">
+              <p class="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                Paid Registration
+                <span class="text-[9px] font-extrabold text-amber-500 bg-amber-500/10 border border-amber-500/20 py-0.5 px-1.5 rounded uppercase tracking-wider">Coming Soon</span>
+              </p>
+              <p class="text-sm text-gray-500">Require teams to pay a registration fee to join.</p>
+            </div>
+            <USwitch :model-value="false" disabled />
+          </div>
+
+          <div v-if="state.isPaidRegistration" class="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-4 animate-in fade-in duration-200">
+            <UFormField label="Registration Fee (₦)" name="registrationFee" required>
+              <UInput 
+                v-model.number="state.registrationFee" 
+                type="number" 
+                placeholder="e.g. 5000" 
+                min="0"
+                class="w-full"
+                icon="i-heroicons-banknotes"
+              />
+            </UFormField>
           </div>
         </div>
       </UCard>
