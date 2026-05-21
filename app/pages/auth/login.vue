@@ -161,10 +161,14 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
     } else {
         // Redirect logic...
         console.log('Login successful')
-        const redirect = (route.query.redirect || route.query.appRedirect) as string | undefined
+        const appRedirect = route.query.appRedirect as string | undefined
+        const redirect = route.query.redirect as string | undefined
         const router = useRouter()
 
-        if (redirect && redirect.startsWith('/')) {
+        if (appRedirect && appRedirect.startsWith('/')) {
+          // appRedirect comes from the manage.* subdomain — redirect back there
+          window.location.href = `${dashboardUrl}${appRedirect}`
+        } else if (redirect && redirect.startsWith('/')) {
           router.push(redirect)
         } else {
           router.push('/')
