@@ -152,7 +152,10 @@ export interface Tournament {
   registrationOpen?: string | null
   registrationClose?: string | null
   autoApprove: boolean
+  isPaidRegistration?: boolean
+  registrationFee?: number
   isPinned?: boolean
+  isPremium?: boolean
   pendingRequestsCount?: number
 
    // Advanced Options
