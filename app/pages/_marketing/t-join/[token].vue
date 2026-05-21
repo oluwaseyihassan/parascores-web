@@ -3,6 +3,8 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTournamentInviteStore } from '~/stores/tournamentInvite'
 import { useAuthStore } from '~/stores/auth'
+import { usePaymentStore } from '~/stores/payment'
+import { useTeamStore } from '~/stores/team'
 import { z } from 'zod'
 import type { FormSubmitEvent } from '#ui/types'
 
@@ -22,6 +24,9 @@ const error = ref<string | null>(null)
 const submitting = ref(false)
 const successMessage = ref<string | null>(null)
 const joinStatus = ref<string | null>(null)
+const verifyingPayment = ref(false)
+const verificationSuccess = ref(false)
+const paymentStore = usePaymentStore()
 
 const selectedTeamId = ref<string | 'new'>('new')
 const formState = ref({
@@ -83,6 +88,37 @@ onMounted(async () => {
     return
   }
 
+  const reference = route.query.reference as string
+  if (reference) {
+    verifyingPayment.value = true
+    try {
+      const res = await paymentStore.verifyPayment(reference)
+      if (res?.success) {
+        verificationSuccess.value = true
+        successMessage.value = 'Registration Payment Verified! 🎉'
+        joinStatus.value = 'CONFIRMED'
+        
+        // Fetch invite details to get tournament context for redirect
+        await inviteStore.getInviteByToken(token)
+
+        setTimeout(() => {
+          if (invite.value?.tournament?.customName) {
+            router.push(`/t/${invite.value.tournament.customName}`)
+          } else if (invite.value?.tournament?.id) {
+            router.push(`/t/${invite.value.tournament.id}`)
+          }
+        }, 3000)
+      } else {
+        error.value = 'Payment verification failed. Please contact support.'
+      }
+    } catch (err: any) {
+      error.value = err.data?.message || 'Payment verification failed. Please contact support.'
+    } finally {
+      verifyingPayment.value = false
+    }
+    return
+  }
+
   try {
     const promises: Promise<any>[] = [inviteStore.getInviteByToken(token)]
     if (authStore.isAuthenticated) {
@@ -120,13 +156,17 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
     if (selectedTeamId.value === 'new') {
       if (logoFile.value) {
         uploadingLogo.value = true
-        const formData = new FormData()
-        formData.append('file', logoFile.value)
-        const uploadResponse = await $api<{success: boolean, data: { url: string }, message: string}>('/upload/image?folder=teams', {
-          method: 'POST',
-          body: formData
-        })
-        finalLogoUrl = uploadResponse.data.url
+        try {
+          const formData = new FormData()
+          formData.append('file', logoFile.value)
+          const uploadResponse = await $api<{success: boolean, data: { url: string }, message: string}>('/upload/image?folder=teams', {
+            method: 'POST',
+            body: formData
+          })
+          finalLogoUrl = uploadResponse.data.url
+        } finally {
+          uploadingLogo.value = false
+        }
       }
 
       // Create the team profile first
@@ -135,6 +175,26 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
         logoUrl: finalLogoUrl || undefined
       })
       teamId = newTeam.id
+    }
+
+    // Check if tournament requires paid registration
+    if (invite.value?.tournament?.isPaidRegistration) {
+      const callbackUrl = window.location.origin + window.location.pathname
+      const response = await paymentStore.initializeRegistration({
+        tournamentId: invite.value.tournament.id,
+        teamId,
+        customName: selectedTeamId.value === 'new' ? event.data.customName : undefined,
+        logoUrl: selectedTeamId.value === 'new' ? finalLogoUrl : undefined,
+        token,
+        callbackUrl,
+      })
+
+      if (response?.data?.authorization_url) {
+        window.location.href = response.data.authorization_url
+        return
+      } else {
+        throw new Error('Failed to initialize registration checkout URL')
+      }
     }
 
     const response = await inviteStore.acceptInvite(token, {
@@ -154,7 +214,7 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
       }
     }, 3000)
   } catch (err: any) {
-    error.value = err.data?.message || 'Failed to join tournament'
+    error.value = err.data?.message || err?.message || 'Failed to join tournament'
   } finally {
     submitting.value = false
   }
@@ -164,8 +224,15 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
 <template>
   <div class="py-12 px-4 max-w-4xl mx-auto">
     <div class="max-w-md mx-auto">
+      <!-- Verifying Payment State -->
+      <div v-if="verifyingPayment" class="text-center py-12 bg-white dark:bg-[#111] p-8 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm w-full">
+        <UIcon name="i-heroicons-arrow-path" class="w-10 h-10 animate-spin text-emerald-500 mx-auto mb-4" />
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Verifying Registration...</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Please do not close or refresh this page.</p>
+      </div>
+
       <!-- Loading State -->
-      <div v-if="inviteStore.loading" class="text-center py-12">
+      <div v-else-if="inviteStore.loading" class="text-center py-12">
         <UIcon name="i-heroicons-arrow-path" class="w-10 h-10 animate-spin text-emerald-500 mx-auto mb-4" />
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Loading invite...</h2>
       </div>
@@ -198,7 +265,13 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
             Join {{ invite.tournament?.name }}
           </h2>
-          <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">
+          
+          <div v-if="invite.tournament?.isPaidRegistration" class="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
+            <UIcon name="i-heroicons-banknotes" class="w-4 h-4" />
+            <span>Registration Fee: ₦{{ (((invite.tournament.registrationFee ?? 0) / 100)).toLocaleString() }}</span>
+          </div>
+
+          <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">
             Fill in the details to register your team.
           </p>
         </div>
@@ -272,7 +345,15 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
               color="primary"
               class="rounded-xl font-bold"
             >
-              {{ authStore.isAuthenticated ? (selectedTeamId === 'new' ? 'Register Team' : 'Join Tournament') : 'Login to Join' }}
+              <template v-if="!authStore.isAuthenticated">
+                Login to Join
+              </template>
+              <template v-else-if="invite.tournament?.isPaidRegistration">
+                Pay ₦{{ (((invite.tournament.registrationFee ?? 0) / 100)).toLocaleString() }} & Register
+              </template>
+              <template v-else>
+                {{ selectedTeamId === 'new' ? 'Register Team' : 'Join Tournament' }}
+              </template>
             </UButton>
           </UForm>
         </div>
