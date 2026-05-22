@@ -661,7 +661,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
               <!-- Meta Info -->
               <div class="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-3 text-sm font-medium text-gray-600 dark:text-gray-400">
-                <div v-if="tournament.organization" class="flex flex-col items-center gap-1.5 sm:flex-row sm:gap-2">
+                <div v-if="tournament.organization" class="flex flex-col items-center gap-1.5 w-full md:flex-row md:w-auto md:gap-2">
                   <span>Hosted by</span>
                   <NuxtLink :to="toMain('/org/' + tournament.organization.slug)" class="flex items-center gap-2 px-2.5 py-1 rounded-lg transition-colors border cursor-pointer group bg-gray-50 hover:bg-gray-100 border-gray-200 dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/5">
                     <img v-if="tournament.organization.logoUrl" :src="tournament.organization.logoUrl" class="w-5 h-5 rounded-full object-cover shrink-0 ring-1 ring-black/5 dark:ring-white/10" />
@@ -670,11 +670,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
                   </NuxtLink>
                 </div>
                 
-                <div class="flex items-center gap-1.5" v-if="tournament.location">
+                <div class="flex items-center gap-1.5 w-full justify-center md:w-auto" v-if="tournament.location">
                   <UIcon name="i-heroicons-map-pin" class="w-4 h-4 opacity-70" />
                   <span>{{ tournament.location }}</span>
                 </div>
-                <div class="flex items-center gap-1.5" v-if="tournament.start_date">
+                <div class="flex items-center gap-1.5 w-full justify-center md:w-auto" v-if="tournament.start_date">
                   <UIcon name="i-heroicons-calendar" class="w-4 h-4 opacity-70" />
                   <span>{{ formatDate(tournament.start_date) }}</span>
                 </div>
