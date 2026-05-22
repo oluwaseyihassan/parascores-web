@@ -266,7 +266,7 @@ const isHomeEvent = (event: any) => {
     <div v-else-if="fixture && tournament">
       <!-- Match Header -->
       <section class="relative overflow-hidden transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200'">
-        <div class="relative max-w-3xl mx-auto px-6 pt-10 pb-0">
+        <div class="relative max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-0">
           <!-- Header Controls -->
           <div class="flex items-center justify-between mb-8">
             <!-- Back + Tournament -->
@@ -302,9 +302,9 @@ const isHomeEvent = (event: any) => {
             </div>
 
             <!-- Scoreboard -->
-            <div class="flex items-center justify-center max-w-xl mx-auto mb-6">
+            <div class="flex items-center justify-center max-w-xl mx-auto mb-6 w-full">
               <!-- Home Team -->
-              <div class="flex-1 flex flex-col items-center text-center">
+              <div class="flex-1 flex flex-col items-center text-center min-w-0">
                 <div class="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden mb-2.5 flex-shrink-0 flex items-center justify-center ring-1 ring-white/10" :class="isDark ? 'bg-white/5' : 'bg-gray-100 ring-gray-200'">
                   <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover p-1" />
                   <span v-else class="text-xl font-bold text-gray-400">
@@ -317,7 +317,7 @@ const isHomeEvent = (event: any) => {
               </div>
 
               <!-- Score Center -->
-              <div class="flex-shrink-0 w-32 md:w-40 flex flex-col items-center justify-center px-2">
+              <div class="flex-shrink-0 w-28 sm:w-32 md:w-40 flex flex-col items-center justify-center px-2">
                 <template v-if="isLive || isCompleted">
                   <div class="flex items-center justify-center gap-2 md:gap-3 mb-1">
                     <span class="text-[32px] md:text-[40px] font-bold tracking-tight leading-none transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">
@@ -340,18 +340,18 @@ const isHomeEvent = (event: any) => {
                   <span class="text-[13px] font-medium text-red-400 mt-2">Cancelled</span>
                 </template>
                 <template v-else>
-                  <span v-if="fixture.startTime" class="text-2xl font-bold block mb-1 transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">
+                  <span v-if="fixture.startTime" class="text-xl sm:text-2xl font-bold block mb-1 transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">
                     {{ formatTime(fixture.startTime) }}
                   </span>
                   <span v-else class="text-[32px] font-bold text-gray-600 block mb-1">-</span>
-                  <span v-if="fixture.startTime" class="text-[12px] text-gray-400 block text-center">
+                  <span v-if="fixture.startTime" class="text-[10px] sm:text-[12px] text-gray-400 block text-center">
                     {{ formatFullDate(fixture.startTime) }}
                   </span>
                 </template>
               </div>
 
               <!-- Away Team -->
-              <div class="flex-1 flex flex-col items-center text-center">
+              <div class="flex-1 flex flex-col items-center text-center min-w-0">
                 <div class="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden mb-2.5 flex-shrink-0 flex items-center justify-center ring-1 ring-white/10" :class="isDark ? 'bg-white/5' : 'bg-gray-100 ring-gray-200'">
                   <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover p-1" />
                   <span v-else class="text-xl font-bold text-gray-400">
