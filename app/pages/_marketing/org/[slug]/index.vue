@@ -1,14 +1,15 @@
 <template>
   <div class="min-h-screen transition-colors" :class="isDark ? 'bg-[#0A0A0A]' : 'bg-white'">
-    <!-- Cover & Logo Header -->
+    <!-- Cover Header -->
     <div 
       class="h-48 md:h-64 w-full bg-cover bg-center relative transition-colors"
       :class="isDark ? 'bg-[#111111]' : 'bg-gray-100'"
+      :style="organization?.bannerUrl ? { backgroundImage: `url(${organization.bannerUrl})` } : {}"
     >
-
+      <!-- Gradient overlay to blend bottom -->
+      <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent dark:from-[#0A0A0A] dark:via-[#0A0A0A]/20 dark:to-transparent"></div>
 
       <!-- Back link -->
-
       <div class="absolute top-6 inset-x-0 z-10 w-full">
         <div class="max-w-7xl mx-auto px-4 sm:px-6">
           <button @click="router.back()" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-xs font-semibold text-white/90 hover:text-white transition-all border border-white/10 cursor-pointer">
@@ -19,39 +20,44 @@
           </button>
         </div>
       </div>
+    </div>
 
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 h-full relative flex items-end pb-8">
-        <div class="flex items-center gap-6">
-          <div 
-            class="w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 overflow-hidden shadow-2xl shrink-0 flex items-center justify-center transition-colors"
-            :class="isDark ? 'border-[#0A0A0A] bg-[#111827]' : 'border-white bg-gray-50'"
+    <!-- Header Content Container (overlapping cover) -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 relative pb-8">
+      <div class="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-end -mt-12 md:-mt-16">
+        <!-- Logo overlapping -->
+        <div 
+          class="w-28 h-28 md:w-36 md:h-36 rounded-2xl border-4 overflow-hidden shadow-2xl shrink-0 flex items-center justify-center transition-colors relative z-10"
+          :class="isDark ? 'border-[#0A0A0A] bg-[#111827]' : 'border-white bg-gray-50'"
+        >
+          <img v-if="organization?.logoUrl" :src="organization.logoUrl" :alt="organization?.name" class="w-full h-full object-cover" />
+          <UIcon v-else name="i-heroicons-building-office-2" class="w-12 h-12 text-gray-400" />
+        </div>
+
+        <!-- Text details -->
+        <div class="flex-1 text-center md:text-left pt-2 md:pt-0 pb-2 flex flex-col items-center md:items-start w-full">
+          <h1 
+            class="text-3xl md:text-5xl font-black flex flex-wrap items-center justify-center md:justify-start gap-2 tracking-tight"
+            :class="isDark ? 'text-white' : 'text-gray-900'"
           >
-            <img v-if="organization?.logoUrl" :src="organization.logoUrl" :alt="organization?.name" class="w-full h-full object-cover" />
-            <UIcon v-else name="i-heroicons-building-office-2" class="w-12 h-12 text-gray-400" />
-          </div>
-          <div class="pb-2">
-            <h1 
-              class="text-3xl md:text-5xl font-black flex items-center gap-2 tracking-tight"
-              :class="isDark ? 'text-white' : 'text-gray-900'"
-            >
-              {{ organization?.name || 'Organization' }}
-              <UIcon v-if="organization?.isVerified" name="i-heroicons-check-badge-solid" class="text-blue-500 w-6 h-6 md:w-8 md:h-8 shrink-0 translate-y-0.5 md:translate-y-1" />
-            </h1>
-            <p 
-              class="mt-2 font-bold text-sm uppercase tracking-widest"
-              :class="isDark ? 'text-gray-400' : 'text-gray-500'"
-            >
-              Joined {{ formattedDate }}
-            </p>
-            <p 
-              v-if="organization?.description" 
-              class="mt-2 text-sm max-w-xl whitespace-pre-wrap"
-              :class="isDark ? 'text-gray-300' : 'text-gray-600'"
-            >
-              {{ organization.description }}
-            </p>
-            <!-- Social Links -->
-            <div v-if="organization?.socials?.length" class="flex flex-wrap items-center gap-2 mt-3">
+            {{ organization?.name || 'Organization' }}
+            <UIcon v-if="organization?.isVerified" name="i-heroicons-check-badge-solid" class="text-blue-500 w-6 h-6 md:w-8 md:h-8 shrink-0 translate-y-0.5 md:translate-y-1" />
+          </h1>
+          <p 
+            class="mt-2 font-bold text-sm uppercase tracking-widest"
+            :class="isDark ? 'text-gray-400' : 'text-gray-500'"
+          >
+            Joined {{ formattedDate }}
+          </p>
+          <p 
+            v-if="organization?.description" 
+            class="mt-2 text-sm max-w-xl whitespace-pre-wrap"
+            :class="isDark ? 'text-gray-300' : 'text-gray-600'"
+          >
+            {{ organization.description }}
+          </p>
+          <!-- Social Links -->
+          <div v-if="organization?.socials?.length" class="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-3">
               <a 
                 v-for="social in organization.socials" 
                 :key="social.id"
@@ -74,7 +80,6 @@
           </div>
         </div>
       </div>
-    </div>
 
     <!-- Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
