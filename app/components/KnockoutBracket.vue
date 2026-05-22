@@ -161,6 +161,19 @@ const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
 
 const finalColumnOffset = computed(() => props.rounds.length - 1)
 
+const COLUMN_WIDTH = 260
+const CONNECTOR_WIDTH = 52
+
+const gridColumns = computed(() =>
+  props.rounds.map((_, i) => i < props.rounds.length - 1 ? `${COLUMN_WIDTH}px ${CONNECTOR_WIDTH}px` : `${COLUMN_WIDTH}px`).join(' ')
+)
+
+const scrollWidth = computed(() => {
+  const cols = props.rounds.length
+  const connectors = cols - 1
+  return `${cols * COLUMN_WIDTH + connectors * CONNECTOR_WIDTH}px`
+})
+
 const isTeamKnown = (matchup: any, isHome: boolean) => {
   return isHome ? !!matchup.homeTeamId : !!matchup.awayTeamId
 }
@@ -192,7 +205,7 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
         class="bracket-headers"
         :style="{
           display: 'grid',
-          gridTemplateColumns: rounds.map((_, i) => i < rounds.length - 1 ? 'minmax(220px, 1fr) 52px' : 'minmax(220px, 1fr)').join(' '),
+          gridTemplateColumns: gridColumns,
         }"
       >
         <template v-for="(round, roundIndex) in rounds" :key="`header-${round}`">
@@ -210,7 +223,7 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
         :style="{
           '--total-rows': firstRoundMatches * 2,
           display: 'grid',
-          gridTemplateColumns: rounds.map((_, i) => i < rounds.length - 1 ? 'minmax(220px, 1fr) 52px' : 'minmax(220px, 1fr)').join(' '),
+          gridTemplateColumns: gridColumns,
           gap: '0'
         }"
       >
@@ -399,7 +412,7 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
       </div>
 
       <!-- 3rd Place Play-off -->
-      <div v-if="thirdPlaceMatchups.length > 0" class="third-place-section" :style="{ '--offset-columns': finalColumnOffset }">
+      <div v-if="thirdPlaceMatchups.length > 0" class="third-place-section" :style="{ marginLeft: `${finalColumnOffset * (COLUMN_WIDTH + CONNECTOR_WIDTH)}px`, width: `${COLUMN_WIDTH}px` }">
         <div v-for="matchup in thirdPlaceMatchups" :key="matchup.id">
           <div class="third-place-label">
             <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-400" />
@@ -497,7 +510,7 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
 }
 
 .bracket-scroll {
-  min-width: max-content;
+  display: inline-block;
 }
 
 /* ── Round headers ────────────────────────────────────────── */
@@ -538,7 +551,8 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
 .matches-column {
   display: grid;
   grid-template-rows: repeat(var(--total-rows), 1fr);
-  min-width: 220px;
+  min-width: 0;
+  overflow: hidden;
   gap: 0;
 }
 
@@ -547,11 +561,14 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
   flex-direction: column;
   justify-content: center;
   padding: 6px 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* ── Match card ───────────────────────────────────────────── */
 .match-card {
   width: 100%;
+  min-width: 0;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -605,6 +622,8 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
   padding: 0.45rem 0.6rem;
   transition: background 0.15s;
   position: relative;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .team-row--winner {
@@ -868,9 +887,7 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
 /* ── 3rd place ────────────────────────────────────────────── */
 .third-place-section {
   margin-top: 1rem;
-  margin-left: calc(var(--offset-columns) * (220px + 52px));
-  min-width: 220px;
-  max-width: 220px;
+  max-width: 260px;
 }
 
 .third-place-label {
@@ -887,24 +904,8 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
 
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .bracket-header,
-  .matches-column {
-    min-width: 160px;
-  }
-
-  .header-spacer,
-  .connector-column {
-    width: 32px;
-  }
-
   .team-name {
     font-size: 0.75rem;
-  }
-
-  .third-place-section {
-    margin-left: calc(var(--offset-columns) * (160px + 32px));
-    min-width: 160px;
-    max-width: 160px;
   }
 }
 
