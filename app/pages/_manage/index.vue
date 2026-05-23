@@ -16,7 +16,7 @@ const { tournaments, loading, pagination, hasMore, totalCount } = storeToRefs(to
 const viewMode = useCookie<'grid' | 'list'>('tournament-view-mode', { default: () => 'grid' })
 
 // Filter state
-const filterStatus = ref<'all' | 'ongoing' | 'completed'>('all')
+const filterStatus = ref<'all' | 'ongoing' | 'completed' | 'public'>('ongoing')
 const filteredTournaments = computed(() => {
   if (!tournaments.value) return []
   let filtered = tournaments.value
@@ -24,6 +24,8 @@ const filteredTournaments = computed(() => {
     filtered = tournaments.value.filter(t => new Date(t.end_date) >= new Date())
   } else if (filterStatus.value === 'completed') {
     filtered = tournaments.value.filter(t => new Date(t.end_date) < new Date())
+  } else if (filterStatus.value === 'public') {
+    filtered = tournaments.value.filter(t => t.visibility === 'PUBLIC')
   }
   
   return [...filtered].sort((a, b) => {
@@ -153,7 +155,8 @@ watch(loadMoreTrigger, (el) => {
           :items="[
             { label: 'All Status', value: 'all' },
             { label: 'Ongoing', value: 'ongoing' },
-            { label: 'Completed', value: 'completed' }
+            { label: 'Completed', value: 'completed' },
+            { label: 'Public Only', value: 'public' }
           ]"
           class="w-[140px]"
           size="md"
@@ -190,7 +193,15 @@ watch(loadMoreTrigger, (el) => {
     <!-- Stats Cards -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <!-- Total -->
-      <div class="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] hover:border-indigo-500/30 rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md dark:hover:shadow-indigo-500/5 group min-h-[82px] flex flex-col justify-center">
+      <button 
+        @click="filterStatus = 'all'"
+        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
+        :class="[
+          filterStatus === 'all' 
+            ? 'border-indigo-500 dark:border-indigo-500/80 ring-2 ring-indigo-500/20 shadow-md' 
+            : 'border-gray-200 dark:border-white/[0.06] hover:border-indigo-500/30 dark:hover:shadow-indigo-500/5'
+        ]"
+      >
         <div class="relative z-10 pr-12">
           <p class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Total Tournaments</p>
           <p class="text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">{{ totalCount }}</p>
@@ -198,10 +209,18 @@ watch(loadMoreTrigger, (el) => {
         <div class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl flex items-center justify-center border border-indigo-100/50 dark:border-indigo-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
           <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
         </div>
-      </div>
+      </button>
 
       <!-- Active -->
-      <div class="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] hover:border-emerald-500/30 rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md dark:hover:shadow-emerald-500/5 group min-h-[82px] flex flex-col justify-center">
+      <button 
+        @click="filterStatus = 'ongoing'"
+        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
+        :class="[
+          filterStatus === 'ongoing' 
+            ? 'border-emerald-500 dark:border-emerald-500/80 ring-2 ring-emerald-500/20 shadow-md' 
+            : 'border-gray-200 dark:border-white/[0.06] hover:border-emerald-500/30 dark:hover:shadow-emerald-500/5'
+        ]"
+      >
         <div class="relative z-10 pr-12">
           <p class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Active</p>
           <p class="text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">
@@ -211,10 +230,18 @@ watch(loadMoreTrigger, (el) => {
         <div class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl flex items-center justify-center border border-emerald-100/50 dark:border-emerald-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
           <UIcon name="i-heroicons-play" class="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
         </div>
-      </div>
+      </button>
 
       <!-- Completed -->
-      <div class="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] hover:border-violet-500/30 rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md dark:hover:shadow-violet-500/5 group min-h-[82px] flex flex-col justify-center">
+      <button 
+        @click="filterStatus = 'completed'"
+        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
+        :class="[
+          filterStatus === 'completed' 
+            ? 'border-violet-500 dark:border-violet-500/80 ring-2 ring-violet-500/20 shadow-md' 
+            : 'border-gray-200 dark:border-white/[0.06] hover:border-violet-500/30 dark:hover:shadow-violet-500/5'
+        ]"
+      >
         <div class="relative z-10 pr-12">
           <p class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Completed</p>
           <p class="text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">
@@ -224,10 +251,18 @@ watch(loadMoreTrigger, (el) => {
         <div class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-violet-50 dark:bg-violet-950/40 rounded-xl flex items-center justify-center border border-violet-100/50 dark:border-violet-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
           <UIcon name="i-heroicons-check-circle" class="w-5 h-5 text-violet-500 dark:text-violet-400" />
         </div>
-      </div>
+      </button>
 
       <!-- Public -->
-      <div class="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] hover:border-blue-500/30 rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md dark:hover:shadow-blue-500/5 group min-h-[82px] flex flex-col justify-center">
+      <button 
+        @click="filterStatus = 'public'"
+        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
+        :class="[
+          filterStatus === 'public' 
+            ? 'border-blue-500 dark:border-blue-500/80 ring-2 ring-blue-500/20 shadow-md' 
+            : 'border-gray-200 dark:border-white/[0.06] hover:border-blue-500/30 dark:hover:shadow-blue-500/5'
+        ]"
+      >
         <div class="relative z-10 pr-12">
           <p class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Public</p>
           <p class="text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">
@@ -237,7 +272,7 @@ watch(loadMoreTrigger, (el) => {
         <div class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-blue-50 dark:bg-blue-950/40 rounded-xl flex items-center justify-center border border-blue-100/50 dark:border-blue-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
           <UIcon name="i-heroicons-globe-alt" class="w-5 h-5 text-blue-500 dark:text-blue-400" />
         </div>
-      </div>
+      </button>
     </div>
 
     <!-- Loading State -->
@@ -273,8 +308,20 @@ watch(loadMoreTrigger, (el) => {
 
     <!-- Tournaments View -->
     <div v-else>
-      <!-- Grid View -->
-      <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Filter Empty State -->
+      <div v-if="filteredTournaments.length === 0" class="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl p-8 shadow-sm">
+        <div class="w-16 h-16 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
+          <UIcon name="i-heroicons-funnel" class="w-8 h-8 text-gray-400" />
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">No tournaments found</h3>
+        <p class="text-sm text-gray-500 max-w-sm">
+          No tournaments fit the selected filter criteria. Try clicking on another stats card above.
+        </p>
+      </div>
+
+      <div v-else>
+        <!-- Grid View -->
+        <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div 
           v-for="(tournament, index) in filteredTournaments" 
           :key="tournament.id" 
@@ -308,7 +355,7 @@ watch(loadMoreTrigger, (el) => {
             <!-- Pin Button (Star) -->
             <button 
               @click.stop.prevent="togglePin(tournament)"
-              class="absolute top-3 right-3 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm transition-all z-20"
+              class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-lg bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm transition-all z-20"
               :class="tournament.isPinned ? 'text-amber-400' : 'text-white/80 hover:text-white'"
               :title="tournament.isPinned ? 'Unpin tournament' : 'Pin to top'"
             >
@@ -370,7 +417,7 @@ watch(loadMoreTrigger, (el) => {
               </div>
               
               <!-- Visibility Icon (Bottom Right) -->
-              <div class="p-1.5 bg-gray-100 dark:bg-white/5 rounded-md flex-shrink-0">
+              <div class="w-7 h-7 flex items-center justify-center bg-gray-100 dark:bg-white/5 rounded-md flex-shrink-0">
                 <UIcon 
                   :name="getVisibilityIcon(tournament.visibility)" 
                   class="w-4 h-4 text-gray-500 dark:text-gray-400"
@@ -454,6 +501,7 @@ watch(loadMoreTrigger, (el) => {
              <UIcon :name="tournament.isPinned ? 'i-heroicons-star-solid' : 'i-heroicons-star'" class="w-4 h-4 pointer-events-none" />
           </button>
         </div>
+      </div>
       </div>
     </div>
 
