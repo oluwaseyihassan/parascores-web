@@ -638,9 +638,9 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
         <!-- Header Content Container (overlapping banner) -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 relative pb-8">
-          <div class="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-end -mt-16 md:-mt-20">
+          <div class="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start">
             <!-- Logo overlapping -->
-            <div class="w-32 h-32 md:w-40 md:h-40 rounded-3xl overflow-hidden border-4 shadow-2xl flex-shrink-0 relative group z-10 bg-white border-white dark:bg-[#0A0A0A] dark:border-[#0A0A0A]">
+            <div class="-mt-16 md:-mt-20 w-32 h-32 md:w-40 md:h-40 rounded-3xl overflow-hidden border-4 shadow-2xl flex-shrink-0 relative group z-10 bg-white border-white dark:bg-[#0A0A0A] dark:border-[#0A0A0A]">
               <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover bg-gray-50 dark:bg-white/5" />
               <span v-else class="flex items-center justify-center w-full h-full text-5xl font-bold text-gray-400 bg-gray-50 dark:text-white/40 dark:bg-white/5">
                 {{ tournament.name.charAt(0).toUpperCase() }}
@@ -648,7 +648,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
             </div>
 
             <!-- Text Content -->
-            <div class="flex-1 text-center md:text-left pt-2 md:pt-0 pb-2 flex flex-col items-center md:items-start w-full">
+            <div class="flex-1 text-center md:text-left pt-4 md:pt-6 pb-2 flex flex-col items-center md:items-start w-full">
               <!-- Bar containing badges & actions -->
               <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-3 w-full">
 
