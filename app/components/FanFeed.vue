@@ -193,54 +193,81 @@
         </div>
 
         <div v-if="tournamentStore.followedLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="i in 3" :key="i" class="h-[240px] bg-white/5 rounded-2xl animate-pulse"></div>
+          <div v-for="i in 3" :key="i" class="h-[320px] bg-white/5 rounded-2xl animate-pulse"></div>
         </div>
 
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <FanFeedCard 
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <NuxtLink
             v-for="tournament in tournamentStore.followedTournaments" 
             :key="tournament.id"
-            class="flex flex-col"
+            :to="toTournament(tournament as any)"
+            class="tournament-card group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[#0A0A0A] transition-all duration-500 hover:border-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1"
           >
-            <div class="aspect-video mb-4 rounded-xl overflow-hidden bg-white/5 relative">
-               <img 
-                 v-if="tournament.bannerUrl" 
-                 :src="tournament.bannerUrl" 
-                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-               />
-               <div v-else class="w-full h-full flex items-center justify-center text-white/5 font-black text-4xl">
-                 {{ tournament.sport.toUpperCase() }}
-               </div>
-               
-               <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-               
-               <div class="absolute bottom-3 left-3 flex items-center gap-2">
-                 <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center border border-white/20 shadow-lg overflow-hidden shrink-0">
-                   <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" />
-                   <UIcon v-else name="i-heroicons-trophy" class="w-5 h-5 text-white" />
-                 </div>
-                 <span class="text-xs font-bold text-white shadow-sm">{{ tournament.sport }}</span>
-               </div>
+            <!-- Banner -->
+            <div class="relative h-44 overflow-hidden bg-gray-100 dark:bg-white/[0.03]">
+              <img 
+                v-if="tournament.bannerUrl" 
+                :src="tournament.bannerUrl" 
+                :alt="tournament.name"
+                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div v-else class="w-full h-full flex items-center justify-center">
+                <span class="text-5xl font-black text-gray-200/60 dark:text-white/[0.04] tracking-widest uppercase select-none">
+                  {{ tournament.sport.toUpperCase() }}
+                </span>
+              </div>
+
+              <!-- Bottom fade -->
+              <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white dark:from-[#0A0A0A] to-transparent"></div>
+
+              <!-- Sport pill -->
+              <div class="absolute top-3 left-3">
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10">
+                  <div class="w-5 h-5 rounded-md overflow-hidden bg-emerald-500 flex items-center justify-center shrink-0">
+                    <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" />
+                    <UIcon v-else name="i-heroicons-trophy" class="w-3 h-3 text-white" />
+                  </div>
+                  <span class="text-[10px] font-bold text-white/90 uppercase tracking-wider">{{ tournament.sport }}</span>
+                </div>
+              </div>
+
+              <!-- Participants count pill -->
+              <div class="absolute top-3 right-3">
+                <div class="flex items-center gap-1 px-2 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 text-white/80">
+                  <UIcon name="i-heroicons-users" class="w-3 h-3" />
+                  <span class="text-[10px] font-bold">{{ tournament._count?.participants || 0 }}</span>
+                </div>
+              </div>
             </div>
 
-            <h3 class="text-lg font-bold group-hover:text-emerald-400 transition-colors line-clamp-1 mb-2">
-              {{ tournament.name }}
-            </h3>
-            
-            <p class="text-gray-600 dark:text-gray-400 text-xs line-clamp-2 mb-4 flex-1">
-              {{ tournament.description || 'Follow this tournament for live updates and fixtures.' }}
-            </p>
-            
-            <div class="flex items-center justify-between mt-auto">
-              <div class="flex items-center gap-1.5 text-[10px] text-gray-500">
-                <UIcon name="i-heroicons-users" class="w-3.5 h-3.5" />
-                <span>{{ tournament._count?.participants || 0 }} Teams</span>
+            <!-- Content -->
+            <div class="flex flex-col flex-1 px-5 pb-5 -mt-3 relative z-10">
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-emerald-500 transition-colors line-clamp-1 mb-1.5">
+                {{ tournament.name }}
+              </h3>
+
+              <p class="text-xs text-gray-500 dark:text-gray-500 line-clamp-2 mb-5 flex-1 leading-relaxed">
+                {{ tournament.description || 'Follow this tournament for live updates and fixtures.' }}
+              </p>
+
+              <!-- Footer -->
+              <div class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-white/[0.05]">
+                <div class="flex items-center gap-2">
+                  <div v-if="tournament.organization?.logoUrl" class="w-5 h-5 rounded-md overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0">
+                    <img :src="tournament.organization.logoUrl" class="w-full h-full object-cover" />
+                  </div>
+                  <span class="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-wider truncate max-w-[140px]">
+                    {{ tournament.organization?.name || 'ParaScores' }}
+                  </span>
+                </div>
+
+                <div class="flex items-center gap-1 text-emerald-500 text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <span>View</span>
+                  <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </div>
               </div>
-              <UButton :to="toTournament(tournament)" color="neutral" variant="soft" size="xs" class="rounded-lg">
-                View Tournament
-              </UButton>
             </div>
-          </FanFeedCard>
+          </NuxtLink>
         </div>
       </section>
 
@@ -254,54 +281,81 @@
         </div>
 
         <div v-if="loadingTrending" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="i in 3" :key="i" class="h-[240px] bg-white/5 rounded-2xl animate-pulse"></div>
+          <div v-for="i in 3" :key="i" class="h-[320px] bg-white/5 rounded-2xl animate-pulse"></div>
         </div>
 
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <FanFeedCard 
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <NuxtLink
             v-for="tournament in trendingTournaments" 
             :key="tournament.id"
-            class="flex flex-col"
+            :to="toTournament(tournament)"
+            class="tournament-card group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[#0A0A0A] transition-all duration-500 hover:border-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1"
           >
-            <div class="aspect-video mb-4 rounded-xl overflow-hidden bg-white/5 relative">
-               <img 
-                 v-if="tournament.bannerUrl" 
-                 :src="tournament.bannerUrl" 
-                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-               />
-               <div v-else class="w-full h-full flex items-center justify-center text-white/5 font-black text-4xl">
-                 {{ tournament.sport.toUpperCase() }}
-               </div>
-               
-               <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-               
-               <div class="absolute bottom-3 left-3 flex items-center gap-2">
-                 <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center border border-white/20 shadow-lg overflow-hidden shrink-0">
-                   <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" />
-                   <UIcon v-else name="i-heroicons-trophy" class="w-5 h-5 text-white" />
-                 </div>
-                 <span class="text-xs font-bold text-white shadow-sm">{{ tournament.sport }}</span>
-               </div>
+            <!-- Banner -->
+            <div class="relative h-44 overflow-hidden bg-gray-100 dark:bg-white/[0.03]">
+              <img 
+                v-if="tournament.bannerUrl" 
+                :src="tournament.bannerUrl" 
+                :alt="tournament.name"
+                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div v-else class="w-full h-full flex items-center justify-center">
+                <span class="text-5xl font-black text-gray-200/60 dark:text-white/[0.04] tracking-widest uppercase select-none">
+                  {{ tournament.sport }}
+                </span>
+              </div>
+
+              <!-- Bottom fade -->
+              <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white dark:from-[#0A0A0A] to-transparent"></div>
+
+              <!-- Sport pill -->
+              <div class="absolute top-3 left-3">
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10">
+                  <div class="w-5 h-5 rounded-md overflow-hidden bg-emerald-500 flex items-center justify-center shrink-0">
+                    <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" />
+                    <UIcon v-else name="i-heroicons-trophy" class="w-3 h-3 text-white" />
+                  </div>
+                  <span class="text-[10px] font-bold text-white/90 uppercase tracking-wider">{{ tournament.sport }}</span>
+                </div>
+              </div>
+
+              <!-- Participants count pill -->
+              <div class="absolute top-3 right-3">
+                <div class="flex items-center gap-1 px-2 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 text-white/80">
+                  <UIcon name="i-heroicons-users" class="w-3 h-3" />
+                  <span class="text-[10px] font-bold">{{ tournament._count?.participants || 0 }}</span>
+                </div>
+              </div>
             </div>
 
-            <h3 class="text-lg font-bold group-hover:text-emerald-400 transition-colors line-clamp-1 mb-2">
-              {{ tournament.name }}
-            </h3>
-            
-            <p class="text-gray-400 text-xs line-clamp-2 mb-4 flex-1">
-              {{ tournament.description || 'No description available for this tournament.' }}
-            </p>
-            
-            <div class="flex items-center justify-between mt-auto">
-              <div class="flex items-center gap-1.5 text-[10px] text-gray-500">
-                <UIcon name="i-heroicons-users" class="w-3.5 h-3.5" />
-                <span>{{ tournament._count?.participants || 0 }} Teams</span>
+            <!-- Content -->
+            <div class="flex flex-col flex-1 px-5 pb-5 -mt-3 relative z-10">
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-emerald-500 transition-colors line-clamp-1 mb-1.5">
+                {{ tournament.name }}
+              </h3>
+
+              <p class="text-xs text-gray-500 dark:text-gray-500 line-clamp-2 mb-5 flex-1 leading-relaxed">
+                {{ tournament.description || 'No description available for this tournament.' }}
+              </p>
+
+              <!-- Footer -->
+              <div class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-white/[0.05]">
+                <div class="flex items-center gap-2">
+                  <div v-if="tournament.organization?.logoUrl" class="w-5 h-5 rounded-md overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0">
+                    <img :src="tournament.organization.logoUrl" class="w-full h-full object-cover" />
+                  </div>
+                  <span class="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-wider truncate max-w-[140px]">
+                    {{ tournament.organization?.name || 'ParaScores' }}
+                  </span>
+                </div>
+
+                <div class="flex items-center gap-1 text-emerald-500 text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <span>View</span>
+                  <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </div>
               </div>
-              <UButton :to="toTournament(tournament)" color="neutral" variant="soft" size="xs" class="rounded-lg">
-                View Tournament
-              </UButton>
             </div>
-          </FanFeedCard>
+          </NuxtLink>
         </div>
       </section>
 
