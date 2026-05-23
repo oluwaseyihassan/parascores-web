@@ -454,24 +454,29 @@ const hasActions = computed(() => {
   }
   
   .fixture-team {
-    justify-content: flex-start;
-    text-align: left;
+    justify-content: center !important;
+    text-align: center !important;
   }
   
   .fixture-team--home {
-    flex-direction: row-reverse;
+    flex-direction: row-reverse !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .fixture-team--away {
+    flex-direction: row !important;
+    justify-content: center !important;
+    text-align: center !important;
   }
   
   .fixture-scorebox {
     margin: 8px 0;
   }
   
-  .fixture-card__footer {
-    flex-direction: column;
-  }
-  
   .fx-btn {
-    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
   }
 }
 </style>
