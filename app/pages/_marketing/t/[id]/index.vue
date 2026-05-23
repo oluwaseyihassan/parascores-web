@@ -621,8 +621,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
         <!-- Banner Background top strictly 200-250px -->
         <div class="h-48 md:h-64 relative w-full overflow-hidden">
           <img v-if="tournament.bannerUrl" :src="tournament.bannerUrl" class="w-full h-full object-cover" />
-          <div v-else class="w-full h-full" :style="{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #020617 100%)' }"></div>
-          <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent dark:from-[#0A0A0A] dark:via-[#0A0A0A]/20 dark:to-transparent"></div>
+          <div v-else class="w-full h-full bg-gray-200 dark:bg-gray-800/80"></div>
           
           <!-- Back link over banner -->
           <div class="absolute top-6 inset-x-0 z-10 w-full">
