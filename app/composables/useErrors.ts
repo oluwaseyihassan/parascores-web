@@ -20,6 +20,45 @@ export const useErrors = () => {
     // Handle string errors
     if (typeof error === 'string') return error
     
+    // ── Network / connectivity errors ───────────────────────────
+    // ofetch FetchErrors without a statusCode mean the request never
+    // reached the server (offline, DNS failure, CORS, timeout, etc.)
+    const isNetworkError = (err: any): boolean => {
+      // No HTTP status → no response was received at all
+      if (err.statusCode === undefined && err.status === undefined && err.data === undefined) return true
+      
+      const msg = (err.message || '').toLowerCase()
+      const networkSignals = [
+        'failed to fetch',
+        'networkerror',
+        'network request failed',
+        'err_network',
+        'econnrefused',
+        'enotfound',
+        'etimedout',
+        'econnaborted',
+        'econnreset',
+        'load failed',            // Safari
+        'cancelled',              // iOS
+        'aborted',
+        'network error',
+        'dns_probe',
+        'err_internet_disconnected',
+        'err_name_not_resolved',
+        '<no response>',
+      ]
+      return networkSignals.some(signal => msg.includes(signal))
+    }
+
+    if (isNetworkError(error)) {
+      return 'Unable to connect. Please check your internet connection and try again.'
+    }
+
+    // ── Timeout errors ─────────────────────────────────────────
+    if (error.name === 'AbortError' || error.code === 'ABORT_ERR') {
+      return 'The request timed out. Please try again.'
+    }
+
     let message = 'An unexpected error occurred'
     
     // Handle FetchError from Nuxt/ofetch
@@ -43,6 +82,12 @@ export const useErrors = () => {
     // Mask URLs
     if (message.includes('://')) {
       message = message.replace(/https?:\/\/[^\s]+/g, '[API]')
+    }
+
+    // ── Catch-all: strip remaining technical fetch artifacts ────
+    // e.g. '[PATCH] "[API] <no response> Failed to fetch (api.parascores.com)"'
+    if (/^\[(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\]/i.test(message) || message.includes('<no response>')) {
+      return 'Something went wrong while communicating with the server. Please try again.'
     }
     
     return message
