@@ -156,7 +156,7 @@ const tiers = [
   {
     name: 'Per Tournament',
     description: 'Upgrade a single tournament with premium features. One-time payment.',
-    monthlyPrice: 2000,
+    monthlyPrice: 5000,
     yearlyPrice: null,
     buttonText: 'Upgrade a Tournament',
     buttonColor: 'gray',
