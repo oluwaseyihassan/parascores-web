@@ -4298,7 +4298,7 @@ const copyTournamentLink = async () => {
 
             <!-- Settings Tab -->
             <template #settings>
-              <div class="mt-4 space-y-8 max-w-3xl">
+              <div class="mt-4 space-y-8 w-full">
                 <TournamentSettings :tournament="tournament" />
                 
                 <UCard class="border-indigo-200 dark:border-indigo-900/50" :ui="{ header: 'bg-indigo-50 dark:bg-indigo-900/20' }">
