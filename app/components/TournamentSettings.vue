@@ -519,16 +519,18 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             </div>
             <template #description>
               <span v-if="checkingName" class="text-xs text-gray-400 flex items-center gap-1">
-                <UIcon name="i-heroicons-arrow-path" class="w-3 h-3 animate-spin" />
-                Checking availability...
+                <UIcon name="i-heroicons-arrow-path" class="w-3 h-3 animate-spin shrink-0" />
+                <span>Checking availability...</span>
               </span>
-              <span v-else-if="nameAvailable === true" class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                <UIcon name="i-heroicons-check-circle" class="w-3 h-3" />
-                Available! Your tournament is at: <span class="font-medium">parascores.com/t/{{ state.customName }}</span>
+              <span v-else-if="nameAvailable === true" class="text-xs text-green-600 dark:text-green-400 flex items-start gap-1">
+                <UIcon name="i-heroicons-check-circle" class="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span class="break-all">
+                  Available! Your tournament is at: <span class="font-medium">parascores.com/t/{{ state.customName }}</span>
+                </span>
               </span>
-              <span v-else-if="nameAvailable === false" class="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
-                <UIcon name="i-heroicons-x-circle" class="w-3 h-3" />
-                This custom URL is already taken. Try another one.
+              <span v-else-if="nameAvailable === false" class="text-xs text-red-600 dark:text-red-400 flex items-start gap-1">
+                <UIcon name="i-heroicons-x-circle" class="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>This custom URL is already taken. Try another one.</span>
               </span>
               <span v-else-if="nameCheckError" class="text-xs text-amber-600 dark:text-amber-400">
                 {{ nameCheckError }}
