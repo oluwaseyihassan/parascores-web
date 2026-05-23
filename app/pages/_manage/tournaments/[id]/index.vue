@@ -2713,20 +2713,22 @@ const copyTournamentLink = async () => {
                 {{ tournament.organization.name }}
               </span>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
                 {{ tournament.name }}
               </h1>
-              <UBadge v-if="tournamentStatus" :color="tournamentStatus.color" variant="subtle">
-                {{ tournamentStatus.label }}
-              </UBadge>
-              <span 
-                v-if="tournament.isPremium || isPro"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm"
-              >
-                <UIcon name="i-heroicons-bolt-solid" class="w-3 h-3" />
-                Premium
-              </span>
+              <div class="flex flex-wrap items-center justify-center gap-2 shrink-0">
+                <UBadge v-if="tournamentStatus" :color="tournamentStatus.color" variant="subtle">
+                  {{ tournamentStatus.label }}
+                </UBadge>
+                <span 
+                  v-if="tournament.isPremium || isPro"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm"
+                >
+                  <UIcon name="i-heroicons-bolt-solid" class="w-3 h-3" />
+                  Premium
+                </span>
+              </div>
             </div>
           </div>
           
@@ -4296,91 +4298,81 @@ const copyTournamentLink = async () => {
 
             <!-- Settings Tab -->
             <template #settings>
-              <UCard class="mt-4">
-                <template #header>
-                  <div class="flex items-center justify-between">
+              <div class="mt-4 space-y-8 max-w-3xl">
+                <TournamentSettings :tournament="tournament" />
+                
+                <UCard class="border-indigo-200 dark:border-indigo-900/50" :ui="{ header: 'bg-indigo-50 dark:bg-indigo-900/20' }">
+                  <template #header>
                     <div class="flex items-center gap-2">
-                      <UIcon name="i-heroicons-cog-6-tooth" class="w-5 h-5 text-indigo-500" />
-                      <span class="font-medium">Tournament Settings</span>
+                      <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 text-indigo-500" />
+                      <span class="font-medium text-indigo-700 dark:text-indigo-400">Seasons</span>
                     </div>
+                  </template>
+                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <h4 class="text-sm font-medium text-gray-900 dark:text-white">Start New Season</h4>
+                      <p class="text-sm text-gray-500 mt-1">
+                        Clone this tournament's settings into a new season. Active teams and fixtures will not be copied.
+                      </p>
+                    </div>
+                    <UButton 
+                      color="neutral" 
+                      variant="soft" 
+                      icon="i-heroicons-document-duplicate"
+                      label="Start New Season" 
+                      @click="showSeasonModal = true" 
+                    />
                   </div>
-                </template>
-                <div class="p-2">
-                  <TournamentSettings :tournament="tournament" />
-                  
-                  <UCard class="mt-8 border-indigo-200 dark:border-indigo-900/50" :ui="{ header: 'bg-indigo-50 dark:bg-indigo-900/20' }">
-                    <template #header>
-                      <div class="flex items-center gap-2">
-                        <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 text-indigo-500" />
-                        <span class="font-medium text-indigo-700 dark:text-indigo-400">Seasons</span>
-                      </div>
-                    </template>
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div>
-                        <h4 class="text-sm font-medium text-gray-900 dark:text-white">Start New Season</h4>
-                        <p class="text-sm text-gray-500 mt-1">
-                          Clone this tournament's settings into a new season. Active teams and fixtures will not be copied.
-                        </p>
-                      </div>
-                      <UButton 
-                        color="neutral" 
-                        variant="soft" 
-                        icon="i-heroicons-document-duplicate"
-                        label="Start New Season" 
-                        @click="showSeasonModal = true" 
-                      />
+                </UCard>
+                
+                <UCard class="border-amber-200 dark:border-amber-900/50" :ui="{ header: 'bg-amber-50 dark:bg-amber-900/20' }">
+                  <template #header>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-heroicons-arrows-right-left" class="w-5 h-5 text-amber-500" />
+                      <span class="font-medium text-amber-700 dark:text-amber-400">Transfer Ownership</span>
                     </div>
-                  </UCard>
-                  
-                  <UCard class="mt-8 border-amber-200 dark:border-amber-900/50" :ui="{ header: 'bg-amber-50 dark:bg-amber-900/20' }">
-                    <template #header>
-                      <div class="flex items-center gap-2">
-                        <UIcon name="i-heroicons-arrows-right-left" class="w-5 h-5 text-amber-500" />
-                        <span class="font-medium text-amber-700 dark:text-amber-400">Transfer Ownership</span>
-                      </div>
-                    </template>
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div>
-                        <h4 class="text-sm font-medium text-gray-900 dark:text-white">Transfer to another organization</h4>
-                        <p class="text-sm text-gray-500 mt-1">
-                          Move this tournament to another organization you are an admin of. You may lose access to it in this workspace.
-                        </p>
-                      </div>
-                      <UButton 
-                        color="neutral" 
-                        variant="soft" 
-                        icon="i-heroicons-arrows-right-left"
-                        label="Transfer Ownership" 
-                        @click="showTransferModal = true" 
-                      />
+                  </template>
+                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <h4 class="text-sm font-medium text-gray-900 dark:text-white">Transfer to another organization</h4>
+                      <p class="text-sm text-gray-500 mt-1">
+                        Move this tournament to another organization you are an admin of. You may lose access to it in this workspace.
+                      </p>
                     </div>
-                  </UCard>
-                  
-                  <UCard class="mt-8 border-red-200 dark:border-red-900/50" :ui="{ header: 'bg-red-50 dark:bg-red-900/20' }">
-                    <template #header>
-                      <div class="flex items-center gap-2">
-                        <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-red-500" />
-                        <span class="font-medium text-red-600 dark:text-red-400">Danger Zone</span>
-                      </div>
-                    </template>
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <h4 class="text-sm font-medium text-gray-900 dark:text-white">Delete this tournament</h4>
-                        <p class="text-sm text-gray-500 mt-1">
-                          Once you delete a tournament, there is no going back. Please be certain.
-                        </p>
-                      </div>
-                      <UButton 
-                        color="error" 
-                        variant="soft" 
-                        label="Delete Tournament" 
-                        :loading="deletingTournament"
-                        @click="handleDeleteTournament" 
-                      />
+                    <UButton 
+                      color="neutral" 
+                      variant="soft" 
+                      icon="i-heroicons-arrows-right-left"
+                      label="Transfer Ownership" 
+                      @click="showTransferModal = true" 
+                    />
+                  </div>
+                </UCard>
+                
+                <UCard class="border-red-200 dark:border-red-900/50" :ui="{ header: 'bg-red-50 dark:bg-red-900/20' }">
+                  <template #header>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-red-500" />
+                      <span class="font-medium text-red-600 dark:text-red-400">Danger Zone</span>
                     </div>
-                  </UCard>
-                </div>
-              </UCard>
+                  </template>
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h4 class="text-sm font-medium text-gray-900 dark:text-white">Delete this tournament</h4>
+                      <p class="text-sm text-gray-500 mt-1">
+                        Once you delete a tournament, there is no going back. Please be certain.
+                      </p>
+                    </div>
+                    <UButton 
+                      color="error" 
+                      variant="soft" 
+                      label="Delete Tournament" 
+                      :loading="deletingTournament"
+                      @click="handleDeleteTournament" 
+                    />
+                  </div>
+                </UCard>
+              </div>
             </template>
           </UTabs>
         </div>
