@@ -6,9 +6,6 @@
       :class="isDark ? 'bg-[#111111]' : 'bg-gray-100'"
       :style="organization?.bannerUrl ? { backgroundImage: `url(${organization.bannerUrl})` } : {}"
     >
-      <!-- Gradient overlay to blend bottom -->
-      <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent dark:from-[#0A0A0A] dark:via-[#0A0A0A]/20 dark:to-transparent"></div>
-
       <!-- Back link -->
       <div class="absolute top-6 inset-x-0 z-10 w-full">
         <div class="max-w-7xl mx-auto px-4 sm:px-6">
