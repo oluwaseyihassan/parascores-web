@@ -55,10 +55,10 @@ const plans = computed(() => [
     name: 'Per Tournament',
     key: 'PER_TOURNAMENT' as const,
     description: 'Upgrade a single tournament with premium features.',
-    monthlyPrice: 2000,
+    monthlyPrice: 5000,
     yearlyPrice: null,
     planType: 'PER_TOURNAMENT',
-    amountInKobo: 2000 * 100,
+    amountInKobo: 5000 * 100,
     oneTime: true,
     comingSoon: true,
     features: [
@@ -589,7 +589,7 @@ const statusColor = computed(() => {
                 @click="showTournamentSelector = false"
               />
               <UButton
-                label="Pay ₦2,000 & Upgrade"
+                label="Pay ₦5,000 & Upgrade"
                 color="primary"
                 variant="solid"
                 class="flex-1 font-bold bg-emerald-500 hover:bg-emerald-600"
