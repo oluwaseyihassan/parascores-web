@@ -363,7 +363,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <div class="max-w-3xl">
+  <div class="w-full">
     <!-- Error Alert -->
     <UAlert 
       v-if="error" 
