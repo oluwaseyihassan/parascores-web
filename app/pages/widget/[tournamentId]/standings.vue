@@ -110,66 +110,68 @@ onMounted(() => {
 
           <!-- Standings Table -->
           <div class="rounded-lg border overflow-hidden" :class="isDark ? 'border-white/10' : 'border-gray-200'">
-            <table class="w-full text-sm">
-              <thead>
-                <tr :class="isDark ? 'bg-gray-900 text-gray-400' : 'bg-gray-50 text-gray-500'">
-                  <th class="py-2 px-3 text-center w-10 font-medium text-xs">#</th>
-                  <th class="py-2 px-3 text-left font-medium text-xs">Team</th>
-                  <th class="py-2 px-2 text-center w-10 font-medium text-xs">P</th>
-                  <th class="py-2 px-2 text-center w-10 font-medium text-xs hidden sm:table-cell">W</th>
-                  <th class="py-2 px-2 text-center w-10 font-medium text-xs hidden sm:table-cell">D</th>
-                  <th class="py-2 px-2 text-center w-10 font-medium text-xs hidden sm:table-cell">L</th>
-                  <th class="py-2 px-2 text-center w-12 font-medium text-xs hidden md:table-cell">GD</th>
-                  <th class="py-2 px-3 text-center w-12 font-bold text-xs">Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr 
-                  v-for="(standing, index) in groupedStandings[groupName]" 
-                  :key="standing.id || index"
-                  class="border-t transition-colors"
-                  :class="isDark ? 'border-white/5 hover:bg-gray-900/50' : 'border-gray-100 hover:bg-gray-50'"
-                >
-                  <td class="py-2.5 px-3 text-center">
-                    <div 
-                      class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium mx-auto"
-                      :class="[
-                        (standing.position || index + 1) <= 4 
-                          ? (isDark ? 'bg-indigo-900/30 text-indigo-400' : 'bg-indigo-100 text-indigo-700')
-                          : (isDark ? 'text-gray-500' : 'text-gray-400')
-                      ]"
-                    >
-                      {{ standing.position || index + 1 }}
-                    </div>
-                  </td>
-                  <td class="py-2.5 px-3">
-                    <div class="flex items-center gap-2">
-                      <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
-                        <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
-                        <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold">
-                          {{ (standing.participant?.customName || 'T').charAt(0).toUpperCase() }}
+            <div class="overflow-x-auto w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr :class="isDark ? 'bg-gray-900 text-gray-400' : 'bg-gray-50 text-gray-500'">
+                    <th class="py-2 px-3 text-center w-11 font-medium text-xs whitespace-nowrap shrink-0">#</th>
+                    <th class="py-2 px-3 text-left font-medium text-xs w-full min-w-[140px] sm:min-w-[180px]">Team</th>
+                    <th class="py-2 px-3 text-center w-11 font-medium text-xs whitespace-nowrap shrink-0">P</th>
+                    <th class="py-2 px-3 text-center w-11 font-medium text-xs hidden sm:table-cell whitespace-nowrap shrink-0">W</th>
+                    <th class="py-2 px-3 text-center w-11 font-medium text-xs hidden sm:table-cell whitespace-nowrap shrink-0">D</th>
+                    <th class="py-2 px-3 text-center w-11 font-medium text-xs hidden sm:table-cell whitespace-nowrap shrink-0">L</th>
+                    <th class="py-2 px-3 text-center w-14 font-medium text-xs hidden md:table-cell whitespace-nowrap shrink-0">GD</th>
+                    <th class="py-2 px-3 text-center w-12 font-bold text-xs whitespace-nowrap shrink-0">Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr 
+                    v-for="(standing, index) in groupedStandings[groupName]" 
+                    :key="standing.id || index"
+                    class="border-t transition-colors"
+                    :class="isDark ? 'border-white/5 hover:bg-gray-900/50' : 'border-gray-100 hover:bg-gray-50'"
+                  >
+                    <td class="py-2.5 px-3 text-center whitespace-nowrap shrink-0">
+                      <div 
+                        class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium mx-auto"
+                        :class="[
+                          (standing.position || index + 1) <= 4 
+                            ? (isDark ? 'bg-indigo-900/30 text-indigo-400' : 'bg-indigo-100 text-indigo-700')
+                            : (isDark ? 'text-gray-500' : 'text-gray-400')
+                        ]"
+                      >
+                        {{ standing.position || index + 1 }}
+                      </div>
+                    </td>
+                    <td class="py-2.5 px-3 w-full min-w-[140px] sm:min-w-[180px]">
+                      <div class="flex items-center gap-2">
+                        <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
+                          <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
+                          <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold">
+                            {{ (standing.participant?.customName || 'T').charAt(0).toUpperCase() }}
+                          </span>
+                        </div>
+                        <span class="font-medium truncate max-w-[100px] sm:max-w-[180px]">
+                          {{ standing.participant?.customName || standing.participant?.user?.name || 'Unknown' }}
                         </span>
                       </div>
-                      <span class="font-medium truncate max-w-[120px] sm:max-w-[180px]">
-                        {{ standing.participant?.customName || standing.participant?.user?.name || 'Unknown' }}
+                    </td>
+                    <td class="py-2.5 px-3 text-center whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.played }}</td>
+                    <td class="py-2.5 px-3 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.wins }}</td>
+                    <td class="py-2.5 px-3 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.draws }}</td>
+                    <td class="py-2.5 px-3 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.losses }}</td>
+                    <td class="py-2.5 px-3 text-center hidden md:table-cell whitespace-nowrap shrink-0">
+                      <span :class="[
+                         standing.goalDiff > 0 ? 'text-green-500' : standing.goalDiff < 0 ? 'text-red-500' : (isDark ? 'text-gray-500' : 'text-gray-400')
+                      ]">
+                        {{ standing.goalDiff > 0 ? `+${standing.goalDiff}` : standing.goalDiff }}
                       </span>
-                    </div>
-                  </td>
-                  <td class="py-2.5 px-2 text-center" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.played }}</td>
-                  <td class="py-2.5 px-2 text-center hidden sm:table-cell" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.wins }}</td>
-                  <td class="py-2.5 px-2 text-center hidden sm:table-cell" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.draws }}</td>
-                  <td class="py-2.5 px-2 text-center hidden sm:table-cell" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.losses }}</td>
-                  <td class="py-2.5 px-2 text-center hidden md:table-cell">
-                    <span :class="[
-                      standing.goalDiff > 0 ? 'text-green-500' : standing.goalDiff < 0 ? 'text-red-500' : (isDark ? 'text-gray-500' : 'text-gray-400')
-                    ]">
-                      {{ standing.goalDiff > 0 ? `+${standing.goalDiff}` : standing.goalDiff }}
-                    </span>
-                  </td>
-                  <td class="py-2.5 px-3 text-center font-bold">{{ standing.points }}</td>
-                </tr>
-              </tbody>
-            </table>
+                    </td>
+                    <td class="py-2.5 px-3 text-center font-bold whitespace-nowrap shrink-0">{{ standing.points }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
