@@ -6,6 +6,9 @@
       :class="isDark ? 'bg-[#111111]' : 'bg-gray-100'"
       :style="organization?.bannerUrl ? { backgroundImage: `url(${organization.bannerUrl})` } : {}"
     >
+      <!-- Gradient overlay to blend and fade the bottom of the banner into the page background -->
+      <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white dark:from-[#0A0A0A] to-transparent pointer-events-none"></div>
+
       <!-- Back link -->
       <div class="absolute top-6 inset-x-0 z-10 w-full">
         <div class="max-w-7xl mx-auto px-4 sm:px-6">
@@ -21,10 +24,10 @@
 
     <!-- Header Content Container (overlapping cover) -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 relative pb-8">
-      <div class="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start">
+      <div class="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-end -mt-12 md:-mt-16">
         <!-- Logo overlapping -->
         <div 
-          class="-mt-12 md:-mt-16 w-28 h-28 md:w-36 md:h-36 rounded-2xl border-4 overflow-hidden shadow-2xl shrink-0 flex items-center justify-center transition-colors relative z-10"
+          class="w-28 h-28 md:w-36 md:h-36 rounded-2xl border-4 overflow-hidden shadow-2xl shrink-0 flex items-center justify-center transition-colors relative z-10"
           :class="isDark ? 'border-[#0A0A0A] bg-[#111827]' : 'border-white bg-gray-50'"
         >
           <img v-if="organization?.logoUrl" :src="organization.logoUrl" :alt="organization?.name" class="w-full h-full object-cover" />
@@ -32,7 +35,7 @@
         </div>
 
         <!-- Text details -->
-        <div class="flex-1 text-center md:text-left pt-4 md:pt-6 pb-2 flex flex-col items-center md:items-start w-full">
+        <div class="flex-1 text-center md:text-left pt-2 md:pt-0 pb-2 flex flex-col items-center md:items-start w-full">
           <h1 
             class="text-3xl md:text-5xl font-black flex flex-wrap items-center justify-center md:justify-start gap-2 tracking-tight"
             :class="isDark ? 'text-white' : 'text-gray-900'"
