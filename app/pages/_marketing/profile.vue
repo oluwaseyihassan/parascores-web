@@ -116,7 +116,7 @@ useSeoMeta({
       <UCard class="bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-white/5 shadow-sm overflow-hidden transition-colors">
         <div class="flex flex-col sm:flex-row items-center gap-8 py-4">
           <!-- Avatar -->
-          <div class="relative group">
+          <div class="relative group flex flex-col items-center">
             <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleAvatarChange" />
             <button
               @click="triggerUpload"
