@@ -259,6 +259,7 @@ export interface Fixture {
   
   tournament?: Tournament | null
   matchEvents?: MatchEvent[]
+  lineupPlayers?: Player[]
 }
 
 export interface Group {
