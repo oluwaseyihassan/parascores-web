@@ -22,12 +22,15 @@
       <div v-else class="space-y-3">
         <div v-for="item in rankedScorers" :key="item.player.id" 
              class="flex items-center gap-4 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors overflow-hidden">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0" 
-               :class="item._rank === 1 ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30' : 
-                       item._rank === 2 ? 'bg-slate-300/20 text-slate-500 dark:text-slate-300 ring-1 ring-slate-300/30' : 
-                       item._rank === 3 ? 'bg-amber-700/20 text-amber-700 dark:text-amber-600 ring-1 ring-amber-700/30' : 
-                       'bg-gray-200 dark:bg-white/5 text-gray-500 dark:text-gray-400'">
+          <div class="w-6 flex items-center justify-center font-bold text-sm shrink-0 text-gray-500 dark:text-gray-400">
             {{ item._rank }}
+          </div>
+          <!-- Player Avatar -->
+          <div class="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0 border border-gray-200 dark:border-white/10 flex items-center justify-center">
+            <img v-if="item.player.avatarUrl" :src="item.player.avatarUrl" class="w-full h-full object-cover" />
+            <div v-else class="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400 uppercase">
+              {{ item.player.name.charAt(0) }}
+            </div>
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
@@ -69,8 +72,15 @@
       <div v-else class="space-y-3">
         <div v-for="item in rankedAssists" :key="item.player.id" 
              class="flex items-center gap-4 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors overflow-hidden">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 bg-gray-200 dark:bg-white/5 text-gray-500 dark:text-gray-400">
+          <div class="w-6 flex items-center justify-center font-bold text-sm shrink-0 text-gray-500 dark:text-gray-400">
             {{ item._rank }}
+          </div>
+          <!-- Player Avatar -->
+          <div class="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0 border border-gray-200 dark:border-white/10 flex items-center justify-center">
+            <img v-if="item.player.avatarUrl" :src="item.player.avatarUrl" class="w-full h-full object-cover" />
+            <div v-else class="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400 uppercase">
+              {{ item.player.name.charAt(0) }}
+            </div>
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
