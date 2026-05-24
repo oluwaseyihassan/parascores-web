@@ -3,8 +3,8 @@
     <!-- Top Scorers -->
     <div class="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/[0.06] shadow-sm rounded-2xl p-6 transition-colors">
       <div class="flex items-center gap-3 mb-6">
-        <div class="p-2 bg-emerald-500/10 rounded-xl">
-          <UIcon name="i-mdi-soccer" class="w-6 h-6 text-emerald-400" />
+        <div class="p-2 bg-gray-100 dark:bg-white/5 rounded-xl">
+          <UIcon name="i-mdi-soccer" class="w-6 h-6 text-gray-500 dark:text-gray-400" />
         </div>
         <h3 class="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Top Scorers</h3>
       </div>
@@ -45,7 +45,7 @@
               <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ item.teamName }}</div>
             </div>
           </div>
-          <div class="text-xl font-bold text-emerald-400 tabular-nums">{{ item.count }}</div>
+          <div class="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{{ item.count }}</div>
         </div>
       </div>
     </div>
@@ -53,8 +53,8 @@
     <!-- Top Assists -->
     <div class="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/[0.06] shadow-sm rounded-2xl p-6 transition-colors">
       <div class="flex items-center gap-3 mb-6">
-        <div class="p-2 bg-cyan-500/10 rounded-xl">
-          <UIcon name="i-mdi-shoe-cleat" class="w-6 h-6 text-cyan-400 -rotate-45 transform" />
+        <div class="p-2 bg-gray-100 dark:bg-white/5 rounded-xl">
+          <UIcon name="i-mdi-shoe-cleat" class="w-6 h-6 text-gray-500 dark:text-gray-400 -rotate-45 transform" />
         </div>
         <h3 class="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Top Assists</h3>
       </div>
@@ -95,7 +95,7 @@
               <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ item.teamName }}</div>
             </div>
           </div>
-          <div class="text-xl font-bold text-cyan-400 tabular-nums">{{ item.count }}</div>
+          <div class="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{{ item.count }}</div>
         </div>
       </div>
     </div>
