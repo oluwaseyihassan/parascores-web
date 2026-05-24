@@ -544,7 +544,20 @@ const isHomeEvent = (event: any) => {
             <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
               <template v-if="fixture.homeTeam?.players?.length">
                 <div v-for="player in fixture.homeTeam.players" :key="player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
-                  <span v-if="player.number" class="w-8 flex-shrink-0 text-sm font-bold text-gray-500">{{ player.number }}</span>
+                  <!-- Player Avatar Wrapper -->
+                  <div class="relative w-7 h-7 flex-shrink-0 mr-3">
+                    <!-- Cropped Avatar Container -->
+                    <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                      <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+                      <span v-else class="text-[10px] font-bold text-gray-400">
+                        {{ player.name.charAt(0) }}
+                      </span>
+                    </div>
+                    <!-- Shirt Number Badge -->
+                    <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
+                      {{ player.number }}
+                    </span>
+                  </div>
                   <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
                   <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
                     <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
@@ -578,7 +591,20 @@ const isHomeEvent = (event: any) => {
             <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
               <template v-if="fixture.awayTeam?.players?.length">
                 <div v-for="player in fixture.awayTeam.players" :key="player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
-                  <span v-if="player.number" class="w-8 flex-shrink-0 text-sm font-bold text-gray-500">{{ player.number }}</span>
+                  <!-- Player Avatar Wrapper -->
+                  <div class="relative w-7 h-7 flex-shrink-0 mr-3">
+                    <!-- Cropped Avatar Container -->
+                    <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                      <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+                      <span v-else class="text-[10px] font-bold text-gray-400">
+                        {{ player.name.charAt(0) }}
+                      </span>
+                    </div>
+                    <!-- Shirt Number Badge -->
+                    <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
+                      {{ player.number }}
+                    </span>
+                  </div>
                   <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
                   <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
                     <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
