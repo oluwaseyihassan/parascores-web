@@ -97,6 +97,35 @@ const formatDate = (dateString: string) => {
 // Player profiles
 const playerProfiles = computed(() => user.value?.player_profiles || [])
 
+// Player claim state
+const showClaimModal = ref(false)
+const claimCode = ref('')
+const claimingPlayer = ref(false)
+
+const openPlayerClaim = () => {
+  claimCode.value = ''
+  showClaimModal.value = true
+}
+
+const handleClaimPlayer = async () => {
+  if (!claimCode.value) return
+  claimingPlayer.value = true
+  try {
+    await $api('/players/claim', {
+      method: 'POST',
+      body: { code: claimCode.value }
+    })
+    toast.add({ title: 'Successfully linked player profile!', color: 'success' })
+    showClaimModal.value = false
+    claimCode.value = ''
+    await authStore.fetchUser()
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to claim player profile' })
+  } finally {
+    claimingPlayer.value = false
+  }
+}
+
 useSeoMeta({
   title: 'My Profile | ParaScores',
   description: 'View and manage your ParaScores profile.'
@@ -176,17 +205,41 @@ useSeoMeta({
 
       <!-- Player Profiles Section -->
       <UCard
-        v-if="playerProfiles.length > 0"
         class="bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-white/5 shadow-sm overflow-hidden transition-colors"
       >
-        <div class="flex items-center gap-3 mb-5">
-          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-            <UIcon name="i-heroicons-identification" class="w-6 h-6" />
+        <div class="flex items-center justify-between mb-5">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+              <UIcon name="i-heroicons-identification" class="w-6 h-6" />
+            </div>
+            <h3 class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-[11px]">Player Profiles</h3>
           </div>
-          <h3 class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-[11px]">Player Profiles</h3>
+          <UButton
+            icon="i-heroicons-link"
+            size="xs"
+            color="success"
+            variant="soft"
+            class="rounded-xl font-bold"
+            @click="openPlayerClaim"
+          >
+            Link Player Profile
+          </UButton>
         </div>
 
-        <div class="space-y-2">
+        <div v-if="playerProfiles.length === 0" class="text-center py-6 text-gray-400">
+          <p class="text-xs mb-4">You have not linked any player profiles to your account yet.</p>
+          <UButton
+            icon="i-heroicons-link"
+            size="sm"
+            color="success"
+            class="rounded-xl font-bold px-4"
+            @click="openPlayerClaim"
+          >
+            Link Player Profile
+          </UButton>
+        </div>
+
+        <div v-else class="space-y-2">
           <NuxtLink
             v-for="profile in playerProfiles"
             :key="profile.id"
@@ -288,4 +341,44 @@ useSeoMeta({
       </div>
     </div>
   </div>
+
+  <!-- Claim Player Modal -->
+  <UModal v-model:open="showClaimModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-link" class="w-5 h-5 text-indigo-500" />
+            <span class="font-semibold text-gray-900 dark:text-white">Link Player Profile</span>
+          </div>
+          <p class="text-sm text-gray-500 mt-2">
+            Enter the 6-digit code provided by the tournament organizer to link your user account to your player profile in the team list.
+          </p>
+        </template>
+
+        <UFormField label="Link Code" name="claimCode">
+          <UInput 
+            v-model="claimCode" 
+            placeholder="e.g. A1B2C3" 
+            size="lg"
+            class="font-mono text-center tracking-[0.2em]"
+            maxlength="6"
+            @keyup.enter="handleClaimPlayer"
+          />
+        </UFormField>
+
+        <div class="flex justify-end gap-3 mt-6">
+          <UButton color="neutral" variant="ghost" @click="showClaimModal = false">Cancel</UButton>
+          <UButton 
+            color="primary" 
+            :loading="claimingPlayer"
+            :disabled="!claimCode || claimCode.length < 6"
+            @click="handleClaimPlayer"
+          >
+            Link Profile
+          </UButton>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
 </template>
