@@ -278,8 +278,20 @@ function getMatchAggregate(match: Fixture) {
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div v-for="player in participant.players.filter(p => p.status === 'APPROVED')" :key="player.id" 
                    class="flex items-center gap-3 p-3 rounded-lg transition-colors border bg-gray-50 border-gray-100 dark:bg-white/5 dark:border-white/5">
-                <div class="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-sm flex-shrink-0">
-                  {{ player.number || '?' }}
+                <!-- Player Avatar Wrapper -->
+                <div class="relative w-10 h-10 flex-shrink-0">
+                  <!-- Cropped Avatar Container -->
+                  <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                    <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+                    <span v-else class="text-sm font-bold text-gray-400 uppercase">
+                      {{ player.name.charAt(0) }}
+                    </span>
+                  </div>
+                  
+                  <!-- Small Shirt Number Overlay -->
+                  <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-emerald-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
+                    {{ player.number }}
+                  </span>
                 </div>
                 <div class="flex flex-col overflow-hidden">
                   <span class="text-sm font-semibold truncate transition-colors text-gray-900 dark:text-white">{{ player.name }}</span>
