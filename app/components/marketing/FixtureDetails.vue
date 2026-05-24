@@ -234,6 +234,32 @@ const keyEventsSummary = computed(() => {
 const isHomeEvent = (event: any) => {
   return event.participant_id === fixture.value?.homeTeamId || event.participantId === fixture.value?.homeTeamId
 }
+
+const homeLineup = computed(() => {
+  if (!fixture.value?.lineupPlayers || fixture.value.lineupPlayers.length === 0) {
+    return []
+  }
+  return fixture.value.lineupPlayers.filter(p => p.participantId === fixture.value?.homeTeamId)
+})
+
+const awayLineup = computed(() => {
+  if (!fixture.value?.lineupPlayers || fixture.value.lineupPlayers.length === 0) {
+    return []
+  }
+  return fixture.value.lineupPlayers.filter(p => p.participantId === fixture.value?.awayTeamId)
+})
+
+const homeSubs = computed(() => {
+  const roster = fixture.value?.homeTeam?.players || []
+  const lineupIds = new Set(homeLineup.value.map(p => p.id))
+  return roster.filter(p => !lineupIds.has(p.id))
+})
+
+const awaySubs = computed(() => {
+  const roster = fixture.value?.awayTeam?.players || []
+  const lineupIds = new Set(awayLineup.value.map(p => p.id))
+  return roster.filter(p => !lineupIds.has(p.id))
+})
 </script>
 
 <template>
@@ -532,97 +558,179 @@ const isHomeEvent = (event: any) => {
         </div>
 
         <!-- Lineups Tab -->
-        <div v-show="activeTab === 'lineups'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Home Team Players -->
-          <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden self-start min-w-0">
-            <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-              <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
-                {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team' }}
-              </h3>
-              <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">Lineup</span>
-            </div>
-            <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
-              <template v-if="fixture.homeTeam?.players?.length">
-                <div v-for="player in fixture.homeTeam.players" :key="player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
-                  <!-- Player Avatar Wrapper -->
-                  <div class="relative w-7 h-7 flex-shrink-0 mr-3">
-                    <!-- Cropped Avatar Container -->
-                    <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
-                      <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
-                      <span v-else class="text-[10px] font-bold text-gray-400">
-                        {{ player.name.charAt(0) }}
+        <div v-show="activeTab === 'lineups'">
+          <div v-if="!fixture.lineupPlayers || fixture.lineupPlayers.length === 0" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl px-5 py-12 flex flex-col items-center justify-center">
+            <UIcon name="i-heroicons-users" class="w-10 h-10 text-gray-400 mb-3 opacity-50" />
+            <p class="text-sm font-medium text-gray-500">No lineup announced yet.</p>
+          </div>
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Home Team Players -->
+            <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden self-start min-w-0">
+              <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+                <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
+                  {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team' }}
+                </h3>
+                <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">Lineup</span>
+              </div>
+              <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
+                <template v-if="homeLineup.length">
+                  <div v-for="player in homeLineup" :key="player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                    <!-- Player Avatar Wrapper -->
+                    <div class="relative w-7 h-7 flex-shrink-0 mr-3">
+                      <!-- Cropped Avatar Container -->
+                      <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                        <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+                        <span v-else class="text-[10px] font-bold text-gray-400">
+                          {{ player.name.charAt(0) }}
+                        </span>
+                      </div>
+                      <!-- Shirt Number Badge -->
+                      <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
+                        {{ player.number }}
                       </span>
                     </div>
-                    <!-- Shirt Number Badge -->
-                    <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
-                      {{ player.number }}
-                    </span>
-                  </div>
-                  <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
-                  <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
-                    <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
-                      <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
-                        <IconsSoccerBallIcon class="w-[10px] h-[10px]" />
+                    <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                    <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
+                      <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
+                        <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
+                          <IconsSoccerBallIcon class="w-[10px] h-[10px]" />
+                        </div>
+                      </div>
+                      <div v-if="getPlayerAssists(player.id) > 0" class="flex items-center -space-x-1.5" :class="{'ml-1': getPlayerGoals(player.id) > 0}">
+                        <div v-for="i in getPlayerAssists(player.id)" :key="'assist-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-emerald-400'">
+                          <IconsAssistIcon class="w-[10px] h-[10px]" />
+                        </div>
                       </div>
                     </div>
-                    <div v-if="getPlayerAssists(player.id) > 0" class="flex items-center -space-x-1.5" :class="{'ml-1': getPlayerGoals(player.id) > 0}">
-                      <div v-for="i in getPlayerAssists(player.id)" :key="'assist-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-emerald-400'">
-                        <IconsAssistIcon class="w-[10px] h-[10px]" />
-                      </div>
-                    </div>
+                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position }}</span>
                   </div>
-                  <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position }}</span>
+                </template>
+                <div v-else class="px-5 py-8 text-center">
+                  <p class="text-sm text-gray-500">No players listed in lineup.</p>
                 </div>
-              </template>
-              <div v-else class="px-5 py-8 text-center">
-                <p class="text-sm text-gray-500">No players listed.</p>
+
+                <!-- Home Substitutes -->
+                <template v-if="homeSubs.length">
+                  <div class="px-5 py-2 bg-gray-50 dark:bg-white/[0.02] border-t border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.04]' : 'border-gray-100'">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Substitutes</span>
+                    <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">Subs</span>
+                  </div>
+                  <div v-for="player in homeSubs" :key="'sub-'+player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                    <!-- Player Avatar Wrapper -->
+                    <div class="relative w-7 h-7 flex-shrink-0 mr-3">
+                      <!-- Cropped Avatar Container -->
+                      <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                        <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+                        <span v-else class="text-[10px] font-bold text-gray-400">
+                          {{ player.name.charAt(0) }}
+                        </span>
+                      </div>
+                      <!-- Shirt Number Badge -->
+                      <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
+                        {{ player.number }}
+                      </span>
+                    </div>
+                    <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                    <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
+                      <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
+                        <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
+                          <IconsSoccerBallIcon class="w-[10px] h-[10px]" />
+                        </div>
+                      </div>
+                      <div v-if="getPlayerAssists(player.id) > 0" class="flex items-center -space-x-1.5" :class="{'ml-1': getPlayerGoals(player.id) > 0}">
+                        <div v-for="i in getPlayerAssists(player.id)" :key="'assist-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-emerald-400'">
+                          <IconsAssistIcon class="w-[10px] h-[10px]" />
+                        </div>
+                      </div>
+                    </div>
+                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position }}</span>
+                  </div>
+                </template>
               </div>
             </div>
-          </div>
 
-          <!-- Away Team Players -->
-          <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden self-start min-w-0">
-            <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-              <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
-                {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team' }}
-              </h3>
-              <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">Lineup</span>
-            </div>
-            <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
-              <template v-if="fixture.awayTeam?.players?.length">
-                <div v-for="player in fixture.awayTeam.players" :key="player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
-                  <!-- Player Avatar Wrapper -->
-                  <div class="relative w-7 h-7 flex-shrink-0 mr-3">
-                    <!-- Cropped Avatar Container -->
-                    <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
-                      <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
-                      <span v-else class="text-[10px] font-bold text-gray-400">
-                        {{ player.name.charAt(0) }}
+            <!-- Away Team Players -->
+            <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden self-start min-w-0">
+              <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+                <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
+                  {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team' }}
+                </h3>
+                <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">Lineup</span>
+              </div>
+              <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
+                <template v-if="awayLineup.length">
+                  <div v-for="player in awayLineup" :key="player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                    <!-- Player Avatar Wrapper -->
+                    <div class="relative w-7 h-7 flex-shrink-0 mr-3">
+                      <!-- Cropped Avatar Container -->
+                      <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                        <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+                        <span v-else class="text-[10px] font-bold text-gray-400">
+                          {{ player.name.charAt(0) }}
+                        </span>
+                      </div>
+                      <!-- Shirt Number Badge -->
+                      <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
+                        {{ player.number }}
                       </span>
                     </div>
-                    <!-- Shirt Number Badge -->
-                    <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
-                      {{ player.number }}
-                    </span>
-                  </div>
-                  <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
-                  <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
-                    <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
-                      <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
-                        <IconsSoccerBallIcon class="w-[10px] h-[10px]" />
+                    <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                    <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
+                      <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
+                        <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
+                          <IconsSoccerBallIcon class="w-[10px] h-[10px]" />
+                        </div>
+                      </div>
+                      <div v-if="getPlayerAssists(player.id) > 0" class="flex items-center -space-x-1.5" :class="{'ml-1': getPlayerGoals(player.id) > 0}">
+                        <div v-for="i in getPlayerAssists(player.id)" :key="'assist-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-emerald-400'">
+                          <IconsAssistIcon class="w-[10px] h-[10px]" />
+                        </div>
                       </div>
                     </div>
-                    <div v-if="getPlayerAssists(player.id) > 0" class="flex items-center -space-x-1.5" :class="{'ml-1': getPlayerGoals(player.id) > 0}">
-                      <div v-for="i in getPlayerAssists(player.id)" :key="'assist-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-emerald-400'">
-                        <IconsAssistIcon class="w-[10px] h-[10px]" />
-                      </div>
-                    </div>
+                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position }}</span>
                   </div>
-                  <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position }}</span>
+                </template>
+                <div v-else class="px-5 py-8 text-center">
+                  <p class="text-sm text-gray-500">No players listed in lineup.</p>
                 </div>
-              </template>
-              <div v-else class="px-5 py-8 text-center">
-                <p class="text-sm text-gray-500">No players listed.</p>
+
+                <!-- Away Substitutes -->
+                <template v-if="awaySubs.length">
+                  <div class="px-5 py-2 bg-gray-50 dark:bg-white/[0.02] border-t border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.04]' : 'border-gray-100'">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Substitutes</span>
+                    <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">Subs</span>
+                  </div>
+                  <div v-for="player in awaySubs" :key="'sub-'+player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                    <!-- Player Avatar Wrapper -->
+                    <div class="relative w-7 h-7 flex-shrink-0 mr-3">
+                      <!-- Cropped Avatar Container -->
+                      <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                        <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+                        <span v-else class="text-[10px] font-bold text-gray-400">
+                          {{ player.name.charAt(0) }}
+                        </span>
+                      </div>
+                      <!-- Shirt Number Badge -->
+                      <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
+                        {{ player.number }}
+                      </span>
+                    </div>
+                    <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                    <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
+                      <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
+                        <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
+                          <IconsSoccerBallIcon class="w-[10px] h-[10px]" />
+                        </div>
+                      </div>
+                      <div v-if="getPlayerAssists(player.id) > 0" class="flex items-center -space-x-1.5" :class="{'ml-1': getPlayerGoals(player.id) > 0}">
+                        <div v-for="i in getPlayerAssists(player.id)" :key="'assist-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-emerald-400'">
+                          <IconsAssistIcon class="w-[10px] h-[10px]" />
+                        </div>
+                      </div>
+                    </div>
+                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position }}</span>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
