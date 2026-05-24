@@ -50,6 +50,10 @@ const showPenaltyOverride = ref(false)
 const errorMessage = ref<string | null>(null)
 const swappingTeams = ref(false)
 
+const selectedLineupIds = ref<string[]>([])
+const showLineupCollapsible = ref(false)
+const savingLineups = ref(false)
+
 // Goal scoring modal
 const showGoalModal = ref(false)
 const scoringTeam = ref<'home' | 'away'>('home')
@@ -66,6 +70,15 @@ const cardTeam = ref<'home' | 'away'>('home')
 const cardData = reactive({
   type: MatchEventType.YELLOW_CARD as MatchEventType,
   playerId: undefined as string | undefined,
+  minute: null as number | null
+})
+
+// Substitution modal
+const showSubstitutionModal = ref(false)
+const subTeam = ref<'home' | 'away'>('home')
+const subData = reactive({
+  playerOutId: undefined as string | undefined,
+  playerInId: undefined as string | undefined,
   minute: null as number | null
 })
 
@@ -103,6 +116,18 @@ watch(() => editEventData.relatedPlayerId, (newId) => {
   }
 })
 
+watch(() => subData.playerOutId, (newId) => {
+  if (newId && newId === subData.playerInId) {
+    subData.playerInId = undefined
+  }
+})
+
+watch(() => subData.playerInId, (newId) => {
+  if (newId && newId === subData.playerOutId) {
+    subData.playerOutId = undefined
+  }
+})
+
 
 // Fixture status colors
 const fixtureStatusColors: Record<FixtureStatus, 'info' | 'success' | 'warning' | 'neutral'> = {
@@ -116,6 +141,7 @@ const fixtureStatusColors: Record<FixtureStatus, 'info' | 'success' | 'warning' 
 watch(() => props.fixture, async (newFixture) => {
   if (newFixture && props.open) {
     selectedFixture.value = { ...newFixture }
+    selectedLineupIds.value = newFixture.lineupPlayers?.map(p => p.id) || []
     await loadMatchData(newFixture)
   }
 }, { immediate: true })
@@ -124,6 +150,7 @@ watch(() => props.open, async (isOpen) => {
   if (isOpen && props.fixture) {
     errorMessage.value = null
     selectedFixture.value = { ...props.fixture }
+    selectedLineupIds.value = props.fixture.lineupPlayers?.map(p => p.id) || []
     matchVenue.value = props.fixture.venue || ''
     showScheduleCollapsible.value = props.fixture.status === 'SCHEDULED'
     if (props.fixture.startTime) {
@@ -156,6 +183,7 @@ watch(() => props.open, async (isOpen) => {
     homePlayers.value = []
     awayPlayers.value = []
     matchVenue.value = ''
+    selectedLineupIds.value = []
   }
 })
 
@@ -440,6 +468,64 @@ const cardTeamPlayers = computed(() => {
   return cardTeam.value === 'home' ? homePlayers.value : awayPlayers.value
 })
 
+const subTeamPlayers = computed(() => {
+  return subTeam.value === 'home' ? homePlayers.value : awayPlayers.value
+})
+
+const teamSubEvents = computed(() => {
+  const participantId = subTeam.value === 'home' 
+    ? selectedFixture.value?.homeTeamId 
+    : selectedFixture.value?.awayTeamId
+  if (!participantId) return []
+  return matchEvents.value.filter(e => e.type === MatchEventType.SUBSTITUTION && e.participant_id === participantId)
+})
+
+const subbedOutPlayerIds = computed(() => {
+  return teamSubEvents.value.map(e => e.relatedPlayerId).filter(Boolean) as string[]
+})
+
+const currentlyOnPitch = computed(() => {
+  const teamRoster = subTeamPlayers.value
+  const teamLineupIds = teamRoster.map(p => p.id).filter(id => selectedLineupIds.value.includes(id))
+  
+  const baseLineupIds = teamLineupIds.length > 0 ? teamLineupIds : teamRoster.map(p => p.id)
+  const onPitchIds = new Set(baseLineupIds)
+  
+  const sortedSubEvents = [...teamSubEvents.value].sort((a, b) => (a.minute || 0) - (b.minute || 0))
+  for (const event of sortedSubEvents) {
+    if (event.relatedPlayerId) {
+      onPitchIds.delete(event.relatedPlayerId)
+    }
+    if (event.playerId) {
+      onPitchIds.add(event.playerId)
+    }
+  }
+  
+  return teamRoster.filter(p => onPitchIds.has(p.id))
+})
+
+const subPlayerOutOptions = computed(() => {
+  return currentlyOnPitch.value.map(p => ({
+    label: `${p.number ? '#' + p.number + ' ' : ''}${p.name}${p.position ? ' (' + p.position + ')' : ''}`,
+    value: p.id
+  }))
+})
+
+const subPlayerInOptions = computed(() => {
+  const teamRoster = subTeamPlayers.value
+  const onPitchIds = new Set(currentlyOnPitch.value.map(p => p.id))
+  const outIds = new Set(subbedOutPlayerIds.value)
+  
+  const benchPlayers = teamRoster.filter(p => !onPitchIds.has(p.id) && !outIds.has(p.id))
+
+  return benchPlayers
+    .filter(p => p.id !== subData.playerOutId)
+    .map(p => ({
+      label: `${p.number ? '#' + p.number + ' ' : ''}${p.name}${p.position ? ' (' + p.position + ')' : ''}`,
+      value: p.id
+    }))
+})
+
 const confirmGoal = async () => {
   if (!selectedFixture.value) return
   
@@ -563,6 +649,50 @@ const confirmCard = async () => {
     })
   } catch (error: any) {
     handleError(error, { title: 'Failed to record card' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const openSubstitutionModal = (team: 'home' | 'away') => {
+  subTeam.value = team
+  subData.playerOutId = undefined
+  subData.playerInId = undefined
+  subData.minute = null
+  showSubstitutionModal.value = true
+}
+
+const confirmSubstitution = async () => {
+  if (!selectedFixture.value) return
+  
+  const participantId = subTeam.value === 'home' 
+    ? selectedFixture.value.homeTeamId 
+    : selectedFixture.value.awayTeamId
+  
+  if (!participantId || !subData.playerOutId || !subData.playerInId) return
+  
+  updatingMatch.value = true
+  try {
+    await fixtureStore.createMatchEvent({
+      fixtureId: selectedFixture.value.id,
+      participantId: participantId,
+      playerId: subData.playerInId, // Player In
+      relatedPlayerId: subData.playerOutId, // Player Out
+      type: MatchEventType.SUBSTITUTION,
+      minute: subData.minute
+    })
+    
+    showSubstitutionModal.value = false
+    await refreshMatchEvents()
+    
+    useToast().add({ 
+      title: 'Substitution Recorded!', 
+      description: 'Substitution event has been added.',
+      icon: 'i-heroicons-arrow-path',
+      color: 'success' 
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to record substitution' })
   } finally {
     updatingMatch.value = false
   }
@@ -932,6 +1062,56 @@ const closeModal = () => {
   emit('update:open', false)
 }
 
+const togglePlayerLineup = (playerId: string, isChecked: boolean) => {
+  if (isChecked) {
+    if (!selectedLineupIds.value.includes(playerId)) {
+      selectedLineupIds.value.push(playerId)
+    }
+  } else {
+    selectedLineupIds.value = selectedLineupIds.value.filter(id => id !== playerId)
+  }
+}
+
+const selectAllRoster = (team: 'home' | 'away') => {
+  const players = team === 'home' ? homePlayers.value : awayPlayers.value
+  const ids = players.map(p => p.id)
+  selectedLineupIds.value = [...new Set([...selectedLineupIds.value, ...ids])]
+}
+
+const clearRosterLineup = (team: 'home' | 'away') => {
+  const players = team === 'home' ? homePlayers.value : awayPlayers.value
+  const idsToRemove = new Set(players.map(p => p.id))
+  selectedLineupIds.value = selectedLineupIds.value.filter(id => !idsToRemove.has(id))
+}
+
+const saveLineups = async () => {
+  if (!selectedFixture.value) return
+  savingLineups.value = true
+  try {
+    const res = await fixtureStore.updateFixture(selectedFixture.value.id, {
+      lineupPlayerIds: selectedLineupIds.value
+    })
+    if (res.data) {
+      selectedFixture.value = {
+        ...selectedFixture.value,
+        lineupPlayers: res.data.lineupPlayers || []
+      }
+      emit('fixture-updated', selectedFixture.value)
+      
+      useToast().add({
+        title: 'Lineups Saved',
+        description: 'Match lineups have been successfully updated.',
+        icon: 'i-heroicons-check-circle',
+        color: 'success'
+      })
+    }
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to save lineups' })
+  } finally {
+    savingLineups.value = false
+  }
+}
+
 const downloading = ref(false)
 const sharingMatch = ref(false)
 
@@ -1161,6 +1341,15 @@ const downloadGraphic = async () => {
                 <span>Miss</span>
               </button>
               <button
+                v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--sub"
+                :disabled="loadingPlayers || updatingMatch"
+                @click="openSubstitutionModal('home')"
+              >
+                <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5" />
+                <span>Sub</span>
+              </button>
+              <button
                 v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
                 class="mc-btn mc-btn--minus"
                 :disabled="(selectedFixture.homeScore ?? 0) <= 0 || updatingMatch"
@@ -1221,6 +1410,15 @@ const downloadGraphic = async () => {
                 <span>Miss</span>
               </button>
               <button
+                v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
+                class="mc-btn mc-btn--sub"
+                :disabled="loadingPlayers || updatingMatch"
+                @click="openSubstitutionModal('away')"
+              >
+                <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5" />
+                <span>Sub</span>
+              </button>
+              <button
                 v-if="props.tournament?.participantType === ParticipantType.INDIVIDUAL"
                 class="mc-btn mc-btn--minus"
                 :disabled="(selectedFixture.awayScore ?? 0) <= 0 || updatingMatch"
@@ -1271,6 +1469,91 @@ const downloadGraphic = async () => {
                   @click="updateMatchTime" class="mt-2 w-full sm:w-auto">
                   Update Schedule
                 </UButton>
+              </div>
+            </div>
+
+            <!-- Lineups Selection -->
+            <div v-if="tournament?.participantType !== ParticipantType.INDIVIDUAL" class="mc-section">
+              <button class="mc-section__toggle" @click="showLineupCollapsible = !showLineupCollapsible">
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-heroicons-users" class="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Lineups Selection</span>
+                  <span class="mc-tag">{{ selectedLineupIds.length }} selected</span>
+                </div>
+                <UIcon :name="showLineupCollapsible ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" class="w-4 h-4 text-gray-400" />
+              </button>
+              <div v-if="showLineupCollapsible" class="mc-section__body">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <!-- Home Roster -->
+                  <div class="mc-roster-box">
+                    <div class="flex items-center justify-between mb-3">
+                      <span class="text-xs font-bold uppercase tracking-wider text-gray-400 truncate">
+                        {{ selectedFixture.homeTeam?.customName || 'Home Roster' }}
+                      </span>
+                      <div class="flex gap-1.5">
+                        <UButton size="xs" variant="ghost" color="primary" label="All" @click="selectAllRoster('home')" />
+                        <UButton size="xs" variant="ghost" color="neutral" label="Clear" @click="clearRosterLineup('home')" />
+                      </div>
+                    </div>
+                    <div v-if="loadingPlayers" class="flex justify-center py-4">
+                      <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin text-gray-400" />
+                    </div>
+                    <div v-else-if="homePlayers.length === 0" class="text-xs text-gray-500 text-center py-4">
+                      No roster players listed.
+                    </div>
+                    <div v-else class="mc-roster-list">
+                      <div v-for="player in homePlayers" :key="player.id" class="mc-roster-item">
+                        <UCheckbox
+                          :model-value="selectedLineupIds.includes(player.id)"
+                          @update:model-value="(val) => togglePlayerLineup(player.id, !!val)"
+                          :id="`lineup-player-${player.id}`"
+                          :label="`${player.number ? '#' + player.number + ' ' : ''}${player.name} ${player.position ? '(' + player.position + ')' : ''}`"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Away Roster -->
+                  <div class="mc-roster-box">
+                    <div class="flex items-center justify-between mb-3">
+                      <span class="text-xs font-bold uppercase tracking-wider text-gray-400 truncate">
+                        {{ selectedFixture.awayTeam?.customName || 'Away Roster' }}
+                      </span>
+                      <div class="flex gap-1.5">
+                        <UButton size="xs" variant="ghost" color="primary" label="All" @click="selectAllRoster('away')" />
+                        <UButton size="xs" variant="ghost" color="neutral" label="Clear" @click="clearRosterLineup('away')" />
+                      </div>
+                    </div>
+                    <div v-if="loadingPlayers" class="flex justify-center py-4">
+                      <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin text-gray-400" />
+                    </div>
+                    <div v-else-if="awayPlayers.length === 0" class="text-xs text-gray-500 text-center py-4">
+                      No roster players listed.
+                    </div>
+                    <div v-else class="mc-roster-list">
+                      <div v-for="player in awayPlayers" :key="player.id" class="mc-roster-item">
+                        <UCheckbox
+                          :model-value="selectedLineupIds.includes(player.id)"
+                          @update:model-value="(val) => togglePlayerLineup(player.id, !!val)"
+                          :id="`lineup-player-${player.id}`"
+                          :label="`${player.number ? '#' + player.number + ' ' : ''}${player.name} ${player.position ? '(' + player.position + ')' : ''}`"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-4 flex justify-end">
+                  <UButton
+                    color="primary"
+                    variant="solid"
+                    size="sm"
+                    icon="i-heroicons-check"
+                    label="Save Lineups"
+                    :loading="savingLineups"
+                    @click="saveLineups"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1355,8 +1638,12 @@ const downloadGraphic = async () => {
                           <span v-if="event.type === 'PENALTY'" class="mc-event__tag">(P)</span>
                           <span v-if="event.type === 'OWN_GOAL'" class="mc-event__tag">(OG)</span>
                         </div>
-                        <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="mc-event__assist">
+                        <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL' && event.type !== 'SUBSTITUTION'" class="mc-event__assist">
                           <IconsAssistIcon class="w-2.5 h-2.5 flex-shrink-0" /> {{ getPlayerName(event.relatedPlayerId) }}
+                        </div>
+                        <div v-if="event.type === 'SUBSTITUTION' && event.relatedPlayerId" class="text-red-500 text-[10px] font-semibold flex items-center gap-1 mt-0.5">
+                          <UIcon name="i-heroicons-arrow-down-circle" class="w-3 h-3 text-red-500 flex-shrink-0" />
+                          <span>off: {{ getPlayerName(event.relatedPlayerId) }}</span>
                         </div>
                       </div>
                       <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'end' }">
@@ -1376,8 +1663,12 @@ const downloadGraphic = async () => {
                           <IconsSoccerBallIcon v-if="['GOAL','PENALTY','OWN_GOAL'].includes(event.type)" class="w-4 h-4 flex-shrink-0" :class="getEventColor(event.type)" />
                           <UIcon v-else :name="getEventIcon(event.type)" :class="['w-4 h-4 flex-shrink-0', getEventColor(event.type)]" />
                         </div>
-                        <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL'" class="mc-event__assist mc-event__assist--right">
+                        <div v-if="event.relatedPlayerId && event.type !== 'OWN_GOAL' && event.type !== 'SUBSTITUTION'" class="mc-event__assist mc-event__assist--right">
                           {{ getPlayerName(event.relatedPlayerId) }} <IconsAssistIcon class="w-2.5 h-2.5 flex-shrink-0" />
+                        </div>
+                        <div v-if="event.type === 'SUBSTITUTION' && event.relatedPlayerId" class="text-red-500 text-[10px] font-semibold flex items-center justify-end gap-1 mt-0.5">
+                          <span>off: {{ getPlayerName(event.relatedPlayerId) }}</span>
+                          <UIcon name="i-heroicons-arrow-down-circle" class="w-3 h-3 text-red-500 flex-shrink-0" />
                         </div>
                       </div>
                       <div class="mc-event__min">{{ event.minute || '–' }}'</div>
@@ -1636,6 +1927,82 @@ const downloadGraphic = async () => {
     </template>
   </UModal>
 
+  <!-- Substitution Modal -->
+  <UModal v-model:open="showSubstitutionModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 text-purple-500" />
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                Record Substitution
+              </h3>
+              <UBadge :color="subTeam === 'home' ? 'primary' : 'warning'" variant="subtle" size="sm">
+                {{ subTeam === 'home' ? selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customName }}
+              </UBadge>
+            </div>
+            <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" @click="showSubstitutionModal = false" />
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <!-- Minute -->
+          <UFormField label="Minute (optional)">
+            <UInput 
+              v-model.number="subData.minute" 
+              type="number" 
+              placeholder="e.g. 45"
+              icon="i-heroicons-clock"
+              :min="0"
+              :max="120"
+            />
+          </UFormField>
+
+          <!-- Player Out -->
+          <UFormField label="Player Out (Leaving)">
+            <USelect
+              v-model="subData.playerOutId"
+              :items="subPlayerOutOptions"
+              placeholder="Select player leaving..."
+              value-key="value"
+              class="w-full"
+            />
+          </UFormField>
+
+          <!-- Player In -->
+          <UFormField label="Player In (Entering)">
+            <USelect
+              v-model="subData.playerInId"
+              :items="subPlayerInOptions"
+              placeholder="Select player entering..."
+              value-key="value"
+              :disabled="!subData.playerOutId"
+              class="w-full"
+            />
+          </UFormField>
+
+          <p v-if="subTeamPlayers.length === 0" class="text-sm text-gray-500">
+            No players registered for this team.
+          </p>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-3 pt-2">
+            <UButton label="Cancel" variant="ghost" color="neutral" @click="showSubstitutionModal = false" />
+            <UButton 
+              label="Record Substitution" 
+              icon="i-heroicons-check"
+              color="primary"
+              :loading="updatingMatch"
+              :disabled="!subData.playerOutId || !subData.playerInId || updatingMatch"
+              @click="confirmSubstitution"
+            />
+          </div>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
+
   <!-- Edit Event Modal -->
   <UModal v-model:open="showEditEventModal">
     <template #content>
@@ -1672,7 +2039,7 @@ const downloadGraphic = async () => {
           </UFormField>
 
           <!-- Scorer/Player -->
-          <UFormField label="Player">
+          <UFormField :label="eventBeingEdited?.type === 'SUBSTITUTION' ? 'Player In (Entering)' : 'Player'">
             <USelect
               v-model="editEventData.playerId"
               :items="editEventPlayerOptions"
@@ -1683,7 +2050,7 @@ const downloadGraphic = async () => {
           </UFormField>
 
           <!-- Assister/Related -->
-          <UFormField label="Related Player / Assist (optional)">
+          <UFormField :label="eventBeingEdited?.type === 'SUBSTITUTION' ? 'Player Out (Leaving)' : 'Related Player / Assist (optional)'">
             <USelect
               v-model="editEventData.relatedPlayerId"
               :items="editEventRelatedPlayerOptions"
@@ -2136,6 +2503,12 @@ const downloadGraphic = async () => {
 }
 .mc-btn--card:hover:not(:disabled) { background: rgba(245,158,11,0.18); }
 
+.mc-btn--sub {
+  border-color: rgba(139, 92, 246, 0.2);
+  color: #8b5cf6;
+}
+.mc-btn--sub:hover:not(:disabled) { background: rgba(139, 92, 246, 0.1); }
+
 .card-icons {
   display: inline-flex;
   align-items: center;
@@ -2468,5 +2841,67 @@ const downloadGraphic = async () => {
 :root.dark .mc-sec-btn:hover:not(:disabled) {
   background: rgba(255,255,255,0.07);
   color: #d1d5db;
+}
+
+/* Roster Box & Lists (Lineups selection) */
+.mc-roster-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  background: #f9fafb;
+}
+
+:root.dark .mc-roster-box {
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.mc-roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Custom Scrollbars */
+.mc-roster-list::-webkit-scrollbar {
+  width: 5px;
+}
+.mc-roster-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.mc-roster-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+:root.dark .mc-roster-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.mc-roster-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.mc-roster-item:hover {
+  background: #f1f5f9;
+}
+
+:root.dark .mc-roster-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mc-roster-item :deep(label),
+.mc-roster-item :deep(.u-checkbox-label),
+.mc-roster-item label {
+  white-space: normal !important;
+  word-break: break-all !important;
+  overflow-wrap: break-word !important;
 }
 </style>
