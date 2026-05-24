@@ -15,6 +15,7 @@ export interface UpdateFixtureData {
   status?: string
   startTime?: string | null
   venue?: string | null
+  lineupPlayerIds?: string[]
 }
 
 export interface CreateFixtureData {
