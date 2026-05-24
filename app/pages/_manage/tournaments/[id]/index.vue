@@ -1504,6 +1504,8 @@ const showLinkCodeModal = ref(false)
 const currentLinkCode = ref<string | null>(null)
 const currentLinkCodeExpiry = ref<string | null>(null)
 const generatingLinkCode = ref(false)
+const linkCodeModalTitle = ref('Team Link Code')
+const linkCodeModalDesc = ref('Share this code with the team manager. They can enter it on their team profile page to link it to this tournament entry.')
 
 const handleGenerateLinkCode = async (participantId: string) => {
   generatingLinkCode.value = true
@@ -1511,6 +1513,8 @@ const handleGenerateLinkCode = async (participantId: string) => {
     const res = await $api<{ success: boolean, data: { code: string, expiresAt: string } }>(`/participants/${participantId}/generate-link-code`, {
       method: 'POST'
     })
+    linkCodeModalTitle.value = 'Team Link Code'
+    linkCodeModalDesc.value = 'Share this code with the team manager. They can enter it on their team profile page to link it to this tournament entry.'
     currentLinkCode.value = res.data.code
     currentLinkCodeExpiry.value = res.data.expiresAt
     showLinkCodeModal.value = true
@@ -1531,6 +1535,38 @@ const handleUnlinkProfile = async (participant: Participant) => {
     }
   } catch (err: any) {
     handleError(err, { title: 'Failed to unlink profile' })
+  }
+}
+
+const handleGeneratePlayerLinkCode = async (playerId: string) => {
+  generatingLinkCode.value = true
+  try {
+    const res = await $api<{ success: boolean, data: { code: string, expiresAt: string } }>(`/players/${playerId}/generate-link-code`, {
+      method: 'POST'
+    })
+    linkCodeModalTitle.value = 'Player Link Code'
+    linkCodeModalDesc.value = 'Share this code with the player. They can enter it on their player profile page/settings to link their user account to this player entry.'
+    currentLinkCode.value = res.data.code
+    currentLinkCodeExpiry.value = res.data.expiresAt
+    showLinkCodeModal.value = true
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to generate player link code' })
+  } finally {
+    generatingLinkCode.value = false
+  }
+}
+
+const handleUnlinkPlayerProfile = async (player: any) => {
+  try {
+    await $api(`/players/${player.id}/unlink-profile`, { method: 'POST' })
+    useToast().add({ title: 'Player profile unlinked', color: 'success' })
+    // Refresh player list in modal
+    if (selectedParticipant.value) {
+      const updatedPlayers = await participantStore.fetchParticipantPlayers(selectedParticipant.value.id)
+      selectedParticipant.value.players = updatedPlayers
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to unlink player profile' })
   }
 }
 
@@ -4400,10 +4436,10 @@ const copyTournamentLink = async () => {
           <template #header>
             <div class="flex items-center gap-2">
               <UIcon name="i-heroicons-key" class="w-5 h-5 text-indigo-500" />
-              <span class="font-semibold text-gray-900 dark:text-white">Team Link Code</span>
+              <span class="font-semibold text-gray-900 dark:text-white">{{ linkCodeModalTitle }}</span>
             </div>
             <p class="text-sm text-gray-500 mt-2">
-              Share this code with the team manager. They can enter it on their team profile page to link it to this tournament entry.
+              {{ linkCodeModalDesc }}
             </p>
           </template>
 
@@ -4684,8 +4720,19 @@ const copyTournamentLink = async () => {
                   class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-lg"
                 >
                   <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center font-medium text-xs">
-                      ?
+                    <!-- Player Avatar Wrapper -->
+                    <div class="relative w-8 h-8 flex-shrink-0">
+                      <!-- Cropped Avatar Container -->
+                      <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                        <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+                        <span v-else class="text-xs font-bold text-gray-400">
+                          {{ player.name.charAt(0) }}
+                        </span>
+                      </div>
+                      <!-- Small Shirt Number Overlay -->
+                      <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-amber-500 text-white text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
+                        {{ player.number }}
+                      </span>
                     </div>
                     <div>
                       <p class="text-sm font-medium text-gray-900 dark:text-white">
@@ -4734,12 +4781,24 @@ const copyTournamentLink = async () => {
                   class="group flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
                 >
                   <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-medium text-xs">
-                      {{ player.number || '#' }}
+                    <!-- Player Avatar Wrapper -->
+                    <div class="relative w-8 h-8 flex-shrink-0">
+                      <!-- Cropped Avatar Container -->
+                      <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                        <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+                        <span v-else class="text-xs font-bold text-gray-400">
+                          {{ player.name.charAt(0) }}
+                        </span>
+                      </div>
+                      <!-- Small Shirt Number Overlay -->
+                      <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-indigo-500 text-white text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
+                        {{ player.number }}
+                      </span>
                     </div>
                     <div>
-                      <p class="text-sm font-medium text-gray-900 dark:text-white">
+                      <p class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
                         {{ player.name }}
+                        <UIcon v-if="player.userId" name="i-heroicons-link" class="w-3.5 h-3.5 text-indigo-500 shrink-0" title="Linked to user account" />
                       </p>
                       <p class="text-xs text-gray-500">
                         {{ player.position }}
@@ -4750,6 +4809,8 @@ const copyTournamentLink = async () => {
                     <UDropdownMenu 
                       :items="[[
                         { label: 'Edit', icon: 'i-heroicons-pencil-square', onSelect: () => startEditPlayer(player) },
+                        { label: 'Link Profile Code', icon: 'i-heroicons-key', onSelect: () => handleGeneratePlayerLinkCode(player.id), disabled: !!player.userId },
+                        ...(player.userId ? [{ label: 'Unlink Profile', icon: 'i-heroicons-link-slash', onSelect: () => handleUnlinkPlayerProfile(player), class: 'text-amber-500' }] : []),
                         { label: 'Delete', icon: 'i-heroicons-trash', onSelect: () => handleDeletePlayer(player.id), class: 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' }
                       ]]"
                       :content="{ align: 'end' }"
