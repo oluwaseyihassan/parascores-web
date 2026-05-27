@@ -260,6 +260,8 @@ export interface Fixture {
   tournament?: Tournament | null
   matchEvents?: MatchEvent[]
   lineupPlayers?: Player[]
+  homeFormation?: string | null
+  awayFormation?: string | null
 }
 
 export interface Group {
