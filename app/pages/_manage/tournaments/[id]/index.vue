@@ -78,7 +78,29 @@ const showUpgradeBanner = computed(() => {
 const upgradingFromBanner = ref(false)
 
 async function handleUpgradeTournament() {
-  // Coming soon
+  if (!authStore.currentOrganization?.id || !tournamentId.value) return
+
+  upgradingFromBanner.value = true
+  try {
+    const dashboardUrl = config.public.DASHBOARD_URL || window.location.origin
+    const callbackUrl = `${dashboardUrl}/billing/callback`
+
+    const response = await paymentStore.initializePayment(
+      authStore.currentOrganization.id,
+      'PER_TOURNAMENT',
+      5000 * 100,
+      callbackUrl,
+      tournamentId.value
+    )
+
+    if (response.data?.authorization_url) {
+      window.location.href = response.data.authorization_url
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Upgrade Failed' })
+  } finally {
+    upgradingFromBanner.value = false
+  }
 }
 
 onMounted(async () => {
@@ -2838,11 +2860,12 @@ const copyTournamentLink = async () => {
             <UButton
               size="sm"
               variant="solid"
-              class="font-bold bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-white/10 cursor-not-allowed flex-1 sm:flex-none"
+              class="font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm flex-1 sm:flex-none"
               icon="i-heroicons-bolt"
-              disabled
+              :loading="upgradingFromBanner"
+              @click="handleUpgradeTournament"
             >
-              Upgrade — Coming Soon
+              Upgrade (₦5,000)
             </UButton>
             <UButton
               size="sm"
