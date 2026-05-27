@@ -331,7 +331,7 @@ watch(loadMoreTrigger, (el) => {
           <!-- Pending Requests Badge -->
           <div 
             v-if="tournament.pendingRequestsCount && tournament.pendingRequestsCount > 0" 
-            class="absolute -top-2 -left-2 z-30"
+            class="absolute top-3 left-3 z-30"
             title="Pending player join requests"
           >
             <UBadge color="error" variant="solid" size="md" class="rounded-full shadow-lg ring-2 ring-white dark:ring-gray-900 font-bold">
