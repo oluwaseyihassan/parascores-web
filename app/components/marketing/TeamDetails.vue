@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tournament, Participant, Fixture, Standing } from '~/types'
 
-const { toMain } = useHost()
+const { toMain, isManage } = useHost()
 
 const props = defineProps<{
   tournamentId: string
@@ -276,8 +276,10 @@ function getMatchAggregate(match: Fixture) {
             </div>
             
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <div v-for="player in participant.players.filter(p => p.status === 'APPROVED')" :key="player.id" 
-                   class="flex items-center gap-3 p-3 rounded-lg transition-colors border bg-gray-50 border-gray-100 dark:bg-white/5 dark:border-white/5">
+              <NuxtLink v-for="player in participant.players.filter(p => p.status === 'APPROVED')" :key="player.id" 
+                   :to="toMain(`/player/${player.id}`)"
+                   :external="isManage"
+                   class="flex items-center gap-3 p-3 rounded-lg transition-colors border bg-gray-50 border-gray-100 dark:bg-white/5 dark:border-white/5 hover:bg-gray-100/50 dark:hover:bg-white/[0.08] cursor-pointer">
                 <!-- Player Avatar Wrapper -->
                 <div class="relative w-10 h-10 flex-shrink-0">
                   <!-- Cropped Avatar Container -->
@@ -294,10 +296,10 @@ function getMatchAggregate(match: Fixture) {
                   </span>
                 </div>
                 <div class="flex flex-col overflow-hidden">
-                  <span class="text-sm font-semibold truncate transition-colors text-gray-900 dark:text-white">{{ player.name }}</span>
-                  <span class="text-[11px] font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">{{ player.position || 'Unknown' }}</span>
+                  <span class="text-sm font-semibold truncate transition-colors text-gray-900 dark:text-white group-hover:text-emerald-500">{{ player.name }}</span>
+                  <span class="text-[11px] font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">{{ player.position ? player.position.split('-')[0] : 'Unknown' }}</span>
                 </div>
-              </div>
+              </NuxtLink>
             </div>
           </div>
         </div>
@@ -315,6 +317,7 @@ function getMatchAggregate(match: Fixture) {
             
             <div v-else class="divide-y" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
               <NuxtLink v-for="match in participantFixtures" :key="match.id" :to="toMain(`/t/${tournament.customName || tournament.id}/fixture/${match.id}`)"
+                   :external="isManage"
                   class="block p-4 md:p-5 transition-colors group"
                   :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
                 
