@@ -88,6 +88,31 @@ const profileMenuItems = computed(() => [
   [{ label: 'Log out', icon: 'i-heroicons-arrow-right-on-rectangle', onSelect: handleLogout }]
 ])
 
+const orgMenuItems = computed(() => {
+  return [
+    authStore.organizations.map((orgMember) => ({
+      label: orgMember.organization?.name || 'Organization',
+      avatar: orgMember.organization?.logoUrl ? { src: orgMember.organization.logoUrl } : { text: orgMember.organization?.name?.charAt(0).toUpperCase() || 'O' },
+      onSelect: () => {
+        authStore.setActiveOrganization(orgMember.organizationId)
+      },
+      active: authStore.activeOrganizationId === orgMember.organizationId
+    })),
+    [
+      {
+        label: 'Manage Organizations',
+        icon: 'i-heroicons-building-office',
+        to: '/organizations'
+      },
+      {
+        label: 'New Organization',
+        icon: 'i-heroicons-plus',
+        to: '/onboarding'
+      }
+    ]
+  ]
+})
+
 const handleLogout = async () => {
   await authStore.logout()
   navigateTo(`${frontendUrl}/`, { external: true })
@@ -212,18 +237,23 @@ const handleLogout = async () => {
         <header class="hidden md:flex items-center justify-between px-8 py-4 border-b border-gray-200 dark:border-white/10 bg-white/30 dark:bg-transparent">
           <div class="flex items-center gap-3">
             <template v-if="authStore.currentOrganization">
-              <UAvatar 
-                v-if="authStore.currentOrganization.logoUrl" 
-                :src="authStore.currentOrganization.logoUrl" 
-                size="xs" 
-                class="rounded-md"
-              />
-              <div v-else class="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-[10px] font-bold text-indigo-500">
-                {{ authStore.currentOrganization.name?.charAt(0) }}
-              </div>
-              <span class="font-bold text-gray-800 dark:text-white">
-                {{ authStore.currentOrganization.name }}
-              </span>
+              <UDropdownMenu :items="orgMenuItems" :content="{ align: 'start', side: 'bottom', sideOffset: 8 }">
+                <button class="flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-white/10 px-2.5 py-1.5 rounded-xl transition-all cursor-pointer group">
+                  <UAvatar 
+                    v-if="authStore.currentOrganization.logoUrl" 
+                    :src="authStore.currentOrganization.logoUrl" 
+                    size="xs" 
+                    class="rounded-md"
+                  />
+                  <div v-else class="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-[10px] font-bold text-indigo-500">
+                    {{ authStore.currentOrganization.name?.charAt(0) }}
+                  </div>
+                  <span class="font-bold text-gray-800 dark:text-white text-sm">
+                    {{ authStore.currentOrganization.name }}
+                  </span>
+                  <UIcon name="i-heroicons-chevron-down" class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+                </button>
+              </UDropdownMenu>
             </template>
             <div v-else class="flex items-center">
               <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-7 w-auto object-contain" />
@@ -245,18 +275,23 @@ const handleLogout = async () => {
       <header class="flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-black/80 dark:backdrop-blur-xl border-b border-gray-200 dark:border-white/10 z-40">
         <div class="flex items-center gap-3">
           <template v-if="authStore.currentOrganization">
-            <UAvatar 
-              v-if="authStore.currentOrganization.logoUrl" 
-              :src="authStore.currentOrganization.logoUrl" 
-              size="xs" 
-              class="rounded-md"
-            />
-            <div v-else class="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-[10px] font-bold text-indigo-500">
-              {{ authStore.currentOrganization.name?.charAt(0) }}
-            </div>
-            <span class="font-bold text-sm tracking-tight truncate max-w-[150px]">
-              {{ authStore.currentOrganization.name }}
-            </span>
+            <UDropdownMenu :items="orgMenuItems" :content="{ align: 'start', side: 'bottom', sideOffset: 8 }">
+              <button class="flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-white/10 px-2 py-1.5 rounded-xl transition-all cursor-pointer group max-w-[200px] text-left">
+                <UAvatar 
+                  v-if="authStore.currentOrganization.logoUrl" 
+                  :src="authStore.currentOrganization.logoUrl" 
+                  size="xs" 
+                  class="rounded-md shrink-0"
+                />
+                <div v-else class="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-[10px] font-bold text-indigo-500 shrink-0">
+                  {{ authStore.currentOrganization.name?.charAt(0) }}
+                </div>
+                <span class="font-bold text-sm tracking-tight truncate text-gray-800 dark:text-white max-w-[120px]">
+                  {{ authStore.currentOrganization.name }}
+                </span>
+                <UIcon name="i-heroicons-chevron-down" class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors shrink-0" />
+              </button>
+            </UDropdownMenu>
           </template>
           <div v-else class="flex items-center">
             <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-8 w-auto object-contain" />
