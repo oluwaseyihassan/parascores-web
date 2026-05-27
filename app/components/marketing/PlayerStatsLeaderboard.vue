@@ -20,7 +20,9 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">Scores will appear here once goals are recorded.</p>
       </div>
       <div v-else class="space-y-3">
-        <div v-for="item in rankedScorers" :key="item.player.id" 
+        <NuxtLink v-for="item in rankedScorers" :key="item.player.id" 
+             :to="toMain(`/player/${item.player.id}`)"
+             :external="isManage"
              class="flex items-center gap-4 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors overflow-hidden">
           <div class="w-6 flex items-center justify-center font-bold text-sm shrink-0 text-gray-500 dark:text-gray-400">
             {{ item._rank }}
@@ -46,7 +48,7 @@
             </div>
           </div>
           <div class="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{{ item.count }}</div>
-        </div>
+        </NuxtLink>
       </div>
     </div>
 
@@ -70,7 +72,9 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">Assists will appear here once recorded.</p>
       </div>
       <div v-else class="space-y-3">
-        <div v-for="item in rankedAssists" :key="item.player.id" 
+        <NuxtLink v-for="item in rankedAssists" :key="item.player.id" 
+             :to="toMain(`/player/${item.player.id}`)"
+             :external="isManage"
              class="flex items-center gap-4 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors overflow-hidden">
           <div class="w-6 flex items-center justify-center font-bold text-sm shrink-0 text-gray-500 dark:text-gray-400">
             {{ item._rank }}
@@ -96,7 +100,7 @@
             </div>
           </div>
           <div class="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{{ item.count }}</div>
-        </div>
+        </NuxtLink>
       </div>
     </div>
   </div>
@@ -105,6 +109,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PlayerStatsResponse } from '~/types'
+
+const { toMain, isManage } = useHost()
 
 const props = defineProps<{
   stats: PlayerStatsResponse | null
