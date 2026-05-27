@@ -257,6 +257,9 @@ async function signup(email: string, password: string, name: string) {
     // Refresh tournaments for the new context
     const tournamentStore = useTournamentStore()
     tournamentStore.fetchTournaments({ limit: 50 })
+
+    // Redirect to home dashboard
+    navigateTo('/')
   }
 
   return {
