@@ -101,28 +101,117 @@ const playerProfiles = computed(() => user.value?.player_profiles || [])
 const showClaimModal = ref(false)
 const claimCode = ref('')
 const claimingPlayer = ref(false)
+const verifiedPlayer = ref<any | null>(null)
+const verifyingCode = ref(false)
+
+const route = useRoute()
+const router = useRouter()
+const paymentStore = usePaymentStore()
+const verifyingPayment = ref(false)
 
 const openPlayerClaim = () => {
   claimCode.value = ''
+  verifiedPlayer.value = null
   showClaimModal.value = true
 }
 
-const handleClaimPlayer = async () => {
-  if (!claimCode.value) return
-  claimingPlayer.value = true
+const handleVerifyClaimCode = async () => {
+  if (!claimCode.value || claimCode.value.length < 6) return
+  verifyingCode.value = true
   try {
-    await $api('/players/claim', {
+    const res = await $api<{ success: boolean; data: any }>('/players/verify-claim-code', {
       method: 'POST',
       body: { code: claimCode.value }
     })
-    toast.add({ title: 'Successfully linked player profile!', color: 'success' })
-    showClaimModal.value = false
-    claimCode.value = ''
+    if (res.success && res.data) {
+      verifiedPlayer.value = res.data
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to verify claim code' })
+  } finally {
+    verifyingCode.value = false
+  }
+}
+
+const handleInitializeClaimPayment = async () => {
+  if (!verifiedPlayer.value || !claimCode.value) return
+  claimingPlayer.value = true
+  try {
+    const callbackUrl = window.location.origin + '/profile'
+    const res = await paymentStore.initializePlayerClaim({
+      playerId: verifiedPlayer.value.id,
+      code: claimCode.value,
+      callbackUrl
+    })
+
+    if (res?.data?.authorization_url) {
+      window.location.href = res.data.authorization_url
+    } else {
+      throw new Error('Failed to generate Paystack checkout URL')
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Payment initialization failed' })
+    claimingPlayer.value = false
+  }
+}
+
+const getPositionLabel = (pos: string | null | undefined) => {
+  const map: Record<string, string> = {
+    GK: 'Goalkeeper',
+    DEF: 'Defender',
+    MID: 'Midfielder',
+    FWD: 'Forward',
+  }
+  const cat = pos ? pos.split('-')[0] : ''
+  return cat ? map[cat] || cat : 'Unknown'
+}
+
+onMounted(async () => {
+  const reference = route.query.reference as string
+  if (reference) {
+    verifyingPayment.value = true
+    try {
+      const res = await paymentStore.verifyPayment(reference)
+      if (res?.success) {
+        toast.add({ title: 'Successfully claimed player profile! 🎉', color: 'success' })
+        await authStore.fetchUser()
+      } else {
+        toast.add({ title: 'Payment verification failed. Please contact support.', color: 'error' })
+      }
+    } catch (err: any) {
+      handleError(err, { title: 'Payment verification failed' })
+    } finally {
+      verifyingPayment.value = false
+      router.replace('/profile')
+    }
+  }
+})
+
+// Unlink state
+const showUnlinkModal = ref(false)
+const profileToUnlink = ref<any | null>(null)
+const unlinkingPlayer = ref(false)
+
+const confirmUnlink = (profile: any) => {
+  profileToUnlink.value = profile
+  showUnlinkModal.value = true
+}
+
+const handleUnlinkPlayer = async () => {
+  if (!profileToUnlink.value) return
+  unlinkingPlayer.value = true
+  try {
+    await $api(`/players/${profileToUnlink.value.id}/unlink-profile`, {
+      method: 'POST'
+    })
+    toast.add({ title: 'Successfully unlinked player profile!', color: 'success' })
+    showUnlinkModal.value = false
+    profileToUnlink.value = null
     await authStore.fetchUser()
   } catch (err: any) {
-    handleError(err, { title: 'Failed to claim player profile' })
+    handleError(err, { title: 'Failed to unlink player profile' })
   } finally {
-    claimingPlayer.value = false
+    unlinkingPlayer.value = false
   }
 }
 
@@ -134,13 +223,20 @@ useSeoMeta({
 
 <template>
   <div class="max-w-2xl mx-auto px-6 py-12">
-    <!-- Header -->
-    <div class="mb-10">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">My Profile</h1>
-      <p class="text-gray-600 dark:text-gray-400">Your account overview</p>
+    <!-- Verifying Payment State -->
+    <div v-if="verifyingPayment" class="text-center py-24 bg-white dark:bg-[#0A0A0A] p-8 rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm w-full">
+      <UIcon name="i-heroicons-arrow-path" class="w-12 h-12 animate-spin text-emerald-500 mx-auto mb-4" />
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white">Verifying Profile Claim...</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Please do not close or refresh this page.</p>
     </div>
 
-    <div class="space-y-6">
+    <!-- Profile Dashboard -->
+    <div v-else class="space-y-6">
+      <!-- Header -->
+      <div class="mb-10">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">My Profile</h1>
+        <p class="text-gray-600 dark:text-gray-400">Your account overview</p>
+      </div>
       <!-- Profile Card -->
       <UCard class="bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-white/5 shadow-sm overflow-hidden transition-colors">
         <div class="flex flex-col sm:flex-row items-center gap-8 py-4">
@@ -240,37 +336,48 @@ useSeoMeta({
         </div>
 
         <div v-else class="space-y-2">
-          <NuxtLink
+          <div
             v-for="profile in playerProfiles"
             :key="profile.id"
-            :to="toMain(`/player/${profile.id}`)"
             class="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group"
           >
-            <UAvatar
-              v-if="profile.avatarUrl"
-              :src="profile.avatarUrl"
-              size="sm"
-              class="ring-2 ring-gray-100 dark:ring-white/5"
-            />
-            <div
-              v-else
-              class="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 text-xs font-bold shrink-0"
+            <NuxtLink
+              :to="toMain(`/player/${profile.id}`)"
+              class="flex items-center gap-4 flex-1 min-w-0"
             >
-              {{ profile.name?.charAt(0).toUpperCase() }}
-            </div>
+              <UAvatar
+                v-if="profile.avatarUrl"
+                :src="profile.avatarUrl"
+                size="sm"
+                class="ring-2 ring-gray-100 dark:ring-white/5"
+              />
+              <div
+                v-else
+                class="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 text-xs font-bold shrink-0"
+              >
+                {{ profile.name?.charAt(0).toUpperCase() }}
+              </div>
 
-            <div class="flex-1 min-w-0">
-              <p class="font-bold text-sm text-gray-900 dark:text-white group-hover:text-emerald-500 transition-colors truncate">
-                {{ profile.name }}
-              </p>
-              <p v-if="profile.participant?.tournament?.name" class="text-[10px] text-gray-400 dark:text-gray-600 font-bold truncate">
-                {{ profile.participant.tournament.name }}
-                <span v-if="profile.number"> • #{{ profile.number }}</span>
-              </p>
-            </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-sm text-gray-900 dark:text-white group-hover:text-emerald-500 transition-colors truncate font-medium">
+                  {{ profile.name }}
+                </p>
+                <p v-if="profile.participant?.tournament?.name" class="text-[10px] text-gray-400 dark:text-gray-600 font-bold truncate">
+                  {{ profile.participant.tournament.name }}
+                  <span v-if="profile.number"> • #{{ profile.number }}</span>
+                </p>
+              </div>
+            </NuxtLink>
 
-            <UIcon name="i-heroicons-arrow-right" class="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 transition-colors shrink-0" />
-          </NuxtLink>
+            <UButton
+              icon="i-heroicons-link-slash"
+              size="xs"
+              color="error"
+              variant="ghost"
+              class="rounded-xl opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+              @click="confirmUnlink(profile)"
+            />
+          </div>
         </div>
       </UCard>
 
@@ -351,31 +458,108 @@ useSeoMeta({
             <UIcon name="i-heroicons-link" class="w-5 h-5 text-indigo-500" />
             <span class="font-semibold text-gray-900 dark:text-white">Link Player Profile</span>
           </div>
-          <p class="text-sm text-gray-500 mt-2">
-            Enter the 6-digit code provided by the tournament organizer to link your user account to your player profile in the team list.
+          <p v-if="!verifiedPlayer" class="text-sm text-gray-500 mt-2">
+            Enter the 6-digit code provided by the tournament organizer to link your user account to your player profile.
+          </p>
+          <p v-else class="text-sm text-gray-500 mt-2">
+            Please verify the player details before making the verification payment.
           </p>
         </template>
 
-        <UFormField label="Link Code" name="claimCode">
-          <UInput 
-            v-model="claimCode" 
-            placeholder="e.g. A1B2C3" 
-            size="lg"
-            class="font-mono text-center tracking-[0.2em]"
-            maxlength="6"
-            @keyup.enter="handleClaimPlayer"
-          />
-        </UFormField>
+        <!-- Phase 1: Enter code -->
+        <div v-if="!verifiedPlayer" class="space-y-4">
+          <UFormField label="Link Code" name="claimCode">
+            <UInput 
+              v-model="claimCode" 
+              placeholder="e.g. A1B2C3" 
+              size="lg"
+              class="font-mono text-center tracking-[0.2em]"
+              maxlength="6"
+              @keyup.enter="handleVerifyClaimCode"
+            />
+          </UFormField>
+          <div class="flex justify-end gap-3 mt-6">
+            <UButton color="neutral" variant="ghost" @click="showClaimModal = false">Cancel</UButton>
+            <UButton 
+              color="primary" 
+              :loading="verifyingCode"
+              :disabled="!claimCode || claimCode.length < 6"
+              @click="handleVerifyClaimCode"
+            >
+              Verify Code
+            </UButton>
+          </div>
+        </div>
 
-        <div class="flex justify-end gap-3 mt-6">
-          <UButton color="neutral" variant="ghost" @click="showClaimModal = false">Cancel</UButton>
+        <!-- Phase 2: Show details & checkout button -->
+        <div v-else class="space-y-6">
+          <div class="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/10 space-y-3">
+            <div class="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/5">
+              <span class="text-xs text-gray-400 font-bold uppercase tracking-wider">Player Name</span>
+              <span class="text-sm font-black text-gray-900 dark:text-white">{{ verifiedPlayer.name }}</span>
+            </div>
+            <div v-if="verifiedPlayer.number" class="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/5">
+              <span class="text-xs text-gray-400 font-bold uppercase tracking-wider">Shirt Number</span>
+              <span class="text-sm font-black text-emerald-500 font-mono">#{{ verifiedPlayer.number }}</span>
+            </div>
+            <div v-if="verifiedPlayer.position" class="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/5">
+              <span class="text-xs text-gray-400 font-bold uppercase tracking-wider">Position</span>
+              <span class="text-sm font-black text-gray-900 dark:text-white">{{ getPositionLabel(verifiedPlayer.position) }}</span>
+            </div>
+            <div class="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/5">
+              <span class="text-xs text-gray-400 font-bold uppercase tracking-wider">Team</span>
+              <span class="text-sm font-black text-gray-900 dark:text-white truncate max-w-[180px]">{{ verifiedPlayer.teamName }}</span>
+            </div>
+            <div class="flex justify-between items-center py-1.5">
+              <span class="text-xs text-gray-400 font-bold uppercase tracking-wider">Tournament</span>
+              <span class="text-sm font-black text-gray-900 dark:text-white truncate max-w-[180px]">{{ verifiedPlayer.tournamentName }}</span>
+            </div>
+          </div>
+
+          <div class="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex gap-3">
+            <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <p class="text-xs text-amber-700 dark:text-amber-400 font-medium leading-relaxed">
+              Claiming this profile requires a one-time verification fee of <strong>₦500</strong>. You will be redirected to Paystack to complete the payment.
+            </p>
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <UButton color="neutral" variant="ghost" @click="verifiedPlayer = null" :disabled="claimingPlayer">Back</UButton>
+            <UButton 
+              color="primary" 
+              :loading="claimingPlayer"
+              @click="handleInitializeClaimPayment"
+            >
+              Pay ₦500 & Link Profile
+            </UButton>
+          </div>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Unlink Profile Confirmation Modal -->
+  <UModal v-model:open="showUnlinkModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-rose-500" />
+            <span class="font-semibold text-gray-900 dark:text-white">Unlink Player Profile</span>
+          </div>
+          <p class="text-sm text-gray-500 mt-2">
+            Are you sure you want to unlink <strong>{{ profileToUnlink?.name }}</strong> from your account? You will lose edit access to this player profile.
+          </p>
+        </template>
+
+        <div class="flex justify-end gap-3 mt-4">
+          <UButton color="neutral" variant="ghost" @click="showUnlinkModal = false" :disabled="unlinkingPlayer">Cancel</UButton>
           <UButton 
-            color="primary" 
-            :loading="claimingPlayer"
-            :disabled="!claimCode || claimCode.length < 6"
-            @click="handleClaimPlayer"
+            color="error" 
+            :loading="unlinkingPlayer"
+            @click="handleUnlinkPlayer"
           >
-            Link Profile
+            Unlink Profile
           </UButton>
         </div>
       </UCard>
