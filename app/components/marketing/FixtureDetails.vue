@@ -3,7 +3,7 @@ import { useRoute } from '#imports'
 import type { Tournament, Fixture, MatchEvent } from '~/types'
 import { FixtureStatus, MatchEventType } from '~/types'
 
-const { toMain } = useHost()
+const { toMain, isManage } = useHost()
 
 const props = defineProps<{
   tournamentId: string
@@ -28,6 +28,7 @@ const fixture = ref<Fixture | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const activeTab = ref<'events' | 'info' | 'lineups'>('events')
+const activeMobileLineupTeam = ref<'home' | 'away'>('home')
 const route = useRoute()
 const isFullPage = computed(() => route.path.includes('/fixture/'))
 
@@ -304,7 +305,7 @@ const awaySubs = computed(() => {
             </button>
 
             <!-- Full Page Link -->
-            <NuxtLink v-if="!isFullPage" :to="toMain(`/t/${tournament.customName || tournament.id}/fixture/${fixture.id}`)" class="inline-flex items-center gap-1.5 text-xs text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-full border border-emerald-500/20">
+            <NuxtLink v-if="!isFullPage" :to="toMain(`/t/${tournament.customName || tournament.id}/fixture/${fixture.id}`)" :external="isManage" class="inline-flex items-center gap-1.5 text-xs text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-full border border-emerald-500/20">
               View Full Match Page
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -563,9 +564,156 @@ const awaySubs = computed(() => {
             <UIcon name="i-heroicons-users" class="w-10 h-10 text-gray-400 mb-3 opacity-50" />
             <p class="text-sm font-medium text-gray-500">No lineup announced yet.</p>
           </div>
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div v-else class="flex flex-col gap-8 items-center w-full">
+             <!-- Mobile Team Switcher Tabs -->
+            <div class="md:hidden flex justify-center w-full">
+              <div class="inline-flex bg-gray-100 dark:bg-white/[0.06] p-0.5 rounded-lg border border-gray-200 dark:border-white/[0.04] w-full max-w-[280px]">
+                <button
+                  type="button"
+                  class="flex-1 text-center py-1.5 px-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-w-0"
+                  :class="activeMobileLineupTeam === 'home' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'"
+                  @click="activeMobileLineupTeam = 'home'"
+                >
+                  <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-3.5 h-3.5 object-contain flex-shrink-0" />
+                  <span class="truncate block min-w-0 flex-1 text-center">
+                    {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team' }}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 text-center py-1.5 px-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-w-0"
+                  :class="activeMobileLineupTeam === 'away' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'"
+                  @click="activeMobileLineupTeam = 'away'"
+                >
+                  <span class="truncate block min-w-0 flex-1 text-center">
+                    {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team' }}
+                  </span>
+                  <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-3.5 h-3.5 object-contain flex-shrink-0" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Pitch/Substitutes Visuals (Formations Mode) -->
+            <template v-if="fixture.homeFormation || fixture.awayFormation">
+              <!-- Pitch Visuals -->
+            <div class="flex flex-col md:flex-row gap-6 w-full justify-center items-center md:items-start">
+              <FormationPitch
+                v-if="fixture.homeFormation"
+                :players="homeLineup"
+                :formation="fixture.homeFormation"
+                :team-name="fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team'"
+                :team-logo-url="fixture.homeTeam?.logoUrl"
+                :is-dark="isDark"
+                :inverted="false"
+                :match-events="homeEvents"
+                :class="{ 'hidden md:block': activeMobileLineupTeam !== 'home' }"
+              />
+              <FormationPitch
+                v-if="fixture.awayFormation"
+                :players="awayLineup"
+                :formation="fixture.awayFormation"
+                :team-name="fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team'"
+                :team-logo-url="fixture.awayTeam?.logoUrl"
+                :is-dark="isDark"
+                :inverted="true"
+                :match-events="awayEvents"
+                :class="{ 'hidden md:block': activeMobileLineupTeam !== 'away' }"
+              />
+            </div>
+
+            <!-- Substitutes -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+              <!-- Home Substitutes -->
+              <div :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm', { 'hidden md:block': activeMobileLineupTeam !== 'home' }]" class="border rounded-xl overflow-hidden self-start min-w-0">
+                <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+                  <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
+                    {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team' }} Substitutes
+                  </h3>
+                  <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">Subs</span>
+                </div>
+                <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
+                  <template v-if="homeSubs.length">
+                    <NuxtLink v-for="player in homeSubs" :key="'sub-'+player.id" :to="toMain(`/player/${player.id}`)" :external="isManage" class="flex items-center px-5 py-3 transition-colors cursor-pointer" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                      <!-- Player Avatar -->
+                      <div class="relative w-7 h-7 flex-shrink-0 mr-3">
+                        <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                          <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+                          <span v-else class="text-[10px] font-bold text-gray-400">{{ player.name.charAt(0) }}</span>
+                        </div>
+                        <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
+                          {{ player.number }}
+                        </span>
+                      </div>
+                      <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ player.name }}</span>
+                      <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
+                        <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
+                          <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
+                            <IconsSoccerBallIcon class="w-[10px] h-[10px]" />
+                          </div>
+                        </div>
+                        <div v-if="getPlayerAssists(player.id) > 0" class="flex items-center -space-x-1.5" :class="{'ml-1': getPlayerGoals(player.id) > 0}">
+                          <div v-for="i in getPlayerAssists(player.id)" :key="'assist-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-emerald-400'">
+                            <IconsAssistIcon class="w-[10px] h-[10px]" />
+                          </div>
+                        </div>
+                      </div>
+                      <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position.split('-')[0] }}</span>
+                    </NuxtLink>
+                  </template>
+                  <div v-else class="px-5 py-8 text-center">
+                     <p class="text-sm text-gray-500">No substitutes listed.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Away Substitutes -->
+              <div :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm', { 'hidden md:block': activeMobileLineupTeam !== 'away' }]" class="border rounded-xl overflow-hidden self-start min-w-0">
+                <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
+                  <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
+                    {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team' }} Substitutes
+                  </h3>
+                  <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">Subs</span>
+                </div>
+                <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
+                  <template v-if="awaySubs.length">
+                    <NuxtLink v-for="player in awaySubs" :key="'sub-'+player.id" :to="toMain(`/player/${player.id}`)" :external="isManage" class="flex items-center px-5 py-3 transition-colors cursor-pointer" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                      <!-- Player Avatar -->
+                      <div class="relative w-7 h-7 flex-shrink-0 mr-3">
+                        <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                          <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
+                          <span v-else class="text-[10px] font-bold text-gray-400">{{ player.name.charAt(0) }}</span>
+                        </div>
+                        <span v-if="player.number" class="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-[#1a1a1a] shadow-sm">
+                          {{ player.number }}
+                        </span>
+                      </div>
+                      <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ player.name }}</span>
+                      <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
+                        <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
+                          <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
+                            <IconsSoccerBallIcon class="w-[10px] h-[10px]" />
+                          </div>
+                        </div>
+                        <div v-if="getPlayerAssists(player.id) > 0" class="flex items-center -space-x-1.5" :class="{'ml-1': getPlayerGoals(player.id) > 0}">
+                          <div v-for="i in getPlayerAssists(player.id)" :key="'assist-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-emerald-400'">
+                            <IconsAssistIcon class="w-[10px] h-[10px]" />
+                          </div>
+                        </div>
+                      </div>
+                      <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position.split('-')[0] }}</span>
+                    </NuxtLink>
+                  </template>
+                  <div v-else class="px-5 py-8 text-center">
+                    <p class="text-sm text-gray-500">No substitutes listed.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
             <!-- Home Team Players -->
-            <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden self-start min-w-0">
+            <div :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm', { 'hidden md:block': activeMobileLineupTeam !== 'home' }]" class="border rounded-xl overflow-hidden self-start min-w-0">
               <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                 <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
                   {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team' }}
@@ -574,7 +722,7 @@ const awaySubs = computed(() => {
               </div>
               <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
                 <template v-if="homeLineup.length">
-                  <div v-for="player in homeLineup" :key="player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                  <NuxtLink v-for="player in homeLineup" :key="player.id" :to="toMain(`/player/${player.id}`)" :external="isManage" class="flex items-center px-5 py-3 transition-colors cursor-pointer" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
                     <!-- Player Avatar Wrapper -->
                     <div class="relative w-7 h-7 flex-shrink-0 mr-3">
                       <!-- Cropped Avatar Container -->
@@ -602,8 +750,8 @@ const awaySubs = computed(() => {
                         </div>
                       </div>
                     </div>
-                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position }}</span>
-                  </div>
+                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position.split('-')[0] }}</span>
+                  </NuxtLink>
                 </template>
                 <div v-else class="px-5 py-8 text-center">
                   <p class="text-sm text-gray-500">No players listed in lineup.</p>
@@ -615,7 +763,7 @@ const awaySubs = computed(() => {
                     <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Substitutes</span>
                     <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">Subs</span>
                   </div>
-                  <div v-for="player in homeSubs" :key="'sub-'+player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                  <NuxtLink v-for="player in homeSubs" :key="'sub-'+player.id" :to="toMain(`/player/${player.id}`)" :external="isManage" class="flex items-center px-5 py-3 transition-colors cursor-pointer" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
                     <!-- Player Avatar Wrapper -->
                     <div class="relative w-7 h-7 flex-shrink-0 mr-3">
                       <!-- Cropped Avatar Container -->
@@ -643,14 +791,14 @@ const awaySubs = computed(() => {
                         </div>
                       </div>
                     </div>
-                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position }}</span>
-                  </div>
+                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position.split('-')[0] }}</span>
+                  </NuxtLink>
                 </template>
               </div>
             </div>
 
             <!-- Away Team Players -->
-            <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden self-start min-w-0">
+            <div :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm', { 'hidden md:block': activeMobileLineupTeam !== 'away' }]" class="border rounded-xl overflow-hidden self-start min-w-0">
               <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                 <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
                   {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team' }}
@@ -659,7 +807,7 @@ const awaySubs = computed(() => {
               </div>
               <div class="divide-y transition-colors" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
                 <template v-if="awayLineup.length">
-                  <div v-for="player in awayLineup" :key="player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                  <NuxtLink v-for="player in awayLineup" :key="player.id" :to="toMain(`/player/${player.id}`)" :external="isManage" class="flex items-center px-5 py-3 transition-colors cursor-pointer" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
                     <!-- Player Avatar Wrapper -->
                     <div class="relative w-7 h-7 flex-shrink-0 mr-3">
                       <!-- Cropped Avatar Container -->
@@ -687,8 +835,8 @@ const awaySubs = computed(() => {
                         </div>
                       </div>
                     </div>
-                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position }}</span>
-                  </div>
+                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position.split('-')[0] }}</span>
+                  </NuxtLink>
                 </template>
                 <div v-else class="px-5 py-8 text-center">
                   <p class="text-sm text-gray-500">No players listed in lineup.</p>
@@ -700,7 +848,7 @@ const awaySubs = computed(() => {
                     <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Substitutes</span>
                     <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">Subs</span>
                   </div>
-                  <div v-for="player in awaySubs" :key="'sub-'+player.id" class="flex items-center px-5 py-3 transition-colors" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                  <NuxtLink v-for="player in awaySubs" :key="'sub-'+player.id" :to="toMain(`/player/${player.id}`)" :external="isManage" class="flex items-center px-5 py-3 transition-colors cursor-pointer" :class="isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
                     <!-- Player Avatar Wrapper -->
                     <div class="relative w-7 h-7 flex-shrink-0 mr-3">
                       <!-- Cropped Avatar Container -->
@@ -728,13 +876,14 @@ const awaySubs = computed(() => {
                         </div>
                       </div>
                     </div>
-                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position }}</span>
-                  </div>
+                    <span v-if="player.position" class="ml-auto flex-shrink-0 pl-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">{{ player.position.split('-')[0] }}</span>
+                  </NuxtLink>
                 </template>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
         <!-- Match Info Tab -->
         <div v-show="activeTab === 'info'">
