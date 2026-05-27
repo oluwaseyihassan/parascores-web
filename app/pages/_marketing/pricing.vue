@@ -71,16 +71,13 @@
           <UButton 
             block 
             size="lg" 
-            :to="tier.comingSoon ? undefined : getCtaLink(tier)"
-            :disabled="tier.comingSoon"
+            :to="getCtaLink(tier)"
             :class="[
               'font-bold mb-8 h-12 flex items-center justify-center transition-all duration-200 shadow-sm rounded-xl',
-              tier.comingSoon 
-                ? 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-white/10 cursor-not-allowed' 
-                : (tier.buttonColor === 'emerald' ? 'bg-emerald-500 hover:bg-emerald-600 text-white ring-0' : 'bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-900 dark:text-white border border-gray-200 dark:border-white/10')
+              tier.buttonColor === 'emerald' ? 'bg-emerald-500 hover:bg-emerald-600 text-white ring-0' : 'bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-900 dark:text-white border border-gray-200 dark:border-white/10'
             ]"
           >
-            {{ tier.comingSoon ? 'Coming Soon' : tier.buttonText }}
+            {{ tier.buttonText }}
           </UButton>
 
           <div class="space-y-4 flex-grow border-t border-gray-100 dark:border-white/10 pt-6 mt-2">
@@ -162,7 +159,6 @@ const tiers = [
     buttonColor: 'gray',
     popular: false,
     oneTime: true,
-    comingSoon: true,
     features: [
       { text: 'Unlimited participants', tooltip: 'No cap on the number of players or teams that can register or be added to this upgraded tournament.' },
       { text: 'Custom branding & logos', tooltip: 'Upload organization and tournament logos, and display your brand prominently on all public pages.' },
@@ -178,7 +174,6 @@ const tiers = [
     buttonText: 'Start Free 14-day Trial',
     buttonColor: 'emerald',
     popular: true,
-    comingSoon: true,
     features: [
       { text: 'Unlimited active tournaments', tooltip: 'Run as many simultaneous tournaments as you want without any restrictions.' },
       { text: 'Unlimited participants', tooltip: 'No limits on the number of participating teams/players across all your tournaments.' },
