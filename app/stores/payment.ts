@@ -138,6 +138,31 @@ export const usePaymentStore = defineStore('payment', () => {
   }
 
   /**
+   * Initialize a player profile claim payment
+   */
+  async function initializePlayerClaim(data: {
+    playerId: string
+    code?: string
+    callbackUrl: string
+  }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<PaymentInitResponse>>('/payments/initialize-player-claim', {
+        method: 'POST',
+        body: data,
+      })
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Initialize player claim payment failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Verify a payment after Paystack redirect
    */
   async function verifyPayment(reference: string) {
@@ -225,6 +250,7 @@ export const usePaymentStore = defineStore('payment', () => {
     fetchSubscription,
     initializePayment,
     initializeRegistration,
+    initializePlayerClaim,
     verifyPayment,
     cancelSubscription,
     clearSubscription,
