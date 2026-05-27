@@ -60,7 +60,6 @@ const plans = computed(() => [
     planType: 'PER_TOURNAMENT',
     amountInKobo: 5000 * 100,
     oneTime: true,
-    comingSoon: true,
     features: [
       { text: 'Unlimited participants', tooltip: 'No cap on the number of players or teams that can register or be added to this upgraded tournament.' },
       { text: 'Custom branding & logos', tooltip: 'Upload organization and tournament logos, and display your brand prominently on all public pages.' },
@@ -78,7 +77,6 @@ const plans = computed(() => [
     // Amount in kobo — must match the plan amount in Paystack dashboard
     amountInKobo: isYearly.value ? 48000 * 100 : 5000 * 100,
     popular: true,
-    comingSoon: true,
     features: [
       { text: 'Unlimited active tournaments', tooltip: 'Run as many simultaneous tournaments as you want without any restrictions.' },
       { text: 'Unlimited participants', tooltip: 'No limits on the number of participating teams/players across all your tournaments.' },
@@ -134,7 +132,6 @@ watch(() => authStore.currentOrganization?.id, async (newId) => {
 // Subscribe to a plan
 const subscribing = ref(false)
 async function handleSubscribe(plan: typeof plans.value[0]) {
-  if (plan.comingSoon) return
   if (!plan.planType || !authStore.currentOrganization?.id) return
 
   subscribing.value = true
@@ -182,7 +179,6 @@ async function handleCancelSubscription() {
 
 // Helpers
 function getButtonLabel(plan: typeof plans.value[0]) {
-  if (plan.comingSoon) return 'Coming Soon'
   if (plan.key === currentPlan.value && isActive.value) return 'Current Plan'
   if (plan.key === 'FREE') return 'Free Forever'
   if (plan.key === 'ENTERPRISE') return 'Contact Sales'
@@ -197,7 +193,6 @@ function isCurrentPlan(plan: typeof plans.value[0]) {
 }
 
 function canSubscribe(plan: typeof plans.value[0]) {
-  if (plan.comingSoon) return false
   if (plan.key === 'FREE' || plan.key === 'ENTERPRISE') return false
   if (plan.key === 'PER_TOURNAMENT') return true
   if (isCurrentPlan(plan)) return false
@@ -205,7 +200,6 @@ function canSubscribe(plan: typeof plans.value[0]) {
 }
 
 function handlePlanAction(plan: typeof plans.value[0]) {
-  if (plan.comingSoon) return
   if (plan.key === 'PER_TOURNAMENT') {
     selectedTournamentId.value = ''
     showTournamentSelector.value = true
@@ -217,7 +211,29 @@ function handlePlanAction(plan: typeof plans.value[0]) {
 }
 
 async function handleTournamentUpgrade() {
-  // Coming soon
+  if (!authStore.currentOrganization?.id || !selectedTournamentId.value) return
+
+  upgradingTournament.value = true
+  try {
+    const dashboardUrl = config.public.DASHBOARD_URL || window.location.origin
+    const callbackUrl = `${dashboardUrl}/billing/callback`
+
+    const response = await paymentStore.initializePayment(
+      authStore.currentOrganization.id,
+      'PER_TOURNAMENT',
+      5000 * 100,
+      callbackUrl,
+      selectedTournamentId.value
+    )
+
+    if (response.data?.authorization_url) {
+      window.location.href = response.data.authorization_url
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Upgrade Failed' })
+  } finally {
+    upgradingTournament.value = false
+  }
 }
 
 function formatDate(dateStr: string | null | undefined) {
@@ -383,17 +399,15 @@ const statusColor = computed(() => {
         <UButton
           block
           size="lg"
-          :disabled="plan.comingSoon || isCurrentPlan(plan) || loading || subscribing"
+          :disabled="isCurrentPlan(plan) || loading || subscribing"
           :loading="subscribing && canSubscribe(plan)"
           :class="[
             'font-bold mb-6 h-11 rounded-xl transition-all',
-            plan.comingSoon
-              ? 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-white/10 cursor-not-allowed'
-              : (canSubscribe(plan) 
-                ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm' 
-                : plan.key === 'ENTERPRISE'
-                  ? 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10'
-                  : 'bg-gray-100 dark:bg-white/5 text-gray-500')
+            canSubscribe(plan) 
+              ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm' 
+              : plan.key === 'ENTERPRISE'
+                ? 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10'
+                : 'bg-gray-100 dark:bg-white/5 text-gray-500'
           ]"
           @click="handlePlanAction(plan)"
         >
