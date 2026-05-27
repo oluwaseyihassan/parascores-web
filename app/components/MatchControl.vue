@@ -28,6 +28,7 @@ const fixtureStore = useFixtureStore()
 const standingStore = useStandingStore()
 const participantStore = useParticipantStore()
 const venueStore = useVenueStore()
+const playerStore = usePlayerStore()
 const { handleError, extractErrorMessage } = useErrors()
 
 // Local state
@@ -49,10 +50,30 @@ const showPenaltyCollapsible = ref(true)
 const showPenaltyOverride = ref(false)
 const errorMessage = ref<string | null>(null)
 const swappingTeams = ref(false)
+const colorMode = useColorMode()
+const isDark = computed(() => colorMode.value === 'dark')
 
 const selectedLineupIds = ref<string[]>([])
 const showLineupCollapsible = ref(false)
 const savingLineups = ref(false)
+const homeFormation = ref<string>('')
+const awayFormation = ref<string>('')
+const lineupViewMode = ref<'list' | 'pitch'>('pitch')
+const changedPositions = ref<Record<string, string>>({})
+const activeLineupTeam = ref<'home' | 'away'>('home')
+
+const formationPresets = [
+  { label: 'Select formation...', value: '' },
+  { label: '4-4-2', value: '4-4-2' },
+  { label: '4-3-3', value: '4-3-3' },
+  { label: '4-2-3-1', value: '4-2-3-1' },
+  { label: '3-5-2', value: '3-5-2' },
+  { label: '3-4-3', value: '3-4-3' },
+  { label: '5-3-2', value: '5-3-2' },
+  { label: '5-4-1', value: '5-4-1' },
+  { label: '4-1-4-1', value: '4-1-4-1' },
+  { label: '4-5-1', value: '4-5-1' }
+]
 
 // Goal scoring modal
 const showGoalModal = ref(false)
@@ -142,6 +163,11 @@ watch(() => props.fixture, async (newFixture) => {
   if (newFixture && props.open) {
     selectedFixture.value = { ...newFixture }
     selectedLineupIds.value = newFixture.lineupPlayers?.map(p => p.id) || []
+    homeFormation.value = newFixture.homeFormation || ''
+    awayFormation.value = newFixture.awayFormation || ''
+    changedPositions.value = {}
+    lineupViewMode.value = (newFixture.homeFormation || newFixture.awayFormation) ? 'pitch' : 'list'
+    activeLineupTeam.value = 'home'
     await loadMatchData(newFixture)
   }
 }, { immediate: true })
@@ -151,6 +177,11 @@ watch(() => props.open, async (isOpen) => {
     errorMessage.value = null
     selectedFixture.value = { ...props.fixture }
     selectedLineupIds.value = props.fixture.lineupPlayers?.map(p => p.id) || []
+    homeFormation.value = props.fixture.homeFormation || ''
+    awayFormation.value = props.fixture.awayFormation || ''
+    changedPositions.value = {}
+    lineupViewMode.value = (props.fixture.homeFormation || props.fixture.awayFormation) ? 'pitch' : 'list'
+    activeLineupTeam.value = 'home'
     matchVenue.value = props.fixture.venue || ''
     showScheduleCollapsible.value = props.fixture.status === 'SCHEDULED'
     if (props.fixture.startTime) {
@@ -184,6 +215,10 @@ watch(() => props.open, async (isOpen) => {
     awayPlayers.value = []
     matchVenue.value = ''
     selectedLineupIds.value = []
+    homeFormation.value = ''
+    awayFormation.value = ''
+    changedPositions.value = {}
+    activeLineupTeam.value = 'home'
   }
 })
 
@@ -193,6 +228,16 @@ const loadMatchData = async (fixture: Fixture) => {
   loadingEvents.value = true
   
   try {
+    // Fetch full fixture details to get the saved lineup players
+    const detailedFixtureRes = await $api<any>(`/fixtures/${fixture.id}`)
+    const detailedFixture = detailedFixtureRes?.data || detailedFixtureRes
+    if (detailedFixture) {
+      selectedFixture.value = detailedFixture
+      selectedLineupIds.value = detailedFixture.lineupPlayers?.map((p: any) => p.id) || []
+      homeFormation.value = detailedFixture.homeFormation || ''
+      awayFormation.value = detailedFixture.awayFormation || ''
+    }
+
     const promises: Promise<any>[] = []
     
     if (fixture.homeTeamId) {
@@ -506,7 +551,7 @@ const currentlyOnPitch = computed(() => {
 
 const subPlayerOutOptions = computed(() => {
   return currentlyOnPitch.value.map(p => ({
-    label: `${p.number ? '#' + p.number + ' ' : ''}${p.name}${p.position ? ' (' + p.position + ')' : ''}`,
+    label: `${p.number ? '#' + p.number + ' ' : ''}${p.name}${p.position ? ' (' + p.position.split('-')[0] + ')' : ''}`,
     value: p.id
   }))
 })
@@ -521,7 +566,7 @@ const subPlayerInOptions = computed(() => {
   return benchPlayers
     .filter(p => p.id !== subData.playerOutId)
     .map(p => ({
-      label: `${p.number ? '#' + p.number + ' ' : ''}${p.name}${p.position ? ' (' + p.position + ')' : ''}`,
+      label: `${p.number ? '#' + p.number + ' ' : ''}${p.name}${p.position ? ' (' + p.position.split('-')[0] + ')' : ''}`,
       value: p.id
     }))
 })
@@ -1020,6 +1065,8 @@ const swapTeams = async () => {
       awayPenaltyScore: f.homePenaltyScore ?? null,
       homeTeamPlaceholder: f.awayTeamPlaceholder ?? null,
       awayTeamPlaceholder: f.homeTeamPlaceholder ?? null,
+      homeFormation: f.awayFormation ?? null,
+      awayFormation: f.homeFormation ?? null,
     })
     
     // Swap local state
@@ -1035,8 +1082,15 @@ const swapTeams = async () => {
       awayPenaltyScore: f.homePenaltyScore,
       homeTeamPlaceholder: f.awayTeamPlaceholder,
       awayTeamPlaceholder: f.homeTeamPlaceholder,
+      homeFormation: f.awayFormation,
+      awayFormation: f.homeFormation,
     }
     selectedFixture.value = newFixture
+    
+    // Swap local refs
+    const tempForm = homeFormation.value
+    homeFormation.value = awayFormation.value
+    awayFormation.value = tempForm
     
     // Swap players too
     const tempPlayers = homePlayers.value
@@ -1084,23 +1138,53 @@ const clearRosterLineup = (team: 'home' | 'away') => {
   selectedLineupIds.value = selectedLineupIds.value.filter(id => !idsToRemove.has(id))
 }
 
+const handlePlayerPositionUpdate = (team: 'home' | 'away', playerId: string, newPosition: string) => {
+  const players = team === 'home' ? homePlayers.value : awayPlayers.value
+  const player = players.find(p => p.id === playerId)
+  if (player) {
+    const oldPosition = player.position
+    if (oldPosition !== newPosition) {
+      player.position = newPosition
+      changedPositions.value[playerId] = newPosition
+    }
+  }
+}
+
 const saveLineups = async () => {
   if (!selectedFixture.value) return
   savingLineups.value = true
   try {
     const res = await fixtureStore.updateFixture(selectedFixture.value.id, {
-      lineupPlayerIds: selectedLineupIds.value
+      lineupPlayerIds: selectedLineupIds.value,
+      homeFormation: homeFormation.value || null,
+      awayFormation: awayFormation.value || null
     })
+    
+    // Batch update player positions in the database
+    const positionUpdatePromises = Object.entries(changedPositions.value).map(([playerId, newPos]) => {
+      return playerStore.updateProfile(playerId, { position: newPos })
+        .catch(err => {
+          console.error(`Failed to update position for player ${playerId} to ${newPos}:`, err)
+        })
+    })
+    
+    if (positionUpdatePromises.length > 0) {
+      await Promise.all(positionUpdatePromises)
+      changedPositions.value = {}
+    }
+
     if (res.data) {
       selectedFixture.value = {
         ...selectedFixture.value,
-        lineupPlayers: res.data.lineupPlayers || []
+        lineupPlayers: res.data.lineupPlayers || [],
+        homeFormation: res.data.homeFormation,
+        awayFormation: res.data.awayFormation
       }
       emit('fixture-updated', selectedFixture.value)
       
       useToast().add({
         title: 'Lineups Saved',
-        description: 'Match lineups have been successfully updated.',
+        description: 'Match lineups and positions have been successfully updated.',
         icon: 'i-heroicons-check-circle',
         color: 'success'
       })
@@ -1483,14 +1567,140 @@ const downloadGraphic = async () => {
                 <UIcon :name="showLineupCollapsible ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" class="w-4 h-4 text-gray-400" />
               </button>
               <div v-if="showLineupCollapsible" class="mc-section__body">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <!-- Home Roster -->
-                  <div class="mc-roster-box">
-                    <div class="flex items-center justify-between mb-3">
-                      <span class="text-xs font-bold uppercase tracking-wider text-gray-400 truncate">
-                        {{ selectedFixture.homeTeam?.customName || 'Home Roster' }}
+                <!-- Formation Selection -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pb-4 border-b border-gray-100 dark:border-white/[0.06]">
+                  <UFormField label="Home Formation">
+                    <select
+                      v-model="homeFormation"
+                      class="relative w-full rounded-md border border-gray-300 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option v-for="preset in formationPresets" :key="preset.value" :value="preset.value">
+                        {{ preset.label }}
+                      </option>
+                    </select>
+                  </UFormField>
+                  <UFormField label="Away Formation">
+                    <select
+                      v-model="awayFormation"
+                      class="relative w-full rounded-md border border-gray-300 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option v-for="preset in formationPresets" :key="preset.value" :value="preset.value">
+                        {{ preset.label }}
+                      </option>
+                    </select>
+                  </UFormField>
+                </div>
+
+                <!-- View Mode Toggle -->
+                <div class="flex items-center justify-between mb-4 pb-4 border-b border-gray-100 dark:border-white/[0.06]">
+                  <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">Builder Mode:</span>
+                  <div class="flex items-center gap-1.5 bg-gray-100 dark:bg-white/[0.06] p-0.5 rounded-lg border border-gray-200 dark:border-white/[0.04]">
+                    <button
+                      type="button"
+                      class="px-3 py-1 rounded-md text-[11px] font-bold transition-all"
+                      :class="lineupViewMode === 'pitch' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'"
+                      @click="lineupViewMode = 'pitch'"
+                    >
+                      Visual Pitch
+                    </button>
+                    <button
+                      type="button"
+                      class="px-3 py-1 rounded-md text-[11px] font-bold transition-all"
+                      :class="lineupViewMode === 'list' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'"
+                      @click="lineupViewMode = 'list'"
+                    >
+                      Roster List
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Team Switcher Tabs -->
+                <div class="flex justify-center mb-6">
+                  <div class="inline-flex bg-gray-100 dark:bg-white/[0.06] p-0.5 rounded-lg border border-gray-200 dark:border-white/[0.04] w-full max-w-[320px] sm:max-w-[400px]">
+                    <button
+                      type="button"
+                      class="flex-1 text-center py-1.5 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-w-0"
+                      :class="activeLineupTeam === 'home' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'"
+                      @click="activeLineupTeam = 'home'"
+                    >
+                      <img v-if="selectedFixture.homeTeam?.logoUrl" :src="selectedFixture.homeTeam.logoUrl" class="w-3.5 h-3.5 object-contain flex-shrink-0" />
+                      <span class="truncate block min-w-0 flex-1 text-center">
+                        {{ selectedFixture.homeTeam?.customName || 'Home Team' }}
                       </span>
-                      <div class="flex gap-1.5">
+                      <span v-if="lineupViewMode === 'pitch' && homeFormation" class="text-[10px] opacity-75 font-semibold flex-shrink-0">({{ homeFormation }})</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="flex-1 text-center py-1.5 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-w-0"
+                      :class="activeLineupTeam === 'away' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'"
+                      @click="activeLineupTeam = 'away'"
+                    >
+                      <span v-if="lineupViewMode === 'pitch' && awayFormation" class="text-[10px] opacity-75 font-semibold flex-shrink-0">({{ awayFormation }})</span>
+                      <span class="truncate block min-w-0 flex-1 text-center">
+                        {{ selectedFixture.awayTeam?.customName || 'Away Team' }}
+                      </span>
+                      <img v-if="selectedFixture.awayTeam?.logoUrl" :src="selectedFixture.awayTeam.logoUrl" class="w-3.5 h-3.5 object-contain flex-shrink-0" />
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Visual Pitch Editor -->
+                <div v-if="lineupViewMode === 'pitch'">
+                  <div v-if="!homeFormation && !awayFormation" class="border border-dashed border-gray-200 dark:border-white/10 rounded-xl p-8 text-center bg-gray-50/50 dark:bg-white/[0.01]">
+                    <UIcon name="i-heroicons-information-circle" class="w-8 h-8 text-gray-400 mb-2 mx-auto" />
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Please select a formation for the teams above to use the visual pitch builder.</p>
+                  </div>
+                  <div v-else>
+                    <!-- Home Team Visual Builder -->
+                    <div v-if="activeLineupTeam === 'home'" class="w-full">
+                      <div class="w-full" v-if="homeFormation">
+                        <FormationPitchEditor
+                          :players="homePlayers"
+                          v-model:selectedLineupIds="selectedLineupIds"
+                          :formation="homeFormation"
+                          :teamName="selectedFixture.homeTeam?.customName || 'Home'"
+                          :is-dark="isDark"
+                          @update-player-position="(playerId, pos) => handlePlayerPositionUpdate('home', playerId, pos)"
+                        />
+                      </div>
+                      <div v-else class="border border-dashed border-gray-200 dark:border-white/10 rounded-xl p-8 text-center bg-gray-50/50 dark:bg-white/[0.01] flex flex-col justify-center items-center">
+                        <UIcon name="i-heroicons-information-circle" class="w-6 h-6 text-gray-400 mb-1" />
+                        <p class="text-[11px] text-gray-500">Select Home formation to show pitch.</p>
+                      </div>
+                    </div>
+
+                    <!-- Away Team Visual Builder -->
+                    <div v-if="activeLineupTeam === 'away'" class="w-full">
+                      <div class="w-full" v-if="awayFormation">
+                        <FormationPitchEditor
+                          :players="awayPlayers"
+                          v-model:selectedLineupIds="selectedLineupIds"
+                          :formation="awayFormation"
+                          :teamName="selectedFixture.awayTeam?.customName || 'Away'"
+                          :is-dark="isDark"
+                          @update-player-position="(playerId, pos) => handlePlayerPositionUpdate('away', playerId, pos)"
+                        />
+                      </div>
+                      <div v-else class="border border-dashed border-gray-200 dark:border-white/10 rounded-xl p-8 text-center bg-gray-50/50 dark:bg-white/[0.01] flex flex-col justify-center items-center">
+                        <UIcon name="i-heroicons-information-circle" class="w-6 h-6 text-gray-400 mb-1" />
+                        <p class="text-[11px] text-gray-500">Select Away formation to show pitch.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Roster Checkbox Lists (List Mode) -->
+                <div v-else>
+                  <!-- Home Roster -->
+                  <div v-if="activeLineupTeam === 'home'" class="mc-roster-box">
+                    <div class="flex items-center justify-between mb-3">
+                      <div class="flex items-center gap-2 min-w-0">
+                        <img v-if="selectedFixture.homeTeam?.logoUrl" :src="selectedFixture.homeTeam.logoUrl" class="w-4 h-4 object-contain flex-shrink-0" />
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 truncate min-w-0">
+                          {{ selectedFixture.homeTeam?.customName || 'Home Roster' }}
+                        </span>
+                      </div>
+                      <div class="flex gap-1.5 flex-shrink-0">
                         <UButton size="xs" variant="ghost" color="primary" label="All" @click="selectAllRoster('home')" />
                         <UButton size="xs" variant="ghost" color="neutral" label="Clear" @click="clearRosterLineup('home')" />
                       </div>
@@ -1506,20 +1716,23 @@ const downloadGraphic = async () => {
                         <UCheckbox
                           :model-value="selectedLineupIds.includes(player.id)"
                           @update:model-value="(val) => togglePlayerLineup(player.id, !!val)"
-                          :id="`lineup-player-${player.id}`"
-                          :label="`${player.number ? '#' + player.number + ' ' : ''}${player.name} ${player.position ? '(' + player.position + ')' : ''}`"
+                          :id="`lineup-player-home-${player.id}`"
+                          :label="`${player.number ? '#' + player.number + ' ' : ''}${player.name} ${player.position ? '(' + player.position.split('-')[0] + ')' : ''}`"
                         />
                       </div>
                     </div>
                   </div>
 
                   <!-- Away Roster -->
-                  <div class="mc-roster-box">
+                  <div v-if="activeLineupTeam === 'away'" class="mc-roster-box">
                     <div class="flex items-center justify-between mb-3">
-                      <span class="text-xs font-bold uppercase tracking-wider text-gray-400 truncate">
-                        {{ selectedFixture.awayTeam?.customName || 'Away Roster' }}
-                      </span>
-                      <div class="flex gap-1.5">
+                      <div class="flex items-center gap-2 min-w-0">
+                        <img v-if="selectedFixture.awayTeam?.logoUrl" :src="selectedFixture.awayTeam.logoUrl" class="w-4 h-4 object-contain flex-shrink-0" />
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 truncate min-w-0">
+                          {{ selectedFixture.awayTeam?.customName || 'Away Roster' }}
+                        </span>
+                      </div>
+                      <div class="flex gap-1.5 flex-shrink-0">
                         <UButton size="xs" variant="ghost" color="primary" label="All" @click="selectAllRoster('away')" />
                         <UButton size="xs" variant="ghost" color="neutral" label="Clear" @click="clearRosterLineup('away')" />
                       </div>
@@ -1535,15 +1748,16 @@ const downloadGraphic = async () => {
                         <UCheckbox
                           :model-value="selectedLineupIds.includes(player.id)"
                           @update:model-value="(val) => togglePlayerLineup(player.id, !!val)"
-                          :id="`lineup-player-${player.id}`"
-                          :label="`${player.number ? '#' + player.number + ' ' : ''}${player.name} ${player.position ? '(' + player.position + ')' : ''}`"
+                          :id="`lineup-player-away-${player.id}`"
+                          :label="`${player.number ? '#' + player.number + ' ' : ''}${player.name} ${player.position ? '(' + player.position.split('-')[0] + ')' : ''}`"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div class="mt-4 flex justify-end">
+                <!-- Save button -->
+                <div class="mt-6 flex justify-end">
                   <UButton
                     color="primary"
                     variant="solid"
@@ -1757,14 +1971,16 @@ const downloadGraphic = async () => {
     <template #content>
       <UCard>
         <template #header>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-green-500" />
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+          <div class="flex items-center justify-between gap-4 min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-green-500 shrink-0" />
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white shrink-0">
                 Record Goal
               </h3>
-              <UBadge :color="scoringTeam === 'home' ? 'primary' : 'warning'" variant="subtle" size="sm">
-                {{ scoringTeam === 'home' ? selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customName }}
+              <UBadge :color="scoringTeam === 'home' ? 'primary' : 'warning'" variant="subtle" size="sm" class="min-w-0">
+                <span class="truncate max-w-[120px] sm:max-w-[200px] block">
+                  {{ scoringTeam === 'home' ? selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customName }}
+                </span>
               </UBadge>
             </div>
             <UButton 
@@ -1772,6 +1988,7 @@ const downloadGraphic = async () => {
               variant="ghost" 
               color="neutral" 
               size="sm"
+              class="shrink-0"
               @click="showGoalModal = false"
             />
           </div>
@@ -1857,17 +2074,19 @@ const downloadGraphic = async () => {
     <template #content>
       <UCard>
         <template #header>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-warning-500" />
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+          <div class="flex items-center justify-between gap-4 min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-warning-500 shrink-0" />
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white shrink-0">
                 Record Card
               </h3>
-              <UBadge :color="cardTeam === 'home' ? 'primary' : 'warning'" variant="subtle" size="sm">
-                {{ cardTeam === 'home' ? selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customName }}
+              <UBadge :color="cardTeam === 'home' ? 'primary' : 'warning'" variant="subtle" size="sm" class="min-w-0">
+                <span class="truncate max-w-[120px] sm:max-w-[200px] block">
+                  {{ cardTeam === 'home' ? selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customName }}
+                </span>
               </UBadge>
             </div>
-            <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" @click="showCardModal = false" />
+            <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" class="shrink-0" @click="showCardModal = false" />
           </div>
         </template>
 
@@ -1932,17 +2151,19 @@ const downloadGraphic = async () => {
     <template #content>
       <UCard>
         <template #header>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 text-purple-500" />
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+          <div class="flex items-center justify-between gap-4 min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 text-purple-500 shrink-0" />
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white shrink-0">
                 Record Substitution
               </h3>
-              <UBadge :color="subTeam === 'home' ? 'primary' : 'warning'" variant="subtle" size="sm">
-                {{ subTeam === 'home' ? selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customName }}
+              <UBadge :color="subTeam === 'home' ? 'primary' : 'warning'" variant="subtle" size="sm" class="min-w-0">
+                <span class="truncate max-w-[120px] sm:max-w-[200px] block">
+                  {{ subTeam === 'home' ? selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customName }}
+                </span>
               </UBadge>
             </div>
-            <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" @click="showSubstitutionModal = false" />
+            <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" class="shrink-0" @click="showSubstitutionModal = false" />
           </div>
         </template>
 
