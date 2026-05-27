@@ -782,15 +782,14 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <USwitch v-model="state.autoApprove" />
           </div>
 
-          <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 opacity-60">
+          <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
             <div class="flex-1 pr-4">
               <p class="font-medium text-gray-900 dark:text-white flex items-center gap-2">
                 Paid Registration
-                <span class="text-[9px] font-extrabold text-amber-500 bg-amber-500/10 border border-amber-500/20 py-0.5 px-1.5 rounded uppercase tracking-wider">Coming Soon</span>
               </p>
               <p class="text-sm text-gray-500">Require teams to pay a registration fee to join.</p>
             </div>
-            <USwitch :model-value="false" disabled />
+            <USwitch v-model="state.isPaidRegistration" />
           </div>
 
           <div v-if="state.isPaidRegistration" class="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-4 animate-in fade-in duration-200">
