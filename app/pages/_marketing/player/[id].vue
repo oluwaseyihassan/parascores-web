@@ -19,8 +19,59 @@ const error = ref<string | null>(null)
 const authStore = useAuthStore()
 const { user, isAuthenticated } = storeToRefs(authStore)
 const playerStore = usePlayerStore()
+const paymentStore = usePaymentStore()
+const config = useRuntimeConfig()
 const toast = useToast()
 const { handleError } = useErrors()
+
+// Claim state
+const claiming = ref(false)
+const showClaimModal = ref(false)
+const verifyingPayment = ref(false)
+
+const handleClaimProfile = async () => {
+  if (!player.value) return
+  if (!isAuthenticated.value) {
+    navigateTo(`/auth/login?redirect=${route.fullPath}`)
+    return
+  }
+
+  // Check if player user already has a linked profile in this tournament
+  const hasProfileInTournament = user.value?.player_profiles?.some(
+    (p: any) => p.participant?.tournament_id === player.value.participant?.tournament_id
+  )
+  if (hasProfileInTournament) {
+    toast.add({
+      title: 'Already Registered',
+      description: 'You already have a linked player profile in this tournament.',
+      color: 'error'
+    })
+    return
+  }
+
+  showClaimModal.value = true
+}
+
+const handleConfirmClaimPayment = async () => {
+  claiming.value = true
+  try {
+    const callbackUrl = `${window.location.origin}/player/${playerId}`
+    const res = await paymentStore.initializePlayerClaim({
+      playerId,
+      callbackUrl,
+    })
+
+    if (res.data?.authorization_url) {
+      window.location.href = res.data.authorization_url
+    } else {
+      throw new Error('Failed to generate checkout URL')
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Checkout Failed' })
+  } finally {
+    claiming.value = false
+  }
+}
 
 // Check if current user is owner of this player profile
 const isOwner = computed(() => {
@@ -142,6 +193,32 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+
+  // Check if there is a payment reference query param to verify
+  const reference = route.query.reference as string
+  if (reference) {
+    verifyingPayment.value = true
+    try {
+      await paymentStore.verifyPayment(reference)
+      toast.add({
+        title: 'Claim Request Submitted 🎉',
+        description: 'Your payment was successful. The claim is now pending approval from the tournament organizer.',
+        color: 'success',
+      })
+      // Clear query params
+      const router = useRouter()
+      router.replace(`/player/${playerId}`)
+      // Re-fetch player details to show pending status
+      const response = await $publicApi<{success: boolean, data: any}>(`/players/${playerId}`)
+      if (response.data) {
+        player.value = response.data
+      }
+    } catch (err: any) {
+      handleError(err, { title: 'Payment Verification Failed' })
+    } finally {
+      verifyingPayment.value = false
+    }
+  }
 })
 
 const getPositionLabel = (pos: string | null | undefined) => {
@@ -151,7 +228,8 @@ const getPositionLabel = (pos: string | null | undefined) => {
     MID: 'Midfielder',
     FWD: 'Forward',
   }
-  return pos ? map[pos] || pos : 'Unknown'
+  const cat = pos ? pos.split('-')[0] : ''
+  return cat ? map[cat] || cat : 'Unknown'
 }
 
 const getPositionColor = (pos: string | null | undefined): string => {
@@ -161,7 +239,8 @@ const getPositionColor = (pos: string | null | undefined): string => {
     MID: 'success',
     FWD: 'error',
   }
-  return pos ? map[pos] || 'neutral' : 'neutral'
+  const cat = pos ? pos.split('-')[0] : ''
+  return cat ? map[cat] || 'neutral' : 'neutral'
 }
 
 // Count stats from match events
@@ -188,6 +267,13 @@ const statsFromEvents = computed(() => {
       <p class="text-sm text-gray-400">Loading player profile...</p>
     </div>
 
+    <!-- Verifying Payment Loading -->
+    <div v-else-if="verifyingPayment" class="flex flex-col items-center justify-center py-24 bg-white dark:bg-white/[0.02] rounded-3xl border border-gray-100 dark:border-white/[0.05]">
+      <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-emerald-500 mb-3" />
+      <h2 class="text-lg font-bold text-gray-900 dark:text-white">Verifying Profile Claim...</h2>
+      <p class="text-sm text-gray-400 mt-1">Please wait while we confirm your payment transaction.</p>
+    </div>
+
     <!-- Error -->
     <div v-else-if="error" class="text-center py-24 bg-white dark:bg-white/[0.02] rounded-3xl border border-gray-100 dark:border-white/[0.05] px-6">
       <div class="w-14 h-14 bg-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -201,6 +287,17 @@ const statsFromEvents = computed(() => {
     <!-- Player Profile -->
     <div v-else-if="player" class="space-y-8">
       
+      <!-- Pending Verification Banner -->
+      <div v-if="player.userId === user?.id && player.status === 'PENDING'" class="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3">
+        <UIcon name="i-heroicons-information-circle-solid" class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+        <div>
+          <h4 class="text-sm font-bold text-amber-950 dark:text-amber-400">Profile Claim Pending Verification</h4>
+          <p class="text-xs text-amber-700 dark:text-amber-500/80 mt-0.5 leading-relaxed">
+            You have claimed this profile and paid the verification fee. It is currently awaiting approval from the tournament organizer.
+          </p>
+        </div>
+      </div>
+
       <!-- Hero Card -->
       <div class="relative bg-white dark:bg-white/[0.02] rounded-2xl border border-gray-200 dark:border-white/[0.05] p-6 sm:p-8 overflow-hidden transition-all shadow-sm">
         <!-- Accent top line -->
@@ -248,10 +345,10 @@ const statsFromEvents = computed(() => {
                 <!-- Position Badge -->
                 <span 
                   class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border"
-                  :class="player.position === 'GK' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' :
-                          player.position === 'DEF' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' :
-                          player.position === 'MID' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
-                          player.position === 'FWD' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' :
+                  :class="player.position?.split('-')[0] === 'GK' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' :
+                          player.position?.split('-')[0] === 'DEF' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' :
+                          player.position?.split('-')[0] === 'MID' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
+                          player.position?.split('-')[0] === 'FWD' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' :
                           'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20'"
                 >
                   {{ getPositionLabel(player.position) }}
@@ -276,6 +373,28 @@ const statsFromEvents = computed(() => {
                 >
                   Edit Profile
                 </UButton>
+              </div>
+
+              <!-- Claim Profile Button -->
+              <div v-if="!player.userId" class="pt-2">
+                <UButton
+                  variant="solid"
+                  color="primary"
+                  size="sm"
+                  icon="i-heroicons-user-plus"
+                  @click="handleClaimProfile"
+                  class="rounded-xl font-bold uppercase tracking-wider text-[10px] px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white"
+                >
+                  Is this you? Claim Profile
+                </UButton>
+              </div>
+
+              <!-- Pending Claim Badge -->
+              <div v-else-if="player.status === 'PENDING'" class="pt-2">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold text-xs uppercase tracking-wider">
+                  <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+                  Claim Pending Approval
+                </span>
               </div>
             </div>
 
@@ -475,6 +594,59 @@ const statsFromEvents = computed(() => {
 
     </div>
   </div>
+
+  <!-- Claim Profile Confirmation Modal -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div
+        v-if="showClaimModal"
+        class="fixed inset-0 z-50 flex items-center justify-center px-4"
+        @click.self="showClaimModal = false"
+      >
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showClaimModal = false" />
+
+        <div class="relative w-full max-w-md rounded-3xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10">
+          <button
+            @click="showClaimModal = false"
+            class="absolute top-4 right-4 p-1.5 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 dark:text-gray-600"
+          >
+            <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+          </button>
+
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+              <UIcon name="i-heroicons-user-plus" class="w-5 h-5 text-emerald-500" />
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Claim Player Profile</h3>
+          </div>
+
+          <p class="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+            Are you sure you want to claim the player profile for <strong>{{ player?.name }}</strong> in <strong>{{ player?.participant?.tournament?.name }}</strong>?
+            <br /><br />
+            Claiming this profile requires a one-time verification fee of <strong>₦500</strong>. After payment, the tournament organizer will verify your identity to approve the claim.
+          </p>
+
+          <div class="flex gap-3">
+            <UButton
+              label="Cancel"
+              color="neutral"
+              variant="soft"
+              class="flex-1 font-bold rounded-xl"
+              @click="showClaimModal = false"
+            />
+            <UButton
+              label="Pay ₦500 & Claim"
+              color="primary"
+              variant="solid"
+              class="flex-1 font-bold rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
+              :loading="claiming"
+              @click="handleConfirmClaimPayment"
+            />
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -496,5 +668,26 @@ const statsFromEvents = computed(() => {
 }
 .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #444;
+}
+
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modal-enter-active > div:last-child,
+.modal-leave-active > div:last-child {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-enter-from > div:last-child {
+  transform: scale(0.95);
+  opacity: 0;
+}
+.modal-leave-to > div:last-child {
+  transform: scale(0.95);
+  opacity: 0;
 }
 </style>
