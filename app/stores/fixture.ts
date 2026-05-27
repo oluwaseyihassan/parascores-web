@@ -16,6 +16,8 @@ export interface UpdateFixtureData {
   startTime?: string | null
   venue?: string | null
   lineupPlayerIds?: string[]
+  homeFormation?: string | null
+  awayFormation?: string | null
 }
 
 export interface CreateFixtureData {
