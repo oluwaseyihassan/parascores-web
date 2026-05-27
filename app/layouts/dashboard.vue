@@ -237,7 +237,14 @@ const handleLogout = async () => {
         <header class="hidden md:flex items-center justify-between px-8 py-4 border-b border-gray-200 dark:border-white/10 bg-white/30 dark:bg-transparent">
           <div class="flex items-center gap-3">
             <template v-if="authStore.currentOrganization">
-              <UDropdownMenu :items="orgMenuItems" :content="{ align: 'start', side: 'bottom', sideOffset: 8 }">
+              <UDropdownMenu 
+                :items="orgMenuItems" 
+                :content="{ align: 'start', side: 'bottom', sideOffset: 8 }"
+                :ui="{ content: 'w-72 sm:w-80' }"
+              >
+                <template #item-label="{ item }">
+                  <span class="truncate block w-[190px] sm:w-[230px]" :title="item.label">{{ item.label }}</span>
+                </template>
                 <button class="flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-white/10 px-2.5 py-1.5 rounded-xl transition-all cursor-pointer group">
                   <UAvatar 
                     v-if="authStore.currentOrganization.logoUrl" 
@@ -248,7 +255,7 @@ const handleLogout = async () => {
                   <div v-else class="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-[10px] font-bold text-indigo-500">
                     {{ authStore.currentOrganization.name?.charAt(0) }}
                   </div>
-                  <span class="font-bold text-gray-800 dark:text-white text-sm">
+                  <span class="font-bold text-gray-800 dark:text-white text-sm truncate max-w-[160px] md:max-w-[200px]">
                     {{ authStore.currentOrganization.name }}
                   </span>
                   <UIcon name="i-heroicons-chevron-down" class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
@@ -275,7 +282,14 @@ const handleLogout = async () => {
       <header class="flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-black/80 dark:backdrop-blur-xl border-b border-gray-200 dark:border-white/10 z-40">
         <div class="flex items-center gap-3">
           <template v-if="authStore.currentOrganization">
-            <UDropdownMenu :items="orgMenuItems" :content="{ align: 'start', side: 'bottom', sideOffset: 8 }">
+            <UDropdownMenu 
+              :items="orgMenuItems" 
+              :content="{ align: 'start', side: 'bottom', sideOffset: 8 }"
+              :ui="{ content: 'w-72 sm:w-80' }"
+            >
+              <template #item-label="{ item }">
+                <span class="truncate block w-[190px] sm:w-[230px]" :title="item.label">{{ item.label }}</span>
+              </template>
               <button class="flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-white/10 px-2 py-1.5 rounded-xl transition-all cursor-pointer group max-w-[200px] text-left">
                 <UAvatar 
                   v-if="authStore.currentOrganization.logoUrl" 
