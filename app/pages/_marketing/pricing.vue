@@ -131,7 +131,7 @@ const isYearly = ref(true)
 function getCtaLink(tier: any) {
   if (tier.name === 'Enterprise') return '/contact?subject=Enterprise Inquiry'
   if (authStore.isOrganizer) return toManage('/billing')
-  return '/auth/signup'
+  return '/signup'
 }
 
 const tiers = [
