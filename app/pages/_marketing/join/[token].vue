@@ -36,7 +36,7 @@ const positionOptions = [
 
 // Fetch invite details or verify payment
 onMounted(async () => {
-  const reference = route.query.reference as string
+  const reference = (route.query.reference || route.query.trxref) as string
   if (reference) {
     verifyingPayment.value = true
     try {
@@ -55,8 +55,9 @@ onMounted(async () => {
       joinError.value = err?.data?.message || err?.message || 'Failed to verify payment'
     } finally {
       verifyingPayment.value = false
-      // Clear reference query param from URL
-      const { reference: _, ...query } = route.query
+      loading.value = false
+      // Clear reference query params from URL
+      const { reference: _, trxref: __, ...query } = route.query
       navigateTo({ path: route.path, query }, { replace: true })
     }
   } else {
