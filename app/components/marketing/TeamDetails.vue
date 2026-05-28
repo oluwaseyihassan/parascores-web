@@ -108,6 +108,10 @@ const standingsByGroup = computed(() => {
 
 const hasStandings = computed(() => standings.value.length > 0)
 
+const squadPlayers = computed(() => {
+  return participant.value?.players?.filter(p => p.status === 'APPROVED' || p.status === 'PENDING') || []
+})
+
 // Helpers
 function formatTime(dateStr?: string | null) {
   if (!dateStr) return ''
@@ -271,12 +275,12 @@ function getMatchAggregate(match: Fixture) {
           <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl px-5 py-4">
             <h3 class="text-sm font-bold text-gray-500 mb-4 border-b pb-3" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">Players</h3>
             
-            <div v-if="!participant.players || participant.players.length === 0" class="py-8 text-center text-gray-500 text-sm">
+            <div v-if="squadPlayers.length === 0" class="py-8 text-center text-gray-500 text-sm">
               No players listed for this team.
             </div>
             
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <NuxtLink v-for="player in participant.players.filter(p => p.status === 'APPROVED')" :key="player.id" 
+              <NuxtLink v-for="player in squadPlayers" :key="player.id" 
                    :to="toMain(`/player/${player.id}`)"
                    :external="isManage"
                    class="flex items-center gap-3 p-3 rounded-lg transition-colors border bg-gray-50 border-gray-100 dark:bg-white/5 dark:border-white/5 hover:bg-gray-100/50 dark:hover:bg-white/[0.08] cursor-pointer">
