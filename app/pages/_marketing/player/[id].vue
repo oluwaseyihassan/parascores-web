@@ -32,7 +32,7 @@ const verifyingPayment = ref(false)
 const handleClaimProfile = async () => {
   if (!player.value) return
   if (!isAuthenticated.value) {
-    navigateTo(`/auth/login?redirect=${route.fullPath}`)
+    navigateTo(`/login?redirect=${route.fullPath}`)
     return
   }
 
