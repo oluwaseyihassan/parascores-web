@@ -25,8 +25,10 @@ export interface PaymentInitResponse {
 
 export interface PaymentVerifyResponse {
   payment: any
-  subscription: Subscription
+  subscription?: Subscription
   tournament?: { id: string; isPremium: boolean }
+  player?: any
+  status?: string
 }
 
 export interface PaymentRecord {
@@ -163,6 +165,34 @@ export const usePaymentStore = defineStore('payment', () => {
   }
 
   /**
+   * Initialize a team join invite payment
+   */
+  async function initializeTeamJoin(data: {
+    token: string
+    name: string
+    number?: number
+    position?: string
+    avatarUrl?: string
+    callbackUrl: string
+  }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<PaymentInitResponse>>('/payments/initialize-team-join', {
+        method: 'POST',
+        body: data,
+      })
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Initialize team join payment failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Verify a payment after Paystack redirect
    */
   async function verifyPayment(reference: string) {
@@ -251,6 +281,7 @@ export const usePaymentStore = defineStore('payment', () => {
     initializePayment,
     initializeRegistration,
     initializePlayerClaim,
+    initializeTeamJoin,
     verifyPayment,
     cancelSubscription,
     clearSubscription,
