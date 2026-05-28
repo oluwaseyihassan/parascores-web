@@ -260,14 +260,18 @@ export const useParticipantStore = defineStore('participant', () => {
         method: 'PATCH',
         body: { status },
       })
-      if (response.data) {
-        const pIndex = participants.value.findIndex(p => p.id === participantId)
-        if (pIndex !== -1 && participants.value[pIndex]?.players) {
+      const pIndex = participants.value.findIndex(p => p.id === participantId)
+      if (pIndex !== -1 && participants.value[pIndex]?.players) {
+        if (response.data) {
           const players = participants.value[pIndex]!.players!
           const playerIdx = players.findIndex((p: any) => p.id === playerId)
           if (playerIdx !== -1) {
             players[playerIdx] = { ...players[playerIdx], ...response.data }
           }
+        } else if (status === 'REJECTED') {
+          participants.value[pIndex]!.players = participants.value[pIndex]!.players!.filter(
+            (p: any) => p.id !== playerId
+          )
         }
       }
       return response
