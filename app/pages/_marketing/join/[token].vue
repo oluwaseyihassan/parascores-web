@@ -42,7 +42,7 @@ onMounted(async () => {
     try {
       const res = await paymentStore.verifyPayment(reference)
       if (res.data) {
-        joinStatus.value = res.data.status || 'APPROVED'
+        joinStatus.value = (res.data.status as 'APPROVED' | 'PENDING') || 'APPROVED'
         joinSuccess.value = true
         
         // Fetch invite details to populate team info
