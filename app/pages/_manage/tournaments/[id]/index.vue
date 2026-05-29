@@ -188,8 +188,7 @@ const handleTransferTournament = async (event: FormSubmitEvent<any>) => {
     })
     useToast().add({ title: 'Tournament transferred successfully', color: 'success' })
     showTransferModal.value = false
-    const router = useRouter()
-    router.push('/')
+    await navigateTo('/')
   } catch (err: any) {
     handleError(err, { title: 'Failed to transfer tournament' })
   } finally {
@@ -211,8 +210,7 @@ const handleDeleteTournament = () => {
       try {
         await tournamentStore.deleteTournament(tournament.value?.id || tournamentId.value)
         useToast().add({ title: 'Tournament deleted successfully', color: 'success' })
-        const router = useRouter()
-        router.push('/')
+        await navigateTo('/')
       } catch (err: any) {
         handleError(err, { title: 'Failed to delete tournament' })
       } finally {
@@ -245,8 +243,7 @@ const handleStartSeason = async (event: FormSubmitEvent<any>) => {
     
     // Redirect to the new tournament season overview
     if (res.data?.id) {
-      const router = useRouter()
-      router.push(`/tournaments/${res.data.id}`)
+      await navigateTo(`/tournaments/${res.data.id}`)
     }
   } catch (err: any) {
     handleError(err, { title: 'Failed to start season' })
@@ -4762,7 +4759,7 @@ const copyTournamentLink = async () => {
                         {{ player.name }}
                       </p>
                       <p class="text-xs text-gray-500">
-                        {{ player.position }} {{ player.number ? `• #${player.number}` : '' }}
+                        {{ player.position ? player.position.split('-')[0] : '' }} {{ player.number ? `• #${player.number}` : '' }}
                       </p>
                     </div>
                   </div>
@@ -4824,7 +4821,7 @@ const copyTournamentLink = async () => {
                         <UIcon v-if="player.userId" name="i-heroicons-link" class="w-3.5 h-3.5 text-indigo-500 shrink-0" title="Linked to user account" />
                       </p>
                       <p class="text-xs text-gray-500">
-                        {{ player.position }}
+                        {{ player.position ? player.position.split('-')[0] : '' }}
                       </p>
                     </div>
                   </div>
