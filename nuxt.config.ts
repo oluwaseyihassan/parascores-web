@@ -122,6 +122,7 @@ export default defineNuxtConfig({
     public: {
       API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:3000/api',
       DASHBOARD_URL: process.env.DASHBOARD_URL || 'http://manage.lvh.me:3001',
+      ADMIN_URL: process.env.ADMIN_URL || 'http://admin.lvh.me:3001',
       FRONT_END_URL: process.env.FRONTEND_URL || 'http://lvh.me:3001',
       SENTRY_DSN: process.env.SENTRY_DSN || '',
     }
