@@ -128,6 +128,7 @@ definePageMeta({
   layout: 'auth',
 })
 const dashboardUrl = useRuntimeConfig().public.DASHBOARD_URL
+const adminUrl = useRuntimeConfig().public.ADMIN_URL
 const route = useRoute()
 
 const authStore = useAuthStore()
@@ -163,15 +164,18 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
         console.log('Login successful')
         const appRedirect = route.query.appRedirect as string | undefined
         const redirect = route.query.redirect as string | undefined
-        const router = useRouter()
+        const adminRedirect = route.query.adminRedirect as string | undefined
 
         if (appRedirect && appRedirect.startsWith('/')) {
-          // appRedirect comes from the manage.* subdomain — redirect back there
-          window.location.href = `${dashboardUrl}${appRedirect}`
+          if (adminRedirect === '1') {
+            window.location.href = `${adminUrl}${appRedirect}`
+          } else {
+            window.location.href = `${dashboardUrl}${appRedirect}`
+          }
         } else if (redirect && redirect.startsWith('/')) {
-          router.push(redirect)
+          navigateTo(redirect)
         } else {
-          router.push('/')
+          navigateTo('/')
         }
     }
   } catch (err: any) {
@@ -181,6 +185,21 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
 }
 
 const handleGoogleSignup = async () => {
-    await googleSignup()
+    const appRedirect = route.query.appRedirect as string | undefined
+    const redirect = route.query.redirect as string | undefined
+    const adminRedirect = route.query.adminRedirect as string | undefined
+    
+    let targetRedirect: string | undefined = undefined
+    if (appRedirect) {
+      if (adminRedirect === '1') {
+        targetRedirect = `${adminUrl}${appRedirect}`
+      } else {
+        targetRedirect = `${dashboardUrl}${appRedirect}`
+      }
+    } else if (redirect) {
+      targetRedirect = redirect
+    }
+
+    await googleSignup(targetRedirect)
 }
 </script>
