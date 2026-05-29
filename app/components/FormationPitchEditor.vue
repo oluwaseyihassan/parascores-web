@@ -8,9 +8,11 @@ const props = withDefaults(defineProps<{
   formation: string
   teamName?: string
   isDark?: boolean
+  lineupPositions?: Record<string, string> | null
 }>(), {
   teamName: '',
-  isDark: false
+  isDark: false,
+  lineupPositions: null
 })
 
 const emit = defineEmits<{
@@ -85,7 +87,7 @@ const pitchSlots = computed(() => {
         category,
         player: null as Player | null,
         x: getPlayerX(s, count),
-        y: getRowY(totalRows - 1 - r, totalRows)
+        y: getRowY(r, totalRows)
       })
     }
     slotsGrid.push(rowSlots)
@@ -97,15 +99,18 @@ const pitchSlots = computed(() => {
   // Pass 1: Match players to exact coordinates (CATEGORY-ROW-SLOT, e.g. "DEF-1-3")
   for (let i = availableStarters.length - 1; i >= 0; i--) {
     const player = availableStarters[i]
-    if (player && player.position && player.position.includes('-')) {
-      const parts = player.position.split('-')
-      const r = parseInt(parts[1] ?? '', 10)
-      const s = parseInt(parts[2] ?? '', 10)
-      if (!isNaN(r) && !isNaN(s) && slotsGrid[r]?.[s]) {
-        const slot = slotsGrid[r][s]
-        if (slot && !slot.player) {
-          slot.player = player
-          availableStarters.splice(i, 1)
+    if (player) {
+      const position = (props.lineupPositions && props.lineupPositions[player.id]) || player.position
+      if (position && position.includes('-')) {
+        const parts = position.split('-')
+        const r = parseInt(parts[1] ?? '', 10)
+        const s = parseInt(parts[2] ?? '', 10)
+        if (!isNaN(r) && !isNaN(s) && slotsGrid[r]?.[s]) {
+          const slot = slotsGrid[r][s]
+          if (slot && !slot.player) {
+            slot.player = player
+            availableStarters.splice(i, 1)
+          }
         }
       }
     }
@@ -116,7 +121,8 @@ const pitchSlots = computed(() => {
   for (let i = availableStarters.length - 1; i >= 0; i--) {
     const player = availableStarters[i]
     if (player) {
-      const baseCategory = player.position ? player.position.split('-')[0] : ''
+      const position = (props.lineupPositions && props.lineupPositions[player.id]) || player.position
+      const baseCategory = position ? position.split('-')[0] : ''
       if (baseCategory === 'GK' || baseCategory === 'DEF' || baseCategory === 'MID' || baseCategory === 'FWD') {
         let placed = false
         for (let r = 0; r < totalRows; r++) {
@@ -151,17 +157,30 @@ const pitchSlots = computed(() => {
 })
 
 // Calculate vertical position for each row (percentage from top)
-const getRowY = (rowIndex: number, totalRows: number): number => {
+const getRowY = (slotRowIdx: number, totalRows: number): number => {
   if (totalRows <= 1) return 50
+  
+  const finalRowIdx = totalRows - 1 - slotRowIdx
   const padding = 10
   const range = 100 - 2 * padding
-  return padding + (rowIndex / (totalRows - 1)) * range
+  let y = padding + (finalRowIdx / (totalRows - 1)) * range
+
+  // Tweak goalkeeper row (slotRowIdx === 0)
+  if (slotRowIdx === 0) {
+    y = 93
+  }
+  // Tweak striker/top row (slotRowIdx === totalRows - 1)
+  else if (slotRowIdx === totalRows - 1) {
+    y = 15
+  }
+
+  return y
 }
 
 // Calculate horizontal position for each player in a row
 const getPlayerX = (playerIndex: number, totalInRow: number): number => {
   if (totalInRow <= 1) return 50
-  const padding = 12
+  const padding = totalInRow === 2 ? 28 : 12
   const range = 100 - 2 * padding
   return padding + (playerIndex / (totalInRow - 1)) * range
 }
@@ -325,7 +344,7 @@ const onDropOnBench = (event: DragEvent) => {
             v-for="(row, rIdx) in pitchSlots"
             :key="'edit-row-' + rIdx"
             class="formation-editor__row"
-            :style="{ top: getRowY(pitchSlots.length - 1 - rIdx, pitchSlots.length) + '%' }"
+            :style="{ top: getRowY(rIdx, pitchSlots.length) + '%' }"
           >
             <div
               v-for="(slot, sIdx) in row"
@@ -429,9 +448,9 @@ const onDropOnBench = (event: DragEvent) => {
             <span
               v-if="player.position"
               class="formation-editor__bench-pos-badge"
-              :class="`formation-editor__bench-pos-badge--${player.position.toLowerCase()}`"
+              :class="`formation-editor__bench-pos-badge--${player.position?.split('-')[0]?.toLowerCase() || ''}`"
             >
-              {{ player.position }}
+              {{ player.position?.split('-')[0] }}
             </span>
           </div>
         </div>
