@@ -9,12 +9,14 @@ const props = withDefaults(defineProps<{
   isDark?: boolean
   inverted?: boolean  // away team plays bottom to top
   matchEvents?: MatchEvent[]
+  lineupPositions?: Record<string, string> | null
 }>(), {
   teamName: '',
   teamLogoUrl: null,
   isDark: false,
   inverted: false,
-  matchEvents: () => []
+  matchEvents: () => [],
+  lineupPositions: null
 })
 
 // Parse formation string like "4-2-3-1" into an array of row counts
@@ -36,17 +38,34 @@ const getRowPositionCategory = (rowIdx: number, totalRows: number): string => {
 }
 
 // Calculate vertical position for each row (percentage from top)
-const getRowY = (rowIndex: number, totalRows: number): number => {
+const getRowY = (slotRowIdx: number, totalRows: number, inverted: boolean): number => {
   if (totalRows <= 1) return 50
+  
+  let finalRowIdx = totalRows - 1 - slotRowIdx
+  if (inverted) {
+    finalRowIdx = slotRowIdx
+  }
+
   const padding = 10 // % from top and bottom
   const range = 100 - 2 * padding
-  return padding + (rowIndex / (totalRows - 1)) * range
+  let y = padding + (finalRowIdx / (totalRows - 1)) * range
+
+  // Tweak goalkeeper row (slotRowIdx === 0)
+  if (slotRowIdx === 0) {
+    y = inverted ? 7 : 93
+  }
+  // Tweak striker/top row (slotRowIdx === totalRows - 1)
+  else if (slotRowIdx === totalRows - 1) {
+    y = inverted ? 85 : 15
+  }
+
+  return y
 }
 
 // Calculate horizontal position for each player in a row
 const getPlayerX = (playerIndex: number, totalInRow: number): number => {
   if (totalInRow <= 1) return 50
-  const padding = 12 // % from left and right edges
+  const padding = totalInRow === 2 ? 28 : 12 // % from left and right edges
   const range = 100 - 2 * padding
   return padding + (playerIndex / (totalInRow - 1)) * range
 }
@@ -82,15 +101,18 @@ const positionedPlayers = computed(() => {
   // Pass 1: Match players to exact coordinates (CATEGORY-ROW-SLOT, e.g. "DEF-1-3")
   for (let i = availableStarters.length - 1; i >= 0; i--) {
     const player = availableStarters[i]
-    if (player && player.position && player.position.includes('-')) {
-      const parts = player.position.split('-')
-      const r = parseInt(parts[1] ?? '', 10)
-      const s = parseInt(parts[2] ?? '', 10)
-      if (!isNaN(r) && !isNaN(s)) {
-        const slot = slots.find(sl => sl.rowIdx === r && sl.slotIdx === s)
-        if (slot && !slot.player) {
-          slot.player = player
-          availableStarters.splice(i, 1)
+    if (player) {
+      const position = (props.lineupPositions && props.lineupPositions[player.id]) || player.position
+      if (position && position.includes('-')) {
+        const parts = position.split('-')
+        const r = parseInt(parts[1] ?? '', 10)
+        const s = parseInt(parts[2] ?? '', 10)
+        if (!isNaN(r) && !isNaN(s)) {
+          const slot = slots.find(sl => sl.rowIdx === r && sl.slotIdx === s)
+          if (slot && !slot.player) {
+            slot.player = player
+            availableStarters.splice(i, 1)
+          }
         }
       }
     }
@@ -101,7 +123,8 @@ const positionedPlayers = computed(() => {
   for (let i = availableStarters.length - 1; i >= 0; i--) {
     const player = availableStarters[i]
     if (player) {
-      const baseCategory = player.position ? player.position.split('-')[0] : ''
+      const position = (props.lineupPositions && props.lineupPositions[player.id]) || player.position
+      const baseCategory = position ? position.split('-')[0] : ''
       if (baseCategory === 'GK' || baseCategory === 'DEF' || baseCategory === 'MID' || baseCategory === 'FWD') {
         const slot = slots.find(sl => !sl.player && sl.category === baseCategory)
         if (slot) {
@@ -141,7 +164,7 @@ const positionedPlayers = computed(() => {
       result.push({
         player: slot.player,
         x: getPlayerX(finalSlotIdx, countInRow),
-        y: getRowY(finalRowIdx, totalRows)
+        y: getRowY(slot.rowIdx, totalRows, props.inverted)
       })
     }
   }
