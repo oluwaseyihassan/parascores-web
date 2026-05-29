@@ -155,12 +155,23 @@
             <UFormField name="password" label="Password" required>
               <UInput
                 v-model="state.password"
-                type="password"
+                :type="showPassword ? 'text' : 'password'"
                 placeholder="••••••••"
                 size="lg"
                 class="w-full"
                 input-class="bg-surface"
-              />
+              >
+                <template #trailing>
+                  <button
+                    type="button"
+                    tabindex="-1"
+                    class="text-muted hover:text-heading transition-colors focus:outline-none"
+                    @click="showPassword = !showPassword"
+                  >
+                    <UIcon :name="showPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'" class="w-5 h-5" />
+                  </button>
+                </template>
+              </UInput>
               <p class="text-xs text-muted mt-2">Must be at least 8 characters</p>
             </UFormField>
 
@@ -261,6 +272,7 @@ const state = reactive<Partial<Schema>>({
 })
 
 const error = ref('')
+const showPassword = ref(false)
 const signupSuccess = ref(false)
 const registeredEmail = ref('')
 
