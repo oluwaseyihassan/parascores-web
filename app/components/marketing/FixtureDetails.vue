@@ -606,6 +606,7 @@ const awaySubs = computed(() => {
                 :is-dark="isDark"
                 :inverted="false"
                 :match-events="homeEvents"
+                :lineup-positions="fixture.lineupPositions"
                 :class="{ 'hidden md:block': activeMobileLineupTeam !== 'home' }"
               />
               <FormationPitch
@@ -617,6 +618,7 @@ const awaySubs = computed(() => {
                 :is-dark="isDark"
                 :inverted="true"
                 :match-events="awayEvents"
+                :lineup-positions="fixture.lineupPositions"
                 :class="{ 'hidden md:block': activeMobileLineupTeam !== 'away' }"
               />
             </div>
