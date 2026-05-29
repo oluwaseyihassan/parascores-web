@@ -60,6 +60,7 @@ const homeFormation = ref<string>('')
 const awayFormation = ref<string>('')
 const lineupViewMode = ref<'list' | 'pitch'>('pitch')
 const changedPositions = ref<Record<string, string>>({})
+const lineupPositions = ref<Record<string, string>>({})
 const activeLineupTeam = ref<'home' | 'away'>('home')
 
 const formationPresets = [
@@ -166,6 +167,7 @@ watch(() => props.fixture, async (newFixture) => {
     homeFormation.value = newFixture.homeFormation || ''
     awayFormation.value = newFixture.awayFormation || ''
     changedPositions.value = {}
+    lineupPositions.value = (newFixture.lineupPositions as Record<string, string>) || {}
     lineupViewMode.value = (newFixture.homeFormation || newFixture.awayFormation) ? 'pitch' : 'list'
     activeLineupTeam.value = 'home'
     await loadMatchData(newFixture)
@@ -180,6 +182,7 @@ watch(() => props.open, async (isOpen) => {
     homeFormation.value = props.fixture.homeFormation || ''
     awayFormation.value = props.fixture.awayFormation || ''
     changedPositions.value = {}
+    lineupPositions.value = (props.fixture.lineupPositions as Record<string, string>) || {}
     lineupViewMode.value = (props.fixture.homeFormation || props.fixture.awayFormation) ? 'pitch' : 'list'
     activeLineupTeam.value = 'home'
     matchVenue.value = props.fixture.venue || ''
@@ -1139,47 +1142,37 @@ const clearRosterLineup = (team: 'home' | 'away') => {
 }
 
 const handlePlayerPositionUpdate = (team: 'home' | 'away', playerId: string, newPosition: string) => {
-  const players = team === 'home' ? homePlayers.value : awayPlayers.value
-  const player = players.find(p => p.id === playerId)
-  if (player) {
-    const oldPosition = player.position
-    if (oldPosition !== newPosition) {
-      player.position = newPosition
-      changedPositions.value[playerId] = newPosition
-    }
-  }
+  lineupPositions.value[playerId] = newPosition
 }
 
 const saveLineups = async () => {
   if (!selectedFixture.value) return
   savingLineups.value = true
   try {
+    // Clean up lineupPositions for players no longer in selectedLineupIds
+    const cleanedPositions = { ...lineupPositions.value }
+    for (const playerId of Object.keys(cleanedPositions)) {
+      if (!selectedLineupIds.value.includes(playerId)) {
+        delete cleanedPositions[playerId]
+      }
+    }
+
     const res = await fixtureStore.updateFixture(selectedFixture.value.id, {
       lineupPlayerIds: selectedLineupIds.value,
       homeFormation: homeFormation.value || null,
-      awayFormation: awayFormation.value || null
+      awayFormation: awayFormation.value || null,
+      lineupPositions: cleanedPositions
     })
-    
-    // Batch update player positions in the database
-    const positionUpdatePromises = Object.entries(changedPositions.value).map(([playerId, newPos]) => {
-      return playerStore.updateProfile(playerId, { position: newPos })
-        .catch(err => {
-          console.error(`Failed to update position for player ${playerId} to ${newPos}:`, err)
-        })
-    })
-    
-    if (positionUpdatePromises.length > 0) {
-      await Promise.all(positionUpdatePromises)
-      changedPositions.value = {}
-    }
 
     if (res.data) {
       selectedFixture.value = {
         ...selectedFixture.value,
         lineupPlayers: res.data.lineupPlayers || [],
         homeFormation: res.data.homeFormation,
-        awayFormation: res.data.awayFormation
+        awayFormation: res.data.awayFormation,
+        lineupPositions: res.data.lineupPositions || {}
       }
+      lineupPositions.value = (res.data.lineupPositions as Record<string, string>) || {}
       emit('fixture-updated', selectedFixture.value)
       
       useToast().add({
@@ -1660,6 +1653,7 @@ const downloadGraphic = async () => {
                           :formation="homeFormation"
                           :teamName="selectedFixture.homeTeam?.customName || 'Home'"
                           :is-dark="isDark"
+                          :lineupPositions="lineupPositions"
                           @update-player-position="(playerId, pos) => handlePlayerPositionUpdate('home', playerId, pos)"
                         />
                       </div>
@@ -1678,6 +1672,7 @@ const downloadGraphic = async () => {
                           :formation="awayFormation"
                           :teamName="selectedFixture.awayTeam?.customName || 'Away'"
                           :is-dark="isDark"
+                          :lineupPositions="lineupPositions"
                           @update-player-position="(playerId, pos) => handlePlayerPositionUpdate('away', playerId, pos)"
                         />
                       </div>
