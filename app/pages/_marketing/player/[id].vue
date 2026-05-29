@@ -206,8 +206,7 @@ onMounted(async () => {
         color: 'success',
       })
       // Clear query params
-      const router = useRouter()
-      router.replace(`/player/${playerId}`)
+      await navigateTo(`/player/${playerId}`, { replace: true })
       // Re-fetch player details to show pending status
       const response = await $publicApi<{success: boolean, data: any}>(`/players/${playerId}`)
       if (response.data) {
