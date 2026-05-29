@@ -47,7 +47,7 @@
               size="lg"
               class="w-full"
               input-class="bg-surface"
-              :disabled="loading"
+              :disabled="combinedLoading"
             />
           </UFormField>
 
@@ -59,7 +59,7 @@
               placeholder="••••••••"
               size="lg"
               class="w-full"
-              :disabled="loading"
+              :disabled="combinedLoading"
             >
               <template #trailing>
                 <button
@@ -87,6 +87,7 @@
             size="lg"
             block
             :loading="loading"
+            :disabled="combinedLoading"
             class="font-semibold py-3"
             color="primary"
             variant="solid"
@@ -109,7 +110,8 @@
           color="neutral"
           size="lg"
           block
-          :disabled="loading"
+          :loading="googleLoading"
+          :disabled="combinedLoading"
           @click="handleGoogleSignup"
         >
           <template #leading>
@@ -144,6 +146,8 @@ const route = useRoute()
 
 const authStore = useAuthStore()
 const { loading } = storeToRefs(authStore)
+const googleLoading = ref(false)
+const combinedLoading = computed(() => loading.value || googleLoading.value)
 const { login, googleSignup } = authStore
 const { extractErrorMessage, handleError } = useErrors()
 
@@ -197,6 +201,8 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
 }
 
 const handleGoogleSignup = async () => {
+  googleLoading.value = true
+  try {
     const appRedirect = route.query.appRedirect as string | undefined
     const redirect = route.query.redirect as string | undefined
     const adminRedirect = route.query.adminRedirect as string | undefined
@@ -213,5 +219,8 @@ const handleGoogleSignup = async () => {
     }
 
     await googleSignup(targetRedirect)
+  } catch (err) {
+    googleLoading.value = false
+  }
 }
 </script>
