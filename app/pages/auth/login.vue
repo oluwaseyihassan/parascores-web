@@ -55,12 +55,23 @@
           <UFormField name="password" label="Password">
             <UInput
               v-model="state.password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               placeholder="••••••••"
               size="lg"
               class="w-full"
               :disabled="loading"
-            />
+            >
+              <template #trailing>
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="text-muted hover:text-heading transition-colors focus:outline-none"
+                  @click="showPassword = !showPassword"
+                >
+                  <UIcon :name="showPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'" class="w-5 h-5" />
+                </button>
+              </template>
+            </UInput>
           </UFormField>
 
           <!-- Forgot Password -->
@@ -149,6 +160,7 @@ const state = reactive<Partial<Schema>>({
 })
 
 const error = ref('')
+const showPassword = ref(false)
 
 const handleLogin = async (event: FormSubmitEvent<Schema>) => {
   error.value = ''
