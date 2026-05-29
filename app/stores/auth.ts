@@ -112,13 +112,20 @@ async function signup(email: string, password: string, name: string) {
     }
   }
 
-  async function googleSignup() {
+  async function googleSignup(targetRedirectUrl?: string) {
     loading.value = true
     error.value = null
     const config = useRuntimeConfig()
-    const redirect_url = config.public.FRONT_END_URL
+    let redirect_url = config.public.FRONT_END_URL
+    if (targetRedirectUrl) {
+      if (targetRedirectUrl.startsWith('http')) {
+        redirect_url = targetRedirectUrl
+      } else {
+        redirect_url = config.public.FRONT_END_URL + targetRedirectUrl
+      }
+    }
     try {
-      return navigateTo(config.public.API_BASE_URL + `/auth/google?redirect_url=${redirect_url}`, {
+      return navigateTo(config.public.API_BASE_URL + `/auth/google?redirect_url=${encodeURIComponent(redirect_url)}`, {
           external: true
       })
     } catch (err: any) {
