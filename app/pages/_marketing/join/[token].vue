@@ -3,7 +3,7 @@ import type { TeamInvite } from '~/types'
 import type { ApiResponse } from '~/stores/auth'
 
 definePageMeta({
-  layout: 'auth'
+  layout: 'feed'
 })
 
 const route = useRoute()
@@ -306,6 +306,22 @@ const formatDate = (dateStr: string) => {
               class="mb-2"
             />
 
+            <!-- Registration Fee & Benefits Info -->
+            <div class="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Player Registration Fee</span>
+                <span class="text-lg font-bold text-emerald-600 dark:text-emerald-400">₦500</span>
+              </div>
+              <div class="border-t border-emerald-500/10 pt-2">
+                <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Benefits of joining:</p>
+                <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-1 list-inside list-disc pl-1">
+                  <li>Get an official, linked player profile in the tournament.</li>
+                  <li>Track your live match statistics (goals, assists, appearances, cards).</li>
+                  <li>Feature on team sheets, lineup sheets, and match graphics.</li>
+                </ul>
+              </div>
+            </div>
+
             <UFormField label="Your Name" required>
               <UInput
                 v-model="playerForm.name"
@@ -360,7 +376,7 @@ const formatDate = (dateStr: string) => {
               size="lg"
               color="primary"
               :loading="joining"
-              :disabled="!playerForm.name.trim()"
+              :disabled="authStore.isAuthenticated && !playerForm.name.trim()"
               @click="handleJoin"
               class="mt-4"
             >
