@@ -37,7 +37,7 @@ const navLinks = computed(() => {
 const profileMenuItems = computed(() => {
   const items: any[][] = [
     [{
-      label: user.value?.name || 'Guest',
+      label: user.value?.name ? user.value.name.trim().split(/\s+/)[0] : 'Guest',
       avatar: user.value?.picture ? { src: user.value.picture } : { text: user.value?.name?.charAt(0).toUpperCase() || 'G' },
       type: 'label',
       disabled: true
