@@ -53,7 +53,7 @@ const setTheme = (theme: 'light' | 'dark' | 'system') => {
 
 const profileMenuItems = computed(() => [
   [{
-    label: authStore.user?.name || 'User',
+    label: authStore.user?.name ? authStore.user.name.trim().split(/\s+/)[0] : 'User',
     avatar: authStore.user?.picture ? { src: authStore.user.picture } : { text: authStore.user?.name?.charAt(0).toUpperCase() },
     type: 'label',
     slot: 'account',
