@@ -418,7 +418,10 @@ const greetingTime = computed(() => {
   return 'evening'
 })
 
-const userName = computed(() => authStore.user?.name || 'Fan')
+const userName = computed(() => {
+  if (!authStore.user?.name) return 'Fan'
+  return authStore.user.name.trim().split(/\s+/)[0]
+})
 
 // Filter live and upcoming to only followed tournaments
 const followedIds = computed(() => new Set(tournamentStore.followedTournaments.map(t => t.id)))
