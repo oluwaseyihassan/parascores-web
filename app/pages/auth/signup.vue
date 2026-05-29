@@ -136,6 +136,7 @@
                 size="lg"
                 class="w-full"
                 input-class="bg-surface"
+                :disabled="combinedLoading"
               />
             </UFormField>
 
@@ -148,6 +149,7 @@
                 size="lg"
                 class="w-full"
                 input-class="bg-surface"
+                :disabled="combinedLoading"
               />
             </UFormField>
 
@@ -160,6 +162,7 @@
                 size="lg"
                 class="w-full"
                 input-class="bg-surface"
+                :disabled="combinedLoading"
               >
                 <template #trailing>
                   <button
@@ -180,6 +183,7 @@
               <div class="flex items-start gap-3">
                 <UCheckbox 
                   v-model="state.acceptTerms"
+                  :disabled="combinedLoading"
                 />
                 <label class="text-sm text-body">
                   I agree to the 
@@ -198,6 +202,7 @@
               size="lg"
               block
               :loading="loading"
+              :disabled="combinedLoading"
               class="font-semibold py-3"
             >
               Create Account
@@ -217,6 +222,8 @@
             color="neutral"
             size="lg"
             block
+            :loading="googleLoading"
+            :disabled="combinedLoading"
             @click="handleGoogleSignup"
             type="button"
           >
@@ -250,6 +257,8 @@ definePageMeta({
 
 const authStore = useAuthStore()
 const { loading } = storeToRefs(authStore)
+const googleLoading = ref(false)
+const combinedLoading = computed(() => loading.value || googleLoading.value)
 const { signup, googleSignup, resendVerificationEmail } = authStore
 const { extractErrorMessage, handleError } = useErrors()
 const route = useRoute()
@@ -350,6 +359,8 @@ const resetForm = () => {
 }
 
 const handleGoogleSignup = async () => {
+  googleLoading.value = true
+  try {
     const appRedirect = route.query.appRedirect as string | undefined
     const redirect = route.query.redirect as string | undefined
     
@@ -361,6 +372,9 @@ const handleGoogleSignup = async () => {
     }
 
     await googleSignup(targetRedirect)
+  } catch (err) {
+    googleLoading.value = false
+  }
 }
 
 onUnmounted(() => {
