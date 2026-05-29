@@ -323,13 +323,13 @@ const handleLogout = async () => {
       </main>
 
       <!-- Mobile Bottom Navigation -->
-      <nav class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-black/80 dark:backdrop-blur-xl border-t border-gray-200 dark:border-white/10 px-2 py-2 z-50 safe-area-pb">
-        <div class="flex items-center justify-around">
+      <nav class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-black/80 dark:backdrop-blur-xl border-t border-gray-200 dark:border-white/10 z-50 safe-area-pb">
+        <div class="flex items-center h-16 w-full">
           <NuxtLink 
             v-for="link in mobileLinks" 
             :key="link.to" 
             :to="link.to"
-            class="flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all duration-200"
+            class="flex-1 flex flex-col items-center justify-center h-full transition-all duration-200 min-w-0 gap-1"
             :class="[
               route.path === link.to 
                 ? 'text-indigo-500' 
@@ -337,7 +337,7 @@ const handleLogout = async () => {
             ]"
           >
             <UIcon :name="link.icon" class="w-6 h-6" />
-            <span class="text-xs mt-1 font-medium">{{ link.label }}</span>
+            <span class="text-xs font-medium truncate max-w-full px-1">{{ link.label }}</span>
           </NuxtLink>
         </div>
       </nav>

@@ -243,16 +243,16 @@ const themeOptions = [
       </main>
 
       <!-- Mobile Bottom Nav -->
-      <nav class="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/[0.05] flex items-center justify-around px-4 z-50">
+      <nav class="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/[0.05] flex items-center z-50">
         <NuxtLink 
           v-for="link in navLinks" 
           :key="link.to" 
           :to="link.to"
-          class="flex flex-col items-center gap-1 transition-colors"
-          :class="route.path === link.to ? 'text-emerald-400' : 'text-gray-500'"
+          class="flex-1 flex flex-col items-center justify-center gap-1 h-full transition-colors min-w-0"
+          :class="route.path === link.to ? 'text-emerald-400' : 'text-gray-500 hover:text-emerald-400/80'"
         >
           <UIcon :name="link.icon" class="w-6 h-6" />
-          <span class="text-[10px] font-bold uppercase tracking-widest">{{ link.label.split(' ')[0] }}</span>
+          <span class="text-[10px] font-bold uppercase tracking-widest truncate max-w-full px-1">{{ link.label.split(' ')[0] }}</span>
         </NuxtLink>
       </nav>
     </div>
