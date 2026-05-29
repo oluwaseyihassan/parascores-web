@@ -262,6 +262,7 @@ export interface Fixture {
   lineupPlayers?: Player[]
   homeFormation?: string | null
   awayFormation?: string | null
+  lineupPositions?: Record<string, string> | null
 }
 
 export interface Group {
