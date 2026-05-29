@@ -12,6 +12,11 @@ const authStore = useAuthStore()
 const { handleError } = useErrors()
 const { tournaments, loading, pagination, hasMore, totalCount } = storeToRefs(tournamentStore)
 
+const userFirstName = computed(() => {
+  if (!authStore.user?.name) return 'there'
+  return authStore.user.name.trim().split(/\s+/)[0]
+})
+
 // View mode state
 const viewMode = useCookie<'grid' | 'list'>('tournament-view-mode', { default: () => 'grid' })
 
@@ -139,7 +144,7 @@ watch(loadMoreTrigger, (el) => {
     <!-- Welcome Message -->
     <div class="mb-6">
       <h2 class="text-lg text-gray-500 dark:text-gray-400">
-        Welcome back, <span class="text-emerald-500 font-medium">{{ authStore.user?.name || 'there' }}</span>
+        Welcome back, <span class="text-emerald-500 font-medium">{{ userFirstName }}</span>
       </h2>
     </div>
 
