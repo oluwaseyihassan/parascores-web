@@ -16,11 +16,20 @@ export default <RouterConfig> {
     }
 
     // 2. Define our logic
-    // Checks for "manage." at the start (Works for manage.parascores.com AND manage.lvh.me)
     const isAppSubdomain = host.startsWith('manage.')
+    const isAdminSubdomain = host.startsWith('admin.')
 
     // 3. Return the correct routes
-    if (isAppSubdomain) {
+    if (isAdminSubdomain) {
+      // 🔴 ADMIN: Show _admin routes only
+      return _routes
+        .filter(r => r.path.startsWith('/_admin'))
+        .map(r => ({
+          ...r,
+          // Rewrite path: /_admin/users -> /users
+          path: r.path.replace('/_admin', '') || '/'
+        }))
+    } else if (isAppSubdomain) {
       // 🟢 DASHBOARD: Show _manage routes + widget routes
       return _routes
         .filter(r => r.path.startsWith('/_manage') || r.path.startsWith('/widget')) 
