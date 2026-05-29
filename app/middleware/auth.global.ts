@@ -34,11 +34,12 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     : window.location.host
 
   const isApp = host.startsWith('manage.')
+  const isAdmin = host.startsWith('admin.')
 
   // 3. Dynamic Protocol & Domain Helper
   const protocol = import.meta.dev ? 'http' : 'https'
-  // Fix: Strip both 'manage.' and 'www.' to get the true root domain
-  const rootHost = host.replace(/^(manage\.|www\.)+/i, '')
+  // Fix: Strip both 'manage.', 'admin.', and 'www.' to get the true root domain
+  const rootHost = host.replace(/^(manage\.|admin\.|www\.)+/i, '')
 
   // --- LOGIC ---
   
@@ -46,6 +47,20 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   // These routes only exist on the marketing site and should never be processed on manage.
   if (isApp && (to.path.startsWith('/t-join/') || to.path.startsWith('/join/'))) {
     return navigateTo(`${protocol}://${rootHost}${to.fullPath}`, { external: true })
+  }
+
+  // ─── ADMIN SUBDOMAIN PROTECTION ────────────────────────────
+  if (isAdmin) {
+    // Not logged in → send to login on root domain
+    if (!user.value) {
+      return navigateTo(`${protocol}://${rootHost}/login?appRedirect=${encodeURIComponent(to.fullPath)}&adminRedirect=1`, { external: true })
+    }
+    // Logged in but not SUPER_ADMIN → block access, redirect to marketing site
+    if (user.value.role !== 'SUPER_ADMIN') {
+      return navigateTo(`${protocol}://${rootHost}`, { external: true })
+    }
+    // SUPER_ADMIN → allow through
+    return
   }
 
   // A. Protect Dashboard (App Subdomain)
