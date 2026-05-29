@@ -18,6 +18,7 @@ export interface UpdateFixtureData {
   lineupPlayerIds?: string[]
   homeFormation?: string | null
   awayFormation?: string | null
+  lineupPositions?: Record<string, string> | null
 }
 
 export interface CreateFixtureData {
