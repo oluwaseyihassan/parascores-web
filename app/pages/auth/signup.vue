@@ -241,6 +241,8 @@ const authStore = useAuthStore()
 const { loading } = storeToRefs(authStore)
 const { signup, googleSignup, resendVerificationEmail } = authStore
 const { extractErrorMessage, handleError } = useErrors()
+const route = useRoute()
+const dashboardUrl = useRuntimeConfig().public.DASHBOARD_URL
 
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -336,7 +338,17 @@ const resetForm = () => {
 }
 
 const handleGoogleSignup = async () => {
-    await googleSignup()
+    const appRedirect = route.query.appRedirect as string | undefined
+    const redirect = route.query.redirect as string | undefined
+    
+    let targetRedirect: string | undefined = undefined
+    if (appRedirect) {
+      targetRedirect = `${dashboardUrl}${appRedirect}`
+    } else if (redirect) {
+      targetRedirect = redirect
+    }
+
+    await googleSignup(targetRedirect)
 }
 
 onUnmounted(() => {
