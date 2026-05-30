@@ -330,7 +330,7 @@ watch(loadMoreTrigger, (el) => {
         <div 
           v-for="(tournament, index) in filteredTournaments" 
           :key="tournament.id" 
-          class="relative group card-fade-in bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl flex flex-col hover:border-emerald-500/50 transition-all duration-300 hover:shadow-lg dark:hover:shadow-emerald-500/10 overflow-hidden"
+          class="relative group card-fade-in bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl flex flex-col hover:border-emerald-500/50 transition-[border-color,box-shadow] duration-300 hover:shadow-lg dark:hover:shadow-emerald-500/10 overflow-hidden"
           :style="{ animationDelay: `${index * 75}ms` }"
         >
           <!-- Pending Requests Badge -->
@@ -439,7 +439,7 @@ watch(loadMoreTrigger, (el) => {
         <div 
           v-for="(tournament, index) in filteredTournaments" 
           :key="tournament.id" 
-          class="group card-fade-in relative flex items-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl hover:border-emerald-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5"
+          class="group card-fade-in relative flex items-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl hover:border-emerald-500/40 transition-[border-color,box-shadow] duration-300 hover:shadow-lg hover:shadow-emerald-500/5"
           :style="{ animationDelay: `${index * 50}ms` }"
         >
           <NuxtLink 
