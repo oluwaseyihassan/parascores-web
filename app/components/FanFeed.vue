@@ -39,14 +39,18 @@
         </div>
 
         <div v-else class="flex gap-6 overflow-x-auto pb-4 hide-scrollbar snap-x">
-          <FanFeedCard 
+          <NuxtLink 
             v-for="match in filteredLive" 
             :key="match.id"
-            class="min-w-[320px] md:min-w-[380px] snap-start"
+            :to="toMain(`/t/${match.tournament?.customName || match.tournament?.id}/fixture/${match.id}`)"
+            class="min-w-[320px] md:min-w-[380px] snap-start group relative overflow-hidden rounded-2xl border border-gray-200 dark:border-white/[0.05] bg-white dark:bg-[#0A0A0A] p-5 transition-[border-color] duration-300 hover:border-red-500/40 dark:hover:border-red-500/40 flex flex-col h-full"
           >
-            <div class="flex flex-col h-full">
+            <!-- Background Glow -->
+            <div class="absolute -right-16 -top-16 h-32 w-32 rounded-full bg-red-500/5 blur-3xl transition-opacity duration-500 group-hover:bg-red-500/10"></div>
+            
+            <div class="relative z-10 flex flex-col h-full">
               <div class="flex items-center justify-between mb-4">
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{{ match.tournament?.customName || match.tournament?.name }}</span>
+                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">{{ match.tournament?.customName || match.tournament?.name }}</span>
                 <span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-[10px] font-black italic">LIVE</span>
               </div>
               
@@ -68,14 +72,15 @@
                 </div>
               </div>
               
-              <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-[11px] text-gray-400">
-                <span>{{ match.venue || 'No Venue' }}</span>
-                <UButton :to="toTournament(match.tournament as any)" variant="link" color="success" size="xs" class="font-bold p-0">
-                  Follow Stats
-                </UButton>
+              <div class="mt-4 pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-[11px] text-gray-400">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <UIcon name="i-heroicons-map-pin" class="w-3 h-3 text-gray-500 shrink-0" />
+                  <span class="truncate">{{ match.venue || 'No Venue' }}</span>
+                </div>
+                <UIcon name="i-heroicons-arrow-right" class="w-4 h-4 text-red-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300 shrink-0" />
               </div>
             </div>
-          </FanFeedCard>
+          </NuxtLink>
           
           <div v-if="filteredLive.length === 0" class="w-full py-12 flex flex-col items-center justify-center border border-white/5 bg-white/2 rounded-2xl">
             <UIcon name="i-heroicons-clock" class="w-8 h-8 text-gray-600 mb-2" />
