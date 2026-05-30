@@ -1,7 +1,7 @@
 <template>
   <NuxtLink
     :to="toTournament(tournament)"
-    class="group bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-white/10 rounded-xl p-5 shadow-sm hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all duration-300 card-fade-in flex flex-col h-full"
+    class="group bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-white/10 rounded-xl p-5 shadow-sm hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-[border-color,box-shadow] duration-300 card-fade-in flex flex-col h-full"
   >
     <!-- Header Row: Sport, Logo, Type Badge -->
     <div class="flex items-start justify-between mb-4">
