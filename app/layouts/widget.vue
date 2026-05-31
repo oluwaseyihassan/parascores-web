@@ -36,9 +36,14 @@
 
 <script setup lang="ts">
 const route = useRoute()
+const colorMode = useColorMode()
 
 const theme = ref((route.query.theme as string) || 'dark')
 const isDark = computed(() => theme.value === 'dark')
+
+watch(theme, (newTheme) => {
+  colorMode.preference = newTheme
+}, { immediate: true })
 
 function toggleTheme() {
   theme.value = isDark.value ? 'light' : 'dark'
