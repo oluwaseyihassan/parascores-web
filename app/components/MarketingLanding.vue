@@ -471,12 +471,12 @@ const showcase = [
 ]
 
 useSeoMeta({
-  title: 'ParaScores - Clean Tournament Management',
+  title: 'ParaScores - Tournament Management Made Simple',
   description: 'Run fixtures, standings, live scores, brackets, and match graphics from one clean tournament workspace.',
-  ogTitle: 'ParaScores - Clean Tournament Management',
+  ogTitle: 'ParaScores - Tournament Management Made Simple',
   ogDescription: 'Run fixtures, standings, live scores, brackets, and match graphics from one clean tournament workspace.',
-  ogImage: 'https://www.parascores.com/og-image.png',
-  twitterImage: 'https://www.parascores.com/og-image.png',
+  ogImage: 'https://res.cloudinary.com/djsnerfzp/image/upload/v1780242386/og-image_mbs1ei.png',
+  twitterImage: 'https://res.cloudinary.com/djsnerfzp/image/upload/v1780242386/og-image_mbs1ei.png',
   twitterCard: 'summary_large_image'
 })
 </script>
