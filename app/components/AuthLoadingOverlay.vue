@@ -9,7 +9,7 @@
   >
     <div
       v-if="show"
-      class="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0A0F1C]"
+      class="fixed inset-0 z-[9999] flex items-center justify-center bg-[#070b10]"
     >
       <div class="flex flex-col items-center gap-6">
         <!-- Logo -->
