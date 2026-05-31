@@ -1,8 +1,8 @@
 <template>
-  <footer class="bg-[#0A0F1C] border-t border-white/10">
+  <footer class="bg-[#070b10] border-t border-white/10">
     <div class="max-w-7xl mx-auto px-6">
       <!-- Main Footer Content -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1.2fr] gap-8 lg:gap-12 py-14">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1.2fr] gap-8 lg:gap-12 py-14">
         <!-- Brand Section -->
         <div class="max-w-[280px] md:col-span-2 lg:col-span-1 lg:max-w-none">
           <div class="mb-4">
@@ -18,11 +18,6 @@
           <h4 class="text-sm font-semibold text-white mb-5 tracking-tight">Product</h4>
           <ul class="flex flex-col gap-3.5">
             <li>
-              <NuxtLink to="/platform" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">
-                Platform
-              </NuxtLink>
-            </li>
-            <li>
               <NuxtLink to="/widgets" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">
                 Widget Builder
               </NuxtLink>
@@ -36,33 +31,6 @@
               <NuxtLink to="/pricing" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">
                 Pricing
               </NuxtLink>
-            </li>
-          </ul>
-        </div>
-
-        <!-- Developers Column -->
-        <div class="flex flex-col">
-          <h4 class="text-sm font-semibold text-white mb-5 tracking-tight">Developers</h4>
-          <ul class="flex flex-col gap-3.5">
-            <li>
-              <NuxtLink to="/docs" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">
-                Documentation
-              </NuxtLink>
-            </li>
-            <li>
-              <NuxtLink to="/api" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">
-                API Reference
-              </NuxtLink>
-            </li>
-            <li>
-              <NuxtLink to="/status" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">
-                System Status
-              </NuxtLink>
-            </li>
-            <li>
-              <a href="https://github.com/parascores" target="_blank" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">
-                GitHub
-              </a>
             </li>
           </ul>
         </div>
