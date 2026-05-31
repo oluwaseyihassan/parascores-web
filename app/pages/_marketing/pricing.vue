@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white dark:bg-[#0A0F1C] min-h-screen text-gray-900 dark:text-white pb-32 transition-colors">
+  <div class="bg-white dark:bg-[#070b10] min-h-screen text-gray-900 dark:text-white pb-32 transition-colors">
     <!-- Hero Section -->
     <section class="relative pt-20 pb-12 overflow-hidden">
       <div class="max-w-7xl mx-auto px-6">
@@ -36,7 +36,7 @@
       <!-- Glow Effect Behind Cards -->
       <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-96 bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
       
-      <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto relative z-10 items-start">
+      <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto relative z-10 items-stretch">
         <div v-for="tier in tiers" :key="tier.name" 
           :class="['bg-white dark:bg-[#111827] rounded-2xl p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl flex flex-col transition-colors', 
             tier.popular ? 'border-2 border-emerald-500 shadow-xl shadow-emerald-500/10 lg:-mt-4 relative' : 'border border-gray-200 dark:border-white/10 hover:border-emerald-500/30 relative mt-4 shadow-sm']">
@@ -46,24 +46,31 @@
           </div>
 
           <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">{{ tier.name }}</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 min-h-[40px] leading-relaxed font-medium">{{ tier.description }}</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 min-h-[48px] leading-relaxed font-medium">{{ tier.description }}</p>
 
-          <div class="mb-6">
-            <template v-if="tier.monthlyPrice === 'Custom'">
+          <div class="mb-6 h-24 flex flex-col justify-center">
+            <template v-if="tier.comingSoon">
+              <span class="text-4xl font-extrabold text-gray-900 dark:text-white">TBA</span>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-bold">Pricing to be announced</div>
+            </template>
+            <template v-else-if="tier.monthlyPrice === 'Custom'">
               <span class="text-4xl font-extrabold text-gray-900 dark:text-white">Custom</span>
             </template>
-          <template v-else-if="tier.oneTime">
-              <span class="text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight">₦{{ (tier.monthlyPrice as number).toLocaleString() }}</span>
-              <span class="text-gray-500 dark:text-gray-400 font-bold ml-1">/tournament</span>
-          </template>
-          <template v-else>
-              <span class="text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight">₦{{ isYearly && tier.yearlyPrice ? Math.round((tier.yearlyPrice as number) / 12).toLocaleString() : (tier.monthlyPrice as number).toLocaleString() }}</span>
-              <span class="text-gray-500 dark:text-gray-400 font-bold ml-1">/mo</span>
-              <div v-if="isYearly && (tier.monthlyPrice as number) > 0" class="text-sm text-emerald-600 dark:text-emerald-400 mt-2 font-bold">
-                Billed ₦{{ (tier.yearlyPrice as number).toLocaleString() }} yearly
+            <template v-else-if="tier.oneTime">
+              <div>
+                <span class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                  {{ typeof tier.monthlyPrice === 'number' ? `₦${(tier.monthlyPrice as number).toLocaleString()}` : `₦${tier.monthlyPrice}` }}
+                </span>
+                <span class="text-gray-500 dark:text-gray-400 font-bold text-xs ml-1">/tournament</span>
               </div>
-              <div v-else-if="(tier.monthlyPrice as number) > 0" class="text-sm text-gray-500 mt-2 opacity-0">
-                Spacer
+            </template>
+            <template v-else>
+              <div>
+                <span class="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">₦{{ isYearly && tier.yearlyPrice ? Math.round((tier.yearlyPrice as number) / 12).toLocaleString() : (tier.monthlyPrice as number).toLocaleString() }}</span>
+                <span class="text-gray-500 dark:text-gray-400 font-bold text-xs ml-1">/mo</span>
+              </div>
+              <div v-if="isYearly && (tier.monthlyPrice as number) > 0" class="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 font-bold">
+                Billed ₦{{ (tier.yearlyPrice as number).toLocaleString() }} yearly
               </div>
             </template>
           </div>
@@ -72,6 +79,7 @@
             block 
             size="lg" 
             :to="getCtaLink(tier)"
+            :disabled="tier.name === 'Pro'"
             :class="[
               'font-bold mb-8 h-12 flex items-center justify-center transition-all duration-200 shadow-sm rounded-xl',
               tier.buttonColor === 'emerald' ? 'bg-emerald-500 hover:bg-emerald-600 text-white ring-0' : 'bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-900 dark:text-white border border-gray-200 dark:border-white/10'
@@ -129,12 +137,31 @@ const { toManage } = useHost()
 const isYearly = ref(true)
 
 function getCtaLink(tier: any) {
+  if (tier.name === 'Pro') return undefined
   if (tier.name === 'Enterprise') return '/contact?subject=Enterprise Inquiry'
   if (authStore.isOrganizer) return toManage('/billing')
   return '/signup'
 }
 
-const tiers = [
+interface PricingFeature {
+  text: string
+  tooltip: string
+}
+
+interface PricingTier {
+  name: string
+  description: string
+  comingSoon?: boolean
+  oneTime?: boolean
+  monthlyPrice: number | string | null
+  yearlyPrice: number | string | null
+  buttonText: string
+  buttonColor: string
+  popular: boolean
+  features: PricingFeature[]
+}
+
+const tiers: PricingTier[] = [
   {
     name: 'Free',
     description: 'For casual organizers running small, community tournaments with a group of friends.',
@@ -152,15 +179,15 @@ const tiers = [
   },
   {
     name: 'Per Tournament',
-    description: 'Upgrade a single tournament with premium features. One-time payment.',
-    monthlyPrice: 5000,
+    description: 'Upgrade a single tournament based on participant capacity. One-time payment.',
+    monthlyPrice: '5,000 - 25,000',
     yearlyPrice: null,
     buttonText: 'Upgrade a Tournament',
-    buttonColor: 'gray',
-    popular: false,
+    buttonColor: 'emerald',
+    popular: true,
     oneTime: true,
     features: [
-      { text: 'Unlimited participants', tooltip: 'No cap on the number of players or teams that can register or be added to this upgraded tournament.' },
+      { text: 'Capacity-based pricing', tooltip: 'Pricing scales with max participants: <=4 (5k), <=8 (8k), <=16 (12k), <=32 (15k), >32 (25k).' },
       { text: 'Custom branding & logos', tooltip: 'Upload organization and tournament logos, and display your brand prominently on all public pages.' },
       { text: 'Advanced statistics', tooltip: 'Unlock in-depth team/player performance tracking, player stats, and visual charts.' },
       { text: 'Priority email support', tooltip: 'Dedicated support queue. We guarantee a reply within 12 hours.' }
@@ -169,11 +196,12 @@ const tiers = [
   {
     name: 'Pro',
     description: 'For serious organizers running large-scale or frequent competitive events.',
-    monthlyPrice: 5000,
-    yearlyPrice: 48000,
-    buttonText: 'Start Free 14-day Trial',
-    buttonColor: 'emerald',
-    popular: true,
+    comingSoon: true,
+    monthlyPrice: null,
+    yearlyPrice: null,
+    buttonText: 'Coming Soon',
+    buttonColor: 'gray',
+    popular: false,
     features: [
       { text: 'Unlimited active tournaments', tooltip: 'Run as many simultaneous tournaments as you want without any restrictions.' },
       { text: 'Unlimited participants', tooltip: 'No limits on the number of participating teams/players across all your tournaments.' },
