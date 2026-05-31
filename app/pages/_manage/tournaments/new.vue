@@ -264,7 +264,7 @@ const schema = z.object({
   timezone: z.string().min(1, 'Timezone is required'),
   start_date: z.string().min(1, 'Start date is required'),
   end_date: z.string().min(1, 'End date is required'),
-  maxParticipants: z.number().positive().optional().nullable(),
+  maxParticipants: z.number({ required_error: 'Max participants is required' }).int().min(2, 'Must have at least 2 participants'),
   autoApprove: z.boolean(),
   twoLegsKnockout: z.boolean().optional(),
   doubleRoundRobin: z.boolean().optional(),
@@ -291,7 +291,7 @@ const state = reactive<Partial<Schema>>({
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   start_date: '',
   end_date: '',
-  maxParticipants: null,
+  maxParticipants: undefined,
   autoApprove: false,
   twoLegsKnockout: false,
   doubleRoundRobin: false,
@@ -724,8 +724,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             </UFormField>
 
             <div class="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-6">
-              <UFormField label="Max Participants" name="maxParticipants">
-                <UInput v-model.number="state.maxParticipants" type="number" placeholder="Unlimited" :min="2" class="w-40" />
+              <UFormField label="Max Participants" name="maxParticipants" required>
+                <UInput v-model.number="state.maxParticipants" type="number" placeholder="e.g. 16" :min="2" class="w-40" />
               </UFormField>
 
               <!-- Advanced Options -->
