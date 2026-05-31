@@ -16,147 +16,139 @@ const goBack = () => {
   }
 }
 
-// Determine error type for better display
-const errorInfo = computed(() => {
+// Simple and creative details for error categories using sports metaphors
+const errorDetails = computed(() => {
   const status = props.error?.statusCode || 500
   
   if (status === 404) {
     return {
-      title: 'Page Not Found',
-      description: "Oops! The page you're looking for doesn't exist or has been moved.",
-      icon: 'i-heroicons-map-pin-20-solid',
-      suggestion: 'Double-check the URL or navigate back to safety.'
+      badge: 'OFFSIDE',
+      subtitle: 'Page Out of Bounds',
+      description: "Oops! The page you are looking for has run offside or doesn't exist on the pitch.",
+      icon: 'i-heroicons-map-pin-20-solid'
     }
   }
   
   if (status === 403) {
     return {
-      title: 'Access Denied',
-      description: "You don't have permission to view this page.",
-      icon: 'i-heroicons-lock-closed-20-solid',
-      suggestion: 'Please sign in with an authorized account.'
+      badge: 'RED CARD',
+      subtitle: 'Access Denied',
+      description: "You don't have permission to play in this zone of the dashboard.",
+      icon: 'i-heroicons-shield-exclamation-20-solid'
     }
   }
   
   if (status === 401) {
     return {
-      title: 'Authentication Required',
-      description: 'You need to be logged in to access this page.',
-      icon: 'i-heroicons-user-circle-20-solid',
-      suggestion: 'Please sign in to continue.'
-    }
-  }
-
-  if (status >= 500) {
-    return {
-      title: 'Server Error',
-      description: "Something went wrong on our end. We're working on it!",
-      icon: 'i-heroicons-server-20-solid',
-      suggestion: 'Please try again later or contact support.'
+      badge: 'SUSPENDED',
+      subtitle: 'Authentication Required',
+      description: "You need to log in to access this page and continue the match.",
+      icon: 'i-heroicons-user-minus-20-solid'
     }
   }
 
   return {
-    title: 'Something Went Wrong',
-    description: 'An unexpected error occurred.',
-    icon: 'i-heroicons-exclamation-triangle-20-solid',
-    suggestion: 'Please try again or go back to the homepage.'
+    badge: 'TECHNICAL FOUL',
+    subtitle: 'Server Error',
+    description: "The server suffered a minor injury. We're working on a quick substitution.",
+    icon: 'i-heroicons-cpu-chip-20-solid'
   }
 })
 </script>
 
 <template>
-  <div class="min-h-screen bg-page flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden">
-    <!-- Background decoration -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      <div class="absolute top-1/4 -left-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl" />
-      <div class="absolute bottom-1/4 -right-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl" />
-      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl" />
-    </div>
-    
-    <!-- Content -->
-    <div class="relative z-10 text-center max-w-lg mx-auto">
-      <!-- Error code with animated gradient -->
-      <div class="relative mb-6">
-        <h1 class="text-[120px] sm:text-[160px] font-black leading-none tracking-tight bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 bg-clip-text text-transparent animate-pulse">
+  <div class="min-h-screen bg-page flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden transition-colors duration-300">
+    <div class="relative z-10 text-center max-w-md w-full mx-auto animate-fade-in-up">
+      <!-- Brand Logo Header -->
+      <div class="flex items-center gap-2 mb-12 justify-center select-none">
+        <div class="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white">
+            <rect x="2" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="2"/>
+            <circle cx="8" cy="12" r="2" fill="currentColor"/>
+            <circle cx="16" cy="12" r="2" fill="currentColor"/>
+            <path d="M12 9V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="font-bold text-heading text-lg tracking-tight">ParaScores</span>
+      </div>
+
+      <!-- Large Code -->
+      <div class="relative mb-4 select-none">
+        <h1 class="text-9xl sm:text-[10rem] font-extrabold tracking-tighter leading-none bg-gradient-to-b from-gray-900 via-gray-800 to-gray-600 dark:from-white dark:via-gray-100 dark:to-gray-800 bg-clip-text text-transparent opacity-95">
           {{ error?.statusCode || 500 }}
         </h1>
-        <!-- Decorative ring -->
-        <div class="absolute inset-0 flex items-center justify-center -z-10">
-          <div class="w-40 h-40 rounded-full border-4 border-dashed border-gray-300 dark:border-gray-700 opacity-30 animate-spin" style="animation-duration: 20s;" />
-        </div>
       </div>
 
-      <!-- Icon -->
-      <div class="flex justify-center mb-6">
-        <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/25 transform hover:scale-105 transition-transform duration-300">
-          <UIcon :name="errorInfo.icon" class="w-8 h-8 text-white" />
-        </div>
+      <!-- Creative Sports Badge -->
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-50 dark:bg-white/[0.03] border border-subtle mb-6 select-none">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+        <span class="text-[10px] font-extrabold tracking-widest text-heading uppercase">
+          {{ errorDetails.badge }}
+        </span>
+        <span class="text-muted font-bold text-[10px]">•</span>
+        <span class="text-[10px] font-semibold text-muted tracking-wider uppercase">
+          {{ errorDetails.subtitle }}
+        </span>
       </div>
 
-      <!-- Error title and description -->
-      <h2 class="text-2xl sm:text-3xl font-bold text-heading mb-3">
-        {{ errorInfo.title }}
-      </h2>
-      <p class="text-muted text-base sm:text-lg mb-2">
-        {{ errorInfo.description }}
-      </p>
-      <p class="text-muted/70 text-sm mb-8">
-        {{ errorInfo.suggestion }}
+      <!-- Description -->
+      <p class="text-body text-sm sm:text-base leading-relaxed max-w-xs sm:max-w-sm mx-auto mb-10">
+        {{ errorDetails.description }}
       </p>
 
-      <!-- Technical error message (collapsible) -->
-      <div v-if="error?.message && error.message !== errorInfo.title" class="mb-8">
-        <details class="text-left bg-surface rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <summary class="px-4 py-3 text-sm text-muted cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-            Technical details
-          </summary>
-          <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">
-            <code class="text-xs text-red-500 dark:text-red-400 break-all">
-              {{ error.message }}
-            </code>
-          </div>
-        </details>
-      </div>
-
-      <!-- Action buttons -->
-      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <!-- Action Buttons -->
+      <div class="flex flex-col sm:flex-row gap-3 justify-center mb-10">
         <UButton
           size="lg"
-          variant="green"
-          class="font-semibold px-6 shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-300"
+          color="primary"
+          class="font-semibold px-6 shadow-sm shadow-emerald-500/10 hover:shadow-md hover:shadow-emerald-500/20 transition-all duration-200"
           @click="handleError"
         >
           <template #leading>
-            <UIcon name="i-heroicons-home-20-solid" class="w-5 h-5" />
+            <UIcon name="i-heroicons-home-20-solid" class="w-4 h-4" />
           </template>
-          Go to Homepage
+          Go Home
         </UButton>
         
         <UButton
           size="lg"
           variant="outline"
           color="neutral"
-          class="font-medium px-6"
+          class="font-semibold px-6 transition-all duration-200"
           @click="goBack"
         >
           <template #leading>
-            <UIcon name="i-heroicons-arrow-left-20-solid" class="w-5 h-5" />
+            <UIcon name="i-heroicons-arrow-left-20-solid" class="w-4 h-4" />
           </template>
           Go Back
         </UButton>
       </div>
 
-      <!-- Helpful links -->
-      <div class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
-        <p class="text-sm text-muted mb-4">Need help? Try these:</p>
-        <div class="flex flex-wrap justify-center gap-4 text-sm">
-          <NuxtLink to="/" class="text-indigo-500 hover:text-indigo-400 transition-colors flex items-center gap-1.5">
-            <UIcon name="i-heroicons-home-20-solid" class="w-4 h-4" />
+      <!-- Technical error details (collapsible, placed neatly below buttons) -->
+      <div v-if="error?.message && error.message !== errorDetails.subtitle" class="mb-10 text-left max-w-sm mx-auto">
+        <details class="group bg-surface/20 border border-subtle rounded-xl overflow-hidden transition-all duration-300">
+          <summary class="px-4 py-2 text-xs font-semibold text-muted hover:text-heading cursor-pointer list-none flex items-center justify-between transition-colors select-none">
+            <span>Show Technical Details</span>
+            <UIcon name="i-heroicons-chevron-down-20-solid" class="w-4 h-4 transform group-open:rotate-180 transition-transform duration-200" />
+          </summary>
+          <div class="px-4 py-3 border-t border-subtle bg-gray-50/50 dark:bg-black/20">
+            <code class="text-xs font-mono text-red-500 dark:text-red-400 break-all leading-normal">
+              {{ error.message }}
+            </code>
+          </div>
+        </details>
+      </div>
+
+      <!-- Footer Quick Links -->
+      <div class="pt-8 border-t border-subtle flex flex-col items-center gap-3">
+        <div class="flex items-center gap-4 text-xs">
+          <NuxtLink to="/" class="text-muted hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors flex items-center gap-1 font-medium">
+            <UIcon name="i-heroicons-home-20-solid" class="w-3.5 h-3.5" />
             Home
           </NuxtLink>
-          <NuxtLink to="/login" class="text-indigo-500 hover:text-indigo-400 transition-colors flex items-center gap-1.5">
-            <UIcon name="i-heroicons-arrow-right-on-rectangle-20-solid" class="w-4 h-4" />
+          <span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-800"></span>
+          <NuxtLink to="/login" class="text-muted hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors flex items-center gap-1 font-medium">
+            <UIcon name="i-heroicons-arrow-right-on-rectangle-20-solid" class="w-3.5 h-3.5" />
             Login
           </NuxtLink>
         </div>
@@ -166,16 +158,18 @@ const errorInfo = computed(() => {
 </template>
 
 <style scoped>
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
-  50% {
-    transform: translateY(-10px);
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.animate-float {
-  animation: float 3s ease-in-out infinite;
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 </style>
