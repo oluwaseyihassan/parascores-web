@@ -1,784 +1,187 @@
 <template>
-  <div class="bg-white dark:bg-[#0A0F1C] min-h-screen text-gray-900 dark:text-white transition-colors">
-    <!-- Hero Section -->
-    <section class="relative pt-20 pb-32 overflow-hidden">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="grid lg:grid-cols-2 gap-12 items-center">
-          <!-- Left Content -->
+  <div class="min-h-screen bg-white text-gray-950 dark:bg-[#070b10] dark:text-white">
+    <section class="relative isolate min-h-[calc(100svh-10rem)] overflow-hidden bg-[#07100c]">
+      <img
+        src="/images/landing/dashboard-screenshot.png"
+        alt="ParaScores tournament dashboard"
+        class="absolute inset-0 h-full w-full object-cover opacity-30"
+      />
+      <div class="absolute inset-0 bg-black/65"></div>
+
+      <div class="relative mx-auto flex min-h-[calc(100svh-10rem)] max-w-7xl flex-col justify-end px-6 py-16 sm:py-20">
+        <div class="max-w-3xl">
+          <p class="mb-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+            <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
+            Tournament operations, live scores, and fan pages
+          </p>
+          <h1 class="max-w-4xl text-5xl font-semibold leading-[1.02] tracking-normal text-white sm:text-6xl lg:text-7xl">
+            Run World-Class Tournaments. <span class="text-emerald-400">Automate Everything.</span>
+          </h1>
+          <p class="mt-6 max-w-2xl text-base leading-7 text-gray-200 sm:text-lg">
+            ParaScores gives organizers one clean workspace for fixtures, standings, match control, brackets, and share-ready graphics.
+          </p>
+
+          <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+            <NuxtLink
+              to="/signup"
+              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-emerald-400 px-5 text-sm font-semibold text-gray-950 transition hover:bg-emerald-300"
+            >
+              Start free
+              <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
+            </NuxtLink>
+            <NuxtLink
+              to="/explore"
+              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-white/25 px-5 text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/10"
+            >
+              Explore tournaments
+              <UIcon name="i-lucide-search" class="h-4 w-4" />
+            </NuxtLink>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="border-b border-gray-200 bg-white py-14 dark:border-white/10 dark:bg-[#070b10]">
+      <div class="mx-auto grid max-w-7xl gap-8 px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+        <div>
+          <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Built for busy organizers</p>
+          <h2 class="mt-3 max-w-xl text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white sm:text-4xl">
+            Everything important stays close to the match.
+          </h2>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <article
+            v-for="feature in features"
+            :key="feature.title"
+            class="rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/[0.03]"
+          >
+            <div class="mb-5 flex h-10 w-10 items-center justify-center rounded-md bg-white text-emerald-700 shadow-sm ring-1 ring-gray-200 dark:bg-[#101820] dark:text-emerald-300 dark:ring-white/10">
+              <UIcon :name="feature.icon" class="h-5 w-5" />
+            </div>
+            <h3 class="text-base font-semibold text-gray-950 dark:text-white">{{ feature.title }}</h3>
+            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">{{ feature.description }}</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-gray-50 py-18 dark:bg-[#0b1118]">
+      <div class="mx-auto max-w-7xl px-6">
+        <div class="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
-            <!-- Badge -->
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 mb-8 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded">
-              <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-              TOURNAMENT MANAGEMENT PLATFORM
-            </div>
-
-            <!-- Headline -->
-            <h1 class="text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight mb-6 tracking-tight">
-              Your Tournaments.<br />
-              Professionally<br />
-              <span class="text-emerald-500">Managed.</span>
-            </h1>
-
-            <!-- Subtitle -->
-            <p class="text-lg text-gray-600 dark:text-gray-400 mb-2 max-w-md font-medium">
-              Create leagues, cups, and competitions in minutes. Manage fixtures, track scores, and generate stunning graphics.
-            </p>
-            <p class="text-lg font-bold text-gray-900 dark:text-white mb-8">
-              From grassroots to pro. All in one place.
-            </p>
-
-            <!-- CTAs -->
-            <div class="flex flex-wrap gap-4">
-              <NuxtLink
-                to="/signup"
-                class="px-6 py-3 text-sm font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded transition-colors shadow-lg shadow-emerald-500/10"
-              >
-                Start Free
-              </NuxtLink>
-              <NuxtLink
-                to="/explore"
-                class="inline-flex items-center gap-2 px-6 py-3 text-sm font-bold text-gray-900 dark:text-white border border-gray-200 dark:border-white/20 hover:border-gray-300 dark:hover:border-white/40 rounded transition-colors"
-              >
-                Explore Tournaments
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-                </svg>
-              </NuxtLink>
-            </div>
-          </div>
-
-          <!-- Right Mockup - SCREENSHOT PLACEHOLDER -->
-          <div class="relative">
-            <!-- Dashboard Screenshot -->
-            <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl overflow-hidden shadow-2xl transition-colors">
-              <!-- Window Controls -->
-              <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0d1424]">
-                <div class="flex gap-1.5">
-                  <div class="w-3 h-3 rounded-full bg-red-500"></div>
-                  <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                </div>
-                <div class="ml-4 px-3 py-1 text-[10px] text-gray-500 dark:text-gray-500 bg-white/50 dark:bg-black/30 rounded border border-gray-100 dark:border-white/5">
-                  manage.parascores.com
-                </div>
-              </div>
-              
-              <!-- REPLACE THIS WITH YOUR DASHBOARD SCREENSHOT -->
-              <img 
-                src="/images/landing/dashboard-screenshot.png" 
-                alt="ParaScores Dashboard"
-                class="w-full h-auto"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-              />
-              <!-- Fallback placeholder if image doesn't exist -->
-              <div class="hidden items-center justify-center h-64 bg-gradient-to-br from-[#111827] to-[#0A0F1C] text-gray-500">
-                <div class="text-center">
-                  <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                  </svg>
-                  <p class="text-sm">Dashboard Screenshot</p>
-                  <p class="text-xs opacity-60">Add: /public/images/landing/dashboard-screenshot.png</p>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Floating Stats Badge -->
-            <div class="absolute -bottom-6 -right-4 bg-white dark:bg-[#111827] border border-gray-100 dark:border-emerald-500/30 rounded-lg p-4 shadow-xl transition-colors">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                  <span class="text-emerald-500 dark:text-emerald-400 text-lg">🏆</span>
-                </div>
-                <div>
-                  <div class="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">Tournaments Created</div>
-                  <div class="text-xl font-black text-gray-900 dark:text-white">10,000+</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Tournament Formats Section -->
-    <section class="py-24 border-t border-gray-200 dark:border-white/10 transition-colors">
-      <div class="max-w-7xl mx-auto px-6">
-        <!-- Section Header -->
-        <div class="max-w-xl mb-16">
-          <h2 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight leading-tight">
-            Every Format.<br />
-            <span class="text-emerald-500 underline decoration-emerald-500 underline-offset-8">Covered.</span>
-          </h2>
-          <p class="text-gray-600 dark:text-gray-400 font-medium">
-            Whether you're running a local cup or a full season league, we have the format you need.
-          </p>
-        </div>
-
-        <!-- Format Cards -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <!-- Knockout -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300 group">
-            <div class="w-12 h-12 bg-red-500/10 dark:bg-red-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-6 h-6 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">Knockout</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
-              Single elimination brackets. Win or go home. Perfect for cup competitions and playoffs.
+            <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Matchday control</p>
+            <h2 class="mt-3 text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white sm:text-4xl">
+              Keep scores, standings, and graphics in sync.
+            </h2>
+            <p class="mt-4 max-w-xl text-sm leading-7 text-gray-600 dark:text-gray-400">
+              Update a match once and let ParaScores carry that result through the fan page, group table, bracket, and social graphic workflow.
             </p>
           </div>
 
-          <!-- Round Robin -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300 group">
-            <div class="w-12 h-12 bg-blue-500/10 dark:bg-blue-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-6 h-6 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">Round Robin</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
-              Everyone plays everyone. Automatic standings with points, goal difference, and tiebreakers.
-            </p>
-          </div>
-
-          <!-- Group Stage -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300 group">
-            <div class="w-12 h-12 bg-purple-500/10 dark:bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-6 h-6 text-purple-500 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">Group Stage</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
-              Split teams into groups. Mini-leagues within the tournament with separate standings.
-            </p>
-          </div>
-
-          <!-- Hybrid -->
-          <div class="bg-white dark:bg-[#111827] border-2 border-emerald-500 rounded-lg p-6 group shadow-lg shadow-emerald-500/5 transition-colors">
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-12 h-12 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                </svg>
-              </div>
-              <span class="px-2 py-1 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded uppercase tracking-widest transition-colors">POPULAR</span>
-            </div>
-            <h3 class="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2">Hybrid</h3>
-            <p class="text-sm text-gray-700 dark:text-gray-400 font-bold leading-relaxed">
-              Group stage followed by knockout rounds. Just like the World Cup or Champions League format.
-            </p>
-          </div>
-
-          <!-- Friendly -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300 group">
-            <div class="w-12 h-12 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-6 h-6 text-orange-500 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">Friendly</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
-              Single standalone matches. No brackets, no standings. Perfect for exhibition games.
-            </p>
-          </div>
-
-          <!-- Custom -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300 group">
-            <div class="w-12 h-12 bg-gray-500/10 dark:bg-gray-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-6 h-6 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">Configurable</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
-              Custom scoring rules, double round-robin, and more. Adapt to any sport or competition.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Features Grid Section -->
-    <section class="py-24 border-t border-gray-200 dark:border-white/10 transition-colors">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="text-center mb-16">
-          <h2 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">
-            Everything You Need
-          </h2>
-          <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-medium">
-            From registration to final whistle. All the tools to run professional tournaments.
-          </p>
-        </div>
-
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <!-- Real-Time Updates (SSE) -->
-          <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300">
-            <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Real-Time Updates</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium leading-relaxed">
-              Powered by Server-Sent Events (SSE). Fans see goals and score changes with zero delay. No refreshing needed.
-            </p>
-            <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Zero-delay live scores
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Instant event notifications
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Live match clock
-              </li>
-            </ul>
-          </div>
-
-          <!-- Advanced Match Control -->
-          <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300">
-            <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Advanced Match Control</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium leading-relaxed">
-              Full control over every game. Track goals, cards, and easily edit or delete events if mistakes happen.
-            </p>
-            <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Edit and delete match events
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Penalty shootout support
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Quick home/away team swaps
-              </li>
-            </ul>
-          </div>
-
-          <!-- Automatic Standings -->
-          <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300">
-            <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Automatic Standings</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium leading-relaxed">
-              No spreadsheets needed. Points, goal difference, and positions calculated automatically.
-            </p>
-            <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Points & goal difference
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Head-to-head tiebreakers
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Automatic promotion/relegation
-              </li>
-            </ul>
-          </div>
-
-          <!-- Team Management -->
-          <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300">
-            <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Team Management</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium leading-relaxed">
-              Add teams with logos, manage player rosters, and track individual statistics.
-            </p>
-            <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Top scorers & assist kings
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Player profiles & rosters
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Team logos & branding
-              </li>
-            </ul>
-          </div>
-
-          <!-- Graphics Generator - Highlighted -->
-          <div class="bg-white dark:bg-[#111827] border-2 border-emerald-500 rounded-lg p-6 shadow-lg shadow-emerald-500/5 transition-colors">
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-              </div>
-              <span class="text-emerald-600 dark:text-emerald-400 text-2xl">✨</span>
-            </div>
-            <h3 class="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2">Graphics Generator</h3>
-            <p class="text-sm text-gray-700 dark:text-gray-400 mb-4 font-bold leading-relaxed">
-              Create stunning social media graphics in seconds. Share results, standings, and brackets.
-            </p>
-            <ul class="text-[11px] text-emerald-600/70 dark:text-emerald-400/50 space-y-1.5 font-black uppercase tracking-widest">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Match result graphics
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Standings table images
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Tournament brackets
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Matchday schedules
-              </li>
-            </ul>
-          </div>
-
-          <!-- Personalized Fan Feed -->
-          <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300">
-            <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Personalized Fan Feed</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium leading-relaxed">
-              Tailored experience for every fan. Follow your favorite teams and tournaments to get a customized feed of matches.
-            </p>
-            <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Follow teams & leagues
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Upcoming match reminders
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Custom feed algorithms
-              </li>
-            </ul>
-          </div>
-
-          <!-- Embeddable Widgets -->
-          <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300">
-            <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Embeddable Widgets</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium leading-relaxed">
-              Showcase standings and fixtures directly on your own website. Seamlessly matches your aesthetic.
-            </p>
-            <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Standings widgets
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Fixtures widgets
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Responsive design
-              </li>
-            </ul>
-          </div>
-
-          <!-- Organization Pages -->
-          <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300">
-            <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Organization Pages</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium leading-relaxed">
-              Create an organization profile. Fans can follow your organization to get automatically notified about all your tournaments.
-            </p>
-            <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Organization following
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Custom branding & logos
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Public organization profiles
-              </li>
-            </ul>
-          </div>
-
-          <!-- Intuitive Setup Wizards -->
-          <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 shadow-sm hover:border-emerald-500/50 transition-all duration-300">
-            <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-              </svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Intuitive Setup Wizards</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium leading-relaxed">
-              Step-by-step wizards for group stages and knockout brackets. Seed teams and manually schedule fixtures with ease.
-            </p>
-            <ul class="text-[11px] text-gray-500 dark:text-gray-500 space-y-1.5 font-bold uppercase tracking-wider">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Group assignment tools
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Manual fixture scheduling
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Bracket seeding
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Screenshot Showcase Section -->
-    <section class="py-24 border-t border-gray-200 dark:border-white/10 overflow-hidden transition-colors">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="text-center mb-16">
-          <h2 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">
-            See It In <span class="text-emerald-500">Action</span>
-          </h2>
-          <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-medium">
-            From match graphics to tournament brackets, see what you can create.
-          </p>
-        </div>
-
-        <!-- Screenshots Grid -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <!-- Graphics Generator Screenshot -->
-          <div class="group">
-            <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl overflow-hidden hover:border-emerald-500/50 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-emerald-500/10">
-              <img 
-                src="/images/landing/graphics-generator.png" 
-                alt="Graphics Generator"
-                class="w-full h-auto"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-              />
-              <!-- Fallback placeholder -->
-              <div class="hidden items-center justify-center h-48 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#111827] dark:to-[#0A0F1C] text-gray-400 dark:text-gray-500">
-                <div class="text-center">
-                  <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                  </svg>
-                  <p class="text-xs opacity-60">graphics-generator.png</p>
-                </div>
-              </div>
-            </div>
-            <h3 class="mt-4 font-bold text-gray-900 dark:text-white">Graphics Generator</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Create stunning match result graphics for social media</p>
-          </div>
-
-          <!-- Bracket View Screenshot -->
-          <div class="group">
-            <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl overflow-hidden hover:border-emerald-500/50 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-emerald-500/10">
-              <img 
-                src="/images/landing/bracket-view.png" 
-                alt="Tournament Bracket"
-                class="w-full h-auto"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-              />
-              <!-- Fallback placeholder -->
-              <div class="hidden items-center justify-center h-48 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#111827] dark:to-[#0A0F1C] text-gray-400 dark:text-gray-500">
-                <div class="text-center">
-                  <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                  </svg>
-                  <p class="text-xs opacity-60">bracket-view.png</p>
-                </div>
-              </div>
-            </div>
-            <h3 class="mt-4 font-bold text-gray-900 dark:text-white">Tournament Brackets</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Visual knockout brackets with automatic progression</p>
-          </div>
-
-          <!-- Standings Screenshot -->
-          <div class="group">
-            <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl overflow-hidden hover:border-emerald-500/50 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-emerald-500/10">
-              <img 
-                src="/images/landing/standings-table.png" 
-                alt="Standings Table"
-                class="w-full h-auto"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-              />
-              <!-- Fallback placeholder -->
-              <div class="hidden items-center justify-center h-48 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#111827] dark:to-[#0A0F1C] text-gray-400 dark:text-gray-500">
-                <div class="text-center">
-                  <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                  </svg>
-                  <p class="text-xs opacity-60">standings-table.png</p>
-                </div>
-              </div>
-            </div>
-            <h3 class="mt-4 font-bold text-gray-900 dark:text-white">Live Standings</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Auto-calculated league tables and group standings</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- How It Works Section -->
-    <section class="py-24 border-t border-gray-200 dark:border-white/10 transition-colors">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="text-center mb-16">
-          <h2 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">
-            Up and Running in <span class="text-emerald-500">Minutes</span>
-          </h2>
-          <p class="text-gray-600 dark:text-gray-400 font-medium">
-            Three simple steps to run your first tournament.
-          </p>
-        </div>
-
-        <div class="grid md:grid-cols-3 gap-8">
-          <!-- Step 1 -->
-          <div class="text-center">
-            <div class="w-16 h-16 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">1</span>
-            </div>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Create Tournament</h3>
-            <p class="text-gray-600 dark:text-gray-400 text-sm font-medium leading-relaxed">
-              Choose your format, set dates, add branding. Your tournament page is ready instantly.
-            </p>
-          </div>
-
-          <!-- Step 2 -->
-          <div class="text-center">
-            <div class="w-16 h-16 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">2</span>
-            </div>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Add Participants</h3>
-            <p class="text-gray-600 dark:text-gray-400 text-sm font-medium leading-relaxed">
-              Add teams or individuals with logos and rosters. Seed them for fair brackets.
-            </p>
-          </div>
-
-          <!-- Step 3 -->
-          <div class="text-center">
-            <div class="w-16 h-16 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">3</span>
-            </div>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Generate & Go</h3>
-            <p class="text-gray-600 dark:text-gray-400 text-sm font-medium leading-relaxed">
-              Auto-generate fixtures with one click. Update scores live and share graphics instantly.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Pricing Section -->
-    <section id="pricing" class="py-24 border-t border-gray-200 dark:border-white/10 transition-colors">
-      <div class="max-w-7xl mx-auto px-6">
-        <!-- Section Header -->
-        <div class="text-center mb-16">
-          <h2 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">Simple Pricing</h2>
-          <p class="text-gray-600 dark:text-gray-400 font-medium">Start free. Upgrade when you need more.</p>
-        </div>
-
-        <!-- Pricing Cards -->
-        <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          <!-- Free Plan -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-8 hover:border-gray-200 dark:hover:border-white/20 transition-all duration-300">
-            <div class="mb-8">
-              <h3 class="text-lg font-bold text-gray-500 dark:text-gray-400 mb-2">Free</h3>
-              <div class="text-5xl font-black text-gray-900 dark:text-white">$0</div>
-              <p class="text-sm text-gray-500 mt-2 font-medium">Forever free</p>
-            </div>
-            <ul class="space-y-4 mb-8">
-              <li class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 font-medium">
-                <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Up to 16 participants
-              </li>
-              <li class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 font-medium">
-                <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Knockout & Round Robin
-              </li>
-              <li class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 font-medium">
-                <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Basic graphics
-              </li>
-              <li class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 font-medium">
-                <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                1 active tournament
-              </li>
-            </ul>
-            <NuxtLink
-              to="/signup"
-              class="block w-full px-6 py-3 text-sm font-bold text-center text-gray-900 dark:text-white border border-gray-200 dark:border-white/20 hover:border-gray-300 dark:hover:border-white/40 rounded transition-colors"
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div
+              v-for="workflow in workflows"
+              :key="workflow.title"
+              class="rounded-lg border border-gray-200 bg-white p-5 dark:border-white/10 dark:bg-[#070b10]"
             >
-              Get Started Free
-            </NuxtLink>
-          </div>
-
-          <!-- Pro Plan - Popular -->
-          <div class="relative bg-white dark:bg-[#111827] border-2 border-emerald-500 rounded-lg p-8 shadow-xl shadow-emerald-500/5 transition-colors">
-            <!-- Popular Badge -->
-            <div class="absolute -top-3 right-4 px-3 py-1 text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-white dark:bg-[#111827] border border-emerald-500 rounded uppercase tracking-widest">
-              MOST POPULAR
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-500">{{ workflow.step }}</p>
+              <h3 class="mt-4 text-base font-semibold text-gray-950 dark:text-white">{{ workflow.title }}</h3>
+              <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">{{ workflow.description }}</p>
             </div>
-            <div class="mb-8">
-              <h3 class="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2">Pro</h3>
-              <div class="flex items-baseline gap-1">
-                <span class="text-5xl font-black text-gray-900 dark:text-white">$19</span>
-                <span class="text-gray-500 font-bold">/mo</span>
-              </div>
-              <p class="text-sm text-gray-500 mt-2 font-medium">For serious organizers</p>
-            </div>
-            <ul class="space-y-4 mb-8">
-              <li class="flex items-center gap-3 text-sm">
-                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="text-emerald-400">Unlimited</span> participants
-              </li>
-              <li class="flex items-center gap-3 text-sm">
-                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="text-emerald-400">All</span> tournament formats
-              </li>
-              <li class="flex items-center gap-3 text-sm">
-                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Full graphics generator
-              </li>
-              <li class="flex items-center gap-3 text-sm">
-                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Unlimited tournaments
-              </li>
-              <li class="flex items-center gap-3 text-sm">
-                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Priority support
-              </li>
-            </ul>
-            <NuxtLink
-              to="/signup"
-              class="block w-full px-6 py-3 text-sm font-medium text-center text-white bg-emerald-500 hover:bg-emerald-600 rounded transition-colors"
-            >
-              Start 14-Day Trial
-            </NuxtLink>
-          </div>
-
-          <!-- Enterprise Plan -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-8 hover:border-gray-200 dark:hover:border-white/20 transition-all duration-300">
-            <div class="mb-8">
-              <h3 class="text-lg font-bold text-gray-500 dark:text-gray-400 mb-2">Enterprise</h3>
-              <div class="text-5xl font-black text-gray-900 dark:text-white">Custom</div>
-              <p class="text-sm text-gray-500 mt-2 font-medium">For organizations</p>
-            </div>
-            <ul class="space-y-4 mb-8">
-              <li class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 font-medium">
-                <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Everything in Pro
-              </li>
-              <li class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 font-medium">
-                <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Custom branding
-              </li>
-              <li class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 font-medium">
-                <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                API access
-              </li>
-              <li class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 font-medium">
-                <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Dedicated support
-              </li>
-              <li class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 font-medium">
-                <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                White-label option
-              </li>
-            </ul>
-            <NuxtLink
-              to="/contact"
-              class="block w-full px-6 py-3 text-sm font-bold text-center text-gray-900 dark:text-white border border-gray-200 dark:border-white/20 hover:border-gray-300 dark:hover:border-white/40 rounded transition-colors"
-            >
-              Contact Sales
-            </NuxtLink>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Final CTA Section -->
-    <section class="py-24 border-t border-gray-200 dark:border-white/10 transition-colors">
-      <div class="max-w-3xl mx-auto px-6 text-center">
-        <h2 class="text-4xl md:text-5xl font-extrabold mb-6 tracking-tight leading-tight">
-          Ready to run your next tournament?
-        </h2>
-        <p class="text-lg text-gray-600 dark:text-gray-400 mb-10 font-medium">
-          Join thousands of organizers who trust ParaScores for their competitions. Start for free today.
-        </p>
-        <div class="flex flex-wrap justify-center gap-4">
+    <section class="border-y border-gray-200 bg-white py-18 dark:border-white/10 dark:bg-[#070b10]">
+      <div class="mx-auto max-w-7xl px-6">
+        <div class="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+          <div>
+            <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Formats covered</p>
+            <h2 class="mt-3 text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white sm:text-4xl">
+              From a friendly to a full season.
+            </h2>
+          </div>
           <NuxtLink
             to="/signup"
-            class="px-8 py-4 text-base font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded transition-all duration-300 shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98]"
+            class="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-md border border-gray-300 px-4 text-sm font-semibold text-gray-900 transition hover:bg-gray-100 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
           >
-            Start Free Today
+            Create tournament
+            <UIcon name="i-lucide-plus" class="h-4 w-4" />
           </NuxtLink>
-          <NuxtLink
-            to="/contact"
-            class="px-8 py-4 text-base font-bold text-gray-900 dark:text-white border border-gray-200 dark:border-white/20 hover:border-gray-300 dark:hover:border-white/40 rounded transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+        </div>
+
+        <div class="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div
+            v-for="format in formats"
+            :key="format.name"
+            class="rounded-lg border border-gray-200 p-4 dark:border-white/10"
           >
-            Talk to Sales
-          </NuxtLink>
+            <UIcon :name="format.icon" class="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
+            <h3 class="mt-4 text-sm font-semibold text-gray-950 dark:text-white">{{ format.name }}</h3>
+            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">{{ format.description }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-gray-50 py-18 dark:bg-[#0b1118]">
+      <div class="mx-auto max-w-7xl px-6">
+        <div class="max-w-2xl">
+          <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Live public experience</p>
+          <h2 class="mt-3 text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white sm:text-4xl">
+            Give fans pages that feel current.
+          </h2>
+          <p class="mt-4 text-sm leading-7 text-gray-600 dark:text-gray-400">
+            Publish the details people actually check: brackets, fixture pages, live standings, and clean visual assets for every update.
+          </p>
+        </div>
+
+        <div class="mt-10 grid gap-5 lg:grid-cols-3">
+          <article
+            v-for="item in showcase"
+            :key="item.title"
+            class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-white/10 dark:bg-[#070b10]"
+          >
+            <img :src="item.image" :alt="item.alt" class="aspect-[16/10] w-full object-cover" />
+            <div class="p-5">
+              <h3 class="text-base font-semibold text-gray-950 dark:text-white">{{ item.title }}</h3>
+              <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">{{ item.description }}</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white py-18 dark:bg-[#070b10]">
+      <div class="mx-auto max-w-7xl px-6">
+        <div class="grid gap-8 rounded-lg border border-gray-200 bg-gray-50 p-6 dark:border-white/10 dark:bg-white/[0.03] sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <h2 class="text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white">
+              Ready for the next fixture?
+            </h2>
+            <p class="mt-3 max-w-2xl text-sm leading-7 text-gray-600 dark:text-gray-400">
+              Start with a free tournament, invite participants, and publish a polished fan experience before kickoff.
+            </p>
+          </div>
+          <div class="flex flex-col gap-3 sm:flex-row">
+            <NuxtLink
+              to="/signup"
+              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-gray-950 px-5 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
+            >
+              Start free
+              <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
+            </NuxtLink>
+            <NuxtLink
+              to="/pricing"
+              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-gray-300 px-5 text-sm font-semibold text-gray-900 transition hover:bg-white dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+            >
+              View pricing
+              <UIcon name="i-lucide-credit-card" class="h-4 w-4" />
+            </NuxtLink>
+          </div>
         </div>
       </div>
     </section>
@@ -786,11 +189,101 @@
 </template>
 
 <script setup lang="ts">
-// SEO
+
+const features = [
+  {
+    title: 'Fixtures without spreadsheet drift',
+    description: 'Build schedules, assign venues, and keep every public page aligned as results change.',
+    icon: 'i-lucide-calendar-days'
+  },
+  {
+    title: 'Live match control',
+    description: 'Track goals, cards, penalties, and corrections from one focused control surface.',
+    icon: 'i-lucide-radio'
+  },
+  {
+    title: 'Automatic tables and brackets',
+    description: 'Standings, goal difference, group order, and knockout progression update as you score.',
+    icon: 'i-lucide-table-2'
+  },
+  {
+    title: 'Share-ready graphics',
+    description: 'Turn results, standings, and match moments into clean assets for social channels.',
+    icon: 'i-lucide-image'
+  }
+]
+
+const workflows = [
+  {
+    step: '01',
+    title: 'Create',
+    description: 'Choose the format, dates, participants, and basic branding.'
+  },
+  {
+    step: '02',
+    title: 'Control',
+    description: 'Run fixtures live with event tracking and score corrections.'
+  },
+  {
+    step: '03',
+    title: 'Publish',
+    description: 'Share public pages, widgets, and graphics as the tournament unfolds.'
+  }
+]
+
+const formats = [
+  {
+    name: 'Knockout',
+    description: 'Single-elimination cups and playoffs.',
+    icon: 'i-lucide-git-branch'
+  },
+  {
+    name: 'Round robin',
+    description: 'Everyone plays everyone with live tables.',
+    icon: 'i-lucide-refresh-cw'
+  },
+  {
+    name: 'Group stage',
+    description: 'Multiple groups with separate standings.',
+    icon: 'i-lucide-panels-top-left'
+  },
+  {
+    name: 'Hybrid',
+    description: 'Groups first, knockout bracket after.',
+    icon: 'i-lucide-workflow'
+  },
+  {
+    name: 'Friendly',
+    description: 'Standalone matches with simple publishing.',
+    icon: 'i-lucide-shield'
+  }
+]
+
+const showcase = [
+  {
+    title: 'Graphics studio',
+    description: 'Produce result and matchday visuals without leaving the tournament workspace.',
+    image: '/images/landing/graphics-generator.png',
+    alt: 'ParaScores graphics generator'
+  },
+  {
+    title: 'Knockout brackets',
+    description: 'Publish clear bracket views that progress automatically as teams advance.',
+    image: '/images/landing/bracket-view.png',
+    alt: 'ParaScores knockout bracket view'
+  },
+  {
+    title: 'Live standings',
+    description: 'Give fans an up-to-date table with points, goal difference, and positions.',
+    image: '/images/landing/standings-table.png',
+    alt: 'ParaScores standings table'
+  }
+]
+
 useSeoMeta({
-  title: 'ParaScores - Tournament Management Made Simple',
-  description: 'Create and manage tournaments with ease. Knockout, round robin, and group stages. Live scoring, automatic standings, and social media graphics.',
-  ogTitle: 'ParaScores - Tournament Management Made Simple',
-  ogDescription: 'Create and manage tournaments with ease. Knockout, round robin, and group stages. Live scoring, automatic standings, and social media graphics.',
+  title: 'ParaScores - Clean Tournament Management',
+  description: 'Run fixtures, standings, live scores, brackets, and match graphics from one clean tournament workspace.',
+  ogTitle: 'ParaScores - Clean Tournament Management',
+  ogDescription: 'Run fixtures, standings, live scores, brackets, and match graphics from one clean tournament workspace.'
 })
 </script>
