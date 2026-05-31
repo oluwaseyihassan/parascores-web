@@ -115,10 +115,10 @@ onMounted(() => {
                     <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] whitespace-nowrap shrink-0">#</th>
                     <th class="py-1.5 px-2 text-left font-semibold text-[10px] w-full min-w-[120px] sm:min-w-[160px]">Team</th>
                     <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] whitespace-nowrap shrink-0">P</th>
-                    <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] hidden sm:table-cell whitespace-nowrap shrink-0">W</th>
-                    <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] hidden sm:table-cell whitespace-nowrap shrink-0">D</th>
-                    <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] hidden sm:table-cell whitespace-nowrap shrink-0">L</th>
-                    <th class="py-1.5 px-2 text-center w-10 font-semibold text-[10px] hidden md:table-cell whitespace-nowrap shrink-0">GD</th>
+                    <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] whitespace-nowrap shrink-0">W</th>
+                    <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] whitespace-nowrap shrink-0">D</th>
+                    <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] whitespace-nowrap shrink-0">L</th>
+                    <th class="py-1.5 px-2 text-center w-10 font-semibold text-[10px] whitespace-nowrap shrink-0">GD</th>
                     <th class="py-1.5 px-2 text-center w-10 font-bold text-[10px] whitespace-nowrap shrink-0">Pts</th>
                   </tr>
                 </thead>
@@ -130,7 +130,7 @@ onMounted(() => {
                     :class="isDark ? 'border-white/5 hover:bg-gray-900/50' : 'border-gray-100 hover:bg-gray-50'"
                   >
                     <td class="py-2 px-2 text-center whitespace-nowrap shrink-0">
-                      <div 
+                       <div 
                         class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium mx-auto"
                         :class="[
                           (standing.position || index + 1) <= 4 
@@ -155,10 +155,10 @@ onMounted(() => {
                       </div>
                     </td>
                     <td class="py-2 px-2 text-center whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.played }}</td>
-                    <td class="py-2 px-2 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.wins }}</td>
-                    <td class="py-2 px-2 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.draws }}</td>
-                    <td class="py-2 px-2 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.losses }}</td>
-                    <td class="py-2 px-2 text-center hidden md:table-cell whitespace-nowrap shrink-0">
+                    <td class="py-2 px-2 text-center whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.wins }}</td>
+                    <td class="py-2 px-2 text-center whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.draws }}</td>
+                    <td class="py-2 px-2 text-center whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.losses }}</td>
+                    <td class="py-2 px-2 text-center whitespace-nowrap shrink-0">
                       <span :class="[
                          standing.goalDiff > 0 ? 'text-green-500' : standing.goalDiff < 0 ? 'text-red-500' : (isDark ? 'text-gray-500' : 'text-gray-400')
                       ]">
