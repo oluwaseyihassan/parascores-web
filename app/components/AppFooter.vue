@@ -123,7 +123,6 @@ const currentYear = computed(() => new Date().getFullYear())
 
 const handleSubscribe = () => {
   if (email.value) {
-    console.log('Subscribing:', email.value)
     email.value = ''
   }
 }
