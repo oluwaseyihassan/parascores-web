@@ -156,7 +156,7 @@ const schema = z.object({
   timezone: z.string().min(1, 'Timezone is required'),
   start_date: z.string().min(1, 'Start date is required'),
   end_date: z.string().min(1, 'End date is required'),
-  maxParticipants: z.number().positive().optional().nullable(),
+  maxParticipants: z.number({ required_error: 'Max participants is required' }).int().min(2, 'Must have at least 2 participants'),
   autoApprove: z.boolean(),
   isPaidRegistration: z.boolean().optional(),
   registrationFee: z.number().min(0, 'Registration fee must be positive').optional().nullable(),
@@ -180,7 +180,7 @@ const state = reactive<Partial<Schema>>({
   timezone: props.tournament.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
   start_date: props.tournament.start_date,
   end_date: props.tournament.end_date,
-  maxParticipants: props.tournament.maxParticipants,
+  maxParticipants: props.tournament.maxParticipants ?? undefined,
   autoApprove: props.tournament.autoApprove ?? false,
   isPaidRegistration: props.tournament.isPaidRegistration ?? false,
   registrationFee: props.tournament.registrationFee ? props.tournament.registrationFee / 100 : null,
@@ -630,11 +630,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             </div>
           </UFormField>
 
-          <UFormField label="Max Participants" name="maxParticipants">
+          <UFormField label="Max Participants" name="maxParticipants" required>
             <UInput 
               v-model.number="state.maxParticipants" 
               type="number"
-              placeholder="Leave empty for unlimited"
+              placeholder="e.g. 16"
               :min="2"
               class="w-full md:w-1/2"
             />
