@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white dark:bg-[#0A0F1C] min-h-screen text-gray-900 dark:text-white transition-colors">
+  <div class="bg-white dark:bg-[#070b10] min-h-screen text-gray-900 dark:text-white transition-colors">
     <!-- Hero Section -->
     <section class="relative pt-20 pb-16 overflow-hidden">
       <div class="max-w-7xl mx-auto px-6">
@@ -29,21 +29,10 @@
           
           <!-- Left Column (Contact Info) -->
           <div class="lg:col-span-2 flex flex-col gap-8 order-2 lg:order-1">
-            <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl p-8 shadow-sm hover:border-emerald-500/30 transition-colors">
+            <div class="bg-gray-50 dark:bg-[#0c1017] border border-gray-100 dark:border-white/5 rounded-xl p-8 shadow-sm hover:border-emerald-500/30 transition-colors">
               <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Contact Information</h3>
               
               <div class="flex flex-col gap-6">
-                <!-- Location -->
-                <div class="flex gap-4">
-                  <div class="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-emerald-400" />
-                  </div>
-                  <div>
-                    <h4 class="text-sm font-bold text-gray-900 dark:text-gray-200 mb-1">Office</h4>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">123 Tournament Ave.<br />New York, NY 10012</p>
-                  </div>
-                </div>
-
                 <!-- Email -->
                 <div class="flex gap-4">
                   <div class="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -51,7 +40,7 @@
                   </div>
                   <div>
                     <h4 class="text-sm font-bold text-gray-900 dark:text-gray-200 mb-1">Email Us</h4>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">support@parascores.com</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">admin@parascores.com</p>
                   </div>
                 </div>
 
@@ -62,18 +51,18 @@
                   </div>
                   <div>
                     <h4 class="text-sm font-bold text-gray-900 dark:text-gray-200 mb-1">Call Us</h4>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">+1 (555) 123-4567</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">+2349069647066</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- Social Links -->
-            <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl p-8 shadow-sm hover:border-emerald-500/30 transition-colors">
+            <div class="bg-gray-50 dark:bg-[#0c1017] border border-gray-100 dark:border-white/5 rounded-xl p-8 shadow-sm hover:border-emerald-500/30 transition-colors">
               <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Follow Us</h3>
               <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 font-medium">Stay up to date with the latest features and community tournaments.</p>
               <div class="flex flex-wrap gap-4">
-                <a href="#" class="w-10 h-10 bg-white dark:bg-[#0d1424] border border-gray-200 dark:border-white/10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 hover:border-emerald-500/50 transition-all shadow-sm">
+                <a href="https://x.com/parascores" target="_blank" rel="noopener noreferrer" class="w-10 h-10 bg-white dark:bg-[#0d1424] border border-gray-200 dark:border-white/10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 hover:border-emerald-500/50 transition-all shadow-sm">
                   <SocialsTwitterIcon class="w-4 h-4" />
                 </a>
                 <a href="#" class="w-10 h-10 bg-white dark:bg-[#0d1424] border border-gray-200 dark:border-white/10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 hover:border-emerald-500/50 transition-all shadow-sm">
@@ -88,27 +77,27 @@
 
           <!-- Right Column (Contact Form) -->
           <div class="lg:col-span-3 order-1 lg:order-2">
-            <div class="bg-white dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl p-6 md:p-8 relative overflow-hidden shadow-sm">
+            <div class="bg-white dark:bg-[#0c1017] border border-gray-100 dark:border-white/5 rounded-xl p-6 md:p-8 relative overflow-hidden shadow-sm">
               <div class="absolute top-0 right-0 p-32 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none"></div>
               
               <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Send us a message</h3>
               
-              <UForm :schema="schema" :state="state" @submit="onSubmit" class="space-y-6 relative z-10">
+              <UForm :schema="schema" :state="state" @submit="onSubmit" class="space-y-6 relative z-10 premium-form">
                 <div class="grid md:grid-cols-2 gap-6">
-                  <UFormField label="Full Name" name="name">
-                    <UInput v-model="state.name" placeholder="John Doe" size="lg" color="neutral" />
+                  <UFormField label="Full Name" name="name" class="w-full">
+                    <UInput v-model="state.name" placeholder="John Doe" size="lg" color="neutral" class="w-full" />
                   </UFormField>
-                  <UFormField label="Email Address" name="email">
-                    <UInput v-model="state.email" type="email" placeholder="john@example.com" size="lg" color="neutral" />
+                  <UFormField label="Email Address" name="email" class="w-full">
+                    <UInput v-model="state.email" type="email" placeholder="john@example.com" size="lg" color="neutral" class="w-full" />
                   </UFormField>
                 </div>
 
-                <UFormField label="Subject" name="subject">
-                  <UInput v-model="state.subject" placeholder="How can we help you?" size="lg" color="neutral" />
+                <UFormField label="Subject" name="subject" class="w-full">
+                  <UInput v-model="state.subject" placeholder="How can we help you?" size="lg" color="neutral" class="w-full" />
                 </UFormField>
 
-                <UFormField label="Message" name="message">
-                  <UTextarea v-model="state.message" :rows="6" placeholder="Tell us more about your inquiry..." size="lg" color="neutral" />
+                <UFormField label="Message" name="message" class="w-full">
+                  <UTextarea v-model="state.message" :rows="6" placeholder="Tell us more about your inquiry..." size="lg" color="neutral" class="w-full" />
                 </UFormField>
 
                 <div class="pt-2">
@@ -132,6 +121,87 @@
     </section>
   </div>
 </template>
+
+<style scoped>
+/* High-end design system for contact form inputs */
+.premium-form :deep(input),
+.premium-form :deep(textarea) {
+  background-color: #070b10 !important; /* matches general page dark background */
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.75rem !important; /* rounded-xl */
+  color: #ffffff !important;
+  font-size: 0.95rem !important;
+  width: 100% !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.premium-form :deep(input) {
+  padding-top: 0.875rem !important;
+  padding-bottom: 0.875rem !important;
+  padding-left: 1.25rem !important;
+  padding-right: 1.25rem !important;
+  height: auto !important;
+}
+
+.premium-form :deep(textarea) {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+  padding-left: 1.25rem !important;
+  padding-right: 1.25rem !important;
+}
+
+.premium-form :deep(input:focus),
+.premium-form :deep(textarea:focus) {
+  border-color: #10b981 !important; /* emerald-500 */
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15), 0 4px 12px -2px rgba(16, 185, 129, 0.05) !important;
+  outline: none !important;
+}
+
+.premium-form :deep(input::placeholder),
+.premium-form :deep(textarea::placeholder) {
+  color: #6b7280 !important; /* text-gray-500 */
+}
+
+/* Force all input wrapper elements to full-width */
+.premium-form :deep(.w-full),
+.premium-form :deep(div.relative),
+.premium-form :deep(.u-form-field) {
+  width: 100% !important;
+}
+
+.premium-form :deep(label) {
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  color: #374151 !important; /* dark grey in light mode */
+  margin-bottom: 0.5rem !important;
+  display: block !important;
+}
+
+.dark .premium-form :deep(label) {
+  color: #e5e7eb !important; /* light grey in dark mode */
+}
+
+/* Light mode overrides */
+.light .premium-form :deep(input),
+.light .premium-form :deep(textarea) {
+  background-color: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+  color: #111827 !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.light .premium-form :deep(input:focus),
+.light .premium-form :deep(textarea:focus) {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 4px 12px -2px rgba(16, 185, 129, 0.05) !important;
+}
+
+.light .premium-form :deep(input::placeholder),
+.light .premium-form :deep(textarea::placeholder) {
+  color: #9ca3af !important;
+}
+</style>
 
 <script setup lang="ts">
 import { z } from 'zod'
