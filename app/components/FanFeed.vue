@@ -557,7 +557,7 @@ onUnmounted(() => {
 
 <style scoped>
 .bg-page {
-  background-color: #0A0F1C;
+  background-color: #070b10;
 }
 
 .hide-scrollbar::-webkit-scrollbar {
