@@ -1,13 +1,10 @@
 <template>
   <div class="min-h-screen bg-white text-gray-950 dark:bg-[#070b10] dark:text-white transition-colors duration-300">
     <!-- Hero Section with Interactive Widget Playground -->
-    <section class="relative isolate overflow-hidden bg-[#07100c] py-20 lg:py-24">
-      <img
-        src="/images/landing/dashboard-screenshot.png"
-        alt="ParaScores tournament dashboard"
-        class="absolute inset-0 h-full w-full object-cover opacity-20"
-      />
-      <div class="absolute inset-0 bg-black/75"></div>
+    <section class="relative isolate overflow-hidden bg-[#070b10] py-20 lg:py-24">
+      <!-- Glowing design assets for premium dark mode aesthetics -->
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_45%)] pointer-events-none"></div>
+      <div class="absolute top-1/2 left-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none"></div>
 
       <div class="relative mx-auto max-w-7xl px-6 z-10 grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
         <!-- Left Column: Copy & Value Proposition -->
@@ -41,12 +38,7 @@
             </a>
           </div>
 
-          <dl class="mt-12 grid max-w-lg grid-cols-3 gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10 text-white backdrop-blur">
-            <div v-for="metric in metrics" :key="metric.label" class="bg-black/20 p-4 text-center">
-              <dt class="text-[11px] font-medium text-gray-300 uppercase tracking-wider">{{ metric.label }}</dt>
-              <dd class="mt-1 text-lg font-semibold sm:text-2xl">{{ metric.value }}</dd>
-            </div>
-          </dl>
+
         </div>
 
         <!-- Right Column: Interactive Browser Playground -->
@@ -371,11 +363,6 @@ const copyText = async (text: string, key: string) => {
   }
 }
 
-const metrics = [
-  { label: 'Setup time', value: '< 1 min' },
-  { label: 'Widgets', value: '4 types' },
-  { label: 'Updates', value: 'Live' }
-]
 
 const features = [
   {
