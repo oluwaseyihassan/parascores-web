@@ -43,17 +43,15 @@ const fetchData = async () => {
   loading.value = true
   error.value = null
   try {
-    // 1. Fetch tournament by ID or customName first
-    const tournamentRes = await $api<any>(`/tournaments/${tournamentId}`)
+    const [tournamentRes, standingsRes] = await Promise.all([
+      $api<any>(`/tournaments/${tournamentId}`),
+      $api<any>(`/standings/tournament/${tournamentId}`)
+    ])
     tournament.value = tournamentRes.data
     
-    // 2. Fetch standings using the internal ID we just got
-    if (tournament.value?.id) {
-      const standingsRes = await $api<any>(`/standings/tournament/${tournament.value.id}`)
-      // Handle both direct array and nested { standings: [...] } response
-      const standingsData = standingsRes.data as any
-      standings.value = Array.isArray(standingsData) ? standingsData : (standingsData?.standings || [])
-    }
+    // Handle both direct array and nested { standings: [...] } response
+    const standingsData = standingsRes.data as any
+    standings.value = Array.isArray(standingsData) ? standingsData : (standingsData?.standings || [])
   } catch (e: any) {
     error.value = e.message || 'Failed to load standings'
     console.error('Widget error:', e)
@@ -68,7 +66,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-4">
+  <div class="p-4 text-xs">
     <!-- Loading -->
     <div v-if="loading" class="flex items-center justify-center py-12">
       <div class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
@@ -76,34 +74,34 @@ onMounted(() => {
 
     <!-- Error -->
     <div v-else-if="error" class="text-center py-12 text-red-400">
-      <p class="text-sm">{{ error }}</p>
+      <p class="text-xs">{{ error }}</p>
     </div>
 
     <!-- Content -->
     <div v-else>
       <!-- Tournament Header -->
-      <div class="flex items-center gap-3 mb-6">
-        <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
           <img v-if="tournament?.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover" />
-          <div v-else class="w-full h-full flex items-center justify-center text-sm font-bold" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+          <div v-else class="w-full h-full flex items-center justify-center text-xs font-bold" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
             {{ (tournament?.name || 'T').charAt(0) }}
           </div>
         </div>
         <div>
-          <h2 class="font-bold text-lg leading-tight">{{ tournament?.name }}</h2>
-          <p class="text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+          <h2 class="font-bold text-sm leading-tight text-gray-900 dark:text-white">{{ tournament?.name }}</h2>
+          <p class="text-[10px]" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
             Standings
           </p>
         </div>
       </div>
 
       <!-- Grouped Standings -->
-      <div v-if="standings.length > 0" class="space-y-6">
+      <div v-if="standings.length > 0" class="space-y-5">
         <div v-for="groupName in groupNames" :key="groupName">
           <!-- Group Header -->
-          <div v-if="hasMultipleGroups" class="flex items-center gap-2 mb-3">
-            <div class="w-1 h-4 rounded-full bg-indigo-500"></div>
-            <h3 class="text-sm font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-700'">
+          <div v-if="hasMultipleGroups" class="flex items-center gap-1.5 mb-2">
+            <div class="w-0.5 h-3 rounded-full bg-indigo-500"></div>
+            <h3 class="text-[11px] font-bold uppercase tracking-wider" :class="isDark ? 'text-gray-200' : 'text-gray-700'">
               {{ groupName === 'default' ? 'Standings' : groupName }}
             </h3>
           </div>
@@ -111,17 +109,17 @@ onMounted(() => {
           <!-- Standings Table -->
           <div class="rounded-lg border overflow-hidden" :class="isDark ? 'border-white/10' : 'border-gray-200'">
             <div class="overflow-x-auto w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <table class="w-full text-sm">
+              <table class="w-full text-[11px]">
                 <thead>
-                  <tr :class="isDark ? 'bg-gray-900 text-gray-400' : 'bg-gray-50 text-gray-500'">
-                    <th class="py-2 px-3 text-center w-11 font-medium text-xs whitespace-nowrap shrink-0">#</th>
-                    <th class="py-2 px-3 text-left font-medium text-xs w-full min-w-[140px] sm:min-w-[180px]">Team</th>
-                    <th class="py-2 px-3 text-center w-11 font-medium text-xs whitespace-nowrap shrink-0">P</th>
-                    <th class="py-2 px-3 text-center w-11 font-medium text-xs hidden sm:table-cell whitespace-nowrap shrink-0">W</th>
-                    <th class="py-2 px-3 text-center w-11 font-medium text-xs hidden sm:table-cell whitespace-nowrap shrink-0">D</th>
-                    <th class="py-2 px-3 text-center w-11 font-medium text-xs hidden sm:table-cell whitespace-nowrap shrink-0">L</th>
-                    <th class="py-2 px-3 text-center w-14 font-medium text-xs hidden md:table-cell whitespace-nowrap shrink-0">GD</th>
-                    <th class="py-2 px-3 text-center w-12 font-bold text-xs whitespace-nowrap shrink-0">Pts</th>
+                  <tr :class="isDark ? 'bg-gray-900 text-gray-400' : 'bg-gray-50 text-gray-500'" class="border-b dark:border-white/5 border-gray-100">
+                    <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] whitespace-nowrap shrink-0">#</th>
+                    <th class="py-1.5 px-2 text-left font-semibold text-[10px] w-full min-w-[120px] sm:min-w-[160px]">Team</th>
+                    <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] whitespace-nowrap shrink-0">P</th>
+                    <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] hidden sm:table-cell whitespace-nowrap shrink-0">W</th>
+                    <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] hidden sm:table-cell whitespace-nowrap shrink-0">D</th>
+                    <th class="py-1.5 px-2 text-center w-8 font-semibold text-[10px] hidden sm:table-cell whitespace-nowrap shrink-0">L</th>
+                    <th class="py-1.5 px-2 text-center w-10 font-semibold text-[10px] hidden md:table-cell whitespace-nowrap shrink-0">GD</th>
+                    <th class="py-1.5 px-2 text-center w-10 font-bold text-[10px] whitespace-nowrap shrink-0">Pts</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -131,9 +129,9 @@ onMounted(() => {
                     class="border-t transition-colors"
                     :class="isDark ? 'border-white/5 hover:bg-gray-900/50' : 'border-gray-100 hover:bg-gray-50'"
                   >
-                    <td class="py-2.5 px-3 text-center whitespace-nowrap shrink-0">
+                    <td class="py-2 px-2 text-center whitespace-nowrap shrink-0">
                       <div 
-                        class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium mx-auto"
+                        class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium mx-auto"
                         :class="[
                           (standing.position || index + 1) <= 4 
                             ? (isDark ? 'bg-indigo-900/30 text-indigo-400' : 'bg-indigo-100 text-indigo-700')
@@ -143,31 +141,31 @@ onMounted(() => {
                         {{ standing.position || index + 1 }}
                       </div>
                     </td>
-                    <td class="py-2.5 px-3 w-full min-w-[140px] sm:min-w-[180px]">
+                    <td class="py-2 px-2 w-full min-w-[120px] sm:min-w-[160px]">
                       <div class="flex items-center gap-2">
-                        <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
+                        <div class="w-4.5 h-4.5 rounded-full overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
                           <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
-                          <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold">
+                          <span v-else class="flex items-center justify-center w-full h-full text-[7px] font-bold">
                             {{ (standing.participant?.customName || 'T').charAt(0).toUpperCase() }}
                           </span>
                         </div>
-                        <span class="font-medium truncate max-w-[100px] sm:max-w-[180px]">
+                        <span class="font-medium truncate max-w-[90px] sm:max-w-[160px]">
                           {{ standing.participant?.customName || standing.participant?.user?.name || 'Unknown' }}
                         </span>
                       </div>
                     </td>
-                    <td class="py-2.5 px-3 text-center whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.played }}</td>
-                    <td class="py-2.5 px-3 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.wins }}</td>
-                    <td class="py-2.5 px-3 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.draws }}</td>
-                    <td class="py-2.5 px-3 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.losses }}</td>
-                    <td class="py-2.5 px-3 text-center hidden md:table-cell whitespace-nowrap shrink-0">
+                    <td class="py-2 px-2 text-center whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.played }}</td>
+                    <td class="py-2 px-2 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.wins }}</td>
+                    <td class="py-2 px-2 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.draws }}</td>
+                    <td class="py-2 px-2 text-center hidden sm:table-cell whitespace-nowrap shrink-0" :class="isDark ? 'text-gray-300' : 'text-gray-600'">{{ standing.losses }}</td>
+                    <td class="py-2 px-2 text-center hidden md:table-cell whitespace-nowrap shrink-0">
                       <span :class="[
                          standing.goalDiff > 0 ? 'text-green-500' : standing.goalDiff < 0 ? 'text-red-500' : (isDark ? 'text-gray-500' : 'text-gray-400')
                       ]">
                         {{ standing.goalDiff > 0 ? `+${standing.goalDiff}` : standing.goalDiff }}
                       </span>
                     </td>
-                    <td class="py-2.5 px-3 text-center font-bold whitespace-nowrap shrink-0">{{ standing.points }}</td>
+                    <td class="py-2 px-2 text-center font-bold whitespace-nowrap shrink-0">{{ standing.points }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -178,7 +176,7 @@ onMounted(() => {
 
       <!-- Empty state -->
       <div v-else class="text-center py-12">
-        <p class="text-sm" :class="isDark ? 'text-gray-500' : 'text-gray-400'">No standings available yet.</p>
+        <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">No standings available yet.</p>
       </div>
     </div>
   </div>
