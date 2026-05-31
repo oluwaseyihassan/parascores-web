@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white dark:bg-[#0A0F1C] min-h-screen text-gray-900 dark:text-white transition-colors">
+  <div class="bg-white dark:bg-[#070b10] min-h-screen text-gray-900 dark:text-white transition-colors">
     <!-- Hero Section -->
     <section class="relative pt-20 pb-32 overflow-x-hidden">
       <!-- Background Glow -->
