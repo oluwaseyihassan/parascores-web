@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-white text-gray-950 dark:bg-[#070b10] dark:text-white">
-    <section class="relative isolate min-h-[calc(100svh-10rem)] overflow-hidden bg-[#070b10]">
+  <div class="min-h-screen bg-white text-gray-950 dark:bg-[#070b10] dark:text-white transition-colors duration-300">
+    <section class="relative isolate min-h-[calc(100svh-10rem)] overflow-hidden bg-slate-50 dark:bg-[#070b10] transition-colors duration-300">
       <!-- Glowing design assets for premium dark mode aesthetics -->
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_45%)] pointer-events-none"></div>
       <div class="absolute top-1/2 left-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none"></div>
@@ -8,14 +8,14 @@
       <div class="relative mx-auto w-full max-w-7xl px-6 py-16 sm:py-20 grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
         <!-- Left Column: Copy & Value Proposition -->
         <div class="max-w-2xl">
-          <p class="mb-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
-            <span class="h-2 w-2 rounded-full bg-emerald-300 animate-pulse"></span>
+          <p class="mb-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-300">
+            <span class="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-300 animate-pulse"></span>
             Tournament operations, live scores, and fan pages
           </p>
-          <h1 class="max-w-4xl text-5xl font-semibold leading-[1.02] tracking-normal text-white sm:text-6xl lg:text-7xl">
-            Run World-Class Tournaments. <span class="text-emerald-400">Automate Everything.</span>
+          <h1 class="max-w-4xl text-5xl font-semibold leading-[1.02] tracking-normal text-gray-900 dark:text-white sm:text-6xl lg:text-7xl">
+            Run World-Class Tournaments. <span class="text-emerald-500 dark:text-emerald-400">Automate Everything.</span>
           </h1>
-          <p class="mt-6 max-w-2xl text-base leading-7 text-gray-200 sm:text-lg">
+          <p class="mt-6 max-w-2xl text-base leading-7 text-gray-600 dark:text-gray-200 sm:text-lg">
             ParaScores gives organizers one clean workspace for fixtures, standings, match control, brackets, and share-ready graphics.
           </p>
 
@@ -29,14 +29,14 @@
             </NuxtLink>
             <NuxtLink
               to="/contact"
-              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-white/25 px-5 text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/10"
+              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-white/25 px-5 text-sm font-semibold text-gray-900 dark:text-white transition hover:border-gray-400 dark:hover:border-white/50 hover:bg-gray-100 dark:hover:bg-white/10"
             >
               Book a demo
               <UIcon name="i-lucide-calendar" class="h-4 w-4" />
             </NuxtLink>
             <NuxtLink
               to="/explore"
-              class="inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-400 hover:text-white transition py-2"
+              class="inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition py-2"
             >
               Explore tournaments
               <UIcon name="i-lucide-search" class="h-4 w-4" />
@@ -474,6 +474,9 @@ useSeoMeta({
   title: 'ParaScores - Clean Tournament Management',
   description: 'Run fixtures, standings, live scores, brackets, and match graphics from one clean tournament workspace.',
   ogTitle: 'ParaScores - Clean Tournament Management',
-  ogDescription: 'Run fixtures, standings, live scores, brackets, and match graphics from one clean tournament workspace.'
+  ogDescription: 'Run fixtures, standings, live scores, brackets, and match graphics from one clean tournament workspace.',
+  ogImage: 'https://www.parascores.com/og-image.png',
+  twitterImage: 'https://www.parascores.com/og-image.png',
+  twitterCard: 'summary_large_image'
 })
 </script>

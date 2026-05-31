@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-white text-gray-950 dark:bg-[#070b10] dark:text-white transition-colors duration-300">
     <!-- Hero Section with Interactive Widget Playground -->
-    <section class="relative isolate overflow-hidden bg-[#070b10] py-20 lg:py-24">
+    <section class="relative isolate overflow-hidden bg-slate-50 dark:bg-[#070b10] py-20 lg:py-24 transition-colors duration-300">
       <!-- Glowing design assets for premium dark mode aesthetics -->
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_45%)] pointer-events-none"></div>
       <div class="absolute top-1/2 left-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none"></div>
@@ -9,15 +9,15 @@
       <div class="relative mx-auto max-w-7xl px-6 z-10 grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
         <!-- Left Column: Copy & Value Proposition -->
         <div>
-          <p class="mb-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
-            <span class="h-2 w-2 rounded-full bg-emerald-300 animate-pulse"></span>
+          <p class="mb-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-300">
+            <span class="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-300 animate-pulse"></span>
             EMBED & INTEGRATE
           </p>
-          <h1 class="text-4xl font-semibold leading-[1.05] tracking-normal text-white sm:text-5xl lg:text-6xl">
+          <h1 class="text-4xl font-semibold leading-[1.05] tracking-normal text-gray-900 dark:text-white sm:text-5xl lg:text-6xl">
             Live match data.<br />
-            <span class="text-emerald-400">On your website.</span>
+            <span class="text-emerald-500 dark:text-emerald-400">On your website.</span>
           </h1>
-          <p class="mt-6 max-w-xl text-base leading-7 text-gray-200 sm:text-lg">
+          <p class="mt-6 max-w-xl text-base leading-7 text-gray-600 dark:text-gray-200 sm:text-lg">
             Embed live fixtures, standings, and brackets on your platform. Zero coding required — just configure your widgets, copy the embed snippet, and launch.
           </p>
 
@@ -31,7 +31,7 @@
             </NuxtLink>
             <a
               href="#showcase"
-              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-white/25 px-5 text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/10"
+              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-white/25 px-5 text-sm font-semibold text-gray-900 dark:text-white transition hover:border-gray-400 dark:hover:border-white/50 hover:bg-gray-100 dark:hover:bg-white/10"
             >
               Explore widgets
               <UIcon name="i-lucide-chevron-down" class="h-4 w-4" />

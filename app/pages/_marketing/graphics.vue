@@ -557,7 +557,7 @@
             Start Creating Graphics
           </NuxtLink>
           <NuxtLink
-            to="/"
+            to="/landing"
             class="px-8 py-4 text-base font-bold text-gray-900 dark:text-white border border-gray-200 dark:border-white/20 hover:border-gray-300 dark:hover:border-white/40 rounded transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
           >
             Learn More About ParaScores
