@@ -44,3 +44,52 @@
     @apply border-gray-200 dark:border-white/[0.08];
   }
 }
+
+/* Global Color Scheme */
+html {
+  color-scheme: light dark;
+  scrollbar-width: thin;
+}
+
+html.dark {
+  color-scheme: dark;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+html.light {
+  color-scheme: light;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+/* Sleek Webkit Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgba(156, 163, 175, 0.25);
+  transition: background 0.2s ease;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
