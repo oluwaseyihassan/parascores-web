@@ -172,12 +172,10 @@ const handleLogin = async (event: FormSubmitEvent<Schema>) => {
   try {
     const { email, password } = event.data
     const response = await login(email, password)
-    console.log(response)
     if (!response?.success) {
       error.value = response?.message || 'Login failed'
     } else {
         // Redirect logic...
-        console.log('Login successful')
         const appRedirect = route.query.appRedirect as string | undefined
         const redirect = route.query.redirect as string | undefined
         const adminRedirect = route.query.adminRedirect as string | undefined

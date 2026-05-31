@@ -110,14 +110,12 @@ onMounted(async () => {
 
   try {
     const response = await authStore.verifyEmail(token)
-    console.log(response)
     if (response?.success) {
       verified.value = true
     } else {
       error.value = response?.message || 'Verification failed. Please try again.'
     }
   } catch (err: any) {
-    console.log(err.message)
     error.value = err?.message || 'Verification failed. The link may have expired.'
   }
 })

@@ -125,7 +125,6 @@
             :state="state" 
             class="space-y-5" 
             @submit="handleSignup"
-            @error="(e) => console.log('Form error:', e)"
           >
             <!-- Name -->
             <UFormField name="name" label="Full Name" required>
