@@ -6,7 +6,10 @@
         <!-- Brand Section -->
         <div class="max-w-[280px] md:col-span-2 lg:col-span-1 lg:max-w-none">
           <div class="mb-4">
-            <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-8 w-auto object-contain" />
+            <NuxtLink to="/landing" class="flex items-center gap-2 group w-fit">
+              <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-8 w-auto object-contain" />
+              <span class="font-black text-lg tracking-tighter text-white group-hover:text-emerald-400 transition-colors inline-block select-none">ParaScores</span>
+            </NuxtLink>
           </div>
           <p class="text-sm leading-relaxed text-gray-400">
             Empowering organizers with the tools they need to run world-class tournaments.
