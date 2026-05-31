@@ -1,499 +1,297 @@
 <template>
-  <div class="bg-white dark:bg-[#0A0F1C] min-h-screen text-gray-900 dark:text-white transition-colors">
-    <!-- Hero Section -->
-    <section class="relative pt-20 pb-32 overflow-hidden">
-      <!-- Background Glow -->
-      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="min-h-screen bg-white text-gray-950 dark:bg-[#070b10] dark:text-white transition-colors duration-300">
+    <!-- Hero Section with Interactive Widget Playground -->
+    <section class="relative isolate overflow-hidden bg-[#07100c] py-20 lg:py-24">
+      <img
+        src="/images/landing/dashboard-screenshot.png"
+        alt="ParaScores tournament dashboard"
+        class="absolute inset-0 h-full w-full object-cover opacity-20"
+      />
+      <div class="absolute inset-0 bg-black/75"></div>
 
-      <div class="max-w-7xl mx-auto px-6 relative z-10">
-        <div class="grid lg:grid-cols-2 gap-12 items-center">
-          <!-- Left Content -->
-          <div>
-            <!-- Badge -->
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 mb-8 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded">
-              <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-              EMBED & INTEGRATE
+      <div class="relative mx-auto max-w-7xl px-6 z-10 grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
+        <!-- Left Column: Copy & Value Proposition -->
+        <div>
+          <p class="mb-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+            <span class="h-2 w-2 rounded-full bg-emerald-300 animate-pulse"></span>
+            EMBED & INTEGRATE
+          </p>
+          <h1 class="text-4xl font-semibold leading-[1.05] tracking-normal text-white sm:text-5xl lg:text-6xl">
+            Live match data.<br />
+            <span class="text-emerald-400">On your website.</span>
+          </h1>
+          <p class="mt-6 max-w-xl text-base leading-7 text-gray-200 sm:text-lg">
+            Embed live fixtures, standings, and brackets on your platform. Zero coding required — just configure your widgets, copy the embed snippet, and launch.
+          </p>
+
+          <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+            <NuxtLink
+              to="/signup"
+              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-emerald-400 px-5 text-sm font-semibold text-gray-950 transition hover:bg-emerald-300"
+            >
+              Start free
+              <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
+            </NuxtLink>
+            <a
+              href="#showcase"
+              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-white/25 px-5 text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/10"
+            >
+              Explore widgets
+              <UIcon name="i-lucide-chevron-down" class="h-4 w-4" />
+            </a>
+          </div>
+
+          <dl class="mt-12 grid max-w-lg grid-cols-3 gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10 text-white backdrop-blur">
+            <div v-for="metric in metrics" :key="metric.label" class="bg-black/20 p-4 text-center">
+              <dt class="text-[11px] font-medium text-gray-300 uppercase tracking-wider">{{ metric.label }}</dt>
+              <dd class="mt-1 text-lg font-semibold sm:text-2xl">{{ metric.value }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Right Column: Interactive Browser Playground -->
+        <div class="relative w-full lg:max-w-md mx-auto">
+          <div class="rounded-xl border border-white/10 bg-[#0b131c] shadow-2xl overflow-hidden backdrop-blur-sm">
+            <!-- Simulated Browser Address Bar -->
+            <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/35">
+              <div class="flex gap-1.5 shrink-0">
+                <span class="w-3.5 h-3.5 rounded-full bg-[#ff5f56]"></span>
+                <span class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e]"></span>
+                <span class="w-3.5 h-3.5 rounded-full bg-[#27c93f]"></span>
+              </div>
+              <div class="mx-4 w-full max-w-[220px] text-center px-3 py-1 text-[10px] text-gray-400 bg-black/40 rounded border border-white/5 truncate font-mono">
+                yourwebsite.com/match-center
+              </div>
+              <div class="w-12"></div>
+            </div>
+            
+            <!-- Interactive Widgets Controls -->
+            <div class="flex flex-wrap items-center justify-between gap-2 p-3 bg-black/25 border-b border-white/10 text-xs">
+              <div class="flex gap-1 bg-black/30 p-0.5 rounded-md border border-white/5">
+                <button 
+                  v-for="tab in tabs"
+                  :key="tab"
+                  @click="activeTab = tab as any"
+                  :class="activeTab === tab ? 'bg-emerald-400 text-gray-950 font-bold' : 'text-gray-400 hover:text-white hover:bg-white/5'"
+                  class="px-2.5 py-1 rounded text-[10px] uppercase tracking-wide transition font-semibold"
+                >
+                  {{ tab }}
+                </button>
+              </div>
             </div>
 
-            <!-- Headline -->
-            <h1 class="text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight mb-6 tracking-tight">
-              Live Data.<br />
-              On <span class="text-emerald-500">Your</span><br />
-              Website.
-            </h1>
-
-            <!-- Subtitle -->
-            <p class="text-lg text-gray-600 dark:text-gray-400 mb-2 max-w-md font-medium">
-              Embed live fixtures, standings, and brackets directly on your website. No coding required — just copy, paste, and go.
-            </p>
-            <p class="text-lg font-bold text-gray-900 dark:text-white mb-8">
-              Keep your audience engaged with real-time tournament data.
-            </p>
-
-            <!-- CTAs -->
-            <div class="flex flex-wrap gap-4">
-              <NuxtLink
-                to="/signup"
-                class="px-6 py-3 text-sm font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded transition-colors shadow-lg shadow-emerald-500/10"
-              >
-                Start Building Widgets
-              </NuxtLink>
-              <a
-                href="#how-it-works"
-                class="inline-flex items-center gap-2 px-6 py-3 text-sm font-bold text-gray-900 dark:text-white border border-gray-200 dark:border-white/20 hover:border-gray-300 dark:hover:border-white/40 rounded transition-colors"
-              >
-                See How It Works
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-              </a>
+            <!-- Dynamic Iframe Wrapper -->
+            <div class="relative bg-black/10 min-h-[380px] flex flex-col justify-between">
+              <iframe
+                :key="previewUrl"
+                :src="previewUrl"
+                class="w-full h-[380px] bg-transparent border-0 transition-opacity duration-300"
+                frameborder="0"
+                title="Live widget playground preview"
+              ></iframe>
             </div>
           </div>
 
-          <!-- Right - Widget Preview Mockup -->
-          <div class="relative">
-            <!-- Browser Frame -->
-            <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl overflow-hidden shadow-2xl transition-colors">
-              <!-- Window Controls -->
-              <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-[#0d1424]">
-                <div class="flex gap-1.5">
-                  <div class="w-3 h-3 rounded-full bg-red-500"></div>
-                  <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                </div>
-                <div class="ml-4 px-3 py-1 text-[10px] text-gray-400 dark:text-gray-500 bg-white dark:bg-black/30 rounded border border-gray-200 dark:border-white/5">
-                  yourwebsite.com/match-center
-                </div>
-              </div>
-
-              <!-- Simulated Widget Preview -->
-              <div class="p-6 space-y-4">
-                <!-- Simulated Page Content -->
-                <div class="flex gap-3 items-center mb-6">
-                  <div class="h-3 bg-gray-200 dark:bg-white/10 rounded w-32"></div>
-                  <div class="h-3 bg-gray-200 dark:bg-white/10 rounded w-20"></div>
-                  <div class="h-3 bg-gray-200 dark:bg-white/10 rounded w-24"></div>
-                </div>
-
-                <!-- Embedded Widget Simulaton -->
-                <div class="bg-white dark:bg-[#0A0F1C] border border-emerald-500 shadow-sm rounded-xl p-4 transition-colors">
-                  <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-2">
-                      <span class="text-emerald-500 text-sm">🏆</span>
-                      <span class="text-sm font-extrabold text-gray-900 dark:text-white">Premier League 2026</span>
-                    </div>
-                    <span class="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-bold">LIVE</span>
-                  </div>
-
-                  <!-- Simulated Fixture -->
-                  <div class="space-y-2">
-                    <div class="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-white/5 rounded-lg border border-gray-100 dark:border-white/5">
-                      <div class="flex items-center gap-2">
-                        <div class="w-5 h-5 bg-red-500/30 rounded-full"></div>
-                        <span class="text-xs text-gray-900 dark:text-white font-medium">Team Alpha</span>
-                      </div>
-                      <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">2 - 1</span>
-                      <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-900 dark:text-white font-medium">Team Beta</span>
-                        <div class="w-5 h-5 bg-blue-500/30 rounded-full"></div>
-                      </div>
-                    </div>
-                    <div class="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-white/5 rounded-lg border border-gray-100 dark:border-white/5">
-                      <div class="flex items-center gap-2">
-                        <div class="w-5 h-5 bg-orange-500/30 rounded-full"></div>
-                        <span class="text-xs text-gray-900 dark:text-white font-medium">Team Gamma</span>
-                      </div>
-                      <span class="text-sm font-bold text-gray-400">vs</span>
-                      <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-900 dark:text-white font-medium">Team Delta</span>
-                        <div class="w-5 h-5 bg-purple-500/30 rounded-full"></div>
-                      </div>
-                    </div>
-                    <div class="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-white/5 rounded-lg border border-gray-100 dark:border-white/5">
-                      <div class="flex items-center gap-2">
-                        <div class="w-5 h-5 bg-green-500/30 rounded-full"></div>
-                        <span class="text-xs text-gray-900 dark:text-white font-medium">Team Epsilon</span>
-                      </div>
-                      <span class="text-sm font-bold text-gray-400">vs</span>
-                      <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-900 dark:text-white font-medium">Team Zeta</span>
-                        <div class="w-5 h-5 bg-cyan-500/30 rounded-full"></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="mt-3 text-center">
-                    <span class="text-[10px] text-gray-500">Powered by ParaScores</span>
-                  </div>
-                </div>
-
-                <!-- More Simulated Page Content -->
-                <div class="space-y-2 mt-4">
-                  <div class="h-2.5 bg-gray-200 dark:bg-white/5 rounded w-full"></div>
-                  <div class="h-2.5 bg-gray-200 dark:bg-white/5 rounded w-4/5"></div>
-                  <div class="h-2.5 bg-gray-200 dark:bg-white/5 rounded w-3/5"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Floating Code Badge -->
-            <div class="absolute -bottom-6 -left-4 bg-white dark:bg-[#111827] border border-emerald-500/30 rounded-lg p-4 shadow-xl transition-colors">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                  <span class="text-emerald-500 dark:text-emerald-400 text-lg">&lt;/&gt;</span>
-                </div>
-                <div>
-                  <div class="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">Embed Code</div>
-                  <div class="text-sm font-extrabold text-gray-900 dark:text-white">Copy & Paste</div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>
 
-    <!-- Widget Types Section -->
-    <section class="py-24 border-t border-white/10">
-      <div class="max-w-7xl mx-auto px-6">
-        <!-- Section Header -->
-        <div class="max-w-xl mb-16">
-          <h2 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight leading-tight">
-            Three Widgets.<br />
-            <span class="text-emerald-500 underline decoration-emerald-500 underline-offset-8">Endless Possibilities.</span>
+    <!-- Live Showcase Grid Section (All Widgets Side-by-Side) -->
+    <section id="showcase" class="border-b border-gray-200 bg-white py-20 dark:border-white/10 dark:bg-[#070b10]">
+      <div class="mx-auto max-w-7xl px-6">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+          <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Live Demonstrations</p>
+          <h2 class="mt-3 text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white sm:text-4xl">
+            Choose the widget that suits your layout.
           </h2>
-          <p class="text-gray-600 dark:text-gray-400 font-medium">
-            Choose the widget that fits your needs. Each one updates automatically as scores come in.
+          <p class="mt-4 text-sm leading-7 text-gray-600 dark:text-gray-400">
+            Real interactive data feeds rendered live from the <strong>OAU Supremacy Cup 2026</strong>. Click tabs, browse schedules, or explore brackets directly inside these previews.
           </p>
         </div>
 
-        <!-- Widget Type Cards -->
-        <div class="grid md:grid-cols-3 gap-8">
-          <!-- Fixtures Widget -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl p-8 shadow-sm hover:border-emerald-500/50 transition-all duration-300 group">
-            <div class="w-14 h-14 bg-blue-500/10 dark:bg-blue-500/20 rounded-xl flex items-center justify-center mb-6">
-              <svg class="w-7 h-7 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-              </svg>
+        <div class="grid lg:grid-cols-3 gap-8">
+          <!-- Widget Card -->
+          <div 
+            v-for="card in widgetCards" 
+            :key="card.type" 
+            class="flex flex-col rounded-xl border border-gray-200 bg-gray-50 p-6 dark:border-white/10 dark:bg-white/[0.03] shadow-sm hover:border-emerald-500/30 dark:hover:border-emerald-400/25 transition-all duration-300 min-w-0 overflow-hidden"
+          >
+            <!-- Title Header -->
+            <div class="flex items-center gap-3.5 mb-4">
+              <div class="flex h-9 w-9 items-center justify-center rounded-md bg-white text-emerald-700 shadow-sm ring-1 ring-gray-200 dark:bg-[#101820] dark:text-emerald-300 dark:ring-white/10">
+                <UIcon :name="card.icon" class="h-5 w-5" />
+              </div>
+              <h3 class="text-base font-semibold text-gray-950 dark:text-white">{{ card.title }}</h3>
             </div>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">Fixtures & Scores</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 font-medium leading-relaxed">
-              Show upcoming matches and live scores. Fans can follow along as games happen without leaving your site.
+            
+            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed mb-4 min-h-[36px]">
+              {{ card.description }}
             </p>
-            <ul class="text-xs text-gray-500 dark:text-gray-500 space-y-2 font-medium">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Live score updates
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Match dates & times
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Match status indicators
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Works with all tournament types
-              </li>
-            </ul>
-          </div>
 
-          <!-- Standings Widget -->
-          <div class="relative bg-white dark:bg-[#111827] border-2 border-emerald-500 rounded-xl p-8 group shadow-xl shadow-emerald-500/5">
-            <div class="absolute -top-3 right-4 px-3 py-1 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-white dark:bg-[#111827] border border-emerald-500/30 rounded uppercase tracking-widest transition-colors">
-              POPULAR
+            <!-- Widget Live Iframe Preview Container -->
+            <div class="relative rounded-lg overflow-hidden border border-gray-200 dark:border-white/10 bg-white dark:bg-black/20 h-[360px] mb-4">
+              <iframe
+                :src="`/widget/oau-supremacy-2026/${card.type}?theme=dark`"
+                class="w-full h-[360px]"
+                frameborder="0"
+                :title="`${card.title} Live Preview`"
+              ></iframe>
             </div>
-            <div class="w-14 h-14 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-xl flex items-center justify-center mb-6">
-              <svg class="w-7 h-7 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-              </svg>
-            </div>
-            <h3 class="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-3">Standings Table</h3>
-            <p class="text-sm text-gray-700 dark:text-gray-400 mb-6 font-bold leading-relaxed">
-              Display league tables with full stats. Points, wins, draws, losses, goal difference — all calculated automatically.
-            </p>
-            <ul class="text-xs text-gray-600 dark:text-gray-500 space-y-2 font-bold">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Auto-calculated standings
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Group stage support
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Team logos & colors
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Round Robin, Group & Hybrid
-              </li>
-            </ul>
-          </div>
 
-          <!-- Bracket Widget -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl p-8 shadow-sm hover:border-emerald-500/50 transition-all duration-300 group">
-            <div class="w-14 h-14 bg-red-500/10 dark:bg-red-500/20 rounded-xl flex items-center justify-center mb-6">
-              <svg class="w-7 h-7 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-              </svg>
+            <!-- Embed Code Box & Snippet -->
+            <div class="mt-auto space-y-4">
+              <div class="rounded bg-gray-100 dark:bg-black/30 p-2.5 border border-gray-200 dark:border-white/5 overflow-hidden">
+                <div class="flex justify-between items-center text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+                  <span>HTML Embed Code</span>
+                  <button 
+                    @click="copyText(getEmbedCode(card.type, 'dark'), card.type)"
+                    class="text-emerald-700 dark:text-emerald-300 hover:text-emerald-500 transition flex items-center gap-1 font-semibold"
+                  >
+                    <UIcon :name="copiedStates[card.type] ? 'i-lucide-check' : 'i-lucide-copy'" class="w-3.5 h-3.5" />
+                    {{ copiedStates[card.type] ? 'Copied' : 'Copy' }}
+                  </button>
+                </div>
+                <div class="min-w-0 w-full text-[9px] font-mono text-gray-600 dark:text-gray-300 overflow-x-auto select-all [scrollbar-width:none] [&::-webkit-scrollbar]:hidden whitespace-nowrap">
+                  <code>{{ getEmbedCode(card.type, 'dark') }}</code>
+                </div>
+              </div>
+
+              <!-- List of Subfeatures -->
+              <ul class="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-white/5 pt-3.5">
+                <li v-for="feat in card.features" :key="feat" class="flex items-center gap-1.5 truncate">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                  <span class="truncate">{{ feat }}</span>
+                </li>
+              </ul>
             </div>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">Knockout Bracket</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 font-medium leading-relaxed">
-              Visualize your knockout tournament with an interactive bracket. Fans can follow the road to the final.
-            </p>
-            <ul class="text-xs text-gray-500 dark:text-gray-500 space-y-2 font-medium">
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Visual bracket tree
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Round labels (QF, SF, Final)
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Automatic progression
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                Knockout & Hybrid formats
-              </li>
-            </ul>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- How It Works Section -->
-    <section id="how-it-works" class="py-24 border-t border-white/10">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="text-center mb-16">
-          <h2 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight leading-tight">
-            Embed in <span class="text-emerald-500">Three Steps</span>
-          </h2>
-          <p class="text-gray-600 dark:text-gray-400 font-medium">
-            From zero to embedded widget in under a minute. No technical skills needed.
-          </p>
-        </div>
-
-        <div class="grid md:grid-cols-3 gap-8">
-          <div class="text-center">
-            <div class="w-16 h-16 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-              <span class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">1</span>
-            </div>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Pick Your Tournament</h3>
-            <p class="text-gray-600 dark:text-gray-400 text-sm font-medium leading-relaxed">
-              Open the Widget Builder in your dashboard and select the tournament you want to embed.
-            </p>
-          </div>
-
-          <!-- Step 2 -->
-          <div class="text-center">
-            <div class="w-16 h-16 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-              <span class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">2</span>
-            </div>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Configure & Preview</h3>
-            <p class="text-gray-600 dark:text-gray-400 text-sm font-medium leading-relaxed">
-              Choose between Fixtures, Standings, or Bracket. Pick your theme, set dimensions, and preview it live.
-            </p>
-          </div>
-
-          <!-- Step 3 -->
-          <div class="text-center">
-            <div class="w-16 h-16 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-              <span class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">3</span>
-            </div>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Copy & Paste</h3>
-            <p class="text-gray-600 dark:text-gray-400 text-sm font-medium leading-relaxed">
-              Grab the embed code snippet and paste it into your website's HTML. Done — your widget is live.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Embed Code Demo Section -->
-    <section class="py-24 border-t border-white/10">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="grid lg:grid-cols-2 gap-12 items-center">
-          <!-- Left - Explanation -->
+    <!-- How It Works Section (Step-by-Step) -->
+    <section class="bg-gray-50 py-20 dark:bg-[#0b1118]">
+      <div class="mx-auto max-w-7xl px-6">
+        <div class="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
-            <h2 class="text-4xl md:text-5xl font-extrabold mb-6 tracking-tight leading-tight">
-              Just One Line<br />
-              of <span class="text-emerald-500">Code</span>
+            <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Seamless integration</p>
+            <h2 class="mt-3 text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white sm:text-4xl">
+              Embed tournament standings and fixtures in three steps.
             </h2>
-            <p class="text-gray-600 dark:text-gray-400 mb-8 max-w-md font-medium leading-relaxed">
-              Embedding a ParaScores widget is as simple as pasting a single iframe tag. It works on any website — WordPress, Wix, Squarespace, custom HTML, and more.
+            <p class="mt-4 max-w-xl text-sm leading-7 text-gray-600 dark:text-gray-400">
+              No technical experience required. The widget builder generates responsive HTML iframe snippets that work with all major CMS systems, web builders, and custom stacks.
             </p>
-            <div class="space-y-4">
-              <div class="flex items-start gap-3">
-                <div class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </div>
-                <div>
-                  <h4 class="text-sm font-bold text-gray-900 dark:text-white">Responsive Design</h4>
-                  <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Widgets adapt to any container width. Set your own dimensions or let it auto-fit.</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <div class="w-8 h-8 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <svg class="w-4 h-4 text-emerald-500 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </div>
-                <div>
-                  <h4 class="text-sm font-bold text-gray-900 dark:text-white">Dark & Light Themes</h4>
-                  <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Match your website's look. Switch between dark and light themes in the builder.</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <div class="w-8 h-8 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <svg class="w-4 h-4 text-emerald-500 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </div>
-                <div>
-                  <h4 class="text-sm font-bold text-gray-900 dark:text-white">Auto-Updating</h4>
-                  <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Scores update in real-time. No need to touch the embed code once it's placed.</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <div class="w-8 h-8 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <svg class="w-4 h-4 text-emerald-500 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </div>
-                <div>
-                  <h4 class="text-sm font-bold text-gray-900 dark:text-white">Works Everywhere</h4>
-                  <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">WordPress, Wix, Squarespace, Ghost, static HTML — if it supports iframes, it works.</p>
-                </div>
-              </div>
-            </div>
           </div>
 
-          <!-- Right - Code Block -->
-          <div>
-            <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-xl overflow-hidden shadow-2xl transition-colors">
-              <!-- Code Header -->
-              <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-[#0d1424]">
-                <div class="flex items-center gap-2">
-                  <div class="flex gap-1.5">
-                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
-                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                  </div>
-                  <span class="ml-3 text-xs text-gray-500 font-bold">embed-code.html</span>
-                </div>
-                <span class="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-extrabold uppercase tracking-widest">HTML</span>
-              </div>
-              <!-- Code Content -->
-              <div class="p-6 bg-white dark:bg-[#111827] transition-colors">
-                <pre class="text-sm font-mono leading-relaxed text-gray-800 dark:text-gray-300"><code><span class="text-gray-400 dark:text-gray-500">&lt;!-- ParaScores Widget --&gt;</span>
-<span class="text-red-500 dark:text-red-400">&lt;iframe</span>
-  <span class="text-blue-600 dark:text-blue-400">src</span>=<span class="text-emerald-600 dark:text-emerald-400">"https://parascores.com/widget/your-tournament-id/fixtures"</span>
-  <span class="text-blue-600 dark:text-blue-400">width</span>=<span class="text-emerald-600 dark:text-emerald-400">"400"</span>
-  <span class="text-blue-600 dark:text-blue-400">height</span>=<span class="text-emerald-600 dark:text-emerald-400">"600"</span>
-  <span class="text-blue-600 dark:text-blue-400">frameborder</span>=<span class="text-emerald-600 dark:text-emerald-400">"0"</span>
-  <span class="text-blue-600 dark:text-blue-400">style</span>=<span class="text-emerald-600 dark:text-emerald-400">"border-radius: 12px;"</span>
-  <span class="text-blue-600 dark:text-blue-400">title</span>=<span class="text-emerald-600 dark:text-emerald-400">"Tournament Widget"</span>
-<span class="text-red-500 dark:text-red-400">&gt;&lt;/iframe&gt;</span></code></pre>
-              </div>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div class="rounded-lg border border-gray-200 bg-white p-5 dark:border-white/10 dark:bg-[#070b10]">
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-400">01. Setup</p>
+              <h3 class="mt-4 text-base font-semibold text-gray-950 dark:text-white font-bold">Choose Tournament</h3>
+              <p class="mt-2 text-xs leading-5 text-gray-600 dark:text-gray-400">Select any active tournament from your dashboard to configure its live data.</p>
             </div>
-            <p class="text-xs text-gray-500 mt-3 text-center">
-              The Widget Builder generates this code automatically — no manual editing needed.
-            </p>
+            <div class="rounded-lg border border-gray-200 bg-white p-5 dark:border-white/10 dark:bg-[#070b10]">
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-400">02. Design</p>
+              <h3 class="mt-4 text-base font-semibold text-gray-950 dark:text-white font-bold">Adjust Themes</h3>
+              <p class="mt-2 text-xs leading-5 text-gray-600 dark:text-gray-400">Pick from light or dark modes, toggle features, and preview the output live.</p>
+            </div>
+            <div class="rounded-lg border border-gray-200 bg-white p-5 dark:border-white/10 dark:bg-[#070b10]">
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-400">03. Publish</p>
+              <h3 class="mt-4 text-base font-semibold text-gray-950 dark:text-white font-bold">Copy Code</h3>
+              <p class="mt-2 text-xs leading-5 text-gray-600 dark:text-gray-400">Paste the generated iframe line on Wix, WordPress, or custom HTML structures.</p>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Use Cases Section -->
-    <section class="py-24 border-t border-white/10">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="text-center mb-16">
-          <h2 class="text-4xl md:text-5xl font-bold mb-4">
-            Built for <span class="text-emerald-400">Everyone</span>
+    <!-- Performance Details & Specifications -->
+    <section class="border-b border-gray-200 bg-white py-20 dark:border-white/10 dark:bg-[#070b10]">
+      <div class="mx-auto grid max-w-7xl gap-8 px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+        <div>
+          <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Engineered for performance</p>
+          <h2 class="mt-3 max-w-xl text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white sm:text-4xl">
+            Live standings, scores, and brackets without the bloat.
           </h2>
-          <p class="text-gray-400 max-w-2xl mx-auto">
-            Whether you run a grassroots league or a national competition, widgets bring your data to your audience.
+          <p class="mt-4 max-w-md text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+            Our embeddable widgets are built to load instantly, consume minimal bandwidth, and cache updates aggressively.
           </p>
         </div>
 
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <!-- League Websites -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 hover:border-emerald-500/30 transition-all text-center shadow-sm">
-            <div class="w-12 h-12 bg-blue-500/10 dark:bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span class="text-2xl">🌐</span>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <article
+            v-for="feature in features"
+            :key="feature.title"
+            class="rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/[0.03]"
+          >
+            <div class="mb-5 flex h-10 w-10 items-center justify-center rounded-md bg-white text-emerald-700 shadow-sm ring-1 ring-gray-200 dark:bg-[#101820] dark:text-emerald-300 dark:ring-white/10">
+              <UIcon :name="feature.icon" class="h-5 w-5" />
             </div>
-            <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2">League Websites</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
-              Show live standings and fixtures right on your league's homepage.
-            </p>
-          </div>
+            <h3 class="text-base font-semibold text-gray-950 dark:text-white">{{ feature.title }}</h3>
+            <p class="mt-2 text-xs leading-6 text-gray-600 dark:text-gray-400">{{ feature.description }}</p>
+          </article>
+        </div>
+      </div>
+    </section>
 
-          <!-- Club Pages -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 hover:border-emerald-500/30 transition-all text-center shadow-sm">
-            <div class="w-12 h-12 bg-purple-500/10 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span class="text-2xl">⚽</span>
-            </div>
-            <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2">Club Pages</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
-              Keep your club's website updated with the latest results automatically.
-            </p>
-          </div>
+    <!-- Adaptability & Use Cases Grid -->
+    <section class="bg-gray-50 py-20 dark:bg-[#0b1118]">
+      <div class="mx-auto max-w-7xl px-6">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+          <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Adaptable everywhere</p>
+          <h2 class="mt-3 text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white sm:text-4xl">
+            Who uses ParaScores widgets?
+          </h2>
+          <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+            Whether running local grassroots leagues or high-traffic sports news channels, widgets offer a complete fan interface.
+          </p>
+        </div>
 
-          <!-- News & Blogs -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 hover:border-emerald-500/30 transition-all text-center shadow-sm">
-            <div class="w-12 h-12 bg-orange-500/10 dark:bg-orange-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span class="text-2xl">📰</span>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div 
+            v-for="uc in useCases" 
+            :key="uc.title"
+            class="bg-white border border-gray-200 dark:border-white/10 dark:bg-[#070b10] rounded-xl p-6 hover:border-emerald-500/30 transition-all text-center shadow-sm"
+          >
+            <div class="w-12 h-12 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-xl flex items-center justify-center mx-auto mb-4 text-2xl">
+              {{ uc.icon }}
             </div>
-            <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2">News & Blogs</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
-              Enrich sports articles with live tournament data inline.
-            </p>
-          </div>
-
-          <!-- Community Portals -->
-          <div class="bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-white/10 rounded-lg p-6 hover:border-emerald-500/30 transition-all text-center shadow-sm">
-            <div class="w-12 h-12 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span class="text-2xl">👥</span>
-            </div>
-            <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2">Community Portals</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
-              Let your community follow tournament progress without switching apps.
+            <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2">{{ uc.title }}</h3>
+            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
+              {{ uc.description }}
             </p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- CTA Section -->
-    <section class="py-24 border-t border-gray-200 dark:border-white/10">
-      <div class="max-w-3xl mx-auto px-6 text-center">
-        <h2 class="text-4xl md:text-5xl font-extrabold mb-6 tracking-tight leading-tight">
-          Ready to embed your tournament?
-        </h2>
-        <p class="text-lg text-gray-600 dark:text-gray-400 mb-10 font-medium">
-          Create a tournament, open the Widget Builder, and embed live data on your website in minutes. No coding required.
-        </p>
-        <div class="flex flex-wrap justify-center gap-4">
-          <NuxtLink
-            to="/signup"
-            class="px-8 py-4 text-base font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95"
-          >
-            Get Started Free
-          </NuxtLink>
-          <NuxtLink
-            to="/"
-            class="px-8 py-4 text-base font-bold text-gray-900 dark:text-white border border-gray-200 dark:border-white/20 hover:border-gray-300 dark:hover:border-white/40 rounded-xl transition-all"
-          >
-            Learn More About ParaScores
-          </NuxtLink>
+    <!-- Bottom CTA Card (Landing page styles) -->
+    <section class="bg-white py-20 dark:bg-[#070b10]">
+      <div class="mx-auto max-w-7xl px-6">
+        <div class="grid gap-8 rounded-lg border border-gray-200 bg-gray-50 p-6 dark:border-white/10 dark:bg-white/[0.03] sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <h2 class="text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white">
+              Ready to embed your next tournament?
+            </h2>
+            <p class="mt-3 max-w-2xl text-sm leading-7 text-gray-600 dark:text-gray-400">
+              Start with a free tournament, invite participants, configure your layout settings, and embed widgets in minutes.
+            </p>
+          </div>
+          <div class="flex flex-col gap-3 sm:flex-row">
+            <NuxtLink
+              to="/signup"
+              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-gray-950 px-5 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
+            >
+              Start free
+              <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
+            </NuxtLink>
+            <NuxtLink
+              to="/pricing"
+              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-gray-300 px-5 text-sm font-semibold text-gray-900 transition hover:bg-white dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+            >
+              View pricing
+              <UIcon name="i-lucide-credit-card" class="h-4 w-4" />
+            </NuxtLink>
+          </div>
         </div>
       </div>
     </section>
@@ -501,11 +299,158 @@
 </template>
 
 <script setup lang="ts">
-// SEO
+import { ref, computed, onMounted, watch } from 'vue'
+
+const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'stats'>('fixtures')
+const activeTheme = ref<'dark' | 'light'>('dark')
+
+const tournament = ref<any>(null)
+
+const tabs = computed(() => {
+  const base = ['fixtures']
+  if (tournament.value) {
+    const tType = tournament.value.type
+    if (['ROUND_ROBIN', 'GROUP', 'HYBRID'].includes(tType)) {
+      base.push('standings')
+    }
+    if (['KNOCKOUT', 'HYBRID'].includes(tType)) {
+      base.push('bracket')
+    }
+    if (tournament.value.participantType === 'TEAM') {
+      base.push('stats')
+    }
+  } else {
+    // Default fallback while loading
+    base.push('standings', 'bracket', 'stats')
+  }
+  return base
+})
+
+watch(tabs, (newTabs) => {
+  if (!newTabs.includes(activeTab.value)) {
+    activeTab.value = newTabs[0] as any
+  }
+})
+
+onMounted(async () => {
+  try {
+    const res = await $publicApi<any>('/tournaments/oau-supremacy-2026')
+    if (res?.data) {
+      tournament.value = res.data
+    }
+  } catch (err) {
+    console.error('Failed to fetch demo tournament details:', err)
+  }
+})
+
+const previewUrl = computed(() => {
+  return `/widget/oau-supremacy-2026/${activeTab.value}?theme=${activeTheme.value}`
+})
+
+const getEmbedCode = (type: string, theme: string) => {
+  return `<iframe src="https://parascores.com/widget/oau-supremacy-2026/${type}?theme=${theme}" width="100%" height="600" frameborder="0" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.1);" title="Tournament ${type}"></iframe>`
+}
+
+const copiedStates = ref<Record<string, boolean>>({
+  fixtures: false,
+  standings: false,
+  bracket: false,
+  stats: false,
+  playground: false
+})
+
+const copyText = async (text: string, key: string) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    copiedStates.value[key] = true
+    setTimeout(() => {
+      copiedStates.value[key] = false
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy code: ', err)
+  }
+}
+
+const metrics = [
+  { label: 'Setup time', value: '< 1 min' },
+  { label: 'Widgets', value: '4 types' },
+  { label: 'Updates', value: 'Live' }
+]
+
+const features = [
+  {
+    title: 'Zero database latency',
+    description: 'Direct websocket updates push match events and goals to your users website instantly.',
+    icon: 'i-lucide-zap'
+  },
+  {
+    title: 'Adaptive styling',
+    description: 'Pick light or dark modes, customize color accents, or let the widget inherit container styling.',
+    icon: 'i-lucide-sliders'
+  },
+  {
+    title: 'Universal compatibility',
+    description: 'Works with Wix, WordPress, Squarespace, Ghost, custom React/Vue code, and standard HTML.',
+    icon: 'i-lucide-globe'
+  },
+  {
+    title: 'Responsive layouts',
+    description: 'Designed to scale beautifully from mobile portrait feeds to wide desktop monitors.',
+    icon: 'i-lucide-smartphone'
+  }
+]
+
+const widgetCards = [
+  {
+    type: 'fixtures',
+    title: 'Fixtures & Scores',
+    description: 'Show upcoming matches and live real-time scores with automated status markers.',
+    icon: 'i-lucide-calendar-days',
+    features: ['Live score updates', 'Match event stats', 'Filter by round/stage', 'Direct match details link']
+  },
+  {
+    type: 'standings',
+    title: 'Standings Table',
+    description: 'Display live group standings, points, goal differences, and head-to-head states automatically.',
+    icon: 'i-lucide-table-2',
+    features: ['Auto-sorting ranking', 'Support for multiple groups', 'Goal difference logic', 'Highlight qualification spots']
+  },
+  {
+    type: 'bracket',
+    title: 'Knockout Bracket',
+    description: 'Visualize single and double-elimination brackets with automatic seed progress.',
+    icon: 'i-lucide-git-branch',
+    features: ['Interactive scroll/zoom', 'Automated match progression', 'Custom round labels', 'Responsive design']
+  }
+]
+
+const useCases = [
+  {
+    title: 'League websites',
+    description: 'Keep your league portal updated with live standings and schedules without complex dev APIs.',
+    icon: '🌐'
+  },
+  {
+    title: 'Club & team hubs',
+    description: 'Provide fans with a dedicated result ticker and next match details for your teams.',
+    icon: '⚽'
+  },
+  {
+    title: 'Sports news & blogs',
+    description: 'Enrich match analysis articles by pasting actual interactive match event data inline.',
+    icon: '📰'
+  },
+  {
+    title: 'Community portals',
+    description: 'Enable local tournament communities to browse brackets and groups without leaving your site.',
+    icon: '👥'
+  }
+]
+
 useSeoMeta({
-  title: 'Widget Builder - Embed Live Tournament Data | ParaScores',
-  description: 'Embed live fixtures, standings, and knockout brackets on your website. Copy one line of code and display real-time tournament data anywhere.',
-  ogTitle: 'Widget Builder - Embed Live Tournament Data | ParaScores',
-  ogDescription: 'Embed live fixtures, standings, and knockout brackets on your website. Copy one line of code and display real-time tournament data anywhere.',
+  title: 'Widgets - Embed Live Tournament Data | ParaScores',
+  description: 'Embed real-time tournament fixtures, standings, brackets, and statistics directly on any website with one line of iframe code.',
+  ogTitle: 'Widgets - Embed Live Tournament Data | ParaScores',
+  ogDescription: 'Embed real-time tournament fixtures, standings, brackets, and statistics directly on any website with one line of iframe code.'
 })
 </script>
