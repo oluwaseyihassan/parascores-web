@@ -195,11 +195,57 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
       ' \u00b7 ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   } catch { return null }
 }
+
+// Zoom logic
+const scale = ref(1.0)
+const zoomIn = () => {
+  if (scale.value < 1.5) {
+    scale.value = parseFloat((scale.value + 0.1).toFixed(1))
+  }
+}
+const zoomOut = () => {
+  if (scale.value > 0.6) {
+    scale.value = parseFloat((scale.value - 0.1).toFixed(1))
+  }
+}
+const resetZoom = () => {
+  scale.value = 1.0
+}
 </script>
 
 <template>
-  <div class="bracket-container">
-    <div class="bracket-scroll">
+  <div class="relative w-full">
+    <!-- Zoom Controls -->
+    <div class="absolute top-0 right-4 z-40 flex items-center gap-1 rounded-lg border border-gray-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-white/10 dark:bg-gray-900/90 text-xs select-none">
+      <button
+        @click="zoomOut"
+        class="flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
+        title="Zoom Out"
+      >
+        <UIcon name="i-heroicons-minus" class="w-3.5 h-3.5" />
+      </button>
+      <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 min-w-[28px] text-center">
+        {{ Math.round(scale * 100) }}%
+      </span>
+      <button
+        @click="zoomIn"
+        class="flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
+        title="Zoom In"
+      >
+        <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5" />
+      </button>
+      <div class="w-px h-3 bg-gray-200 dark:bg-white/10 mx-1"></div>
+      <button
+        @click="resetZoom"
+        class="px-1.5 py-0.5 rounded text-[9px] font-bold text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
+        title="Reset Zoom"
+      >
+        Reset
+      </button>
+    </div>
+
+    <div class="bracket-container">
+      <div class="bracket-scroll" :style="{ zoom: scale }">
       <!-- Round headers — same grid template as the bracket so each header sits over its column -->
       <div
         class="bracket-headers"
@@ -499,6 +545,7 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
       </div>
     </div>
   </div>
+</div>
 </template>
 
 <style scoped>
@@ -524,14 +571,14 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
 }
 
 .bracket-header span {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #6b7280;
   background: #f3f4f6;
   border: 1px solid #e5e7eb;
-  padding: 0.35rem 0.85rem;
+  padding: 0.3rem 0.75rem;
   border-radius: 999px;
 }
 
@@ -672,7 +719,7 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
 
 /* ── Team name ────────────────────────────────────────────── */
 .team-name {
-  font-size: 0.8125rem;
+  font-size: 0.725rem;
   font-weight: 600;
   color: #111827;
   white-space: nowrap;
@@ -713,7 +760,7 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
 }
 
 .score {
-  font-size: 0.9rem;
+  font-size: 0.775rem;
   font-weight: 700;
   color: #9ca3af;
   min-width: 1.25rem;
@@ -721,7 +768,7 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
   background: #f9fafb;
   border: 1px solid #f3f4f6;
   border-radius: 5px;
-  padding: 0.1rem 0.35rem;
+  padding: 0.1rem 0.25rem;
   line-height: 1.4;
 }
 
