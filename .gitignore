@@ -25,3 +25,4 @@ logs
 .claude
 # Sentry Config File
 .env.sentry-build-plugin
+nuxt_ssr_error.log
