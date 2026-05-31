@@ -54,14 +54,14 @@ const plans = computed(() => [
   {
     name: 'Per Tournament',
     key: 'PER_TOURNAMENT' as const,
-    description: 'Upgrade a single tournament with premium features.',
-    monthlyPrice: 5000,
+    description: 'Upgrade a single tournament based on participant capacity.',
+    monthlyPrice: '5,000 - 25,000',
     yearlyPrice: null,
     planType: 'PER_TOURNAMENT',
-    amountInKobo: 5000 * 100,
+    amountInKobo: 0,
     oneTime: true,
     features: [
-      { text: 'Unlimited participants', tooltip: 'No cap on the number of players or teams that can register or be added to this upgraded tournament.' },
+      { text: 'Dynamic pricing tiers', tooltip: 'Upgrade fee scales with max participants: <=4 (5k), <=8 (8k), <=16 (12k), <=32 (15k), >32 (25k).' },
       { text: 'Custom branding & logos', tooltip: 'Upload organization and tournament logos, and display your brand prominently on all public pages.' },
       { text: 'Advanced statistics for the tournament', tooltip: 'Unlock in-depth team/player performance tracking, player stats, and visual charts.' },
       { text: 'Priority email support', tooltip: 'Dedicated support queue. We guarantee a reply within 12 hours.' }
@@ -179,11 +179,11 @@ async function handleCancelSubscription() {
 
 // Helpers
 function getButtonLabel(plan: typeof plans.value[0]) {
+  if (plan.key === 'PRO') return 'Coming Soon'
   if (plan.key === currentPlan.value && isActive.value) return 'Current Plan'
   if (plan.key === 'FREE') return 'Free Forever'
   if (plan.key === 'ENTERPRISE') return 'Contact Sales'
   if (plan.key === 'PER_TOURNAMENT') return 'Select Tournament'
-  if (currentPlan.value === 'PRO' && plan.key === 'PRO' && isCancelled.value) return 'Re-subscribe'
   return 'Upgrade Now'
 }
 
@@ -193,7 +193,7 @@ function isCurrentPlan(plan: typeof plans.value[0]) {
 }
 
 function canSubscribe(plan: typeof plans.value[0]) {
-  if (plan.key === 'FREE' || plan.key === 'ENTERPRISE') return false
+  if (plan.key === 'FREE' || plan.key === 'ENTERPRISE' || plan.key === 'PRO') return false
   if (plan.key === 'PER_TOURNAMENT') return true
   if (isCurrentPlan(plan)) return false
   return true
@@ -210,6 +210,22 @@ function handlePlanAction(plan: typeof plans.value[0]) {
   }
 }
 
+function getTournamentUpgradePrice(maxParticipants: number | null | undefined): number {
+  if (typeof maxParticipants !== 'number') return 25000
+  if (maxParticipants <= 4) return 5000
+  if (maxParticipants <= 8) return 8000
+  if (maxParticipants <= 16) return 12000
+  if (maxParticipants <= 32) return 15000
+  return 25000
+}
+
+const selectedTournamentUpgradePrice = computed(() => {
+  if (!selectedTournamentId.value) return 0
+  const t = tournaments.value.find(x => x.id === selectedTournamentId.value)
+  if (!t) return 0
+  return getTournamentUpgradePrice(t.maxParticipants)
+})
+
 async function handleTournamentUpgrade() {
   if (!authStore.currentOrganization?.id || !selectedTournamentId.value) return
 
@@ -217,11 +233,12 @@ async function handleTournamentUpgrade() {
   try {
     const dashboardUrl = config.public.DASHBOARD_URL || window.location.origin
     const callbackUrl = `${dashboardUrl}/billing/callback`
+    const feeInKobo = selectedTournamentUpgradePrice.value * 100
 
     const response = await paymentStore.initializePayment(
       authStore.currentOrganization.id,
       'PER_TOURNAMENT',
-      5000 * 100,
+      feeInKobo,
       callbackUrl,
       selectedTournamentId.value
     )
@@ -380,7 +397,7 @@ const statusColor = computed(() => {
           </template>
           <template v-else-if="plan.oneTime">
             <span class="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              ₦{{ (plan.monthlyPrice as number).toLocaleString() }}
+              {{ typeof plan.monthlyPrice === 'number' ? `₦${(plan.monthlyPrice as number).toLocaleString()}` : `₦${plan.monthlyPrice}` }}
             </span>
             <span class="text-gray-500 font-bold ml-1">/tournament</span>
           </template>
@@ -399,16 +416,11 @@ const statusColor = computed(() => {
         <UButton
           block
           size="lg"
-          :disabled="isCurrentPlan(plan) || loading || subscribing"
+          :disabled="isCurrentPlan(plan) || loading || subscribing || plan.key === 'PRO'"
           :loading="subscribing && canSubscribe(plan)"
-          :class="[
-            'font-bold mb-6 h-11 rounded-xl transition-all',
-            canSubscribe(plan) 
-              ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm' 
-              : plan.key === 'ENTERPRISE'
-                ? 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10'
-                : 'bg-gray-100 dark:bg-white/5 text-gray-500'
-          ]"
+          :color="canSubscribe(plan) ? 'primary' : 'neutral'"
+          :variant="isCurrentPlan(plan) ? 'subtle' : 'solid'"
+          class="font-bold mb-6 h-11 rounded-xl transition-all"
           @click="handlePlanAction(plan)"
         >
           {{ getButtonLabel(plan) }}
@@ -554,6 +566,15 @@ const statusColor = computed(() => {
               </div>
             </div>
 
+            <!-- Capacity Pricing Info Alert -->
+            <div class="mb-4 p-3 rounded-xl flex items-start gap-2.5 text-xs bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-gray-600 dark:text-gray-300">
+              <UIcon name="i-heroicons-information-circle" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <span class="font-bold text-emerald-600 dark:text-emerald-400">Capacity-Based Pricing:</span>
+                Pricing is determined by the tournament's "Max Participants" limit. Set a capacity cap in the tournament's Dashboard settings to pay a lower price tier.
+              </div>
+            </div>
+
             <div v-if="tournaments.length === 0" class="py-6 text-center">
               <UIcon name="i-heroicons-trophy" class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
               <p class="text-sm text-gray-500">No tournaments found.</p>
@@ -581,7 +602,17 @@ const statusColor = computed(() => {
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ t.name }}</p>
-                  <p class="text-xs text-gray-500">{{ t.sport }} · {{ t.type }}</p>
+                  <p class="text-xs text-gray-500">
+                    {{ t.sport }} · {{ t.type }} · 
+                    <span class="font-medium text-gray-600 dark:text-gray-400">
+                      {{ typeof t.maxParticipants === 'number' ? `${t.maxParticipants} max` : 'Unlimited capacity' }}
+                    </span>
+                  </p>
+                </div>
+                <div v-if="!t.isPremium" class="text-right shrink-0 mr-1">
+                  <span class="text-xs font-extrabold text-emerald-500 dark:text-emerald-400">
+                    ₦{{ getTournamentUpgradePrice(t.maxParticipants).toLocaleString() }}
+                  </span>
                 </div>
                 <UBadge v-if="t.isPremium" color="success" variant="subtle" size="xs" class="shrink-0">
                   Premium
@@ -603,7 +634,7 @@ const statusColor = computed(() => {
                 @click="showTournamentSelector = false"
               />
               <UButton
-                label="Pay ₦5,000 & Upgrade"
+                :label="selectedTournamentUpgradePrice ? `Pay ₦${selectedTournamentUpgradePrice.toLocaleString()} & Upgrade` : 'Select a Tournament'"
                 color="primary"
                 variant="solid"
                 class="flex-1 font-bold bg-emerald-500 hover:bg-emerald-600"
