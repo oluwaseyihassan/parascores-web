@@ -1,17 +1,15 @@
 <template>
   <div class="min-h-screen bg-white text-gray-950 dark:bg-[#070b10] dark:text-white">
-    <section class="relative isolate min-h-[calc(100svh-10rem)] overflow-hidden bg-[#07100c]">
-      <img
-        src="/images/landing/dashboard-screenshot.png"
-        alt="ParaScores tournament dashboard"
-        class="absolute inset-0 h-full w-full object-cover opacity-30"
-      />
-      <div class="absolute inset-0 bg-black/65"></div>
+    <section class="relative isolate min-h-[calc(100svh-10rem)] overflow-hidden bg-[#070b10]">
+      <!-- Glowing design assets for premium dark mode aesthetics -->
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_45%)] pointer-events-none"></div>
+      <div class="absolute top-1/2 left-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none"></div>
 
-      <div class="relative mx-auto flex min-h-[calc(100svh-10rem)] max-w-7xl flex-col justify-end px-6 py-16 sm:py-20">
-        <div class="max-w-3xl">
+      <div class="relative mx-auto w-full max-w-7xl px-6 py-16 sm:py-20 grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
+        <!-- Left Column: Copy & Value Proposition -->
+        <div class="max-w-2xl">
           <p class="mb-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
-            <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
+            <span class="h-2 w-2 rounded-full bg-emerald-300 animate-pulse"></span>
             Tournament operations, live scores, and fan pages
           </p>
           <h1 class="max-w-4xl text-5xl font-semibold leading-[1.02] tracking-normal text-white sm:text-6xl lg:text-7xl">
@@ -21,7 +19,7 @@
             ParaScores gives organizers one clean workspace for fixtures, standings, match control, brackets, and share-ready graphics.
           </p>
 
-          <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
             <NuxtLink
               to="/signup"
               class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-emerald-400 px-5 text-sm font-semibold text-gray-950 transition hover:bg-emerald-300"
@@ -30,8 +28,15 @@
               <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
             </NuxtLink>
             <NuxtLink
-              to="/explore"
+              to="/contact"
               class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-white/25 px-5 text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/10"
+            >
+              Book a demo
+              <UIcon name="i-lucide-calendar" class="h-4 w-4" />
+            </NuxtLink>
+            <NuxtLink
+              to="/explore"
+              class="inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-400 hover:text-white transition py-2"
             >
               Explore tournaments
               <UIcon name="i-lucide-search" class="h-4 w-4" />
@@ -39,6 +44,129 @@
           </div>
         </div>
 
+        <!-- Right Column: Premium Smartphone Mockup -->
+        <div class="relative flex justify-center lg:justify-end items-center w-full">
+          <!-- Outer subtle green glow behind the phone -->
+          <div class="absolute -inset-10 bg-emerald-500/10 blur-[60px] rounded-full pointer-events-none"></div>
+
+          <!-- Phone mockup container -->
+          <div class="relative w-[290px] h-[580px] rounded-[44px] border-[10px] border-[#1f2937] bg-[#070b10] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)] overflow-hidden ring-1 ring-white/10 flex flex-col select-none">
+            <!-- Speaker Ear Piece & Camera / Dynamic Island -->
+            <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-24 h-4.5 bg-black rounded-full z-30 flex items-center justify-center">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#111827] mr-10"></span>
+              <span class="w-1 h-1 rounded-full bg-[#030712]"></span>
+            </div>
+
+            <!-- Screen Content (Simulated Live Fan Page) -->
+            <div class="flex-1 flex flex-col bg-[#070b10] text-white overflow-hidden p-4 pt-10 font-sans text-xs">
+              <!-- Top Navigation -->
+              <div class="flex items-center justify-between pb-3 border-b border-white/5 mb-3">
+                <div class="flex items-center gap-1.5">
+                  <div class="w-5 h-5 rounded bg-emerald-500 flex items-center justify-center font-bold text-[10px] text-gray-950">🏆</div>
+                  <span class="font-bold text-[11px] tracking-tight">OAU Supremacy Cup</span>
+                </div>
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold uppercase tracking-wider">Group Stage</span>
+              </div>
+
+              <!-- Live Match Card -->
+              <div class="bg-white/[0.03] border border-white/10 rounded-xl p-3 mb-3 relative overflow-hidden">
+                <!-- Glowing red live dot -->
+                <div class="flex items-center justify-between mb-2.5">
+                  <span class="text-[9px] text-gray-400 font-medium">Pitch 1 • Group A</span>
+                  <div class="flex items-center gap-1.5">
+                    <span class="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping"></span>
+                    <span class="text-[9px] font-bold text-red-500 tracking-wide">78' LIVE</span>
+                  </div>
+                </div>
+
+                <!-- Teams and Score -->
+                <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 mb-2">
+                  <div class="flex flex-col items-center text-center">
+                    <div class="w-9 h-9 rounded-full bg-[#1e293b] border border-white/10 flex items-center justify-center font-black text-xs text-emerald-400 mb-1 shadow-sm">ATH</div>
+                    <span class="font-bold text-[10px] text-gray-200 truncate w-full">Athletics</span>
+                  </div>
+                  <div class="flex flex-col items-center">
+                    <span class="text-lg font-extrabold text-white tracking-widest">2 - 1</span>
+                    <span class="text-[9px] text-gray-500 font-semibold uppercase mt-0.5">VS</span>
+                  </div>
+                  <div class="flex flex-col items-center text-center">
+                    <div class="w-9 h-9 rounded-full bg-[#1d1e2e] border border-white/10 flex items-center justify-center font-black text-xs text-blue-400 mb-1 shadow-sm">TEC</div>
+                    <span class="font-bold text-[10px] text-gray-200 truncate w-full">Tech Titans</span>
+                  </div>
+                </div>
+
+                <!-- Live events ticker -->
+                <div class="border-t border-white/5 pt-2 space-y-1 text-[9px] text-gray-400">
+                  <div class="flex justify-between">
+                    <span>⚽ O. Johnson (ATH)</span>
+                    <span class="text-emerald-400 font-bold">68'</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span>⚽ A. Yusuf (TEC)</span>
+                    <span class="text-blue-400">54'</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mini Standing Table Card -->
+              <div class="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex-1 flex flex-col">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-bold text-[10px] text-gray-200 uppercase tracking-wider">Group A Standings</span>
+                  <span class="text-[8px] text-gray-500">Live points</span>
+                </div>
+                
+                <div class="space-y-1.5 flex-1">
+                  <!-- Table Header -->
+                  <div class="grid grid-cols-[20px_1fr_24px_24px_24px] text-[8px] font-bold text-gray-500 uppercase pb-1 border-b border-white/5">
+                    <span>Pos</span>
+                    <span>Team</span>
+                    <span class="text-center">P</span>
+                    <span class="text-center">GD</span>
+                    <span class="text-right">Pts</span>
+                  </div>
+                  
+                  <!-- Standing Row 1 -->
+                  <div class="grid grid-cols-[20px_1fr_24px_24px_24px] items-center text-[10px] font-medium py-0.5 text-white">
+                    <span class="text-emerald-400 font-bold">1</span>
+                    <span class="truncate font-semibold text-gray-200">Athletics</span>
+                    <span class="text-center text-gray-400">4</span>
+                    <span class="text-center text-green-500">+4</span>
+                    <span class="text-right font-bold text-emerald-400">10</span>
+                  </div>
+                  
+                  <!-- Standing Row 2 -->
+                  <div class="grid grid-cols-[20px_1fr_24px_24px_24px] items-center text-[10px] font-medium py-0.5 text-white">
+                    <span class="text-gray-400">2</span>
+                    <span class="truncate text-gray-300">Tech Titans</span>
+                    <span class="text-center text-gray-400">4</span>
+                    <span class="text-center text-blue-400">+1</span>
+                    <span class="text-right font-bold">7</span>
+                  </div>
+
+                  <!-- Standing Row 3 -->
+                  <div class="grid grid-cols-[20px_1fr_24px_24px_24px] items-center text-[10px] font-medium py-0.5 text-white">
+                    <span class="text-gray-400">3</span>
+                    <span class="truncate text-gray-300">Sky Hawks</span>
+                    <span class="text-center text-gray-400">4</span>
+                    <span class="text-center text-gray-500">-1</span>
+                    <span class="text-right font-bold">4</span>
+                  </div>
+                </div>
+
+                <!-- Fan Interaction Banner -->
+                <div class="mt-auto bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/25 rounded-lg p-2 flex items-center justify-between">
+                  <div class="flex flex-col">
+                    <span class="text-[8px] text-emerald-400 font-black uppercase tracking-wider">Fan Mode</span>
+                    <span class="text-[9px] text-gray-200 font-bold">Turn on Notifications</span>
+                  </div>
+                  <div class="w-6 h-3.5 bg-emerald-500 rounded-full flex items-center justify-end px-0.5 cursor-pointer">
+                    <span class="w-2.5 h-2.5 rounded-full bg-gray-950"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -145,7 +273,18 @@
             :key="item.title"
             class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-white/10 dark:bg-[#070b10]"
           >
-            <img :src="item.image" :alt="item.alt" class="aspect-[16/10] w-full object-cover" />
+            <div class="relative group overflow-hidden cursor-zoom-in aspect-[16/10]" @click="selectedImage = { src: item.image, alt: item.alt }">
+              <img 
+                :src="item.image" 
+                :alt="item.alt" 
+                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+              />
+              <div class="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 shadow-lg">
+                  <UIcon name="i-heroicons-magnifying-glass-plus" class="w-5 h-5" />
+                </div>
+              </div>
+            </div>
             <div class="p-5">
               <h3 class="text-base font-semibold text-gray-950 dark:text-white">{{ item.title }}</h3>
               <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">{{ item.description }}</p>
@@ -175,20 +314,71 @@
               <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
             </NuxtLink>
             <NuxtLink
-              to="/pricing"
+              to="/contact"
               class="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-gray-300 px-5 text-sm font-semibold text-gray-900 transition hover:bg-white dark:border-white/15 dark:text-white dark:hover:bg-white/10"
             >
-              View pricing
-              <UIcon name="i-lucide-credit-card" class="h-4 w-4" />
+              Book a demo
+              <UIcon name="i-lucide-calendar" class="h-4 w-4" />
             </NuxtLink>
           </div>
         </div>
       </div>
     </section>
+
+    <!-- Lightbox Modal -->
+    <Transition
+      enter-active-class="transition-all duration-300 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-all duration-200 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div 
+        v-if="selectedImage" 
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
+        @click="selectedImage = null"
+      >
+        <!-- Close Button -->
+        <button 
+          class="absolute top-4 right-4 text-white/75 hover:text-white bg-white/10 hover:bg-white/20 p-3 rounded-full border border-white/10 transition-colors cursor-pointer"
+          @click.stop="selectedImage = null"
+          aria-label="Close image"
+        >
+          <UIcon name="i-heroicons-x-mark" class="w-6 h-6" />
+        </button>
+
+        <!-- Image Container -->
+        <div class="relative max-w-5xl max-h-[85vh] w-full flex items-center justify-center" @click.stop>
+          <img 
+            :src="selectedImage.src" 
+            :alt="selectedImage.alt" 
+            class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10 animate-in zoom-in-95 duration-300" 
+          />
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+
+const selectedImage = ref<{ src: string; alt: string } | null>(null)
+
+const handleKeyDown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && selectedImage.value) {
+    selectedImage.value = null
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+})
 
 const features = [
   {
@@ -261,10 +451,10 @@ const formats = [
 
 const showcase = [
   {
-    title: 'Graphics studio',
-    description: 'Produce result and matchday visuals without leaving the tournament workspace.',
-    image: '/images/landing/graphics-generator.png',
-    alt: 'ParaScores graphics generator'
+    title: 'Tournament page',
+    description: 'Give your fans a dedicated home page for schedules, standings, rosters, and brackets.',
+    image: '/images/landing/fan-page.png',
+    alt: 'ParaScores tournament page view'
   },
   {
     title: 'Knockout brackets',
