@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
-  devtools: { enabled: true },
+  devtools: { enabled: process.env.NODE_ENV === 'development' },
 
   devServer: {
     port: 3001
@@ -72,7 +72,7 @@ export default defineNuxtConfig({
       periodicSyncForUpdates: 3600
     },
     devOptions: {
-      enabled: true,
+      enabled: process.env.NODE_ENV === 'development',
       suppressWarnings: true,
       navigateFallbackAllowlist: [/^\/$/],
       type: 'module'
