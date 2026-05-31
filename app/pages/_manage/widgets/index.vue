@@ -105,6 +105,13 @@ const widgetUrl = computed(() => {
   return `${widgetBaseUrl.value}/widget/${urlId}/${selectedWidgetType.value}${queryString ? '?' + queryString : ''}`
 })
 
+const demoWidgetUrl = computed(() => {
+  const params = new URLSearchParams()
+  if (widgetTheme.value !== 'dark') params.set('theme', widgetTheme.value)
+  const queryString = params.toString()
+  return `${widgetBaseUrl.value}/widget/oau-supremacy-2026/${selectedWidgetType.value}${queryString ? '?' + queryString : ''}`
+})
+
 // Generate embed code
 const embedCode = computed(() => {
   if (!widgetUrl.value) return ''
@@ -272,10 +279,26 @@ watch(selectedTournamentId, () => {
             Preview
           </h3>
           
-          <div v-if="!selectedTournamentId" class="flex items-center justify-center py-16 text-center">
-            <div>
-              <UIcon name="i-heroicons-cursor-arrow-ripple" class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-              <p class="text-sm text-gray-400">Select a tournament to preview</p>
+          <div v-if="!selectedTournamentId" class="flex flex-col items-center w-full">
+            <div class="mb-5 text-center">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 mb-2 animate-pulse">
+                Live Demo
+              </span>
+              <h4 class="text-sm font-bold text-gray-900 dark:text-white">OAU Supremacy Cup</h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Select options on the left to customize</p>
+            </div>
+            
+            <div 
+              class="rounded-xl overflow-hidden border shadow-lg max-w-full"
+              :class="widgetTheme === 'dark' ? 'border-white/10' : 'border-gray-200'"
+              :style="{ width: Math.min(widgetWidth, 500) + 'px', height: widgetHeight + 'px' }"
+            >
+              <iframe 
+                :src="demoWidgetUrl" 
+                class="w-full h-full"
+                frameborder="0"
+                title="Widget Preview Demo"
+              />
             </div>
           </div>
 
