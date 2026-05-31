@@ -18,11 +18,9 @@ export function useLiveStream() {
     const config = useRuntimeConfig()
     const url = `${config.public.API_BASE_URL}/fixtures/live/stream`
 
-    console.log('[LiveStream] Connecting to SSE:', url)
     eventSource = new EventSource(url)
 
     eventSource.onopen = () => {
-      console.log('[LiveStream] Connected')
       isConnected.value = true
       lastError.value = null
     }
@@ -41,7 +39,7 @@ export function useLiveStream() {
       console.error('[LiveStream] Connection error', err)
       isConnected.value = false
       lastError.value = err
-      
+
       // Let EventSource automatically attempt to reconnect,
       // but we cap our count and log appropriately
     }
@@ -50,7 +48,6 @@ export function useLiveStream() {
   const disconnect = () => {
     connectionCount--
     if (connectionCount <= 0 && eventSource) {
-      console.log('[LiveStream] Disconnecting (no active listeners)')
       eventSource.close()
       eventSource = null
       isConnected.value = false
