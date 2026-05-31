@@ -1,5 +1,5 @@
 <template>
-  <header class="border-b border-white/10 sticky top-0 z-50 bg-[#0A0F1C]">
+  <header class="border-b border-white/10 sticky top-0 z-50 bg-[#070b10]">
     <div class="max-w-7xl mx-auto px-6">
       <div class="flex items-center justify-between h-16">
         <!-- Logo -->
@@ -9,12 +9,6 @@
 
         <!-- Desktop Navigation -->
         <nav class="hidden lg:flex items-center gap-1">
-          <NuxtLink
-            to="/platform"
-            class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            Platform
-          </NuxtLink>
           <NuxtLink
             to="/widgets"
             class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
@@ -32,12 +26,6 @@
             class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
             Pricing
-          </NuxtLink>
-          <NuxtLink
-            to="/developers"
-            class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            Developers
           </NuxtLink>
           <NuxtLink
             to="/contact"
@@ -88,13 +76,11 @@
       leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 -translate-y-4"
     >
-      <div v-if="mobileMenuOpen" class="lg:hidden bg-[#0A0F1C] border-t border-white/10 px-6 py-4 absolute w-full">
+      <div v-if="mobileMenuOpen" class="lg:hidden bg-[#070b10] border-t border-white/10 px-6 py-4 absolute w-full animate-in fade-in slide-in-from-top-4 duration-200">
         <nav class="flex flex-col gap-2">
-          <NuxtLink to="/platform" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Platform</NuxtLink>
           <NuxtLink to="/widgets" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Widget Builder</NuxtLink>
           <NuxtLink to="/graphics" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Graphics Studio</NuxtLink>
           <NuxtLink to="/pricing" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Pricing</NuxtLink>
-          <NuxtLink to="/developers" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Developers</NuxtLink>
           <NuxtLink to="/contact" class="px-4 py-2 text-gray-400 hover:text-white" @click="mobileMenuOpen = false">Contact</NuxtLink>
         </nav>
         <div class="flex flex-col gap-2 mt-4 pt-4 border-t border-white/10">
