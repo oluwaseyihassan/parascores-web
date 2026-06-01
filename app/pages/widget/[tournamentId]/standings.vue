@@ -176,7 +176,9 @@ onMounted(() => {
 
       <!-- Empty state -->
       <div v-else class="text-center py-12">
-        <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">No standings available yet.</p>
+        <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+          {{ tournament?.type === 'FRIENDLY' || tournament?.type === 'KNOCKOUT' ? 'Standings are not supported for this tournament type.' : 'No standings available yet.' }}
+        </p>
       </div>
     </div>
   </div>
