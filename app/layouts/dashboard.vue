@@ -263,7 +263,7 @@ const handleLogout = async () => {
               </UDropdownMenu>
             </template>
             <div v-else class="flex items-center">
-              <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-7 w-auto object-contain" />
+              <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1780327900/parascores-logo.png" alt="ParaScores" class="h-7 w-auto object-contain" />
             </div>
           </div>
         </header>
@@ -308,7 +308,7 @@ const handleLogout = async () => {
             </UDropdownMenu>
           </template>
           <div v-else class="flex items-center">
-            <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-8 w-auto object-contain" />
+            <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1780327900/parascores-logo.png" alt="ParaScores" class="h-8 w-auto object-contain" />
           </div>
         </div>
         <UDropdownMenu :items="profileMenuItems">
