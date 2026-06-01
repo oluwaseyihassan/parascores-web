@@ -446,7 +446,7 @@ function formatTime24(dateStr?: string | null) {
 function formatDateTimeShort(dateStr?: string | null) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 function formatType(type: string) {
   const map: Record<string, string> = {
