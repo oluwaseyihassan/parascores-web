@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between h-16">
         <!-- Logo -->
         <NuxtLink to="/landing" class="flex items-center gap-2 group">
-          <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-8 w-auto object-contain" />
+          <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1780327900/parascores-logo.png" alt="ParaScores" class="h-8 w-auto object-contain" />
           <span class="font-black text-lg tracking-tighter text-gray-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors inline-block select-none">ParaScores</span>
         </NuxtLink>
 
