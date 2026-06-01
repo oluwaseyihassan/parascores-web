@@ -27,7 +27,7 @@
         :class="isDark ? 'bg-gray-900/90 border-white/10 text-gray-400 hover:text-white' : 'bg-white/90 border-gray-200 text-gray-500 hover:text-gray-800'"
         class="flex items-center gap-1.5 px-2.5 py-1 border rounded-full text-[10px] transition-colors backdrop-blur-sm"
       >
-        <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1776229862/Screenshot_2026-04-15_060233_wexzxq.png" alt="ParaScores" class="h-3 w-auto object-contain" />
+        <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1780327900/parascores-logo.png" alt="ParaScores" class="h-3 w-auto object-contain" />
         Powered by ParaScores
       </a>
     </div>
