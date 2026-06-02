@@ -203,14 +203,42 @@ const hoveredId = ref<string | null>(null)
 const notificationsEnabled = ref(false)
 const notificationPermission = ref('default')
 
-onMounted(() => {
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = window.atob(base64)
+  const outputArray = new Uint8Array(rawData.length)
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i)
+  }
+  return outputArray
+}
+
+onMounted(async () => {
   if (authStore.isAuthenticated && tournamentStore.followedTournaments.length === 0) {
     tournamentStore.fetchFollowedTournaments()
   }
   if (typeof window !== 'undefined') {
-    notificationsEnabled.value = localStorage.getItem('parascores_notifications_enabled') === 'true'
     if ('Notification' in window) {
       notificationPermission.value = Notification.permission
+    }
+    if ('serviceWorker' in navigator && authStore.isAuthenticated) {
+      try {
+        const registration = await navigator.serviceWorker.ready
+        const subscription = await registration.pushManager.getSubscription()
+        if (subscription) {
+          notificationsEnabled.value = true
+          localStorage.setItem('parascores_notifications_enabled', 'true')
+        } else {
+          notificationsEnabled.value = false
+          localStorage.setItem('parascores_notifications_enabled', 'false')
+        }
+      } catch (err) {
+        console.error('Failed to check service worker subscription:', err)
+        notificationsEnabled.value = localStorage.getItem('parascores_notifications_enabled') === 'true'
+      }
+    } else {
+      notificationsEnabled.value = localStorage.getItem('parascores_notifications_enabled') === 'true'
     }
   }
 })
@@ -231,21 +259,68 @@ async function toggleNotifications(val: boolean) {
       return
     }
 
-    const permission = await Notification.requestPermission()
-    notificationPermission.value = permission
+    try {
+      const permission = await Notification.requestPermission()
+      notificationPermission.value = permission
 
-    if (permission === 'granted') {
-      localStorage.setItem('parascores_notifications_enabled', 'true')
-      notificationsEnabled.value = true
-      toast.add({ title: 'Notifications Enabled', description: 'You will now receive live alerts for followed tournaments!', color: 'success' })
-    } else {
+      if (permission === 'granted') {
+        const registration = await navigator.serviceWorker.ready
+        const vapidResponse = await $publicApi<{ key: string }>('/notifications/vapid-key')
+        const vapidPublicKey = vapidResponse.key
+
+        if (!vapidPublicKey) {
+          throw new Error('VAPID public key not configured on backend.')
+        }
+
+        const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey)
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedVapidKey,
+        })
+
+        const subJson = subscription.toJSON()
+        await $api('/notifications/subscribe', {
+          method: 'POST',
+          body: {
+            endpoint: subJson.endpoint,
+            p256dh: subJson.keys?.p256dh,
+            auth: subJson.keys?.auth,
+          },
+        })
+
+        localStorage.setItem('parascores_notifications_enabled', 'true')
+        notificationsEnabled.value = true
+        toast.add({ title: 'Notifications Enabled', description: 'You will now receive live alerts for followed tournaments!', color: 'success' })
+      } else {
+        localStorage.setItem('parascores_notifications_enabled', 'false')
+        notificationsEnabled.value = false
+      }
+    } catch (err: any) {
+      console.error('Failed to subscribe to push notifications:', err)
       localStorage.setItem('parascores_notifications_enabled', 'false')
       notificationsEnabled.value = false
+      toast.add({ title: 'Subscription Failed', description: err.message || 'Could not register for push notifications.', color: 'error' })
     }
   } else {
-    localStorage.setItem('parascores_notifications_enabled', 'false')
-    notificationsEnabled.value = false
-    toast.add({ title: 'Notifications Disabled', description: 'Live alerts have been disabled.', color: 'neutral' })
+    try {
+      const registration = await navigator.serviceWorker.ready
+      const subscription = await registration.pushManager.getSubscription()
+      if (subscription) {
+        await $api('/notifications/unsubscribe', {
+          method: 'POST',
+          body: {
+            endpoint: subscription.endpoint,
+          },
+        })
+        await subscription.unsubscribe()
+      }
+      localStorage.setItem('parascores_notifications_enabled', 'false')
+      notificationsEnabled.value = false
+      toast.add({ title: 'Notifications Disabled', description: 'Live alerts have been disabled.', color: 'neutral' })
+    } catch (err: any) {
+      console.error('Failed to unsubscribe:', err)
+      toast.add({ title: 'Unsubscription Failed', description: err.message || 'Could not remove push subscription.', color: 'error' })
+    }
   }
 }
 
