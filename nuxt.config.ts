@@ -24,7 +24,7 @@ export default defineNuxtConfig({
   pwa: {
     strategies: 'injectManifest',
     srcDir: '.',
-    filename: 'sw.ts',
+    filename: 'sw.js',
     registerType: 'autoUpdate',
     manifest: {
       name: 'Parascores',
@@ -65,9 +65,8 @@ export default defineNuxtConfig({
         }
       ]
     },
-    workbox: {
-      navigateFallback: '/',
-      navigateFallbackDenylist: [/^\/api($|\/)/, /^\/_manage($|\/)/],
+    injectManifest: {
+      swSrc: 'sw.ts',
       globPatterns: ['**/*.{js,css,html,png,svg,ico}']
     },
     client: {
