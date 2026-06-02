@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
-import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
+import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
+import { registerRoute, NavigationRoute } from 'workbox-routing'
 
 declare let self: ServiceWorkerGlobalScope
 
@@ -7,6 +8,20 @@ cleanupOutdatedCaches()
 
 // self.__WB_MANIFEST is default injection point
 precacheAndRoute(self.__WB_MANIFEST)
+
+// Register navigation route fallback for SPA routing
+try {
+  registerRoute(
+    new NavigationRoute(
+      createHandlerBoundToURL('/'),
+      {
+        denylist: [/^\/api($|\/)/, /^\/_manage($|\/)/]
+      }
+    )
+  )
+} catch (e) {
+  console.error('Failed to register navigation route:', e)
+}
 
 // Add custom push/notification click logic
 self.addEventListener('push', (event) => {
