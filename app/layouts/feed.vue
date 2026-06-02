@@ -121,8 +121,9 @@ const themeOptions = [
         class="flex items-center mb-8"
         :class="sidebarCollapsed ? 'flex-col gap-4' : 'justify-between'"
       >
-        <NuxtLink to="/" class="flex items-center group overflow-hidden transition-all duration-300">
+        <NuxtLink to="/" class="flex items-center gap-2 group overflow-hidden transition-all duration-300">
           <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1780327900/parascores-logo.png" alt="ParaScores" :class="sidebarCollapsed ? 'h-6' : 'h-9'" class="w-auto object-contain" />
+          <span v-if="!sidebarCollapsed" class="font-black text-lg tracking-tighter text-gray-900 dark:text-white group-hover:text-emerald-500 transition-colors inline-block select-none">ParaScores</span>
         </NuxtLink>
         <UButton 
           :icon="sidebarCollapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-left'" 
@@ -136,15 +137,21 @@ const themeOptions = [
 
       <!-- Followed Tournaments Card -->
       <div class="bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] rounded-2xl flex-1 overflow-hidden flex flex-col min-h-0">
-        <div 
+        <NuxtLink 
           v-if="!sidebarCollapsed"
-          class="p-4 border-b border-gray-200 dark:border-white/[0.05] bg-gray-100 dark:bg-[#080808]"
+          :to="toMain('/following')"
+          class="p-4 border-b border-gray-200 dark:border-white/[0.05] bg-gray-100 dark:bg-[#080808] hover:bg-gray-200 dark:hover:bg-white/5 cursor-pointer transition-colors flex items-center justify-between group/header"
         >
-           <h3 class="font-bold text-sm text-gray-900 dark:text-gray-300">Followed Tournaments</h3>
-        </div>
-        <div v-else class="p-3 border-b border-gray-200 dark:border-white/[0.05] flex justify-center">
+           <h3 class="font-bold text-sm text-gray-900 dark:text-gray-300 group-hover/header:text-emerald-500 transition-colors">Followed Tournaments</h3>
+           <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-gray-400 group-hover/header:text-emerald-500 transition-colors" />
+        </NuxtLink>
+        <NuxtLink 
+          v-else 
+          :to="toMain('/following')"
+          class="p-3 border-b border-gray-200 dark:border-white/[0.05] flex justify-center hover:bg-gray-200 dark:hover:bg-white/5 cursor-pointer transition-colors"
+        >
            <UIcon name="i-heroicons-heart" class="w-5 h-5 text-emerald-500" />
-        </div>
+        </NuxtLink>
         
         <div class="flex-1 overflow-y-auto p-2 space-y-1 hide-scrollbar">
           <div v-if="tournamentStore.followedLoading" class="p-4 space-y-3">
@@ -187,7 +194,7 @@ const themeOptions = [
       <!-- Top Bar -->
       <header class="h-14 border-b border-gray-200 dark:border-white/[0.05] bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-40">
         <div class="flex items-center gap-6 flex-1">
-          <NuxtLink to="/" class="flex items-center gap-2 group shrink-0">
+          <NuxtLink to="/" class="lg:hidden flex items-center gap-2 group shrink-0">
             <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1780327900/parascores-logo.png" alt="ParaScores" class="h-7 w-auto object-contain" />
             <span class="font-black text-lg tracking-tighter text-gray-900 dark:text-white group-hover:text-emerald-500 transition-colors inline-block">ParaScores</span>
           </NuxtLink>
