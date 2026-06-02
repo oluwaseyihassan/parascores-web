@@ -22,6 +22,9 @@ export default defineNuxtConfig({
   ],
 
   pwa: {
+    strategies: 'injectManifest',
+    srcDir: '.',
+    filename: 'sw.ts',
     registerType: 'autoUpdate',
     manifest: {
       name: 'Parascores',
