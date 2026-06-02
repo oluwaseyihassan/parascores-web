@@ -29,6 +29,37 @@
     <!-- Content Section -->
     <section class="pb-24">
       <div class="max-w-5xl mx-auto px-6">
+        <!-- Live Notifications Banner -->
+        <div 
+          v-if="authStore.isAuthenticated && !tournamentStore.followedLoading" 
+          class="mb-6 p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all"
+          :class="isDark ? 'border-white/[0.06] bg-[#141414]/50' : 'border-gray-200 bg-gray-50/80'"
+        >
+          <div class="flex items-start gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+              <UIcon 
+                :name="notificationsEnabled && notificationPermission === 'granted' ? 'i-heroicons-bell-alert-solid' : 'i-heroicons-bell-slash'" 
+                class="w-5 h-5 text-emerald-500" 
+              />
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-gray-900 dark:text-white">Live Match Notifications</h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 max-w-xl">
+                Get real-time browser alerts when games kickoff, score goals, or end for your followed tournaments.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 self-end sm:self-center shrink-0">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+              {{ notificationsEnabled && notificationPermission === 'granted' ? 'Enabled' : 'Disabled' }}
+            </span>
+            <USwitch 
+              :model-value="notificationsEnabled && notificationPermission === 'granted'" 
+              @update:model-value="toggleNotifications" 
+              color="success" 
+            />
+          </div>
+        </div>
 
         <!-- Loading State -->
         <div v-if="tournamentStore.followedLoading" class="space-y-3">
@@ -124,24 +155,17 @@
                 <!-- Actions -->
                 <div class="flex items-center gap-2 shrink-0">
                   <UButton
-                    :to="toTournament(tournament)"
-                    variant="ghost"
-                    color="neutral"
+                    :color="hoveredId === tournament.id ? 'error' : 'neutral'"
+                    :variant="hoveredId === tournament.id ? 'solid' : 'soft'"
                     size="sm"
-                    class="rounded-lg hidden sm:flex"
-                  >
-                    View
-                  </UButton>
-                  <UButton
-                    variant="soft"
-                    color="error"
-                    size="sm"
-                    class="rounded-lg"
+                    class="rounded-full px-4 font-bold shadow-sm transition-all duration-200"
+                    :icon="hoveredId === tournament.id ? 'i-heroicons-x-mark' : 'i-heroicons-check'"
                     :loading="unfollowingId === tournament.id"
+                    @mouseenter="hoveredId = tournament.id"
+                    @mouseleave="hoveredId = null"
                     @click="handleUnfollow(tournament)"
                   >
-                    <UIcon name="i-heroicons-heart-solid" class="w-4 h-4 mr-1" />
-                    Unfollow
+                    {{ hoveredId === tournament.id ? 'Unfollow' : 'Following' }}
                   </UButton>
                 </div>
               </div>
@@ -170,14 +194,60 @@ useSeoMeta({
 
 const authStore = useAuthStore()
 const tournamentStore = useTournamentStore()
+const toast = useToast()
+const colorMode = useColorMode()
+const isDark = computed(() => colorMode.value === 'dark')
 
 const unfollowingId = ref<string | null>(null)
+const hoveredId = ref<string | null>(null)
+const notificationsEnabled = ref(false)
+const notificationPermission = ref('default')
 
 onMounted(() => {
   if (authStore.isAuthenticated && tournamentStore.followedTournaments.length === 0) {
     tournamentStore.fetchFollowedTournaments()
   }
+  if (typeof window !== 'undefined') {
+    notificationsEnabled.value = localStorage.getItem('parascores_notifications_enabled') === 'true'
+    if ('Notification' in window) {
+      notificationPermission.value = Notification.permission
+    }
+  }
 })
+
+async function toggleNotifications(val: boolean) {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    toast.add({ title: 'Not Supported', description: 'Browser notifications are not supported in this browser.', color: 'error' })
+    return
+  }
+
+  if (val) {
+    if (Notification.permission === 'denied') {
+      toast.add({ 
+        title: 'Notifications Blocked', 
+        description: 'Please enable notifications in your browser settings to receive live match updates.', 
+        color: 'error' 
+      })
+      return
+    }
+
+    const permission = await Notification.requestPermission()
+    notificationPermission.value = permission
+
+    if (permission === 'granted') {
+      localStorage.setItem('parascores_notifications_enabled', 'true')
+      notificationsEnabled.value = true
+      toast.add({ title: 'Notifications Enabled', description: 'You will now receive live alerts for followed tournaments!', color: 'success' })
+    } else {
+      localStorage.setItem('parascores_notifications_enabled', 'false')
+      notificationsEnabled.value = false
+    }
+  } else {
+    localStorage.setItem('parascores_notifications_enabled', 'false')
+    notificationsEnabled.value = false
+    toast.add({ title: 'Notifications Disabled', description: 'Live alerts have been disabled.', color: 'neutral' })
+  }
+}
 
 async function handleUnfollow(tournament: Tournament) {
   unfollowingId.value = tournament.id
