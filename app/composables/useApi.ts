@@ -8,13 +8,15 @@ export async function $api<T>(url: string, options: FetchOptions & { _retry?: bo
   // 1. Prepare Headers (SSR & CSR)
   const headers = useRequestHeaders(['cookie'])
 
+  const mergedHeaders = {
+    ...headers,
+    ...options.headers
+  }
+
   const defaults: FetchOptions = {
     baseURL: runtimeConfig.public.API_BASE_URL,
     credentials: 'include',
-    headers: {
-      ...headers,
-      ...options.headers
-    },
+    headers: mergedHeaders,
   }
 
   try {
@@ -23,7 +25,7 @@ export async function $api<T>(url: string, options: FetchOptions & { _retry?: bo
       ...defaults,
       ...options,
       method: options.method as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | undefined,
-      headers: headers
+      headers: mergedHeaders
     })
 
   } catch (error: any) {
