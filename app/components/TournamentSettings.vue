@@ -116,10 +116,6 @@ const parseDateString = (dateStr: string | null | undefined): DateValue | null =
 const startDate = shallowRef<DateValue | null>(parseDateString(props.tournament.start_date))
 const endDate = shallowRef<DateValue | null>(parseDateString(props.tournament.end_date))
 
-// Min date for calendar (can be today or the existing start date if it's in the past)
-const todayDate = new Date()
-const todayCalendarDate = new CalendarDate(todayDate.getFullYear(), todayDate.getMonth() + 1, todayDate.getDate())
-const minDate = startDate.value && startDate.value.compare(todayCalendarDate) < 0 ? startDate.value : todayCalendarDate
 
 // Format date for display
 const formatDateDisplay = (date: DateValue | null) => {
@@ -722,7 +718,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 <template #content>
                   <UCalendar 
                     v-model="endDate" 
-                    :min-value="(startDate || minDate) as CalendarDate"
+                    :min-value="startDate as CalendarDate"
                   />
                 </template>
               </UPopover>
