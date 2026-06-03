@@ -271,7 +271,12 @@ const openGenerateModal = () => {
   generateConfig.useExistingGroups = groupStore.groups.length > 0
   generateError.value = null
   
-  if (tournament.value?.type === TournamentType.GROUP || tournament.value?.type === TournamentType.HYBRID || tournament.value?.type === TournamentType.LEAGUE) {
+  if (
+    tournament.value?.type === TournamentType.GROUP || 
+    tournament.value?.type === TournamentType.HYBRID || 
+    tournament.value?.type === TournamentType.LEAGUE ||
+    tournament.value?.type === TournamentType.ROUND_ROBIN
+  ) {
     showGroupWizard.value = true
   } else if (tournament.value?.type === TournamentType.KNOCKOUT) {
     showKnockoutWizard.value = true
@@ -810,6 +815,21 @@ const handleAddFixture = async () => {
   if (addFixtureState.homeTeamId === addFixtureState.awayTeamId) {
     useToast().add({ title: 'Home and Away teams must be different', color: 'error' })
     return
+  }
+  if (addFixtureState.startTime && tournament.value?.start_date && tournament.value?.end_date) {
+    const fixtureDate = new Date(addFixtureState.startTime)
+    if (!isNaN(fixtureDate.getTime())) {
+      const startDate = new Date(tournament.value.start_date)
+      const endDate = new Date(tournament.value.end_date)
+      if (fixtureDate < startDate || fixtureDate > endDate) {
+        useToast().add({
+          title: 'Date out of range',
+          description: `The fixture date must be between the tournament start date (${formatDate(tournament.value.start_date)}) and end date (${formatDate(tournament.value.end_date)}). Please adjust the tournament's start or end date to select this date.`,
+          color: 'error'
+        })
+        return
+      }
+    }
   }
   addingFixture.value = true
   try {
