@@ -225,6 +225,26 @@ watch(() => props.open, async (isOpen) => {
   }
 })
 
+watch(matchDateVal, (newVal, oldVal) => {
+  if (newVal && props.tournament?.start_date && props.tournament?.end_date) {
+    const tStart = parseDateString(props.tournament.start_date)
+    const tEnd = parseDateString(props.tournament.end_date)
+    if (tStart && tEnd) {
+      if (newVal.compare(tStart) < 0 || newVal.compare(tEnd) > 0) {
+        useToast().add({
+          title: 'Date out of range',
+          description: `The fixture date must be between the tournament start date (${formatDateDisplay(tStart)}) and end date (${formatDateDisplay(tEnd)}). Please adjust the tournament's start or end date to select this date.`,
+          color: 'error'
+        })
+        // Revert to old value
+        setTimeout(() => {
+          matchDateVal.value = oldVal
+        }, 0)
+      }
+    }
+  }
+})
+
 const loadMatchData = async (fixture: Fixture) => {
   matchEvents.value = []
   loadingPlayers.value = true
@@ -467,14 +487,28 @@ const isUpdateDisabled = computed(() => {
 const updateMatchTime = async () => {
   if (!selectedFixture.value || !matchDateVal.value || !matchTimeVal.value) return
   
+  const selectedYear = matchDateVal.value.year
+  const selectedMonth = matchDateVal.value.month - 1
+  const selectedDay = matchDateVal.value.day
+  const [h, m] = matchTimeVal.value.split(':').map(Number)
+  
+  const newDate = new Date(selectedYear, selectedMonth, selectedDay, h, m)
+  
+  if (props.tournament?.start_date && props.tournament?.end_date) {
+    const startDate = new Date(props.tournament.start_date)
+    const endDate = new Date(props.tournament.end_date)
+    if (newDate < startDate || newDate > endDate) {
+      useToast().add({
+        title: 'Date out of range',
+        description: `The fixture date must be between the tournament start date (${formatDateDisplay(parseDateString(props.tournament.start_date) || null)}) and end date (${formatDateDisplay(parseDateString(props.tournament.end_date) || null)}). Please adjust the tournament's start or end date to select this date.`,
+        color: 'error'
+      })
+      return
+    }
+  }
+
   updatingTime.value = true
   try {
-    const selectedYear = matchDateVal.value.year
-    const selectedMonth = matchDateVal.value.month - 1
-    const selectedDay = matchDateVal.value.day
-    const [h, m] = matchTimeVal.value.split(':').map(Number)
-    
-    const newDate = new Date(selectedYear, selectedMonth, selectedDay, h, m)
     const newIso = newDate.toISOString()
     const newVenue = matchVenue.value || null
     
@@ -1526,7 +1560,7 @@ const downloadGraphic = async () => {
                       {{ formatDateDisplay(matchDateVal) }}
                     </UButton>
                     <template #content>
-                      <UCalendar v-model="matchDateVal" :min-value="tournamentMinDate" :max-value="tournamentMaxDate" />
+                      <UCalendar v-model="matchDateVal" />
                     </template>
                   </UPopover>
                   <UInput type="time" v-model="matchTimeVal" class="w-full sm:w-32" size="md" :disabled="updatingTime" />
