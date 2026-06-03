@@ -344,10 +344,10 @@ const awaySubs = computed(() => {
               </div>
 
               <!-- Score Center -->
-              <div class="flex-shrink-0 w-28 sm:w-32 md:w-40 flex flex-col items-center justify-center px-2">
+              <div class="flex-shrink-0 min-w-[7rem] sm:min-w-[8rem] md:min-w-[10rem] flex flex-col items-center justify-center px-2">
                 <template v-if="isLive || isCompleted">
                   <div class="flex items-center justify-center gap-2 md:gap-3 mb-1">
-                    <span class="text-[32px] md:text-[40px] font-bold tracking-tight leading-none transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">
+                    <span class="text-[32px] md:text-[40px] font-bold tracking-tight leading-none transition-colors whitespace-nowrap" :class="isDark ? 'text-white' : 'text-gray-900'">
                       {{ fixture.homeScore ?? 0 }} <span class="text-gray-500 font-normal mx-1">-</span> {{ fixture.awayScore ?? 0 }}
                     </span>
                   </div>

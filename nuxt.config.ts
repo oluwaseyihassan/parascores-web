@@ -20,7 +20,7 @@ export default defineNuxtConfig({
     "@nuxtjs/i18n",
     "@nuxt/image",
     "@vite-pwa/nuxt",
-    '@sentry/nuxt/module'
+    // '@sentry/nuxt/module'
   ],
 
   pwa: {
@@ -132,11 +132,11 @@ export default defineNuxtConfig({
     }
   },
 
-  sentry: {
-    org: 'parascores',
-    project: 'javascript-nuxt',
-    autoInjectServerSentry: 'top-level-import'
-  },
+  // sentry: {
+  //   org: 'parascores',
+  //   project: 'javascript-nuxt',
+  //   autoInjectServerSentry: 'top-level-import'
+  // },
 
   sourcemap: {
     client: 'hidden'
