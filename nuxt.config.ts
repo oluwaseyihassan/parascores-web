@@ -23,7 +23,7 @@ export default defineNuxtConfig({
 
   pwa: {
     strategies: 'injectManifest',
-    srcDir: '.',
+    srcDir: 'app',
     filename: 'sw.js',
     registerType: 'autoUpdate',
     manifest: {
