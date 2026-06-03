@@ -210,9 +210,6 @@ const nameFormatRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const startDate = shallowRef<DateValue | null>(null)
 const endDate = shallowRef<DateValue | null>(null)
 
-// Min date for calendar (today)
-const todayDate = new Date()
-const minDate = new CalendarDate(todayDate.getFullYear(), todayDate.getMonth() + 1, todayDate.getDate())
 
 // Format date for display
 const formatDateDisplay = (date: DateValue | null) => {
@@ -779,7 +776,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                   <UButton variant="outline" color="neutral" icon="i-heroicons-calendar" class="w-full justify-start py-2.5" :class="!startDate && 'text-gray-400'">
                     {{ formatDateDisplay(startDate) }}
                   </UButton>
-                  <template #content><UCalendar v-model="startDate" :min-value="minDate" /></template>
+                  <template #content><UCalendar v-model="startDate" /></template>
                 </UPopover>
               </UFormField>
 
@@ -788,7 +785,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                   <UButton variant="outline" color="neutral" icon="i-heroicons-calendar" class="w-full justify-start py-2.5" :class="!endDate && 'text-gray-400'">
                     {{ formatDateDisplay(endDate) }}
                   </UButton>
-                  <template #content><UCalendar v-model="endDate" :min-value="(startDate || minDate) as CalendarDate" /></template>
+                  <template #content><UCalendar v-model="endDate" :min-value="startDate as CalendarDate" /></template>
                 </UPopover>
               </UFormField>
             </div>
