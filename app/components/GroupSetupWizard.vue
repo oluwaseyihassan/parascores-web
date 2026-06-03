@@ -14,6 +14,7 @@ const emit = defineEmits(['update:open', 'finish'])
 
 const step = ref(1)
 const loading = ref(false)
+const showConfirmFinishModal = ref(false)
 const fixtureStore = useFixtureStore()
 const venueStore = useVenueStore()
 const { venues } = storeToRefs(venueStore)
@@ -24,7 +25,7 @@ const STORAGE_KEY = `gsw-progress-${props.tournament.id}`
 
 const config = reactive({
   assignmentMethod: 'auto' as 'existing' | 'auto',
-  numberOfGroups: props.tournament.numberOfGroups || 2,
+  numberOfGroups: props.tournament.type === TournamentType.ROUND_ROBIN ? 1 : (props.tournament.numberOfGroups || 2),
   startDate: props.tournament.start_date ? new Date(props.tournament.start_date).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
   intervalMinutes: 90,
   shuffleParticipants: false,
@@ -169,7 +170,10 @@ watch(() => props.open, (isOpen) => {
     
     // Check for existing groups to set initial config
     const existingGroups = props.groups || props.tournament.groups || []
-    if (existingGroups.length > 0) {
+    if (props.tournament.type === TournamentType.ROUND_ROBIN) {
+       config.assignmentMethod = 'auto'
+       config.numberOfGroups = 1
+    } else if (existingGroups.length > 0) {
        config.assignmentMethod = 'existing'
        config.numberOfGroups = existingGroups.length
     } else {
@@ -272,11 +276,36 @@ const unassignedParticipants = computed(() => {
     return props.participants.filter(p => !assignedIds.has(p.id))
 })
 
-const moveParticipant = (participantId: string, toGroup: string | null) => {
-    // Manual moves disabled as per user request to keep assignments in the groups tab
-}
+const expectedFixturesCount = computed(() => {
+  let count = 0
+  const groupsList = Object.values(groupAssignments.value)
+  for (const teamIds of groupsList) {
+    const N = teamIds.length
+    if (N < 2) continue
+    let groupMatches = (N * (N - 1)) / 2
+    if (props.tournament.doubleRoundRobin) {
+      groupMatches *= 2
+    }
+    count += groupMatches
+  }
+  return count
+})
 
-const handleFinish = async () => {
+const handleFinish = async (force = false) => {
+  if (config.schedulingMethod === 'manual') {
+    if (manualFixtures.value.length === 0) {
+      toast.add({ title: 'Please add at least one fixture', color: 'error' })
+      return
+    }
+
+    const expected = expectedFixturesCount.value
+    if (manualFixtures.value.length < expected && !force) {
+      showConfirmFinishModal.value = true
+      return
+    }
+  }
+
+  showConfirmFinishModal.value = false
   loading.value = true
   try {
     if (config.schedulingMethod === 'auto') {
@@ -289,13 +318,6 @@ const handleFinish = async () => {
         clearExisting: true
       })
     } else {
-      // Handle manual fixtures
-      if (manualFixtures.value.length === 0) {
-        toast.add({ title: 'Please add at least one fixture', color: 'error' })
-        loading.value = false
-        return
-      }
-
       // Clear existing first
       await fixtureStore.deleteAllFixtures(props.tournament.id)
 
@@ -338,6 +360,21 @@ const addManualFixture = () => {
   if (addFixtureState.homeTeamId === addFixtureState.awayTeamId) {
     toast.add({ title: 'Teams must be different', color: 'error' })
     return
+  }
+  if (addFixtureState.startTime && props.tournament.start_date && props.tournament.end_date) {
+    const fixtureDate = new Date(addFixtureState.startTime)
+    if (!isNaN(fixtureDate.getTime())) {
+      const startDate = new Date(props.tournament.start_date)
+      const endDate = new Date(props.tournament.end_date)
+      if (fixtureDate < startDate || fixtureDate > endDate) {
+        toast.add({
+          title: 'Date out of range',
+          description: `The fixture date must be between the tournament start date (${new Date(props.tournament.start_date).toLocaleDateString()}) and end date (${new Date(props.tournament.end_date).toLocaleDateString()}). Please adjust the tournament's start or end date to select this date.`,
+          color: 'error'
+        })
+        return
+      }
+    }
   }
 
   manualFixtures.value.push({ ...addFixtureState })
@@ -408,11 +445,11 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
           <div v-if="step === 1" class="max-w-md mx-auto space-y-6">
             <div class="bg-primary-50/50 dark:bg-primary-950/20 p-4 rounded-xl border border-primary-100 dark:border-primary-900/30 mb-8">
               <p class="text-sm text-primary-700 dark:text-primary-300">
-                Configure your group stage structure. You can use existing assignments or auto-generate new ones.
+                {{ props.tournament.type === TournamentType.ROUND_ROBIN ? 'Configure scheduling method for the Round Robin fixtures.' : 'Configure your group stage structure. You can use existing assignments or auto-generate new ones.' }}
               </p>
             </div>
 
-            <UFormField label="Setup Method" required>
+            <UFormField v-if="props.tournament.type !== TournamentType.ROUND_ROBIN" label="Setup Method" required>
                <URadioGroup
                   v-model="config.assignmentMethod"
                   :items="[
@@ -422,7 +459,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                />
             </UFormField>
 
-            <UFormField v-if="config.assignmentMethod === 'auto'" label="Number of Groups" required>
+            <UFormField v-if="config.assignmentMethod === 'auto' && props.tournament.type !== TournamentType.ROUND_ROBIN" label="Number of Groups" required>
               <USelect 
                 v-model.number="config.numberOfGroups" 
                 :items="[1, 2, 4, 8, 16, 32].map(n => ({ label: `${n} Group${n > 1 ? 's' : ''}`, value: n }))"
@@ -571,7 +608,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
            <!-- Scrollable fixture list -->
            <div class="flex-1 overflow-y-auto scroll-smooth p-6 space-y-3">
               <div class="flex items-center justify-between px-1 mb-2">
-                 <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Fixtures ({{ manualFixtures.length }})</span>
+                 <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Fixtures ({{ manualFixtures.length }} / {{ expectedFixturesCount }})</span>
                  <UButton v-if="manualFixtures.length > 0" size="xs" variant="ghost" color="error" icon="i-heroicons-trash" label="Clear All" @click="manualFixtures = []" />
               </div>
 
@@ -648,7 +685,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
             <UButton color="neutral" variant="ghost" @click="step = 2" :disabled="loading">Back to Groups</UButton>
             <UButton 
               color="success" 
-              @click="handleFinish" 
+              @click="() => handleFinish()" 
               :loading="loading"
               size="lg"
             >
@@ -660,6 +697,50 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
           </div>
         </div>
       </div>
+    </template>
+  </UModal>
+
+  <!-- Confirmation Modal for Incomplete Fixtures -->
+  <UModal v-model:open="showConfirmFinishModal" :ui="{ content: 'sm:max-w-md' }">
+    <template #content>
+      <UCard :ui="{ root: 'divide-y divide-gray-100 dark:divide-gray-800' }">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white flex items-center gap-2">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-amber-500" />
+              Incomplete Fixtures
+            </h3>
+            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showConfirmFinishModal = false" />
+          </div>
+        </template>
+
+        <div class="py-4">
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            You have scheduled only <span class="font-bold text-amber-500">{{ manualFixtures.length }}</span> of the <span class="font-semibold text-gray-950 dark:text-white">{{ expectedFixturesCount }}</span> expected fixtures.
+          </p>
+          <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">
+            Finishing now will leave the tournament stage incomplete. Are you sure you want to finish and generate?
+          </p>
+        </div>
+
+        <template #footer>
+          <div class="flex items-center justify-end gap-3">
+            <UButton 
+              color="neutral" 
+              variant="ghost" 
+              label="Go Back" 
+              @click="showConfirmFinishModal = false" 
+              :disabled="loading"
+            />
+            <UButton 
+              color="warning" 
+              label="Finish & Generate"
+              :loading="loading"
+              @click="handleFinish(true)"
+            />
+          </div>
+        </template>
+      </UCard>
     </template>
   </UModal>
 </template>
