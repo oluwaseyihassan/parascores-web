@@ -309,12 +309,15 @@ export const useFixtureStore = defineStore('fixture', () => {
     }
   }
 
-  // Fetch all live fixtures across all tournaments
-  async function fetchLiveFixtures() {
+  // Fetch all live fixtures (optionally filtered by organization)
+  async function fetchLiveFixtures(organizationId?: string) {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<Fixture[]>>('/fixtures/live', {
+      const url = organizationId
+        ? `/fixtures/live?organizationId=${organizationId}`
+        : '/fixtures/live'
+      const response = await $api<ApiResponse<Fixture[]>>(url, {
         method: 'GET',
       })
       if (response.data) {
