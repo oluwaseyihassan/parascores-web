@@ -8,14 +8,15 @@ definePageMeta({
 })
 
 const fixtureStore = useFixtureStore()
+const authStore = useAuthStore()
 const { liveFixtures, loading, error } = storeToRefs(fixtureStore)
 
 // Trigger connection to live stream SSE
 useLiveStream()
 
-// Fetch live fixtures on mount
+// Fetch live fixtures on mount (scoped to active organization)
 onMounted(async () => {
-  await fixtureStore.fetchLiveFixtures()
+  await fixtureStore.fetchLiveFixtures(authStore.activeOrganizationId || undefined)
 })
 
 
@@ -51,12 +52,12 @@ const openMatchControl = (fixture: Fixture) => {
 const handleFixtureUpdated = async (fixture: Fixture) => {
   selectedFixture.value = fixture
   // Refresh live fixtures list
-  await fixtureStore.fetchLiveFixtures()
+  await fixtureStore.fetchLiveFixtures(authStore.activeOrganizationId || undefined)
 }
 
 const handleMatchEnded = async () => {
   // Refresh live fixtures list (match will be removed since it's completed)
-  await fixtureStore.fetchLiveFixtures()
+  await fixtureStore.fetchLiveFixtures(authStore.activeOrganizationId || undefined)
 }
 </script>
 
@@ -80,7 +81,7 @@ const handleMatchEnded = async () => {
         variant="ghost" 
         color="neutral"
         :loading="loading"
-        @click="fixtureStore.fetchLiveFixtures()"
+        @click="fixtureStore.fetchLiveFixtures(authStore.activeOrganizationId || undefined)"
       >
         Refresh
       </UButton>
