@@ -2,6 +2,7 @@
 import { FixtureStatus, MatchEventType, ParticipantType, FixtureStage } from '~/types'
 import type { Fixture, Player, MatchEvent } from '~/types'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
+import { useMatchTimer } from '~/composables/useMatchTimer'
 
 const props = withDefaults(defineProps<{
   fixture: Fixture | null
@@ -38,6 +39,48 @@ const matchTime = ref<string>('') // Used for fallback/comparison
 const matchDateVal = shallowRef<DateValue | null>(null)
 const matchTimeVal = ref<string>('12:00')
 const matchVenue = ref<string>('')
+const matchDuration = ref(90)
+const matchTimer = useMatchTimer()
+const adjustedMinute = ref(1)
+
+const adjustTimerMaxMinutes = computed(() => {
+  if (!selectedFixture.value) return 90
+  const duration = selectedFixture.value.matchDuration ?? 90
+  const htSeconds = (duration * 60) / 2
+  const baseElapsed = selectedFixture.value.timerElapsedSeconds ?? 0
+  
+  if (baseElapsed < htSeconds) {
+    return Math.floor(htSeconds / 60)
+  }
+  return duration
+})
+
+const liveClock = computed(() => {
+  if (!selectedFixture.value) return ''
+  return matchTimer.formatClock(selectedFixture.value)
+})
+
+const liveMinuteLabel = computed(() => {
+  if (!selectedFixture.value) return ''
+  return matchTimer.formatMinuteLabel(selectedFixture.value)
+})
+
+const isTimerRunning = computed(() => {
+  return selectedFixture.value?.status === FixtureStatus.LIVE && !!selectedFixture.value?.timerIsRunning
+})
+
+const isTimerPaused = computed(() => {
+  return selectedFixture.value?.status === FixtureStatus.LIVE && !selectedFixture.value?.timerIsRunning
+})
+
+const halftimeSeconds = computed(() => {
+  return (matchDuration.value * 60) / 2
+})
+
+const isHalftime = computed(() => {
+  if (!selectedFixture.value) return false
+  return selectedFixture.value.timerIsRunning === false && selectedFixture.value.timerElapsedSeconds === halftimeSeconds.value
+})
 const updatingTime = ref(false)
 const homePlayers = ref<Player[]>([])
 const awayPlayers = ref<Player[]>([])
@@ -163,6 +206,7 @@ const fixtureStatusColors: Record<FixtureStatus, 'info' | 'success' | 'warning' 
 watch(() => props.fixture, async (newFixture) => {
   if (newFixture && props.open) {
     selectedFixture.value = { ...newFixture }
+    matchDuration.value = newFixture.matchDuration ?? 90
     selectedLineupIds.value = newFixture.lineupPlayers?.map(p => p.id) || []
     homeFormation.value = newFixture.homeFormation || ''
     awayFormation.value = newFixture.awayFormation || ''
@@ -178,6 +222,7 @@ watch(() => props.open, async (isOpen) => {
   if (isOpen && props.fixture) {
     errorMessage.value = null
     selectedFixture.value = { ...props.fixture }
+    matchDuration.value = props.fixture.matchDuration ?? 90
     selectedLineupIds.value = props.fixture.lineupPlayers?.map(p => p.id) || []
     homeFormation.value = props.fixture.homeFormation || ''
     awayFormation.value = props.fixture.awayFormation || ''
@@ -222,6 +267,14 @@ watch(() => props.open, async (isOpen) => {
     awayFormation.value = ''
     changedPositions.value = {}
     activeLineupTeam.value = 'home'
+  }
+})
+
+watch(showScheduleCollapsible, (isOpen) => {
+  if (isOpen && selectedFixture.value?.status === FixtureStatus.LIVE) {
+    const currentElapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0
+    const rawMinute = Math.floor(currentElapsed / 60)
+    adjustedMinute.value = Math.min(rawMinute, adjustTimerMaxMinutes.value)
   }
 })
 
@@ -300,20 +353,23 @@ const startMatch = async () => {
   
   updatingMatch.value = true
   try {
-    await fixtureStore.updateFixture(selectedFixture.value.id, {
+    const now = new Date().toISOString()
+    const updatePayload = {
       status: FixtureStatus.LIVE,
       homeScore: selectedFixture.value.homeScore ?? 0,
-      awayScore: selectedFixture.value.awayScore ?? 0
-    })
+      awayScore: selectedFixture.value.awayScore ?? 0,
+      timerStartedAt: now,
+      timerElapsedSeconds: 0,
+      timerIsRunning: true
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
     
     selectedFixture.value = {
       ...selectedFixture.value,
-      status: FixtureStatus.LIVE,
-      homeScore: selectedFixture.value.homeScore ?? 0,
-      awayScore: selectedFixture.value.awayScore ?? 0
+      ...updatePayload
     }
     
-    emit('fixture-updated', selectedFixture.value)
+    emit('fixture-updated', selectedFixture.value!)
     
     useToast().add({ 
       title: 'Match Started', 
@@ -333,16 +389,20 @@ const undoStartMatch = async () => {
   
   updatingMatch.value = true
   try {
-    await fixtureStore.updateFixture(selectedFixture.value.id, {
-      status: FixtureStatus.SCHEDULED
-    })
+    const updatePayload = {
+      status: FixtureStatus.SCHEDULED,
+      timerStartedAt: null,
+      timerElapsedSeconds: 0,
+      timerIsRunning: false
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
     
     selectedFixture.value = {
       ...selectedFixture.value,
-      status: FixtureStatus.SCHEDULED
+      ...updatePayload
     }
     
-    emit('fixture-updated', selectedFixture.value)
+    emit('fixture-updated', selectedFixture.value!)
     
     useToast().add({ 
       title: 'Match Un-started', 
@@ -354,6 +414,177 @@ const undoStartMatch = async () => {
     handleError(error, { title: 'Failed to undo start' })
   } finally {
     updatingMatch.value = false
+  }
+}
+
+const pauseMatch = async () => {
+  if (!selectedFixture.value) return
+  
+  updatingMatch.value = true
+  try {
+    const currentElapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0
+    const updatePayload = {
+      timerIsRunning: false,
+      timerElapsedSeconds: currentElapsed
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
+    
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    
+    emit('fixture-updated', selectedFixture.value!)
+    
+    useToast().add({ 
+      title: 'Match Paused', 
+      description: 'The clock has been paused.',
+      icon: 'i-heroicons-pause',
+      color: 'warning' 
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to pause match' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const resumeMatch = async () => {
+  if (!selectedFixture.value) return
+  
+  updatingMatch.value = true
+  try {
+    const now = new Date().toISOString()
+    const updatePayload = {
+      timerIsRunning: true,
+      timerStartedAt: now
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
+    
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    
+    emit('fixture-updated', selectedFixture.value!)
+    
+    useToast().add({ 
+      title: 'Match Resumed', 
+      description: 'The clock has resumed.',
+      icon: 'i-heroicons-play',
+      color: 'success' 
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to resume match' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const setHalftime = async () => {
+  if (!selectedFixture.value) return
+  
+  updatingMatch.value = true
+  try {
+    const htSeconds = halftimeSeconds.value
+    const updatePayload = {
+      timerIsRunning: false,
+      timerElapsedSeconds: htSeconds
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
+    
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    
+    emit('fixture-updated', selectedFixture.value!)
+    
+    useToast().add({ 
+      title: 'Halftime', 
+      description: 'Match set to halftime.',
+      icon: 'i-heroicons-clock',
+      color: 'warning' 
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to set halftime' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const startSecondHalf = async () => {
+  if (!selectedFixture.value) return
+  
+  updatingMatch.value = true
+  try {
+    const now = new Date().toISOString()
+    const htSeconds = halftimeSeconds.value
+    const updatePayload = {
+      timerIsRunning: true,
+      timerStartedAt: now,
+      timerElapsedSeconds: htSeconds
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
+    
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    
+    emit('fixture-updated', selectedFixture.value!)
+    
+    useToast().add({ 
+      title: 'Second Half Started', 
+      description: 'The second half has kicked off!',
+      icon: 'i-heroicons-play',
+      color: 'success' 
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to start second half' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const adjustMatchTimer = async () => {
+  if (!selectedFixture.value) return
+  
+  updatingTime.value = true
+  try {
+    const cappedMin = Math.min(adjustedMinute.value, adjustTimerMaxMinutes.value)
+    adjustedMinute.value = cappedMin
+    const targetSeconds = Math.max(0, cappedMin * 60)
+    const now = new Date().toISOString()
+    
+    const updatePayload: any = {
+      timerElapsedSeconds: targetSeconds
+    }
+    
+    // If clock is running, we must reset timerStartedAt to now so it accumulates from targetSeconds
+    if (selectedFixture.value.timerIsRunning) {
+      updatePayload.timerStartedAt = now
+    }
+    
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
+    
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    
+    emit('fixture-updated', selectedFixture.value!)
+    
+    useToast().add({ 
+      title: 'Clock Adjusted', 
+      description: `Clock running time has been set to ${cappedMin}:00.`,
+      icon: 'i-heroicons-clock',
+      color: 'success' 
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to adjust clock' })
+  } finally {
+    updatingTime.value = false
   }
 }
 
@@ -480,8 +711,10 @@ const isUpdateDisabled = computed(() => {
     : true
 
   const venueChanged = (selectedFixture.value.venue || '') !== matchVenue.value
+  
+  const durationChanged = (selectedFixture.value.matchDuration ?? 90) !== matchDuration.value
 
-  return !timeChanged && !venueChanged
+  return !timeChanged && !venueChanged && !durationChanged
 })
 
 const updateMatchTime = async () => {
@@ -514,21 +747,23 @@ const updateMatchTime = async () => {
     
     await fixtureStore.updateFixture(selectedFixture.value.id, {
       startTime: newIso,
-      venue: newVenue
+      venue: newVenue,
+      matchDuration: matchDuration.value
     })
     
     selectedFixture.value = {
       ...selectedFixture.value,
       startTime: newIso,
-      venue: newVenue
+      venue: newVenue,
+      matchDuration: matchDuration.value
     }
     matchTime.value = newIso
     
-    emit('fixture-updated', selectedFixture.value)
+    emit('fixture-updated', selectedFixture.value!)
     
     useToast().add({ 
-      title: 'Time Updated', 
-      description: 'The match schedule has been updated.',
+      title: 'Schedule Updated', 
+      description: 'The match schedule and duration have been updated.',
       icon: 'i-heroicons-calendar',
       color: 'success' 
     })
@@ -649,7 +884,7 @@ const confirmGoal = async () => {
     }
     
     showGoalModal.value = false
-    emit('fixture-updated', selectedFixture.value)
+    emit('fixture-updated', selectedFixture.value!)
     
     // Refresh match events (skip for Individual tournaments)
     if (props.tournament?.participantType !== ParticipantType.INDIVIDUAL) {
@@ -682,7 +917,11 @@ const openGoalModal = (team: 'home' | 'away', type: MatchEventType = MatchEventT
   goalData.type = type
   goalData.scorerId = undefined
   goalData.assisterId = undefined
-  goalData.minute = null
+  
+  const currentMin = selectedFixture.value?.status === FixtureStatus.LIVE 
+    ? (matchTimer.getMinute(selectedFixture.value) ?? null)
+    : null
+  goalData.minute = currentMin
   
   // For Individual tournaments, record goal immediately without modal
   if (props.tournament?.participantType === ParticipantType.INDIVIDUAL) {
@@ -697,7 +936,11 @@ const openCardModal = (team: 'home' | 'away') => {
   cardTeam.value = team
   cardData.type = MatchEventType.YELLOW_CARD
   cardData.playerId = undefined
-  cardData.minute = null
+  
+  const currentMin = selectedFixture.value?.status === FixtureStatus.LIVE 
+    ? (matchTimer.getMinute(selectedFixture.value) ?? null)
+    : null
+  cardData.minute = currentMin
   showCardModal.value = true
 }
 
@@ -740,7 +983,11 @@ const openSubstitutionModal = (team: 'home' | 'away') => {
   subTeam.value = team
   subData.playerOutId = undefined
   subData.playerInId = undefined
-  subData.minute = null
+  
+  const currentMin = selectedFixture.value?.status === FixtureStatus.LIVE 
+    ? (matchTimer.getMinute(selectedFixture.value) ?? null)
+    : null
+  subData.minute = currentMin
   showSubstitutionModal.value = true
 }
 
@@ -835,7 +1082,7 @@ const confirmDeleteEvent = async () => {
         homeScore: selectedFixture.value.homeScore,
         awayScore: selectedFixture.value.awayScore
       })
-      emit('fixture-updated', selectedFixture.value)
+      emit('fixture-updated', selectedFixture.value!)
     }
     
     await refreshMatchEvents()
@@ -915,7 +1162,7 @@ const decrementScore = async (team: 'home' | 'away') => {
       homeScore: selectedFixture.value.homeScore,
       awayScore: selectedFixture.value.awayScore
     })
-    emit('fixture-updated', selectedFixture.value)
+    emit('fixture-updated', selectedFixture.value!)
   } catch (error: any) {
     // Revert on error
     if (team === 'home') {
@@ -941,13 +1188,18 @@ const endMatch = async () => {
       awayPenaltyScore: awayPen
     } : {}
 
-    await fixtureStore.updateFixture(selectedFixture.value.id, {
+    const updatePayload = {
       status: FixtureStatus.COMPLETED,
+      timerIsRunning: false,
       ...penaltyData
-    })
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
     
-    selectedFixture.value.status = FixtureStatus.COMPLETED
-    emit('fixture-updated', selectedFixture.value)
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    emit('fixture-updated', selectedFixture.value!)
     emit('match-ended')
     closeModal()
     
@@ -965,12 +1217,19 @@ const reopenMatch = async () => {
   
   updatingMatch.value = true
   try {
-    await fixtureStore.updateFixture(selectedFixture.value.id, {
-      status: FixtureStatus.LIVE
-    })
+    const now = new Date().toISOString()
+    const updatePayload = {
+      status: FixtureStatus.LIVE,
+      timerStartedAt: now,
+      timerIsRunning: true
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
     
-    selectedFixture.value.status = FixtureStatus.LIVE
-    emit('fixture-updated', selectedFixture.value)
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    emit('fixture-updated', selectedFixture.value!)
     
     useToast().add({ 
       title: 'Match Reopened', 
@@ -995,7 +1254,7 @@ const savePenalties = async () => {
       awayPenaltyScore: selectedFixture.value.awayPenaltyScore ?? 0
     })
     
-    emit('fixture-updated', selectedFixture.value)
+    emit('fixture-updated', selectedFixture.value!)
     
     useToast().add({ 
       title: 'Penalties Saved', 
@@ -1207,7 +1466,7 @@ const saveLineups = async () => {
         lineupPositions: res.data.lineupPositions || {}
       }
       lineupPositions.value = (res.data.lineupPositions as Record<string, string>) || {}
-      emit('fixture-updated', selectedFixture.value)
+      emit('fixture-updated', selectedFixture.value!)
       
       useToast().add({
         title: 'Lineups Saved',
@@ -1324,6 +1583,17 @@ const downloadGraphic = async () => {
               <span class="mc-status-chip__dot" />
               {{ selectedFixture.status }}
             </span>
+            
+            <!-- Live Clock Badge -->
+            <span
+              v-if="selectedFixture && selectedFixture.status === 'LIVE'"
+              class="mc-timer-badge ml-2"
+              :class="{ 'mc-timer-badge--paused': isTimerPaused }"
+            >
+              <UIcon :name="isTimerPaused ? 'i-heroicons-pause-circle' : 'i-heroicons-clock'" class="w-3.5 h-3.5" />
+              <span class="tabular-nums font-semibold">{{ liveClock }}</span>
+              <span v-if="isTimerPaused" class="text-[9px] font-bold tracking-wider ml-1 opacity-75 animate-pulse">PAUSED</span>
+            </span>
           </div>
           <button class="mc-header__close" @click="closeModal">
             <UIcon name="i-heroicons-x-mark" class="w-4 h-4" />
@@ -1388,7 +1658,15 @@ const downloadGraphic = async () => {
                 <UIcon :name="swappingTeams ? 'i-heroicons-arrow-path' : 'i-heroicons-arrows-right-left'" :class="['w-3 h-3', swappingTeams && 'animate-spin']" />
                 <span>Swap</span>
               </button>
-              <div v-if="selectedFixture.startTime" class="mc-match-time">
+              <div v-if="selectedFixture.status === 'LIVE'" 
+                   class="mc-match-time mc-match-time--live"
+                   :class="{ 'mc-match-time--live-paused': isTimerPaused }"
+              >
+                <span class="mc-match-time__live-dot" />
+                <span>{{ liveClock }}</span>
+                <span class="text-[10px] opacity-75">({{ liveMinuteLabel }})</span>
+              </div>
+              <div v-else-if="selectedFixture.startTime" class="mc-match-time">
                 {{ new Date(selectedFixture.startTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) }}
                 · {{ new Date(selectedFixture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) }}
               </div>
@@ -1449,7 +1727,7 @@ const downloadGraphic = async () => {
                 @click="openGoalModal('home', MatchEventType.MISSED_PENALTY)"
               >
                 <UIcon name="i-heroicons-x-circle" class="w-3.5 h-3.5" />
-                <span>Miss</span>
+                <span>Missed Pen</span>
               </button>
               <button
                 v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
@@ -1518,7 +1796,7 @@ const downloadGraphic = async () => {
                 @click="openGoalModal('away', MatchEventType.MISSED_PENALTY)"
               >
                 <UIcon name="i-heroicons-x-circle" class="w-3.5 h-3.5" />
-                <span>Miss</span>
+                <span>Missed Pen</span>
               </button>
               <button
                 v-if="props.tournament?.participantType !== ParticipantType.INDIVIDUAL"
@@ -1575,11 +1853,58 @@ const downloadGraphic = async () => {
                     :disabled="updatingTime"
                   />
                 </div>
+                <!-- Match Duration Slider -->
+                <div class="mt-3 flex flex-col gap-1.5 p-3 rounded-lg bg-gray-50/50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04]">
+                  <div class="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+                    <span>Match Duration</span>
+                    <span class="font-bold text-emerald-500 dark:text-emerald-400">{{ matchDuration }} mins</span>
+                  </div>
+                  <input
+                    type="range"
+                    v-model.number="matchDuration"
+                    min="10"
+                    max="120"
+                    step="5"
+                    class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    :disabled="updatingTime"
+                  />
+                </div>
                 <UButton color="primary" variant="solid" size="sm"
                   :loading="updatingTime" :disabled="isUpdateDisabled"
-                  @click="updateMatchTime" class="mt-2 w-full sm:w-auto">
+                  @click="updateMatchTime" class="mt-3 w-full sm:w-auto">
                   Update Schedule
                 </UButton>
+
+                <!-- Adjust Live Timer (Only visible when LIVE) -->
+                <div v-if="selectedFixture.status === 'LIVE'" class="mt-3 flex flex-col gap-1.5 p-3 rounded-lg bg-amber-500/5 dark:bg-amber-500/[0.02] border border-amber-500/10">
+                  <div class="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+                    <span class="flex items-center gap-1">
+                      <UIcon name="i-heroicons-clock" class="w-3.5 h-3.5 text-amber-500" />
+                      <span>Adjust Running Time (minutes)</span>
+                    </span>
+                    <span class="font-bold text-amber-500">{{ adjustedMinute }}'</span>
+                  </div>
+                  <div class="flex gap-2 items-center">
+                    <UInput
+                      type="number"
+                      v-model.number="adjustedMinute"
+                      min="0"
+                      :max="adjustTimerMaxMinutes"
+                      class="flex-1"
+                      size="sm"
+                      :disabled="updatingTime"
+                    />
+                    <UButton
+                      color="warning"
+                      variant="solid"
+                      size="sm"
+                      :loading="updatingTime"
+                      @click="adjustMatchTimer"
+                    >
+                      Apply
+                    </UButton>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1944,6 +2269,50 @@ const downloadGraphic = async () => {
                   </button>
                 </UTooltip>
               </template>
+
+              <!-- Live Match Timer Control Buttons -->
+              <template v-if="selectedFixture.status === 'LIVE'">
+                <!-- Pause / Resume Clock -->
+                <button
+                  v-if="selectedFixture.timerIsRunning"
+                  class="mc-primary-btn mc-primary-btn--pause"
+                  :disabled="updatingMatch"
+                  @click="pauseMatch"
+                >
+                  <UIcon name="i-heroicons-pause" class="w-4 h-4" />
+                  <span>Pause Clock</span>
+                </button>
+                <button
+                  v-else
+                  class="mc-primary-btn mc-primary-btn--resume"
+                  :disabled="updatingMatch"
+                  @click="resumeMatch"
+                >
+                  <UIcon name="i-heroicons-play" class="w-4 h-4" />
+                  <span>Resume Clock</span>
+                </button>
+
+                <!-- Halftime / Start 2nd Half -->
+                <button
+                  v-if="!isHalftime"
+                  class="mc-primary-btn mc-primary-btn--halftime"
+                  :disabled="updatingMatch"
+                  @click="setHalftime"
+                >
+                  <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+                  <span>Halftime</span>
+                </button>
+                <button
+                  v-else
+                  class="mc-primary-btn mc-primary-btn--secondhalf"
+                  :disabled="updatingMatch"
+                  @click="startSecondHalf"
+                >
+                  <UIcon name="i-heroicons-forward" class="w-4 h-4" />
+                  <span>Start 2nd Half</span>
+                </button>
+              </template>
+
               <button
                 v-if="selectedFixture.status === 'LIVE'"
                 class="mc-primary-btn mc-primary-btn--end"
@@ -2667,6 +3036,32 @@ const downloadGraphic = async () => {
   white-space: nowrap;
 }
 
+.mc-match-time--live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.725rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+.mc-match-time--live-paused {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.2);
+}
+.mc-match-time__live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
 /* ── Score Controls ────────────────────────────────────────── */
 .mc-controls {
   display: flex;
@@ -3057,6 +3452,56 @@ const downloadGraphic = async () => {
   color: #6b7280;
   border-color: rgba(255,255,255,0.08);
 }
+
+.mc-timer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.mc-timer-badge--paused {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.mc-primary-btn--pause {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4338ca;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+}
+.mc-primary-btn--pause:hover:not(:disabled) { background: #4338ca; }
+
+.mc-primary-btn--resume {
+  background: #10b981;
+  color: #fff;
+  border-color: #059669;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+.mc-primary-btn--resume:hover:not(:disabled) { background: #059669; }
+
+.mc-primary-btn--halftime {
+  background: #f59e0b;
+  color: #fff;
+  border-color: #d97706;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+.mc-primary-btn--halftime:hover:not(:disabled) { background: #d97706; }
+
+.mc-primary-btn--secondhalf {
+  background: #06b6d4;
+  color: #fff;
+  border-color: #0891b2;
+  box-shadow: 0 2px 6px rgba(6, 182, 212, 0.3);
+}
+.mc-primary-btn--secondhalf:hover:not(:disabled) { background: #0891b2; }
 
 /* Secondary action buttons */
 .mc-sec-btn {
