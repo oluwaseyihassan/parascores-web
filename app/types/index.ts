@@ -64,7 +64,8 @@ export enum MatchEventType {
   YELLOW_CARD = 'YELLOW_CARD',
   RED_CARD = 'RED_CARD',
   SUBSTITUTION = 'SUBSTITUTION',
-  ASSIST = 'ASSIST'
+  ASSIST = 'ASSIST',
+  PENALTY_SAVE = 'PENALTY_SAVE'
 }
 
 // Models
@@ -235,6 +236,10 @@ export interface Fixture {
   roundName?: string | null
   matchNumber: number
   startTime?: string | null
+  timerStartedAt?: string | null
+  timerElapsedSeconds?: number | null
+  timerIsRunning?: boolean | null
+  matchDuration?: number
   venue?: string | null
 
   homeTeamId?: string | null
