@@ -31,6 +31,9 @@ const statusDot: Record<string, string> = {
 const hasActions = computed(() => {
   return props.fixture.status !== FixtureStatus.CANCELLED
 })
+
+const matchTimer = useMatchTimer(30000)
+const liveMinuteLabel = computed(() => matchTimer.formatMinuteLabel(props.fixture))
 </script>
 
 <template>
@@ -52,7 +55,7 @@ const hasActions = computed(() => {
         </div>
         <div v-if="fixture.status !== FixtureStatus.SCHEDULED || fixture.startTime" :class="statusColor[fixture.status]" class="flex items-center gap-1.5">
           <span class="fixture-status__dot" :class="statusDot[fixture.status]" />
-          <span class="fixture-status__label">{{ fixture.status }}</span>
+          <span class="fixture-status__label">{{ fixture.status === FixtureStatus.LIVE ? (liveMinuteLabel || fixture.status) : fixture.status }}</span>
         </div>
       </div>
     </div>
