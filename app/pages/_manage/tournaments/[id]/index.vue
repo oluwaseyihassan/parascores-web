@@ -526,7 +526,8 @@ const addFixtureState = reactive({
   startTime: '' as string,
   venue: '' as string,
   groupId: '' as string,
-  stage: undefined as FixtureStage | undefined
+  stage: undefined as FixtureStage | undefined,
+  matchDuration: 90
 })
 
 const openAddFixtureModal = (round?: number, roundName?: string) => {
@@ -546,6 +547,7 @@ const openAddFixtureModal = (round?: number, roundName?: string) => {
   addFixtureState.startTime = ''
   addFixtureState.venue = ''
   addFixtureState.groupId = groupStore.groups[0]?.id || ''
+  addFixtureState.matchDuration = 90
   
   // Set default stage based on tournament type and round name
   const name = (addFixtureState.roundName || '').toLowerCase()
@@ -842,7 +844,8 @@ const handleAddFixture = async () => {
       startTime: addFixtureState.startTime || undefined,
       venue: addFixtureState.venue || undefined,
       groupId: addFixtureState.groupId || undefined,
-      stage: addFixtureState.stage || undefined
+      stage: addFixtureState.stage || undefined,
+      matchDuration: addFixtureState.matchDuration
     })
     
     // Re-fetch fixtures to get fully populated data (with team relations)
@@ -856,6 +859,7 @@ const handleAddFixture = async () => {
       addFixtureState.awayTeamId = ''
       addFixtureState.startTime = ''
       addFixtureState.venue = ''
+      addFixtureState.matchDuration = 90
     } else {
       showAddFixtureModal.value = false
     }
@@ -5352,6 +5356,24 @@ const copyTournamentLink = async () => {
               />
             </UFormField>
           </div>
+
+          <!-- Match Duration Slider -->
+          <UFormField label="Match Duration" name="matchDuration">
+            <div class="flex flex-col gap-1.5 w-full">
+              <div class="flex justify-between items-center text-xs text-gray-500">
+                <span>Configure total game time (minutes)</span>
+                <span class="font-bold text-gray-900 dark:text-white">{{ addFixtureState.matchDuration }} mins</span>
+              </div>
+              <input 
+                type="range" 
+                v-model.number="addFixtureState.matchDuration" 
+                min="10" 
+                max="120" 
+                step="5"
+                class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+              />
+            </div>
+          </UFormField>
 
 
           <!-- Add Another toggle -->
