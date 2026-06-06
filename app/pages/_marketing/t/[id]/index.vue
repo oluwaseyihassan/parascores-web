@@ -207,6 +207,7 @@ useHead({
 
 // Computed
 const hasLiveFixtures = computed(() => fixtures.value.some(f => f.status === FixtureStatus.LIVE))
+const matchTimer = useMatchTimer(30000)
 
 const isTeams = computed(() => tournament.value?.participantType === ParticipantType.TEAM)
 const participantsTabName = computed(() => isTeams.value ? 'Teams' : 'Participants')
@@ -895,7 +896,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                         </div>
                         <span v-else-if="fixture.status === FixtureStatus.LIVE" class="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
                           <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
-                          LIVE
+                          {{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}
                         </span>
                         <span v-else-if="fixture.status === FixtureStatus.COMPLETED" class="text-[10px] font-bold text-emerald-500 uppercase">
                           FT
@@ -1029,7 +1030,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                           </div>
                           <span v-else-if="fixture.status === FixtureStatus.LIVE" class="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
                             <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
-                            LIVE
+                            {{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}
                           </span>
                           <span v-else-if="fixture.status === FixtureStatus.COMPLETED" class="text-[10px] font-bold text-emerald-500 uppercase">
                             FT
