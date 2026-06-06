@@ -19,6 +19,10 @@ export interface UpdateFixtureData {
   homeFormation?: string | null
   awayFormation?: string | null
   lineupPositions?: Record<string, string> | null
+  timerStartedAt?: string | null
+  timerElapsedSeconds?: number | null
+  timerIsRunning?: boolean | null
+  matchDuration?: number
 }
 
 export interface CreateFixtureData {
@@ -32,6 +36,7 @@ export interface CreateFixtureData {
   venue?: string | null
   groupId?: string | null
   stage?: string | null
+  matchDuration?: number
 }
 
 export interface GenerateFixturesOptions {
@@ -339,6 +344,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     participantId: string
     playerId?: string | null
     relatedPlayerId?: string | null
+    relatedParticipantId?: string | null
     type: string
     minute?: number | null
     description?: string | null
@@ -350,8 +356,9 @@ export const useFixtureStore = defineStore('fixture', () => {
         method: 'POST',
         body: {
           participantId: data.participantId,
-          playerId: data.playerId,
-          relatedPlayerId: data.relatedPlayerId,
+          playerId: data.playerId || null,
+          relatedPlayerId: data.relatedPlayerId || null,
+          relatedParticipantId: data.relatedParticipantId || null,
           type: data.type,
           minute: data.minute,
           description: data.description
@@ -381,7 +388,11 @@ export const useFixtureStore = defineStore('fixture', () => {
     try {
       const response = await $api<ApiResponse<any>>(`/match-events/${eventId}`, {
         method: 'PATCH',
-        body: data,
+        body: {
+          ...data,
+          playerId: data.playerId === undefined ? undefined : (data.playerId || null),
+          relatedPlayerId: data.relatedPlayerId === undefined ? undefined : (data.relatedPlayerId || null),
+        },
       })
       return response
     } catch (err: any) {
