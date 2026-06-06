@@ -129,6 +129,9 @@ const awayEvents = computed(() => events.value.filter(e => (e.participant_id ===
 const isCompleted = computed(() => fixture.value?.status === FixtureStatus.COMPLETED)
 const isLive = computed(() => fixture.value?.status === FixtureStatus.LIVE)
 const hasPenalties = computed(() => fixture.value?.homePenaltyScore != null || fixture.value?.awayPenaltyScore != null)
+const matchTimer = useMatchTimer()
+const liveMinuteLabel = computed(() => fixture.value ? matchTimer.formatMinuteLabel(fixture.value) : '')
+const liveClock = computed(() => fixture.value ? matchTimer.formatClock(fixture.value) : '')
 
 // Helpers
 function formatTime(dateStr?: string | null) {
@@ -146,6 +149,7 @@ function getEventIcon(type: MatchEventType) {
     case MatchEventType.OWN_GOAL: return '⚽'
     case MatchEventType.PENALTY: return '🎯'
     case MatchEventType.MISSED_PENALTY: return '❌'
+    case MatchEventType.PENALTY_SAVE: return '🧤'
     case MatchEventType.YELLOW_CARD: return '🟨'
     case MatchEventType.RED_CARD: return '🟥'
     case MatchEventType.SUBSTITUTION: return '🔄'
@@ -160,6 +164,7 @@ function getEventLabel(type: MatchEventType) {
     case MatchEventType.OWN_GOAL: return 'Own Goal'
     case MatchEventType.PENALTY: return 'Penalty'
     case MatchEventType.MISSED_PENALTY: return 'Missed Penalty'
+    case MatchEventType.PENALTY_SAVE: return 'Penalty Saved'
     case MatchEventType.YELLOW_CARD: return 'Yellow Card'
     case MatchEventType.RED_CARD: return 'Red Card'
     case MatchEventType.SUBSTITUTION: return 'Substitution'
@@ -354,7 +359,7 @@ const awaySubs = computed(() => {
                   <div class="text-[13px] font-medium text-gray-400 mt-1 flex items-center justify-center gap-1.5">
                     <template v-if="isLive">
                       <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                      <span class="text-red-400">Live</span>
+                      <span class="text-red-400">{{ liveMinuteLabel || 'Live' }}</span>
                     </template>
                     <span v-else>Full time</span>
                   </div>
@@ -461,6 +466,7 @@ const awaySubs = computed(() => {
                                 {{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}
                                 <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-400 font-normal ml-0.5">(P)</span>
                                 <span v-if="event.type === 'MISSED_PENALTY'" class="text-xs text-red-500 font-normal ml-0.5">(Missed)</span>
+                                <span v-if="event.type === 'PENALTY_SAVE'" class="text-xs text-amber-500 font-normal ml-0.5">(Saved)</span>
                                 <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-red-500 font-normal ml-0.5">(OG)</span>
                               </span>
                               
@@ -476,6 +482,9 @@ const awaySubs = computed(() => {
                             </p>
                             <p v-else-if="['GOAL', 'PENALTY'].includes(event.type) && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
                               assist by {{ event.relatedPlayer.name }}
+                            </p>
+                            <p v-else-if="event.type === 'PENALTY_SAVE' && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
+                              penalty by {{ event.relatedPlayer.name }}
                             </p>
                           </div>
                         </div>
@@ -522,6 +531,7 @@ const awaySubs = computed(() => {
                                 {{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}
                                 <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-400 font-normal ml-0.5">(P)</span>
                                 <span v-if="event.type === 'MISSED_PENALTY'" class="text-xs text-red-500 font-normal ml-0.5">(Missed)</span>
+                                <span v-if="event.type === 'PENALTY_SAVE'" class="text-xs text-amber-500 font-normal ml-0.5">(Saved)</span>
                                 <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-red-500 font-normal ml-0.5">(OG)</span>
                               </span>
                               
@@ -537,6 +547,9 @@ const awaySubs = computed(() => {
                             </p>
                             <p v-else-if="['GOAL', 'PENALTY'].includes(event.type) && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
                               assist by {{ event.relatedPlayer.name }}
+                            </p>
+                            <p v-else-if="event.type === 'PENALTY_SAVE' && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
+                              penalty by {{ event.relatedPlayer.name }}
                             </p>
                           </div>
                         </div>
@@ -936,6 +949,10 @@ const awaySubs = computed(() => {
                 >
                   {{ fixture.status }}
                 </span>
+              </div>
+              <div v-if="isLive && liveClock" class="flex items-center justify-between px-5 py-3">
+                <span class="text-sm text-gray-500">Match Timer</span>
+                <span class="text-sm font-semibold tabular-nums text-red-400">{{ liveClock }} ({{ liveMinuteLabel }})</span>
               </div>
             </div>
           </div>
