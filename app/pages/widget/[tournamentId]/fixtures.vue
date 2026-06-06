@@ -130,6 +130,7 @@ const sortedKnockoutRounds = computed(() => {
 })
 
 const hasLiveFixtures = computed(() => fixtures.value.some(f => f.status === FixtureStatus.LIVE))
+const matchTimer = useMatchTimer(30000)
 
 // Collapsible rounds
 const collapsedRounds = ref<Record<string, boolean>>({})
@@ -229,9 +230,9 @@ function formatDate(dateStr?: string | null) {
                 </span>
                 <span>
                   <template v-if="fixture.status === FixtureStatus.LIVE">
-                    <span class="text-red-500 flex items-center gap-1 font-extrabold tracking-widest text-[9px]">
-                      <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
-                      LIVE
+                      <span class="text-red-500 flex items-center gap-1 font-extrabold tracking-widest text-[9px]">
+                        <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
+                      {{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}
                     </span>
                   </template>
                   <template v-else-if="fixture.status === FixtureStatus.COMPLETED">
@@ -345,7 +346,7 @@ function formatDate(dateStr?: string | null) {
                     <template v-if="fixture.status === FixtureStatus.LIVE">
                       <span class="text-red-500 flex items-center gap-1 font-extrabold tracking-widest text-[9px]">
                         <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
-                        LIVE
+                        {{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}
                       </span>
                     </template>
                     <template v-else-if="fixture.status === FixtureStatus.COMPLETED">
