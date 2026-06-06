@@ -78,6 +78,11 @@ const isOwner = computed(() => {
   return isAuthenticated.value && player.value && player.value.userId === user.value?.id
 })
 
+// Owner can only edit after organizer has approved the claim
+const canEditProfile = computed(() => {
+  return isOwner.value && player.value?.status !== 'PENDING'
+})
+
 // Edit State
 const isEditing = ref(false)
 const editName = ref('')
@@ -244,17 +249,97 @@ const getPositionColor = (pos: string | null | undefined): string => {
 
 // Count stats from match events
 const statsFromEvents = computed(() => {
-  if (!player.value?.matchEvents) return { goals: 0, assists: 0, yellowCards: 0, redCards: 0 }
+  if (!player.value?.matchEvents) return { goals: 0, penalties: 0, ownGoals: 0, missedPenalties: 0, assists: 0, yellowCards: 0, redCards: 0, substitutions: 0, cleanSheets: 0, penaltySaves: 0 }
 
-  let goals = 0, assists = 0, yellowCards = 0, redCards = 0
+  let goals = 0, penalties = 0, ownGoals = 0, missedPenalties = 0, assists = 0, yellowCards = 0, redCards = 0, substitutions = 0, penaltySaves = 0
+  
+  // Count stats where player is the main actor
   for (const event of player.value.matchEvents) {
     if (event.type === 'GOAL') goals++
-    if (event.type === 'PENALTY') goals++
+    if (event.type === 'PENALTY') penalties++
+    if (event.type === 'OWN_GOAL') ownGoals++
+    if (event.type === 'MISSED_PENALTY') missedPenalties++
+    if (event.type === 'PENALTY_SAVE') penaltySaves++
     if (event.type === 'ASSIST') assists++
     if (event.type === 'YELLOW_CARD') yellowCards++
     if (event.type === 'RED_CARD') redCards++
+    if (event.type === 'SUBSTITUTION') substitutions++
   }
-  return { goals, assists, yellowCards, redCards }
+
+  // Count assists from relatedMatchEvents where player is the related/assisting player
+  if (player.value.relatedMatchEvents) {
+    for (const event of player.value.relatedMatchEvents) {
+      if (['GOAL', 'PENALTY'].includes(event.type)) {
+        assists++
+      }
+    }
+  }
+  
+  return { goals: goals + penalties, penalties, ownGoals, missedPenalties, assists, yellowCards, redCards, substitutions, cleanSheets: 0, penaltySaves }
+})
+
+// Position-based stat cards
+interface StatCard {
+  label: string
+  value: number
+  icon?: string
+  iconBgClass: string
+  iconClass: string
+  isCard?: boolean   // renders as a colored card rectangle instead of icon
+  cardClass?: string
+}
+
+const positionStats = computed((): StatCard[] => {
+  const s = statsFromEvents.value
+  const pos = (player.value?.position || '').split('-')[0]
+
+  const goalsStat: StatCard = { label: 'Goals', value: s.goals, icon: 'i-mdi-soccer', iconBgClass: 'bg-emerald-500/10', iconClass: 'text-emerald-500 dark:text-emerald-400' }
+  const assistsStat: StatCard = { label: 'Assists', value: s.assists, icon: 'i-mdi-shoe-cleat', iconBgClass: 'bg-cyan-500/10', iconClass: 'text-cyan-500 dark:text-cyan-400 -rotate-45 transform' }
+  const yellowsStat: StatCard = { label: 'Yellows', value: s.yellowCards, isCard: true, cardClass: 'bg-yellow-400 ring-yellow-400/20', iconBgClass: '', iconClass: '' }
+  const redsStat: StatCard = { label: 'Reds', value: s.redCards, isCard: true, cardClass: 'bg-rose-500 dark:bg-rose-600 ring-rose-500/20', iconBgClass: '', iconClass: '' }
+  const ownGoalsStat: StatCard = { label: 'Own Goals', value: s.ownGoals, icon: 'i-mdi-soccer', iconBgClass: 'bg-orange-500/10', iconClass: 'text-orange-500 dark:text-orange-400' }
+  const penaltiesStat: StatCard = { label: 'Penalties', value: s.penalties, icon: 'i-heroicons-stop', iconBgClass: 'bg-blue-500/10', iconClass: 'text-blue-500 dark:text-blue-400' }
+  const missedPensStat: StatCard = { label: 'Missed Pens', value: s.missedPenalties, icon: 'i-heroicons-x-circle', iconBgClass: 'bg-red-500/10', iconClass: 'text-red-500 dark:text-red-400' }
+  const cleanSheetsStat: StatCard = { label: 'Clean Sheets', value: s.cleanSheets, icon: 'i-heroicons-shield-check', iconBgClass: 'bg-violet-500/10', iconClass: 'text-violet-500 dark:text-violet-400' }
+  const savesStat: StatCard = { label: 'Pen. Saves', value: s.penaltySaves, icon: 'i-heroicons-hand-raised', iconBgClass: 'bg-amber-500/10', iconClass: 'text-amber-500 dark:text-amber-400' }
+
+  let statsList: StatCard[] = []
+  switch (pos) {
+    case 'GK':
+      statsList = [cleanSheetsStat, savesStat, yellowsStat, redsStat]
+      break
+    case 'DEF':
+      statsList = [goalsStat, ownGoalsStat, yellowsStat, redsStat]
+      break
+    case 'MID':
+      statsList = [goalsStat, assistsStat, yellowsStat, redsStat]
+      break
+    case 'FWD':
+      statsList = [goalsStat, assistsStat, penaltiesStat, missedPensStat]
+      break
+    default:
+      statsList = [goalsStat, assistsStat, yellowsStat, redsStat]
+      break
+  }
+
+  // Dynamically add other cards if the value is > 0 and not already in the list
+  const addIfNonZero = (stat: StatCard) => {
+    if (stat.value > 0 && !statsList.some(s => s.label === stat.label)) {
+      statsList.push(stat)
+    }
+  }
+
+  addIfNonZero(goalsStat)
+  addIfNonZero(assistsStat)
+  addIfNonZero(ownGoalsStat)
+  addIfNonZero(penaltiesStat)
+  addIfNonZero(missedPensStat)
+  addIfNonZero(cleanSheetsStat)
+  addIfNonZero(savesStat)
+  addIfNonZero(yellowsStat)
+  addIfNonZero(redsStat)
+
+  return statsList
 })
 </script>
 
@@ -306,13 +391,13 @@ const statsFromEvents = computed(() => {
           
           <!-- Avatar section -->
           <div class="relative group">
-            <input v-if="isOwner" ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleAvatarChange" />
+            <input v-if="canEditProfile" ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleAvatarChange" />
             
             <button
-              :disabled="!isOwner || uploading"
-              @click="isOwner ? triggerUpload() : null"
+              :disabled="!canEditProfile || uploading"
+              @click="canEditProfile ? triggerUpload() : null"
               class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-gray-50 dark:bg-white/[0.04] border-4 border-white dark:border-[#1A1A1A] ring-1 ring-gray-200 dark:ring-white/[0.08] shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              :class="{ 'cursor-pointer hover:ring-emerald-500/50 hover:scale-102': isOwner }"
+              :class="{ 'cursor-pointer hover:ring-emerald-500/50 hover:scale-102': canEditProfile }"
             >
               <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
               <div v-else class="w-full h-full flex items-center justify-center text-4xl font-black text-gray-300 dark:text-gray-600 uppercase">
@@ -320,7 +405,7 @@ const statsFromEvents = computed(() => {
               </div>
 
               <!-- Overlay for Owner -->
-              <div v-if="isOwner" class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <div v-if="canEditProfile" class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <UIcon v-if="!uploading" name="i-heroicons-camera" class="w-6 h-6 text-white mb-1" />
                 <UIcon v-else name="i-heroicons-arrow-path" class="w-6 h-6 text-white animate-spin" />
                 <span class="text-[8px] font-black uppercase text-white tracking-widest">Change</span>
@@ -355,13 +440,13 @@ const statsFromEvents = computed(() => {
               </div>
 
               <!-- Owner Click Info -->
-              <p v-if="isOwner" class="text-[10px] text-gray-400 dark:text-gray-500 tracking-wider">
+              <p v-if="canEditProfile" class="text-[10px] text-gray-400 dark:text-gray-500 tracking-wider">
                 <span class="hover:text-emerald-500 dark:hover:text-emerald-400 cursor-pointer" @click="triggerUpload">Change photo</span>
                 <span class="mx-1.5">•</span>
                 <span class="hover:text-emerald-500 dark:hover:text-emerald-400 cursor-pointer" @click="startEditing">Edit details</span>
               </p>
               
-              <div v-if="isOwner" class="pt-2">
+              <div v-if="canEditProfile" class="pt-2">
                 <UButton
                   variant="soft"
                   color="success"
@@ -465,51 +550,22 @@ const statsFromEvents = computed(() => {
         <h3 class="text-xs font-bold text-gray-400 dark:text-gray-500 mb-4 px-1 uppercase tracking-wider">Tournament Stats</h3>
         
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <!-- Goals Card -->
-          <div class="group relative bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] p-5 rounded-2xl hover:-translate-y-1 hover:shadow-md transition-all duration-300 overflow-hidden">
+          <div 
+            v-for="(stat, idx) in positionStats" 
+            :key="idx"
+            class="group relative bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] p-5 rounded-2xl hover:-translate-y-1 hover:shadow-md transition-all duration-300 overflow-hidden"
+          >
             <div class="flex items-center justify-between mb-3">
-              <span class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Goals</span>
-              <div class="p-1.5 bg-emerald-500/10 rounded-lg">
-                <UIcon name="i-mdi-soccer" class="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+              <span class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{{ stat.label }}</span>
+              <!-- Card-style icon (yellow/red cards) -->
+              <div v-if="stat.isCard" class="w-4 h-5 rounded-[2px] shadow-sm ring-1 shrink-0" :class="stat.cardClass"></div>
+              <!-- Regular icon -->
+              <div v-else class="p-1.5 rounded-lg" :class="stat.iconBgClass">
+                <UIcon :name="stat.icon!" class="w-4 h-4" :class="stat.iconClass" />
               </div>
             </div>
             <div class="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-              {{ statsFromEvents.goals }}
-            </div>
-          </div>
-
-          <!-- Assists Card -->
-          <div class="group relative bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] p-5 rounded-2xl hover:-translate-y-1 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Assists</span>
-              <div class="p-1.5 bg-cyan-500/10 rounded-lg">
-                <UIcon name="i-mdi-shoe-cleat" class="w-4 h-4 text-cyan-500 dark:text-cyan-400 -rotate-45 transform" />
-              </div>
-            </div>
-            <div class="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-              {{ statsFromEvents.assists }}
-            </div>
-          </div>
-
-          <!-- Yellow Cards Card -->
-          <div class="group relative bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] p-5 rounded-2xl hover:-translate-y-1 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Yellows</span>
-              <div class="w-4 h-5 bg-yellow-400 rounded-[2px] shadow-sm ring-1 ring-yellow-400/20 shrink-0"></div>
-            </div>
-            <div class="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-              {{ statsFromEvents.yellowCards }}
-            </div>
-          </div>
-
-          <!-- Red Cards Card -->
-          <div class="group relative bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] p-5 rounded-2xl hover:-translate-y-1 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Reds</span>
-              <div class="w-4 h-5 bg-rose-500 dark:bg-rose-600 rounded-[2px] shadow-sm ring-1 ring-rose-500/20 shrink-0"></div>
-            </div>
-            <div class="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-              {{ statsFromEvents.redCards }}
+              {{ stat.value }}
             </div>
           </div>
         </div>
