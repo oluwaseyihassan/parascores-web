@@ -5262,7 +5262,7 @@ const copyTournamentLink = async () => {
           </div>
         </template>
 
-        <div class="space-y-4">
+        <div class="space-y-4 max-h-[calc(100dvh-220px)] overflow-y-auto pr-1">
           <p class="text-sm text-gray-500">
             Manually create a fixture by selecting the home and away teams.
           </p>
