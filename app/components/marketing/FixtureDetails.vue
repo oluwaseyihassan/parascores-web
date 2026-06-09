@@ -752,7 +752,15 @@ const awaySubs = computed(() => {
                         {{ player.number }}
                       </span>
                     </div>
-                    <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                    <div class="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+                      <span class="text-sm font-medium transition-colors truncate" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                      <UIcon
+                        v-if="player.userId && player.status === 'APPROVED'"
+                        name="i-heroicons-check-badge-solid"
+                        class="w-3.5 h-3.5 text-blue-500 shrink-0"
+                        title="Claimed & Verified Player"
+                      />
+                    </div>
                     <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
                       <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
                         <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
@@ -793,7 +801,15 @@ const awaySubs = computed(() => {
                         {{ player.number }}
                       </span>
                     </div>
-                    <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                    <div class="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+                      <span class="text-sm font-medium transition-colors truncate" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                      <UIcon
+                        v-if="player.userId && player.status === 'APPROVED'"
+                        name="i-heroicons-check-badge-solid"
+                        class="w-3.5 h-3.5 text-blue-500 shrink-0"
+                        title="Claimed & Verified Player"
+                      />
+                    </div>
                     <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
                       <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
                         <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
@@ -837,7 +853,15 @@ const awaySubs = computed(() => {
                         {{ player.number }}
                       </span>
                     </div>
-                    <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                    <div class="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+                      <span class="text-sm font-medium transition-colors truncate" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                      <UIcon
+                        v-if="player.userId && player.status === 'APPROVED'"
+                        name="i-heroicons-check-badge-solid"
+                        class="w-3.5 h-3.5 text-blue-500 shrink-0"
+                        title="Claimed & Verified Player"
+                      />
+                    </div>
                     <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
                       <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
                         <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">
@@ -878,7 +902,15 @@ const awaySubs = computed(() => {
                         {{ player.number }}
                       </span>
                     </div>
-                    <span class="text-sm font-medium transition-colors flex-1 min-w-0 truncate pr-2" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                    <div class="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+                      <span class="text-sm font-medium transition-colors truncate" :class="isDark ? 'text-gray-200' : 'text-gray-800'" :title="player.name">{{ player.name }}</span>
+                      <UIcon
+                        v-if="player.userId && player.status === 'APPROVED'"
+                        name="i-heroicons-check-badge-solid"
+                        class="w-3.5 h-3.5 text-blue-500 shrink-0"
+                        title="Claimed & Verified Player"
+                      />
+                    </div>
                     <div v-if="getPlayerGoals(player.id) > 0 || getPlayerAssists(player.id) > 0" class="flex items-center ml-2.5 z-10 text-white flex-shrink-0">
                       <div v-if="getPlayerGoals(player.id) > 0" class="flex items-center -space-x-1.5">
                         <div v-for="i in getPlayerGoals(player.id)" :key="'goal-'+i" class="w-[14px] h-[14px] flex items-center justify-center rounded-full relative text-[10px]" :class="isDark ? 'ring-1 ring-gray-900 bg-gray-900' : 'ring-1 ring-white bg-white text-gray-900'">

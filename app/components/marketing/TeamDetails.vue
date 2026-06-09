@@ -300,7 +300,15 @@ function getMatchAggregate(match: Fixture) {
                   </span>
                 </div>
                 <div class="flex flex-col overflow-hidden">
-                  <span class="text-sm font-semibold truncate transition-colors text-gray-900 dark:text-white group-hover:text-emerald-500">{{ player.name }}</span>
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span class="text-sm font-semibold truncate transition-colors text-gray-900 dark:text-white group-hover:text-emerald-500">{{ player.name }}</span>
+                    <UIcon
+                      v-if="player.userId && player.status === 'APPROVED'"
+                      name="i-heroicons-check-badge-solid"
+                      class="w-3.5 h-3.5 text-blue-500 shrink-0"
+                      title="Claimed & Verified Player"
+                    />
+                  </div>
                   <span class="text-[11px] font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">{{ player.position ? player.position.split('-')[0] : 'Unknown' }}</span>
                 </div>
               </NuxtLink>

@@ -35,9 +35,15 @@
             </div>
           </div>
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 min-w-0">
               <span class="text-gray-900 dark:text-white font-medium truncate">{{ item.player.name }}</span>
-              <span v-if="item.player.number" class="text-xs text-gray-500 font-mono">#{{ item.player.number }}</span>
+              <UIcon
+                v-if="item.player.userId && item.player.status === 'APPROVED'"
+                name="i-heroicons-check-badge-solid"
+                class="w-3.5 h-3.5 text-blue-500 shrink-0"
+                title="Claimed & Verified Player"
+              />
+              <span v-if="item.player.number" class="text-xs text-gray-500 font-mono flex-shrink-0">#{{ item.player.number }}</span>
             </div>
             <div class="flex items-center gap-1.5 mt-0.5">
               <img v-if="item.teamLogoUrl" :src="item.teamLogoUrl" :alt="item.teamName" class="w-4 h-4 rounded-full object-cover bg-gray-100 dark:bg-white/5" />
@@ -87,9 +93,15 @@
             </div>
           </div>
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 min-w-0">
               <span class="text-gray-900 dark:text-white font-medium truncate">{{ item.player.name }}</span>
-              <span v-if="item.player.number" class="text-xs text-gray-500 font-mono">#{{ item.player.number }}</span>
+              <UIcon
+                v-if="item.player.userId && item.player.status === 'APPROVED'"
+                name="i-heroicons-check-badge-solid"
+                class="w-3.5 h-3.5 text-blue-500 shrink-0"
+                title="Claimed & Verified Player"
+              />
+              <span v-if="item.player.number" class="text-xs text-gray-500 font-mono flex-shrink-0">#{{ item.player.number }}</span>
             </div>
             <div class="flex items-center gap-1.5 mt-0.5">
               <img v-if="item.teamLogoUrl" :src="item.teamLogoUrl" :alt="item.teamName" class="w-4 h-4 rounded-full object-cover bg-gray-100 dark:bg-white/5" />

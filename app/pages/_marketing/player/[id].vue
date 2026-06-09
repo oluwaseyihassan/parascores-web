@@ -83,6 +83,10 @@ const canEditProfile = computed(() => {
   return isOwner.value && player.value?.status !== 'PENDING'
 })
 
+const isClaimedAndApproved = computed(() => {
+  return !!player.value?.userId && player.value?.status === 'APPROVED'
+})
+
 // Edit State
 const isEditing = ref(false)
 const editName = ref('')
@@ -422,6 +426,12 @@ const positionStats = computed((): StatCard[] => {
                 <h1 class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white tracking-tight">
                   {{ player.name }}
                 </h1>
+                <UIcon
+                  v-if="isClaimedAndApproved"
+                  name="i-heroicons-check-badge-solid"
+                  class="w-6 h-6 text-blue-500 shrink-0 self-center"
+                  title="Claimed & Verified Player"
+                />
                 <span v-if="player.number" class="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-xs border border-emerald-500/20">
                   #{{ player.number }}
                 </span>
