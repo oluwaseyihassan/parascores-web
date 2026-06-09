@@ -564,7 +564,7 @@ const openAddFixtureModal = (round?: number, roundName?: string) => {
   } else {
     if (tournament.value?.type === TournamentType.KNOCKOUT) {
       addFixtureState.stage = FixtureStage.KNOCKOUT
-    } else if (tournament.value?.type === TournamentType.HYBRID || tournament.value?.type === TournamentType.GROUP || tournament.value?.type === TournamentType.LEAGUE) {
+    } else if (tournament.value?.type === TournamentType.HYBRID || tournament.value?.type === TournamentType.GROUP) {
       addFixtureState.stage = FixtureStage.GROUP_STAGE
     } else {
       addFixtureState.stage = undefined
@@ -587,23 +587,16 @@ const participantOptionsAll = computed(() => {
 const availableParticipantsForRound = computed(() => {
   const currentRound = addFixtureState.round
   const stage = addFixtureState.stage
-  const groupId = addFixtureState.groupId
   
   const teamsInRound = new Set()
   fixtures.value.forEach(f => {
-    // Check if fixture is in the same round and stage
-    if (f.round === currentRound && f.stage === stage) {
-      // For group stage, only filter if it's the same group
-      if (stage === FixtureStage.GROUP_STAGE) {
-        if (f.groupId === groupId) {
-          if (f.homeTeamId) teamsInRound.add(f.homeTeamId)
-          if (f.awayTeamId) teamsInRound.add(f.awayTeamId)
-        }
-      } else {
-        // For knockout, filter regardless of group (usually 0/null anyway)
-        if (f.homeTeamId) teamsInRound.add(f.homeTeamId)
-        if (f.awayTeamId) teamsInRound.add(f.awayTeamId)
-      }
+    // Normalizing null and undefined for stage
+    const fStage = f.stage || undefined
+    const currentStage = stage || undefined
+    
+    if (f.round === currentRound && fStage === currentStage) {
+      if (f.homeTeamId) teamsInRound.add(f.homeTeamId)
+      if (f.awayTeamId) teamsInRound.add(f.awayTeamId)
     }
   })
   
@@ -771,20 +764,17 @@ watch(() => addFixtureState.groupId, (val) => {
   }
 })
 
-// Clear selected teams if they are already scheduled in the newly selected round/stage/group
-watch([() => addFixtureState.round, () => addFixtureState.stage, () => addFixtureState.groupId], () => {
+// Clear selected teams if they are already scheduled in the newly selected round/stage
+watch([() => addFixtureState.round, () => addFixtureState.stage], () => {
   const teamsInRound = new Set()
   fixtures.value.forEach(f => {
-    if (f.round === addFixtureState.round && f.stage === addFixtureState.stage) {
-      if (addFixtureState.stage === FixtureStage.GROUP_STAGE) {
-        if (f.groupId === addFixtureState.groupId) {
-          if (f.homeTeamId) teamsInRound.add(f.homeTeamId)
-          if (f.awayTeamId) teamsInRound.add(f.awayTeamId)
-        }
-      } else {
-        if (f.homeTeamId) teamsInRound.add(f.homeTeamId)
-        if (f.awayTeamId) teamsInRound.add(f.awayTeamId)
-      }
+    // Normalizing null and undefined for stage
+    const fStage = f.stage || undefined
+    const currentStage = addFixtureState.stage || undefined
+    
+    if (f.round === addFixtureState.round && fStage === currentStage) {
+      if (f.homeTeamId) teamsInRound.add(f.homeTeamId)
+      if (f.awayTeamId) teamsInRound.add(f.awayTeamId)
     }
   })
   
