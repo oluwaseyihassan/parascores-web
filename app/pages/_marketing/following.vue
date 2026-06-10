@@ -316,6 +316,18 @@ async function toggleNotifications(val: boolean) {
         localStorage.setItem('parascores_notifications_enabled', 'true')
         notificationsEnabled.value = true
         toast.add({ title: 'Notifications Enabled', description: 'You will now receive live alerts for followed tournaments!', color: 'success' })
+
+        // Trigger welcome/test notification
+        try {
+          await registration.showNotification('ParaScores Notifications Active! 🔔', {
+            body: 'You will now receive live updates for your followed tournaments.',
+            icon: '/pwa-192x192.png',
+            badge: '/pwa-192x192.png',
+            tag: 'welcome-notification',
+          })
+        } catch (notificationErr) {
+          console.error('Failed to trigger welcome notification:', notificationErr)
+        }
       } else {
         localStorage.setItem('parascores_notifications_enabled', 'false')
         notificationsEnabled.value = false
