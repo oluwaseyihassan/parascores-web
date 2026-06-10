@@ -60,10 +60,11 @@ export default defineNuxtConfig({
           label: 'Tournament Dashboard'
         },
         {
-          src: 'images/landing/bracket-view.png',
-          sizes: '695x487',
-          type: 'image/png',
-          label: 'Tournament Brackets'
+          src: 'images/landing/mobile-screenshot.jpg',
+          sizes: '460x1024',
+          type: 'image/jpeg',
+          form_factor: 'narrow',
+          label: 'Tournament Feed Mobile'
         }
       ]
     },
