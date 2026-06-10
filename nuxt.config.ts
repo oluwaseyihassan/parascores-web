@@ -54,7 +54,7 @@ export default defineNuxtConfig({
       screenshots: [
         {
           src: 'images/landing/dashboard-screenshot.png',
-          sizes: '1906x921',
+          sizes: '1024x529',
           type: 'image/png',
           form_factor: 'wide',
           label: 'Tournament Dashboard'
