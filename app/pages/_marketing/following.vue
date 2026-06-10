@@ -56,6 +56,8 @@
             <USwitch 
               :model-value="notificationsEnabled && notificationPermission === 'granted'" 
               @update:model-value="toggleNotifications" 
+              :loading="notificationsLoading"
+              :disabled="notificationsLoading"
               color="success" 
             />
           </div>
@@ -202,6 +204,9 @@ const unfollowingId = ref<string | null>(null)
 const hoveredId = ref<string | null>(null)
 const notificationsEnabled = ref(false)
 const notificationPermission = ref('default')
+const notificationsLoading = ref(false)
+const vapidPublicKey = ref<string | null>(null)
+const swRegistration = ref<ServiceWorkerRegistration | null>(null)
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -225,6 +230,7 @@ onMounted(async () => {
     if ('serviceWorker' in navigator && authStore.isAuthenticated) {
       try {
         const registration = await navigator.serviceWorker.ready
+        swRegistration.value = registration
         const subscription = await registration.pushManager.getSubscription()
         if (subscription) {
           notificationsEnabled.value = true
@@ -236,6 +242,14 @@ onMounted(async () => {
       } catch (err) {
         console.error('Failed to check service worker subscription:', err)
         notificationsEnabled.value = localStorage.getItem('parascores_notifications_enabled') === 'true'
+      }
+
+      // Pre-fetch VAPID key to ensure user-gesture is not lost on iOS Safari
+      try {
+        const vapidResponse = await $publicApi<{ key: string }>('/notifications/vapid-key')
+        vapidPublicKey.value = vapidResponse.key
+      } catch (err) {
+        console.error('Failed to pre-fetch VAPID key:', err)
       }
     } else {
       notificationsEnabled.value = localStorage.getItem('parascores_notifications_enabled') === 'true'
@@ -249,6 +263,8 @@ async function toggleNotifications(val: boolean) {
     return
   }
 
+  notificationsLoading.value = true
+
   if (val) {
     if (Notification.permission === 'denied') {
       toast.add({ 
@@ -256,6 +272,7 @@ async function toggleNotifications(val: boolean) {
         description: 'Please enable notifications in your browser settings to receive live match updates.', 
         color: 'error' 
       })
+      notificationsLoading.value = false
       return
     }
 
@@ -264,15 +281,23 @@ async function toggleNotifications(val: boolean) {
       notificationPermission.value = permission
 
       if (permission === 'granted') {
-        const registration = await navigator.serviceWorker.ready
-        const vapidResponse = await $publicApi<{ key: string }>('/notifications/vapid-key')
-        const vapidPublicKey = vapidResponse.key
+        const registration = swRegistration.value || await navigator.serviceWorker.ready
+        if (!swRegistration.value) {
+          swRegistration.value = registration
+        }
 
-        if (!vapidPublicKey) {
+        let key = vapidPublicKey.value
+        if (!key) {
+          const vapidResponse = await $publicApi<{ key: string }>('/notifications/vapid-key')
+          key = vapidResponse.key
+          vapidPublicKey.value = key
+        }
+
+        if (!key) {
           throw new Error('VAPID public key not configured on backend.')
         }
 
-        const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey)
+        const convertedVapidKey = urlBase64ToUint8Array(key)
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: convertedVapidKey,
@@ -300,10 +325,15 @@ async function toggleNotifications(val: boolean) {
       localStorage.setItem('parascores_notifications_enabled', 'false')
       notificationsEnabled.value = false
       toast.add({ title: 'Subscription Failed', description: err.message || 'Could not register for push notifications.', color: 'error' })
+    } finally {
+      notificationsLoading.value = false
     }
   } else {
     try {
-      const registration = await navigator.serviceWorker.ready
+      const registration = swRegistration.value || await navigator.serviceWorker.ready
+      if (!swRegistration.value) {
+        swRegistration.value = registration
+      }
       const subscription = await registration.pushManager.getSubscription()
       if (subscription) {
         await $api('/notifications/unsubscribe', {
@@ -320,6 +350,8 @@ async function toggleNotifications(val: boolean) {
     } catch (err: any) {
       console.error('Failed to unsubscribe:', err)
       toast.add({ title: 'Unsubscription Failed', description: err.message || 'Could not remove push subscription.', color: 'error' })
+    } finally {
+      notificationsLoading.value = false
     }
   }
 }
