@@ -243,6 +243,7 @@ const themeOptions = [
 
       <!-- Scrollable Content -->
       <main class="flex-1 overflow-y-auto scroll-smooth">
+        <PwaInstallBanner />
         <slot />
         
         <!-- Mobile Bottom Nav Spacer -->
