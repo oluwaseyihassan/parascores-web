@@ -38,7 +38,7 @@
           <div class="flex items-start gap-3.5">
             <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
               <UIcon 
-                :name="notificationsEnabled && notificationPermission === 'granted' ? 'i-heroicons-bell-alert-solid' : 'i-heroicons-bell-slash'" 
+                :name="notificationsEnabled ? 'i-heroicons-bell-alert-solid' : 'i-heroicons-bell-slash'" 
                 class="w-5 h-5 text-emerald-500" 
               />
             </div>
@@ -51,10 +51,10 @@
           </div>
           <div class="flex items-center gap-3 self-end sm:self-center shrink-0">
             <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-              {{ notificationsEnabled && notificationPermission === 'granted' ? 'Enabled' : 'Disabled' }}
+              {{ notificationsEnabled ? 'Enabled' : 'Disabled' }}
             </span>
             <USwitch 
-              :model-value="notificationsEnabled && notificationPermission === 'granted'" 
+              v-model="notificationsEnabled" 
               @update:model-value="toggleNotifications" 
               :loading="notificationsLoading"
               :disabled="notificationsLoading"
@@ -260,6 +260,7 @@ onMounted(async () => {
 async function toggleNotifications(val: boolean) {
   if (typeof window === 'undefined' || !('Notification' in window)) {
     toast.add({ title: 'Not Supported', description: 'Browser notifications are not supported in this browser.', color: 'error' })
+    notificationsEnabled.value = false
     return
   }
 
@@ -272,6 +273,7 @@ async function toggleNotifications(val: boolean) {
         description: 'Please enable notifications in your browser settings to receive live match updates.', 
         color: 'error' 
       })
+      notificationsEnabled.value = false
       notificationsLoading.value = false
       return
     }
@@ -317,17 +319,15 @@ async function toggleNotifications(val: boolean) {
         notificationsEnabled.value = true
         toast.add({ title: 'Notifications Enabled', description: 'You will now receive live alerts for followed tournaments!', color: 'success' })
 
-        // Trigger welcome/test notification
-        try {
-          await registration.showNotification('ParaScores Notifications Active! 🔔', {
-            body: 'You will now receive live updates for your followed tournaments.',
-            icon: '/pwa-192x192.png',
-            badge: '/pwa-192x192.png',
-            tag: 'welcome-notification',
-          })
-        } catch (notificationErr) {
+        // Trigger welcome/test notification (non-blocking, no await)
+        registration.showNotification('ParaScores Notifications Active! 🔔', {
+          body: 'You will now receive live updates for your followed tournaments.',
+          icon: '/pwa-192x192.png',
+          badge: '/pwa-192x192.png',
+          tag: 'welcome-notification',
+        }).catch (notificationErr => {
           console.error('Failed to trigger welcome notification:', notificationErr)
-        }
+        })
       } else {
         localStorage.setItem('parascores_notifications_enabled', 'false')
         notificationsEnabled.value = false
@@ -361,6 +361,7 @@ async function toggleNotifications(val: boolean) {
       toast.add({ title: 'Notifications Disabled', description: 'Live alerts have been disabled.', color: 'neutral' })
     } catch (err: any) {
       console.error('Failed to unsubscribe:', err)
+      notificationsEnabled.value = true // Revert toggle state on failure
       toast.add({ title: 'Unsubscription Failed', description: err.message || 'Could not remove push subscription.', color: 'error' })
     } finally {
       notificationsLoading.value = false
