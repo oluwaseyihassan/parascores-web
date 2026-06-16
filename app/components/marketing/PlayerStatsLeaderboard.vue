@@ -20,7 +20,7 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">Scores will appear here once goals are recorded.</p>
       </div>
       <div v-else class="space-y-3">
-        <NuxtLink v-for="item in rankedScorers" :key="item.player.id" 
+        <NuxtLink v-for="item in visibleScorers" :key="item.player.id" 
              :to="toMain(`/player/${item.player.id}`)"
              :external="isManage"
              class="flex items-center gap-4 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors overflow-hidden">
@@ -56,6 +56,16 @@
           <div class="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{{ item.count }}</div>
         </NuxtLink>
       </div>
+
+      <!-- Load More Button -->
+      <button 
+        v-if="rankedScorers.length > visibleScorersCount"
+        @click="visibleScorersCount += 10"
+        class="w-full mt-4 py-2.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-all duration-200 border border-dashed border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center gap-1.5 focus:outline-none"
+      >
+        <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 animate-bounce" />
+        Load More
+      </button>
     </div>
 
     <!-- Top Assists -->
@@ -78,7 +88,7 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">Assists will appear here once recorded.</p>
       </div>
       <div v-else class="space-y-3">
-        <NuxtLink v-for="item in rankedAssists" :key="item.player.id" 
+        <NuxtLink v-for="item in visibleAssists" :key="item.player.id" 
              :to="toMain(`/player/${item.player.id}`)"
              :external="isManage"
              class="flex items-center gap-4 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors overflow-hidden">
@@ -114,12 +124,22 @@
           <div class="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{{ item.count }}</div>
         </NuxtLink>
       </div>
+
+      <!-- Load More Button -->
+      <button 
+        v-if="rankedAssists.length > visibleAssistsCount"
+        @click="visibleAssistsCount += 10"
+        class="w-full mt-4 py-2.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-all duration-200 border border-dashed border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center gap-1.5 focus:outline-none"
+      >
+        <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 animate-bounce" />
+        Load More
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import type { PlayerStatsResponse } from '~/types'
 
 const { toMain, isManage } = useHost()
@@ -128,6 +148,9 @@ const props = defineProps<{
   stats: PlayerStatsResponse | null
   loading: boolean
 }>()
+
+const visibleScorersCount = ref(10)
+const visibleAssistsCount = ref(10)
 
 const addRanks = (items: any[]) => {
   if (!items) return []
@@ -144,4 +167,7 @@ const addRanks = (items: any[]) => {
 
 const rankedScorers = computed(() => addRanks(props.stats?.topScorers || []))
 const rankedAssists = computed(() => addRanks(props.stats?.topAssists || []))
+
+const visibleScorers = computed(() => rankedScorers.value.slice(0, visibleScorersCount.value))
+const visibleAssists = computed(() => rankedAssists.value.slice(0, visibleAssistsCount.value))
 </script>
