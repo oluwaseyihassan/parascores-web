@@ -6,7 +6,7 @@ export const useHost = () => {
     ? useRequestHeaders(['host']).host || ''
     : window.location.host
 
-  const isManage = computed(() => host.startsWith('manage.'))
+  const isManage = computed(() => host.startsWith('manage.') || host.startsWith('manage-dev.'))
   
   const dashboardUrl = config.public.DASHBOARD_URL
   const frontendUrl = config.public.FRONT_END_URL

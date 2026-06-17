@@ -32,13 +32,13 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     ? useRequestHeaders(['host']).host || ''
     : window.location.host
 
-  const isApp = host.startsWith('manage.')
+  const isApp = host.startsWith('manage.') || host.startsWith('manage-dev.')
   const isAdmin = host.startsWith('admin.')
 
   // 3. Dynamic Protocol & Domain Helper
   const protocol = import.meta.dev ? 'http' : 'https'
-  // Fix: Strip both 'manage.', 'admin.', and 'www.' to get the true root domain
-  const rootHost = host.replace(/^(manage\.|admin\.|www\.)+/i, '')
+  // Fix: Strip both 'manage.', 'manage-dev.', 'admin.', and 'www.' to get the true root domain
+  const rootHost = host.replace(/^(manage\.|manage-dev\.|admin\.|www\.)+/i, '')
 
   // --- LOGIC ---
 

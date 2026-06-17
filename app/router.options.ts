@@ -16,7 +16,7 @@ export default <RouterConfig> {
     }
 
     // 2. Define our logic
-    const isAppSubdomain = host.startsWith('manage.')
+    const isAppSubdomain = host.startsWith('manage.') || host.startsWith('manage-dev.')
     const isAdminSubdomain = host.startsWith('admin.')
 
     // 3. Return the correct routes
