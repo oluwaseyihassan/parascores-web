@@ -169,10 +169,10 @@ const startBrandingEdit = (org: any) => {
     }
 }
 
-const frontEndUrl = useRuntimeConfig().public.FRONT_END_URL
+const { frontendUrl: frontEndUrl } = useHost()
 
 const copyPublicLink = async (slug: string) => {
-    const url = `${frontEndUrl}/org/${slug}`
+    const url = `${frontEndUrl.value}/org/${slug}`
     try {
         await navigator.clipboard.writeText(url)
         useToast().add({ title: 'Public link copied!', color: 'success' })
