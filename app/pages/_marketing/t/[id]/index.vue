@@ -315,7 +315,8 @@ function groupByRound(list: Fixture[]) {
   const grouped: Record<string, { name: string; fixtures: Fixture[] }> = {}
   for (const fixture of list) {
     const round = fixture.round || 1
-    const baseName = (fixture.roundName || `Round ${round}`).replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+    let baseName = (fixture.roundName || `Round ${round}`).replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+    baseName = baseName.replace(/^Group\s+Stage\s*-\s*/i, '')
     const name = baseName
     // Use composite key so fixtures with different roundNames in the same round get separate groups
     const key = `${round}::${name}`
@@ -468,7 +469,8 @@ function getTypeBadgeClasses(type: string) {
 }
 function getRoundDisplayName(roundIndex: number, totalRounds: number, roundName?: string | null) {
   if (roundName) {
-    return roundName.replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+    const cleanName = roundName.replace(/^Group\s+Stage\s*-\s*/i, '')
+    return cleanName.replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
   }
   const remaining = totalRounds - roundIndex
   switch (remaining) {
@@ -481,7 +483,8 @@ function getRoundDisplayName(roundIndex: number, totalRounds: number, roundName?
 }
 
 function getRoundName(fixture: Fixture) {
-  const name = fixture.roundName || `Round ${fixture.round}`
+  let name = fixture.roundName || `Round ${fixture.round}`
+  name = name.replace(/^Group\s+Stage\s*-\s*/i, '')
   const legMatch = name.match(/Leg\s*(\d+)/i)
   if (legMatch) {
     const baseName = name.replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
@@ -846,8 +849,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <p class="text-sm text-gray-500">No fixtures available for this filter.</p>
           </div>
           <div v-else class="space-y-4">
-            <!-- Group Stage label for hybrid -->
-            <div v-if="isHybrid && groupStageFixtures.length > 0" class="flex items-center gap-2 px-1 mb-1">
+            <!-- Group Stage label for hybrid or group -->
+            <div v-if="(isHybrid || tournament?.type === 'GROUP') && groupStageFixtures.length > 0" class="flex items-center gap-2 px-1 mb-1">
               <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
               <span class="text-xs font-bold text-gray-500">Group Stage</span>
             </div>
@@ -885,7 +888,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                     <!-- Header -->
                     <div class="flex items-center justify-between px-3.5 py-2 text-xs font-bold border-b transition-colors bg-gray-50 border-gray-100 text-gray-600 dark:bg-[#1a1a1a] dark:border-white/[0.06] dark:text-gray-500">
                       <span>
-                        {{ fixture.venue ? `${getRoundName(fixture)} · ${fixture.venue}` : getRoundName(fixture) }}
+                        {{ fixture.venue ? `${fixture.group?.name || getRoundName(fixture)} · ${fixture.venue}` : (fixture.group?.name || getRoundName(fixture)) }}
                       </span>
                       <div class="flex items-center gap-2">
                         <span v-if="fixture.status === FixtureStatus.SCHEDULED" class="font-medium text-gray-400">
@@ -1019,7 +1022,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                       <!-- Header -->
                       <div class="flex items-center justify-between px-3.5 py-2 text-xs font-bold border-b transition-colors bg-gray-50 border-gray-100 text-gray-600 dark:bg-[#1a1a1a] dark:border-white/[0.06] dark:text-gray-500">
                         <span>
-                          {{ fixture.venue ? `${getRoundName(fixture)} · ${fixture.venue}` : getRoundName(fixture) }}
+                          {{ fixture.venue ? `${fixture.group?.name || getRoundName(fixture)} · ${fixture.venue}` : (fixture.group?.name || getRoundName(fixture)) }}
                         </span>
                         <div class="flex items-center gap-2">
                           <span v-if="fixture.status === FixtureStatus.SCHEDULED" class="font-medium text-gray-400">

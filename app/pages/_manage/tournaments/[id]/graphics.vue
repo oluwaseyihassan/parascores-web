@@ -112,7 +112,7 @@ const fixturesByRound = computed(() => {
     
     if (!grouped[key]) {
       grouped[key] = {
-        label: (roundName || `Round ${round}`).replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim(),
+        label: (roundName || `Round ${round}`).replace(/^Group\s+Stage\s*-\s*/i, '').replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim(),
         round,
         roundName,
         fixtures: []
@@ -148,7 +148,7 @@ const roundOptions = computed(() => {
   fixtures.value.forEach(f => {
     const round = f.round || 1
     const roundName = f.roundName || null
-    const label = (roundName || `Round ${round}`).replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+    const label = (roundName || `Round ${round}`).replace(/^Group\s+Stage\s*-\s*/i, '').replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
     const key = roundName ? `name:${roundName}` : `round:${round}`
     
     if (!optionsMap.has(key)) {

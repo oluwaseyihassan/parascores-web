@@ -91,7 +91,7 @@ const tournamentItems = computed(() => {
 // Build widget URL
 const widgetBaseUrl = computed(() => {
   const protocol = import.meta.dev ? 'http' : 'https'
-  const host = import.meta.client ? window.location.host.replace(/^manage\./, '') : 'parascores.com'
+  const host = import.meta.client ? window.location.host.replace(/^manage-dev\./, window.location.host.includes('lvh.me') ? '' : 'dev.').replace(/^manage\./, '') : 'parascores.com'
   return `${protocol}://${host}`
 })
 

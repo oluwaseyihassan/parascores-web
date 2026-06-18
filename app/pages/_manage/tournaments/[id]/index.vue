@@ -1818,6 +1818,19 @@ const isFixturesOutdated = computed(() => {
   return false
 })
 
+const getFixtureStats = (roundFixtures: Fixture[]) => {
+  const total = roundFixtures.length
+  const completed = roundFixtures.filter(f => f.status === FixtureStatus.COMPLETED).length
+  const live = roundFixtures.filter(f => f.status === FixtureStatus.LIVE).length
+  const parts: string[] = []
+
+  if (live > 0) parts.push(`${live} Live`)
+  if (completed > 0) parts.push(`${completed}/${total} Completed`)
+  else if (total > 0) parts.push(`${total} Scheduled`)
+
+  return parts.join(' / ')
+}
+
 // Accordion items for fixtures
 const accordionItems = computed(() => {
   const skeleton = expectedRounds.value.filter(r => r.stage === FixtureStage.GROUP_STAGE || !r.stage)
@@ -1835,21 +1848,8 @@ const accordionItems = computed(() => {
       if (roundFixtures.length === 0) return null
     }
 
-    const total = roundFixtures.length
-    const completed = roundFixtures.filter(f => f.status === FixtureStatus.COMPLETED).length
-    const live = roundFixtures.filter(f => f.status === FixtureStatus.LIVE).length
-    
     let label = skeletonInfo?.label || fixtureStore.getRoundDisplayName(round)
-    
-    let stats = ''
-    const parts = []
-    if (live > 0) parts.push(`🔴 ${live} Live`)
-    if (completed > 0) parts.push(`${completed}/${total} Completed`)
-    else if (total > 0) parts.push(`${total} Scheduled`)
-    
-    if (parts.length > 0) {
-      stats = `(${parts.join(' • ')})`
-    }
+    const stats = getFixtureStats(roundFixtures)
     
     return {
       value: `round-${round}`,
@@ -1882,21 +1882,8 @@ const groupStageAccordionItems = computed(() => {
       if (roundFixtures.length === 0) return null
     }
 
-    const total = roundFixtures.length
-    const completed = roundFixtures.filter(f => f.status === FixtureStatus.COMPLETED).length
-    const live = roundFixtures.filter(f => f.status === FixtureStatus.LIVE).length
-    
     let label = skeletonInfo?.label || fixtureStore.getGroupStageRoundDisplayName(round)
-    
-    let stats = ''
-    const parts = []
-    if (live > 0) parts.push(`🔴 ${live} Live`)
-    if (completed > 0) parts.push(`${completed}/${total} Completed`)
-    else if (total > 0) parts.push(`${total} Scheduled`)
-    
-    if (parts.length > 0) {
-      stats = `(${parts.join(' • ')})`
-    }
+    const stats = getFixtureStats(roundFixtures)
     
     return {
       value: `gs-round-${round}`,
@@ -1919,7 +1906,7 @@ const knockoutAccordionItems = computed(() => {
   const items: Array<{ value: string; label: string; stats: string; fixtures: Fixture[]; slot: string; round: number; roundName: string }> = []
   const skeleton = expectedRounds.value.filter(r => r.stage === FixtureStage.KNOCKOUT)
   
-  // For pure knockout tournaments, fixtures don't have stage set — use all fixtures
+  // For pure knockout tournaments, fixtures don't have stage set; use all fixtures.
   // For hybrid tournaments, use only knockout-stage fixtures
   const isHybrid = tournament.value?.type === TournamentType.HYBRID
   const relevantFixturesByRound = isHybrid ? knockoutFixturesByRound.value : fixturesByRound.value
@@ -1958,19 +1945,10 @@ const knockoutAccordionItems = computed(() => {
 
     for (const label of sortedKeys) {
       const fixtures = byName.get(label)!
-      const total = fixtures.length
-      const completed = fixtures.filter(f => f.status === FixtureStatus.COMPLETED).length
-      const live = fixtures.filter(f => f.status === FixtureStatus.LIVE).length
-
-      const parts: string[] = []
-      if (live > 0) parts.push(`🔴 ${live} Live`)
-      if (completed > 0) parts.push(`${completed}/${total} Completed`)
-      else if (total > 0) parts.push(`${total} Scheduled`)
-
       items.push({
         value: `ko-${round}-${label}`,
         label,
-        stats: parts.length ? `(${parts.join(' • ')})` : '',
+        stats: getFixtureStats(fixtures),
         fixtures,
         slot: 'content',
         round,
@@ -2020,19 +1998,10 @@ const hybridKnockoutAccordionItems = computed(() => {
 
     for (const label of sortedKeys) {
       const fixtures = byName.get(label)!
-      const total = fixtures.length
-      const completed = fixtures.filter(f => f.status === FixtureStatus.COMPLETED).length
-      const live = fixtures.filter(f => f.status === FixtureStatus.LIVE).length
-
-      const parts: string[] = []
-      if (live > 0) parts.push(`🔴 ${live} Live`)
-      if (completed > 0) parts.push(`${completed}/${total} Completed`)
-      else if (total > 0) parts.push(`${total} Scheduled`)
-
       items.push({
         value: `hko-${round}-${label}`,
         label,
-        stats: parts.length ? `(${parts.join(' • ')})` : '',
+        stats: getFixtureStats(fixtures),
         fixtures,
         slot: 'content',
         round,
@@ -2414,7 +2383,7 @@ const generateInviteLink = async (participant: Participant, openModal = true) =>
       },
     })
     if (response.data) {
-      const host = import.meta.client ? window.location.host.replace(/^manage\./, '') : 'parascores.com'
+      const host = import.meta.client ? window.location.host.replace(/^manage-dev\./, window.location.host.includes('lvh.me') ? '' : 'dev.').replace(/^manage\./, '') : 'parascores.com'
       const protocol = import.meta.dev ? 'http' : 'https'
       const baseUrl = `${protocol}://${host}`
       inviteLink.value = `${baseUrl}/join/${response.data.token}`
@@ -2640,7 +2609,7 @@ const openPromptModal = (options: {
 const showQRCodeModal = ref(false)
 const appConfig = useRuntimeConfig()
 const publicTournamentUrl = computed(() => {
-  const host = import.meta.client ? window.location.host.replace(/^manage\./, '') : 'parascores.com'
+  const host = import.meta.client ? window.location.host.replace(/^manage-dev\./, window.location.host.includes('lvh.me') ? '' : 'dev.').replace(/^manage\./, '') : 'parascores.com'
   const protocol = import.meta.dev ? 'http' : 'https'
   const baseUrl = appConfig.public.siteUrl || `${protocol}://${host}`
   
@@ -3539,7 +3508,7 @@ const copyTournamentLink = async () => {
             <template #participants>
               <UCard class="mt-4">
                 <template #header>
-                  <div class="flex items-center justify-between">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
                       <UIcon name="i-heroicons-user-group" class="w-5 h-5 text-indigo-500" />
                       <span class="font-medium">Participants</span>
@@ -3555,7 +3524,7 @@ const copyTournamentLink = async () => {
                         icon="i-heroicons-link" 
                         @click="showTournamentInviteModal = true"
                       >
-                        Invite
+                        <span class="hidden sm:inline">Invite</span>
                       </UButton>
                       <UDropdownMenu 
                         :items="[[
@@ -3573,7 +3542,7 @@ const copyTournamentLink = async () => {
                         />
                       </UDropdownMenu>
                       <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddModal">
-                        Add
+                        <span class="hidden sm:inline">Add</span>
                       </UButton>
                     </div>
                     <input 
@@ -4297,51 +4266,47 @@ const copyTournamentLink = async () => {
                   
                   <!-- List view for other tournament types (League, Round Robin) -->
                   <div v-else class="space-y-6">
-                    <UAccordion 
-                      :items="accordionItems" 
+                    <UAccordion
+                      :items="accordionItems"
                       class="mb-4 w-full"
-                      :ui="{ 
-                        item: 'p-0',
-                        trigger: 'p-4'
+                      :ui="{
+                        item: 'mb-3 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-white/[0.08] dark:bg-white/[0.03]',
+                        trigger: 'w-full p-0',
+                        label: 'w-full min-w-0'
                       }"
                       multiple
                       :default-open="true"
                     >
                       <template #default="{ item, open }">
-                        <UButton 
-                          :color="item.color" 
-                          :variant="item.variant"
-                          class="mb-2 w-full justify-between rounded group"
-                        >
-                          <div class="flex items-center gap-2 truncate">
-                            <span class="font-medium text-gray-900 dark:text-white">{{ item.label }}</span>
-                            <span v-if="item.stats" class="text-sm font-normal text-gray-500 dark:text-gray-400">
-                              {{ item.stats }}
-                            </span>
+                        <div class="flex w-full items-center justify-between gap-3 px-3 py-3 text-left">
+                          <div class="min-w-0 flex-1">
+                            <div class="flex min-w-0 items-center gap-2">
+                              <span class="truncate text-sm font-bold text-gray-950 dark:text-white">{{ item.label }}</span>
+                              <span
+                                v-if="item.stats"
+                                class="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600 dark:bg-white/[0.07] dark:text-gray-300"
+                              >
+                                {{ item.stats }}
+                              </span>
+                            </div>
                           </div>
 
-                          <div class="flex items-center gap-2">
-                            <UButton 
+                          <div class="flex shrink-0 items-center gap-2">
+                            <button
                               v-if="open"
-                              size="xs" 
-                              variant="soft" 
-                              color="primary" 
-                              icon="i-heroicons-plus" 
-                              class="shrink-0"
-                              label="Add Fixture"
+                              type="button"
+                              class="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
                               @click.stop="openAddFixtureModal(item.round, item.roundName)"
-                            />
-                            <UIcon 
-                              name="i-heroicons-chevron-down" 
-                              class="w-5 h-5 ms-auto transform transition-transform duration-200" 
-                              :class="[open && '-rotate-180']" 
-                            />
+                            >
+                              <UIcon name="i-heroicons-plus" class="h-4 w-4" />
+                              <span>Add Fixture</span>
+                            </button>
                           </div>
-                        </UButton>
+                        </div>
                       </template>
-                      
+
                       <template #content="{ item }">
-                        <div class="space-y-1.5 px-2 pb-3 pt-1">
+                        <div class="space-y-2 px-2 pb-2 pt-0">
                           <FixtureRow
                             v-for="fixture in item.fixtures"
                             :key="fixture.id"

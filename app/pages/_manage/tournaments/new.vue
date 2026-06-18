@@ -31,7 +31,20 @@ onBeforeRouteLeave((to, from, next) => {
 })
 
 const loading = ref(false)
+const toast = useToast()
 const error = ref<string | null>(null)
+
+const setError = (msg: string | null) => {
+  error.value = msg
+  if (msg) {
+    toast.add({
+      title: 'Action Required',
+      description: msg,
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    })
+  }
+}
 
 // Wizard state
 const currentStep = ref(1)
@@ -42,20 +55,36 @@ const steps = [
   { step: 4, title: 'Review', description: 'Final check', icon: 'i-heroicons-check-badge' }
 ]
 
+watch(currentStep, () => {
+  error.value = null
+})
+
 const nextStep = async () => {
   if (currentStep.value < steps.length) {
     // Basic validation for Step 1
     if (currentStep.value === 1) {
       if (!state.name || state.name.length < 3) {
-        error.value = 'Tournament name is required (min 3 characters)'
+        setError('Tournament name is required (min 3 characters)')
         return
       }
       if (!state.sport) {
-        error.value = 'Please select a sport'
+        setError('Please select a sport')
         return
       }
       if (state.customName && nameAvailable.value === false) {
-        error.value = 'Custom URL is already taken'
+        setError('Custom URL is already taken')
+        return
+      }
+    }
+    
+    // Basic validation for Step 2
+    if (currentStep.value === 2) {
+      if (state.maxParticipants === undefined || state.maxParticipants === null || state.maxParticipants as any === '') {
+        setError('Max participants is required')
+        return
+      }
+      if (typeof state.maxParticipants === 'number' && state.maxParticipants < 2) {
+        setError('Must have at least 2 participants')
         return
       }
     }
@@ -63,20 +92,27 @@ const nextStep = async () => {
     // Basic validation for Step 3
     if (currentStep.value === 3) {
       if (!state.start_date) {
-        error.value = 'Start date is required'
+        setError('Start date is required')
         return
       }
       if (!state.end_date) {
-        error.value = 'End date is required'
+        setError('End date is required')
         return
       }
       if (!state.organization_id) {
-        error.value = 'Organization selection is required'
+        setError('Organization selection is required')
+        return
+      }
+      if (state.isPaidRegistration && (state.registrationFee === null || state.registrationFee === undefined || state.registrationFee as any === '')) {
+        setError('Registration fee is required')
+        return
+      }
+      if (state.isPaidRegistration && typeof state.registrationFee === 'number' && state.registrationFee < 0) {
+        setError('Registration fee must be positive')
         return
       }
     }
 
-    error.value = null
     currentStep.value++
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -84,7 +120,6 @@ const nextStep = async () => {
 
 const prevStep = () => {
   if (currentStep.value > 1) {
-    error.value = null
     currentStep.value--
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -105,11 +140,11 @@ const handleLogoChange = async (event: Event) => {
 
   // Validate file
   if (!file.type.startsWith('image/')) {
-    error.value = 'Please select an image file'
+    setError('Please select an image file')
     return
   }
   if (file.size > 5 * 1024 * 1024) {
-    error.value = 'Image must be less than 5MB'
+    setError('Image must be less than 5MB')
     return
   }
 
@@ -159,11 +194,11 @@ const handleBannerChange = async (event: Event) => {
 
   // Validate file
   if (!file.type.startsWith('image/')) {
-    error.value = 'Please select an image file'
+    setError('Please select an image file')
     return
   }
   if (file.size > 5 * 1024 * 1024) {
-    error.value = 'Image must be less than 5MB'
+    setError('Image must be less than 5MB')
     return
   }
 
@@ -440,8 +475,8 @@ const timezones = [
 
 // Submit handler
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  loading.value = true
   error.value = null
+  loading.value = true
   
   try {
     const response = await tournamentStore.createTournament({
@@ -461,6 +496,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     }
   } catch (err: any) {
     handleError(err, { title: 'Create Failed' })
+    error.value = err?.message || 'Create Failed'
   } finally {
     loading.value = false
   }
@@ -530,7 +566,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       </div>
     </div>
 
-    <!-- Error Alert -->
+
+
+    <!-- Error State -->
     <UAlert 
       v-if="error" 
       color="error" 
@@ -542,13 +580,13 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     >
       <template #description>
         <div class="flex items-center justify-between gap-3">
-          <span class="flex-1">{{ error }}</span>
+          <span class="flex-1 text-red-700 dark:text-red-300">{{ error }}</span>
           <UButton 
             size="xs" 
             color="error" 
             variant="ghost" 
             icon="i-heroicons-x-mark" 
-            class="rounded-full"
+            class="rounded-full hover:bg-red-200 dark:hover:bg-red-900/50"
             @click="error = null" 
           />
         </div>

@@ -14,16 +14,15 @@ onMounted(async () => {
   }
 })
 
-const config = useRuntimeConfig()
-const frontendUrl = config.public.FRONT_END_URL
+const { frontendUrl } = useHost()
 
 // Mobile links (Keep simple)
-const mobileLinks = [
+const mobileLinks = computed(() => [
   { label: 'Home', icon: 'i-heroicons-home', to: '/' },
   { label: 'Organizations', icon: 'i-heroicons-building-office', to: '/organizations' },
   { label: 'Live', icon: 'i-heroicons-signal', to: '/live', activeClass: 'text-red-500 animate-pulse' },
-  { label: 'Fan Portal', icon: 'i-heroicons-globe-alt', to: `${frontendUrl}/`, external: true, target: '_blank' }
-]
+  { label: 'Fan Portal', icon: 'i-heroicons-globe-alt', to: `${frontendUrl.value}/`, external: true, target: '_blank' }
+])
 
 // Desktop Sidebar links (Dynamic)
 const sidebarLinks = computed(() => {
@@ -41,7 +40,7 @@ const sidebarLinks = computed(() => {
     ...base,
     ...tourneys,
     { label: 'Live', icon: 'i-heroicons-signal', to: '/live', activeClass: 'text-red-500 animate-pulse', avatar: undefined },
-    { label: 'Fan Portal', icon: 'i-heroicons-globe-alt', to: `${frontendUrl}/`, external: true, target: '_blank', avatar: undefined }
+    { label: 'Fan Portal', icon: 'i-heroicons-globe-alt', to: `${frontendUrl.value}/`, external: true, target: '_blank', avatar: undefined }
   ]
 })
 
@@ -115,7 +114,7 @@ const orgMenuItems = computed(() => {
 
 const handleLogout = async () => {
   await authStore.logout()
-  navigateTo(`${frontendUrl}/`, { external: true })
+  navigateTo(`${frontendUrl.value}/`, { external: true })
 }
 </script>
 
