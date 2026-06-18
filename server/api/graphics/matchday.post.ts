@@ -122,7 +122,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Round display name
-    const roundDisplayName = fixtures[0]?.roundName || `Matchday ${round}`
+    const roundDisplayName = (fixtures[0]?.roundName || `Matchday ${round}`).replace(/^Group\s+Stage\s*-\s*/i, '')
 
     // Calculate date range
     const matchDates = fixtures

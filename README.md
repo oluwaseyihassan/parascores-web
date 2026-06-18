@@ -10,7 +10,7 @@ Welcome to the **Parascores Web** repository. This is the front-end application 
 *   **Real-time Scoring & Match Timers:** Live minute updates, event triggers, and state management for active fixtures.
 *   **Dynamic Social Graphics Generator:** Server-side API endpoints (`server/api/graphics/`) that render real-time brackets, standings, stats, and matchday results to PNG images using Satori and Resvg.
 *   **Embeddable Widgets:** Performance-tuned iframe widgets for displaying live tournament brackets, standings, and matches on third-party websites.
-*   **PWA Support:** Full offline fallback capabilities and background sync using Vite PWA service workers.
+*   **PWA Support:** Service worker precaching, install prompts, and push notifications via `@vite-pwa/nuxt` with a custom `app/sw.ts`.
 
 ---
 
@@ -44,11 +44,13 @@ parascores-web/
 │   │   ├── _admin/           # Pages loaded only on admin.lvh.me
 │   │   ├── _manage/          # Pages loaded only on manage.lvh.me
 │   │   ├── _marketing/       # Pages loaded only on the root domain (lvh.me)
-│   │   ├── auth/             # Shareable authorization views (login, signup)
+│   │   ├── auth/             # Shareable authorization views (login, signup, reset, etc.)
 │   │   └── widget/           # Embeddable public iframe views
 │   ├── stores/               # Pinia store modules (auth, tournament, fixture, standings, etc.)
 │   ├── types/                # Core TypeScript interfaces & API schemas
 │   ├── app.vue               # Hydrates user & controls layout switching
+│   ├── app.config.ts         # Nuxt UI / app-level configuration
+│   ├── error.vue             # Global error boundary UI
 │   ├── router.options.ts     # Domain-based route router intercepts
 │   └── sw.ts                 # Service worker file for PWA
 ├── public/                   # Static public assets (icons, PWA manifests, fallback screenshots)
@@ -64,13 +66,14 @@ parascores-web/
 
 ## 🌐 Dynamic Routing & Domain Strategy
 
-Rather than deploying multiple separate apps, Parascores uses host detection in [router.options.ts](file:///c:/Users/USER/Desktop/parascores-web/app/router.options.ts) and route-guards in [auth.global.ts](file:///c:/Users/USER/Desktop/parascores-web/app/middleware/auth.global.ts) to filter and map page requests:
+Rather than deploying multiple separate apps, Parascores uses host detection in [router.options.ts](file:///c:/Users/USER/Desktop/parascores-web/app/router.options.ts) to map page requests, and route-guards in [auth.global.ts](file:///c:/Users/USER/Desktop/parascores-web/app/middleware/auth.global.ts) to enforce access control:
 
 | Target Subdomain | Page Directory Route | Accessible Users / Roles | Purpose |
 | :--- | :--- | :--- | :--- |
-| **`lvh.me`** | `app/pages/_marketing/` | Public (Guests & Users) | Marketing homepage, auth, explore, and public profiles. |
-| **`manage.lvh.me`** | `app/pages/_manage/` | `ORGANIZER` or `OWNER` | Tournament setups, bracket builders, live score editing, organizations. |
-| **`admin.lvh.me`** | `app/pages/_admin/` | `SUPER_ADMIN` | Global dashboard, user role editing, system health, payments. |
+| **`lvh.me`** | `app/pages/_marketing/` + `app/pages/auth/` | Public (Guests & Users) | Marketing homepage, auth, explore, public tournament/team/player pages, join links, widgets, and profiles. |
+| **`manage.lvh.me`** | `app/pages/_manage/` | `ORGANIZER` or `OWNER` | Tournament setups, bracket builders, live score editing, billing, widgets, and organizations. |
+| **`admin.lvh.me`** | `app/pages/_admin/` | `SUPER_ADMIN` | Global dashboard, user/organization/player editing, payments, and system health. |
+| **All domains** | `app/pages/widget/` | Public | Embeddable iframe widgets (bracket, standings, fixtures, stats). |
 
 ---
 
@@ -79,7 +82,7 @@ Rather than deploying multiple separate apps, Parascores uses host detection in 
 To run this application locally, you must map the subdomains to your local loopback address and set up environment configs.
 
 ### 1. Map Local Hosts
-Because the application routes dynamically based on the domain headers, you must edit your computer's `hosts` file to resolve the local domains.
+Because the application routes dynamically based on the request host (server) or `window.location.host` (client), you must edit your computer's `hosts` file to resolve the local domains.
 
 *   **Windows:** Open notepad as administrator and open `C:\Windows\System32\drivers\etc\hosts`.
 *   **macOS / Linux:** Open terminal and run `sudo nano /etc/hosts`.
@@ -95,12 +98,13 @@ Create a `.env` file in the root directory:
 ```env
 API_BASE_URL=http://lvh.me:3000/api
 DASHBOARD_URL=http://manage.lvh.me:3001
-FRONTEND_URL=http://lvh.me:3001
+FRONT_END_URL=http://lvh.me:3001
 ADMIN_URL=http://admin.lvh.me:3001
+# Optional: Sentry is currently disabled in nuxt.config.ts
 SENTRY_DSN=your_sentry_dsn_here
 ```
 
-*(Note: The API Backend default runs on port `3000`, while this Web Frontend runs on port `3001`.)*
+*(Note: The API Backend default runs on port `3000`, while this Web Frontend runs on port `3001`. The runtime config reads `FRONT_END_URL`.)*
 
 ### 3. Install Dependencies
 Ensure you have Node.js installed (v18+ recommended).

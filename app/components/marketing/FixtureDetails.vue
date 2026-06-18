@@ -323,7 +323,7 @@ const awaySubs = computed(() => {
             <!-- Round info -->
             <div class="text-center mb-6">
               <span class="text-[11px] font-bold text-gray-400 uppercase tracking-widest block">
-                {{ fixture.roundName || `Round ${fixture.round}` }}<template v-if="fixture.matchNumber"> · Match {{ fixture.matchNumber }}</template>
+                {{ (fixture.roundName || `Round ${fixture.round}`).replace(/^Group\s+Stage\s*-\s*/i, '') }}<template v-if="fixture.matchNumber"> · Match {{ fixture.matchNumber }}</template>
               </span>
               <div v-if="fixture.venue" class="flex items-center justify-center gap-1.5 mt-1.5 opacity-60">
                 <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-gray-400" />
@@ -947,7 +947,7 @@ const awaySubs = computed(() => {
               </div>
               <div class="flex items-center justify-between px-5 py-3">
                 <span class="text-sm text-gray-500">Round</span>
-                <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ fixture.roundName || `Round ${fixture.round}` }}</span>
+                <span class="text-sm transition-colors" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ (fixture.roundName || `Round ${fixture.round}`).replace(/^Group\s+Stage\s*-\s*/i, '') }}</span>
               </div>
               <div class="flex items-center justify-between px-5 py-3">
                 <span class="text-sm text-gray-500">Match</span>

@@ -268,7 +268,7 @@ export default defineEventHandler(async (event) => {
         })
         
         const rawRoundName = (fixtures[0] as any)?.roundName || getRoundLabel(rIndex, rounds.length)
-        const displayRoundName = rawRoundName.replace(/\s*-\s*Leg\s*\d+\s*$/i, '')
+        const displayRoundName = rawRoundName.replace(/^Group\s+Stage\s*-\s*/i, '').replace(/\s*-\s*Leg\s*\d+\s*$/i, '')
         
         return {
             type: 'div',

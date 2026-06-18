@@ -40,8 +40,6 @@ export interface CreateFixtureData {
 }
 
 export interface GenerateFixturesOptions {
-  startDate?: string
-  intervalMinutes?: number
   shuffleParticipants?: boolean
   clearExisting?: boolean
   numberOfGroups?: number
@@ -111,7 +109,9 @@ export const useFixtureStore = defineStore('fixture', () => {
       if (!names[fixture.round]) {
         // Use roundName if available (knockout rounds), otherwise fallback to "Round X"
         // Strip leg suffixes for display as column headers
-        const baseName = (fixture.roundName || `Round ${fixture.round}`).replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+        let baseName = fixture.roundName || `Round ${fixture.round}`
+        baseName = baseName.replace(/^Group\s+Stage\s*-\s*/i, '')
+        baseName = baseName.replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
         names[fixture.round] = baseName
       }
     })
@@ -188,7 +188,9 @@ export const useFixtureStore = defineStore('fixture', () => {
     const names: Record<number, string> = {}
     groupStageFixtures.value.forEach(fixture => {
       if (!names[fixture.round]) {
-        names[fixture.round] = fixture.roundName || `Matchday ${fixture.round}`
+        let baseName = fixture.roundName || `Matchday ${fixture.round}`
+        baseName = baseName.replace(/^Group\s+Stage\s*-\s*/i, '')
+        names[fixture.round] = baseName
       }
     })
     return names

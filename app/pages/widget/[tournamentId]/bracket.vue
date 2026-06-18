@@ -55,7 +55,7 @@ const roundNameMap = computed(() => {
   for (const fixture of bracketFixtures) {
     const round = fixture.round || 1
     if (!map[round] && fixture.roundName) {
-      map[round] = fixture.roundName
+      map[round] = fixture.roundName.replace(/^Group\s+Stage\s*-\s*/i, '')
     }
   }
   return map
