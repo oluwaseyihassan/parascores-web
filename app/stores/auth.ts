@@ -116,12 +116,18 @@ async function signup(email: string, password: string, name: string) {
     loading.value = true
     error.value = null
     const config = useRuntimeConfig()
-    let redirect_url = config.public.FRONT_END_URL
+    
+    // Default redirect to the current host origin so they return to where they signed in from
+    let redirect_url = import.meta.client 
+      ? window.location.origin 
+      : config.public.FRONT_END_URL
+
     if (targetRedirectUrl) {
       if (targetRedirectUrl.startsWith('http')) {
         redirect_url = targetRedirectUrl
       } else {
-        redirect_url = config.public.FRONT_END_URL + targetRedirectUrl
+        const base = import.meta.client ? window.location.origin : config.public.FRONT_END_URL
+        redirect_url = base + targetRedirectUrl
       }
     }
     try {
