@@ -14,472 +14,626 @@ const emit = defineEmits<{
   'delete': [fixture: Fixture]
 }>()
 
-const statusColor: Record<string, string> = {
-  LIVE:      'text-amber-400',
-  COMPLETED: 'text-emerald-400',
-  SCHEDULED: 'text-gray-400',
-  CANCELLED: 'text-gray-500',
-}
-
-const statusDot: Record<string, string> = {
-  LIVE:      'bg-amber-400 animate-pulse',
-  COMPLETED: 'bg-emerald-400',
-  SCHEDULED: 'bg-gray-500',
-  CANCELLED: 'bg-gray-600',
-}
-
 const hasActions = computed(() => {
   return props.fixture.status !== FixtureStatus.CANCELLED
 })
 
 const matchTimer = useMatchTimer(30000)
 const liveMinuteLabel = computed(() => matchTimer.formatMinuteLabel(props.fixture))
+
+const homeTeamName = computed(() => props.fixture.homeTeam?.customName || props.fixture.homeTeamPlaceholder || 'TBD')
+const awayTeamName = computed(() => props.fixture.awayTeam?.customName || props.fixture.awayTeamPlaceholder || 'TBD')
+
+const isStarted = computed(() => {
+  return props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.COMPLETED
+})
+
+const hasPenalties = computed(() => {
+  return props.fixture.homePenaltyScore != null || props.fixture.awayPenaltyScore != null
+})
+
+const normalizedStatus = computed(() => props.fixture.status.toLowerCase())
+
+const statusLabel = computed(() => {
+  if (props.fixture.status === FixtureStatus.LIVE) return liveMinuteLabel.value || 'Live'
+  if (props.fixture.status === FixtureStatus.COMPLETED) return 'Final'
+  if (props.fixture.status === FixtureStatus.CANCELLED) return 'Cancelled'
+  if (!props.fixture.startTime) return 'Unscheduled'
+  return 'Scheduled'
+})
+
+const scheduleLabel = computed(() => {
+  if (!props.fixture.startTime) return 'TBD'
+
+  const date = new Date(props.fixture.startTime)
+  if (Number.isNaN(date.getTime())) return 'TBD'
+
+  const day = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+  const time = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+
+  return `${day}, ${time}`
+})
+
+const primaryActionLabel = computed(() => {
+  if (props.fixture.status === FixtureStatus.LIVE) return 'Control'
+  if (props.fixture.status === FixtureStatus.COMPLETED) return 'Details'
+  return 'Edit'
+})
+
+const primaryActionIcon = computed(() => {
+  if (props.fixture.status === FixtureStatus.LIVE) return 'i-heroicons-adjustments-horizontal'
+  if (props.fixture.status === FixtureStatus.COMPLETED) return 'i-heroicons-clipboard-document-list'
+  return 'i-heroicons-pencil-square'
+})
+
+const canStart = computed(() => {
+  return props.fixture.status === FixtureStatus.SCHEDULED
+    && !!props.fixture.homeTeamId
+    && !!props.fixture.awayTeamId
+    && !!props.fixture.startTime
+})
+
+const getInitial = (name: string) => {
+  return name.trim().charAt(0).toUpperCase() || 'T'
+}
 </script>
 
 <template>
-  <div class="fixture-card group">
-    <!-- Top Row: Date and Status -->
-    <div class="fixture-card__header">
-      <div class="fixture-date">
-        <span v-if="fixture.startTime">
-          {{ new Date(fixture.startTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) }}
-          <span class="opacity-50">·</span>
-          {{ new Date(fixture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) }}
+  <div class="fixture-card" :class="`fixture-card--${normalizedStatus}`">
+    <div class="fixture-card__accent" aria-hidden="true" />
+
+    <div class="fixture-card__content">
+      <div class="fixture-card__header">
+        <div class="fixture-meta">
+          <span class="fixture-date" :class="{ 'fixture-date--empty': !fixture.startTime }">
+            <UIcon name="i-heroicons-calendar-days" class="fixture-meta__icon" />
+            {{ scheduleLabel }}
+          </span>
+
+          <span v-if="fixture.group" class="fixture-chip">
+            {{ fixture.group.name }}
+          </span>
+
+          <span v-if="fixture.venue" class="fixture-venue">
+            <UIcon name="i-heroicons-map-pin" class="fixture-meta__icon" />
+            {{ fixture.venue }}
+          </span>
+        </div>
+
+        <span v-if="fixture.startTime || fixture.status !== FixtureStatus.SCHEDULED" class="fixture-status" :class="`fixture-status--${normalizedStatus}`">
+          <span class="fixture-status__dot" />
+          {{ statusLabel }}
         </span>
-        <span v-else class="fixture-unscheduled">TBD</span>
-      </div>
-      
-      <div v-if="fixture.status !== FixtureStatus.SCHEDULED || fixture.startTime || fixture.group" class="fixture-status flex items-center gap-2">
-        <div v-if="fixture.group" class="fixture-group-badge">
-          {{ fixture.group.name }}
-        </div>
-        <div v-if="fixture.status !== FixtureStatus.SCHEDULED || fixture.startTime" :class="statusColor[fixture.status]" class="flex items-center gap-1.5">
-          <span class="fixture-status__dot" :class="statusDot[fixture.status]" />
-          <span class="fixture-status__label">{{ fixture.status === FixtureStatus.LIVE ? (liveMinuteLabel || fixture.status) : fixture.status }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Middle Row: Teams + score -->
-    <div class="fixture-card__body">
-      <!-- Home -->
-      <div class="fixture-team fixture-team--home">
-        <span class="fixture-team__name">{{ fixture.homeTeam?.customName || 'TBD' }}</span>
-        <div class="fixture-team__avatar">
-          <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
-          <span v-else class="fixture-team__initial">{{ (fixture.homeTeam?.customName || 'T').charAt(0) }}</span>
-        </div>
       </div>
 
-      <!-- Score / vs -->
-      <div class="fixture-scorebox">
-        <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED">
-          <div class="flex flex-col items-center">
-             <div class="flex items-center gap-2">
-                <span class="fixture-score">{{ fixture.homeScore ?? 0 }}</span>
-                <span class="fixture-score-sep">–</span>
-                <span class="fixture-score">{{ fixture.awayScore ?? 0 }}</span>
-             </div>
-             <span v-if="fixture.homePenaltyScore != null || fixture.awayPenaltyScore != null" class="text-[10px] text-gray-500 font-semibold mt-0.5">
-                ({{ fixture.homePenaltyScore }} - {{ fixture.awayPenaltyScore }} pens)
-             </span>
+      <div class="fixture-match">
+        <div class="fixture-team">
+          <div class="fixture-team__avatar">
+            <img
+              v-if="fixture.homeTeam?.logoUrl"
+              :src="fixture.homeTeam.logoUrl"
+              :alt="homeTeamName"
+              class="fixture-team__logo"
+            >
+            <span v-else class="fixture-team__initial">{{ getInitial(homeTeamName) }}</span>
           </div>
-        </template>
-        <span v-else class="fixture-vs">vs</span>
-      </div>
 
-      <!-- Away -->
-      <div class="fixture-team fixture-team--away">
-        <div class="fixture-team__avatar">
-          <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
-          <span v-else class="fixture-team__initial">{{ (fixture.awayTeam?.customName || 'T').charAt(0) }}</span>
+          <span class="fixture-team__name">{{ homeTeamName }}</span>
+
+          <span v-if="isStarted" class="fixture-score">{{ fixture.homeScore ?? 0 }}</span>
         </div>
-        <span class="fixture-team__name">{{ fixture.awayTeam?.customName || 'TBD' }}</span>
+
+        <div class="fixture-divider">
+          <span v-if="!isStarted" class="fixture-vs">vs</span>
+          <span v-else-if="hasPenalties" class="fixture-penalties">
+            Pens {{ fixture.homePenaltyScore ?? 0 }}-{{ fixture.awayPenaltyScore ?? 0 }}
+          </span>
+        </div>
+
+        <div class="fixture-team">
+          <div class="fixture-team__avatar">
+            <img
+              v-if="fixture.awayTeam?.logoUrl"
+              :src="fixture.awayTeam.logoUrl"
+              :alt="awayTeamName"
+              class="fixture-team__logo"
+            >
+            <span v-else class="fixture-team__initial">{{ getInitial(awayTeamName) }}</span>
+          </div>
+
+          <span class="fixture-team__name">{{ awayTeamName }}</span>
+
+          <span v-if="isStarted" class="fixture-score">{{ fixture.awayScore ?? 0 }}</span>
+        </div>
       </div>
     </div>
 
-    <!-- Bottom Row: Actions -->
-    <div v-if="hasActions" class="fixture-card__footer">
+    <div v-if="hasActions" class="fixture-card__actions" :class="{ 'fixture-card__actions--with-start': canStart }">
       <button
-        v-if="fixture.status === FixtureStatus.SCHEDULED && fixture.homeTeamId && fixture.awayTeamId && fixture.startTime"
+        v-if="canStart"
+        type="button"
         class="fx-btn fx-btn--start"
         :disabled="updatingMatch"
         @click.stop="emit('start', fixture)"
       >
-        <UIcon name="i-heroicons-play" class="w-4 h-4" />
+        <UIcon name="i-heroicons-play" class="fx-btn__icon" />
         <span>Start</span>
       </button>
 
       <button
-        v-if="fixture.status === FixtureStatus.SCHEDULED"
-        class="fx-btn fx-btn--edit"
+        type="button"
+        class="fx-btn fx-btn--primary"
         @click.stop="emit('control', fixture)"
       >
-        <UIcon name="i-heroicons-pencil" class="w-4 h-4" />
-        <span>Edit</span>
+        <UIcon :name="primaryActionIcon" class="fx-btn__icon" />
+        <span>{{ primaryActionLabel }}</span>
       </button>
 
       <button
-        v-if="fixture.status === FixtureStatus.LIVE"
-        class="fx-btn fx-btn--control"
-        @click.stop="emit('control', fixture)"
-      >
-        <UIcon name="i-heroicons-adjustments-horizontal" class="w-4 h-4" />
-        <span>Control Match</span>
-      </button>
-
-      <button
-        v-if="fixture.status === FixtureStatus.COMPLETED"
-        class="fx-btn fx-btn--details"
-        @click.stop="emit('control', fixture)"
-      >
-        <UIcon name="i-heroicons-clipboard-document-list" class="w-4 h-4" />
-        <span>Match Details</span>
-      </button>
-
-      <!-- Delete Action (Always available if not cancelled) -->
-      <button
+        type="button"
         class="fx-btn fx-btn--delete"
+        aria-label="Delete fixture"
+        title="Delete fixture"
         @click.stop="emit('delete', fixture)"
-        title="Delete Fixture"
       >
-        <UIcon name="i-heroicons-trash" class="w-4 h-4" />
+        <UIcon name="i-heroicons-trash" class="fx-btn__icon" />
       </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* ── Card Container ────────────────────────────────────────── */
 .fixture-card {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px 20px;
-  border-radius: 12px;
-  background: #f9fafb;
-  border: 1px solid #f3f4f6;
-  transition: border-color 0.15s, background 0.15s, transform 0.15s;
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  overflow: hidden;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .fixture-card:hover {
-  border-color: #10b981;
-  background: #f0fdf8;
+  border-color: rgba(16, 185, 129, 0.38);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
   transform: translateY(-1px);
 }
 
 :root.dark .fixture-card {
-  background: rgba(255,255,255,0.03);
-  border-color: rgba(255,255,255,0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: none;
 }
 
 :root.dark .fixture-card:hover {
-  background: rgba(16,185,129,0.04);
-  border-color: rgba(16,185,129,0.25);
+  border-color: rgba(16, 185, 129, 0.32);
+  background: rgba(255, 255, 255, 0.052);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.26);
 }
 
-/* ── Top Row (Header) ────────────────────────────────────── */
+.fixture-card__accent {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: #9ca3af;
+}
+
+.fixture-card--live .fixture-card__accent {
+  background: #f59e0b;
+}
+
+.fixture-card--completed .fixture-card__accent {
+  background: #10b981;
+}
+
+.fixture-card--cancelled .fixture-card__accent {
+  background: #6b7280;
+}
+
+.fixture-card__content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 4px;
+}
+
 .fixture-card__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-  padding-bottom: 12px;
+  gap: 10px;
+  min-width: 0;
 }
 
-:root.dark .fixture-card__header {
-  border-bottom-color: rgba(255, 255, 255, 0.05);
+.fixture-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.fixture-date,
+.fixture-chip,
+.fixture-venue,
+.fixture-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .fixture-date {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #6b7280;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  gap: 5px;
+  padding: 0 8px;
+  color: #374151;
+  background: #f3f4f6;
 }
 
 :root.dark .fixture-date {
-  color: #9ca3af;
+  color: #d1d5db;
+  background: rgba(255, 255, 255, 0.07);
 }
 
-.fixture-unscheduled {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  border-radius: 4px;
-  padding: 2px 6px;
+.fixture-date--empty {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
 }
 
-:root.dark .fixture-unscheduled {
+:root.dark .fixture-date--empty {
   color: #fbbf24;
-  background: rgba(251, 191, 36, 0.08);
-  border-color: rgba(251, 191, 36, 0.2);
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.fixture-chip {
+  padding: 0 8px;
+  color: #4f46e5;
+  background: rgba(99, 102, 241, 0.1);
+}
+
+:root.dark .fixture-chip {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.18);
+}
+
+.fixture-venue {
+  max-width: 180px;
+  gap: 5px;
+  padding: 0 8px;
+  overflow: hidden;
+  color: #6b7280;
+  background: #f9fafb;
+}
+
+:root.dark .fixture-venue {
+  color: #9ca3af;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.fixture-meta__icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
 }
 
 .fixture-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.7rem;
-  font-weight: 700;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 0 8px;
+  color: #6b7280;
+  background: #f9fafb;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
-.fixture-group-badge {
-  background: rgba(99, 102, 241, 0.1);
-  color: #4f46e5;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.65rem;
-  letter-spacing: 0;
-  text-transform: none;
-  font-weight: 600;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-}
-
-:root.dark .fixture-group-badge {
-  background: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
-  border-color: rgba(99, 102, 241, 0.3);
+:root.dark .fixture-status {
+  color: #a3a3a3;
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .fixture-status__dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
+  border-radius: 999px;
+  background: currentColor;
 }
 
-/* ── Middle Row (Body) ───────────────────────────────────── */
-.fixture-card__body {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 16px;
-  min-width: 0;
+.fixture-status--live {
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.13);
 }
 
-/* ── Teams ───────────────────────────────────────────────── */
-.fixture-team {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
+:root.dark .fixture-status--live {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.16);
 }
 
-.fixture-team--home {
-  justify-content: flex-end;
-  text-align: right;
+.fixture-status--live .fixture-status__dot {
+  animation: pulse 1.6s ease-in-out infinite;
 }
 
-.fixture-team--away {
-  justify-content: flex-start;
-  text-align: left;
+.fixture-status--completed {
+  color: #059669;
+  background: rgba(16, 185, 129, 0.12);
 }
 
-.fixture-team__name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
+:root.dark .fixture-status--completed {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.14);
 }
 
-:root.dark .fixture-team__name {
-  color: #f3f4f6;
-}
-
-.fixture-team__avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: #e5e7eb;
-  border: 1px solid #d1d5db;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-:root.dark .fixture-team__avatar {
-  background: #1f2937;
-  border-color: rgba(255,255,255,0.08);
-}
-
-.fixture-team__initial {
-  font-size: 0.85rem;
-  font-weight: 700;
+.fixture-status--cancelled {
   color: #6b7280;
 }
 
-/* ── Scorebox ────────────────────────────────────────────── */
-.fixture-scorebox {
+.fixture-match {
+  display: grid;
+  gap: 4px;
+}
+
+.fixture-team {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 42px;
+}
+
+.fixture-team__avatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  flex-shrink: 0;
-  min-width: 60px;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  color: #475569;
+  background: linear-gradient(135deg, #eef2ff, #ecfdf5);
+}
+
+:root.dark .fixture-team__avatar {
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(16, 185, 129, 0.14));
+}
+
+.fixture-team__logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fixture-team__initial {
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+
+.fixture-team__name {
+  min-width: 0;
+  overflow: hidden;
+  color: #111827;
+  font-size: 0.9375rem;
+  font-weight: 750;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:root.dark .fixture-team__name {
+  color: #f5f5f5;
 }
 
 .fixture-score {
-  font-size: 1.5rem;
-  font-weight: 800;
+  min-width: 32px;
   color: #111827;
-  text-align: center;
+  font-size: 1.375rem;
+  font-weight: 850;
   line-height: 1;
+  text-align: right;
 }
 
 :root.dark .fixture-score {
-  color: #f9fafb;
+  color: #ffffff;
 }
 
-.fixture-score-sep {
-  font-size: 1rem;
+.fixture-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
   color: #9ca3af;
-  font-weight: 400;
+}
+
+.fixture-divider::before,
+.fixture-divider::after {
+  height: 1px;
+  content: "";
+  background: #eef2f7;
+}
+
+:root.dark .fixture-divider::before,
+:root.dark .fixture-divider::after {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.fixture-vs,
+.fixture-penalties {
+  font-size: 0.625rem;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .fixture-vs {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #9ca3af;
-  letter-spacing: 0.03em;
-  background: rgba(156, 163, 175, 0.1);
-  padding: 2px 8px;
-  border-radius: 12px;
+  color: #6b7280;
 }
 
 :root.dark .fixture-vs {
-  background: rgba(156, 163, 175, 0.15);
+  color: #a3a3a3;
 }
 
-/* ── Bottom Row (Footer) ─────────────────────────────────── */
-.fixture-card__footer {
+.fixture-penalties {
+  color: #6b7280;
+}
+
+:root.dark .fixture-penalties {
+  color: #a3a3a3;
+}
+
+.fixture-card__actions {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  margin-top: 4px;
+  flex-direction: column;
+  gap: 6px;
+  width: 112px;
 }
 
 .fx-btn {
-  flex: 1;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
+  min-height: 34px;
+  padding: 0 10px;
   border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
   cursor: pointer;
-  transition: all 0.2s;
-  line-height: 1.2;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.fx-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.fx-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.fx-btn__icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
 }
 
 .fx-btn--start {
-  background: rgba(16,185,129,0.1);
-  color: #059669;
-  border-color: rgba(16,185,129,0.2);
-}
-.fx-btn--start:hover:not(:disabled) { 
-  background: rgba(16,185,129,0.18); 
-  border-color: rgba(16,185,129,0.3);
-}
-.fx-btn--start:disabled { opacity: 0.5; cursor: default; }
-
-.fx-btn--edit {
-  background: rgba(107,114,128,0.08);
-  color: #4b5563;
-  border-color: rgba(107,114,128,0.15);
-}
-.fx-btn--edit:hover { 
-  background: rgba(107,114,128,0.15); 
-  border-color: rgba(107,114,128,0.25);
-}
-:root.dark .fx-btn--edit {
-  color: #9ca3af;
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.24);
+  background: rgba(16, 185, 129, 0.1);
 }
 
-.fx-btn--control {
-  background: rgba(245,158,11,0.1);
-  color: #d97706;
-  border-color: rgba(245,158,11,0.2);
-}
-.fx-btn--control:hover { 
-  background: rgba(245,158,11,0.18); 
-  border-color: rgba(245,158,11,0.3);
+.fx-btn--start:hover:not(:disabled) {
+  border-color: rgba(16, 185, 129, 0.42);
+  background: rgba(16, 185, 129, 0.17);
 }
 
-.fx-btn--details {
-  background: rgba(99, 102, 241, 0.1); /* Indigo */
-  color: #4f46e5;
-  border-color: rgba(99, 102, 241, 0.2);
+:root.dark .fx-btn--start {
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.12);
 }
-.fx-btn--details:hover { 
-  background: rgba(99, 102, 241, 0.18); 
-  border-color: rgba(99, 102, 241, 0.3);
+
+.fx-btn--primary {
+  color: #374151;
+  border-color: #e5e7eb;
+  background: #f9fafb;
 }
-:root.dark .fx-btn--details {
-  color: #818cf8;
+
+.fx-btn--primary:hover {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+}
+
+:root.dark .fx-btn--primary {
+  color: #e5e7eb;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+:root.dark .fx-btn--primary:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.085);
 }
 
 .fx-btn--delete {
-  flex: 0 0 auto;
-  width: 40px;
-  background: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.15);
-}
-.fx-btn--delete:hover {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.25);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.18);
+  background: rgba(239, 68, 68, 0.07);
 }
 
-/* Mobile Adjustments */
-@media (max-width: 480px) {
-  .fixture-card__body {
+.fx-btn--delete:hover {
+  border-color: rgba(239, 68, 68, 0.32);
+  background: rgba(239, 68, 68, 0.13);
+}
+
+:root.dark .fx-btn--delete {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+@media (max-width: 640px) {
+  .fixture-card {
     grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 11px;
+  }
+
+  .fixture-card__header {
+    align-items: flex-start;
     gap: 8px;
   }
-  
-  .fixture-team {
-    justify-content: center !important;
-    text-align: center !important;
-  }
-  
-  .fixture-team--home {
-    flex-direction: row-reverse !important;
-    justify-content: center !important;
-    text-align: center !important;
+
+  .fixture-meta {
+    gap: 5px;
   }
 
-  .fixture-team--away {
-    flex-direction: row !important;
-    justify-content: center !important;
-    text-align: center !important;
+  .fixture-status {
+    min-height: 22px;
+    padding: 0 7px;
+    font-size: 0.625rem;
   }
-  
-  .fixture-scorebox {
-    margin: 8px 0;
+
+  .fixture-team {
+    min-height: 38px;
   }
-  
+
+  .fixture-card__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 38px;
+    width: 100%;
+  }
+
+  .fixture-card__actions--with-start {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 38px;
+  }
+
   .fx-btn {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.75rem;
+    min-width: 0;
+    min-height: 32px;
+    padding: 0 8px;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
   }
 }
 </style>
