@@ -315,7 +315,11 @@ function groupByRound(list: Fixture[]) {
   const grouped: Record<string, { name: string; fixtures: Fixture[] }> = {}
   for (const fixture of list) {
     const round = fixture.round || 1
-    const baseName = (fixture.roundName || `Round ${round}`).replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+    let baseName = (fixture.roundName || `Round ${round}`).replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
+    // Replace "Matchday X" with group name for group stage fixtures
+    if (fixture.group?.name) {
+      baseName = baseName.replace(/Matchday\s*\d+/i, fixture.group.name)
+    }
     const name = baseName
     // Use composite key so fixtures with different roundNames in the same round get separate groups
     const key = `${round}::${name}`
@@ -481,7 +485,11 @@ function getRoundDisplayName(roundIndex: number, totalRounds: number, roundName?
 }
 
 function getRoundName(fixture: Fixture) {
-  const name = fixture.roundName || `Round ${fixture.round}`
+  let name = fixture.roundName || `Round ${fixture.round}`
+  // Replace "Matchday X" with group name for group stage fixtures
+  if (fixture.group?.name) {
+    name = name.replace(/Matchday\s*\d+/i, fixture.group.name)
+  }
   const legMatch = name.match(/Leg\s*(\d+)/i)
   if (legMatch) {
     const baseName = name.replace(/\s*([-–—]\s*)?Leg\s*\d+\s*$/i, '').trim()
