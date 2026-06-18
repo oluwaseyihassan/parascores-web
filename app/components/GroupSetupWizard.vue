@@ -18,6 +18,7 @@ const showConfirmFinishModal = ref(false)
 const fixtureStore = useFixtureStore()
 const venueStore = useVenueStore()
 const { venues } = storeToRefs(venueStore)
+const { extractErrorMessage } = useErrors()
 const toast = useToast()
 
 // LocalStorage key scoped to this tournament
@@ -26,8 +27,6 @@ const STORAGE_KEY = `gsw-progress-${props.tournament.id}`
 const config = reactive({
   assignmentMethod: 'auto' as 'existing' | 'auto',
   numberOfGroups: props.tournament.type === TournamentType.ROUND_ROBIN ? 1 : (props.tournament.numberOfGroups || 2),
-  startDate: props.tournament.start_date ? new Date(props.tournament.start_date).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
-  intervalMinutes: 90,
   shuffleParticipants: false,
   schedulingMethod: 'auto' as 'auto' | 'manual'
 })
@@ -262,8 +261,8 @@ const nextStep = () => {
     step.value = 2
   } else if (step.value === 2) {
     if (config.schedulingMethod === 'manual') {
-      // Reset add fixture time to tournament start date by default
-      addFixtureState.startTime = config.startDate
+      // Time is optional for fixtures
+      addFixtureState.startTime = ''
       step.value = 3
     } else {
       handleFinish()
@@ -291,6 +290,28 @@ const expectedFixturesCount = computed(() => {
   return count
 })
 
+const manualFixturesByRound = computed(() => {
+  const grouped: Record<number, { originalIndex: number, fixture: typeof manualFixtures.value[0] }[]> = {}
+  manualFixtures.value.forEach((f, index) => {
+    if (!grouped[f.round]) grouped[f.round] = []
+    grouped[f.round]!.push({ originalIndex: index, fixture: f })
+  })
+
+  return Object.keys(grouped)
+    .sort((a, b) => Number(a) - Number(b))
+    .map((round, index) => {
+      const safeSlot = `round-${index}`
+      const roundFixtures = grouped[Number(round)]!
+      return {
+        label: `Matchday ${round}`,
+        value: safeSlot,
+        slot: safeSlot,
+        round: Number(round),
+        fixtures: roundFixtures.sort((a, b) => new Date(a.fixture.startTime).getTime() - new Date(b.fixture.startTime).getTime())
+      }
+    })
+})
+
 const handleFinish = async (force = false) => {
   if (config.schedulingMethod === 'manual') {
     if (manualFixtures.value.length === 0) {
@@ -310,11 +331,9 @@ const handleFinish = async (force = false) => {
   try {
     if (config.schedulingMethod === 'auto') {
       await fixtureStore.generateFixtures(props.tournament.id, {
-        startDate: config.startDate,
-        intervalMinutes: config.intervalMinutes,
         numberOfGroups: config.numberOfGroups,
         groupAssignments: groupAssignments.value,
-        shuffleParticipants: false, 
+        shuffleParticipants: false,
         clearExisting: true
       })
     } else {
@@ -322,13 +341,13 @@ const handleFinish = async (force = false) => {
       await fixtureStore.deleteAllFixtures(props.tournament.id)
 
       // Create each fixture
-      await Promise.all(manualFixtures.value.map(f => 
+      await Promise.all(manualFixtures.value.map(f =>
         fixtureStore.createFixture({
           tournament_id: props.tournament.id,
           homeTeamId: f.homeTeamId,
           awayTeamId: f.awayTeamId,
           round: f.round,
-          startTime: f.startTime,
+          startTime: f.startTime || undefined,
           venue: f.venue,
           roundName: `Matchday ${f.round}`,
           stage: props.tournament.type === TournamentType.KNOCKOUT ? 'KNOCKOUT' : 'GROUP_STAGE'
@@ -346,7 +365,13 @@ const handleFinish = async (force = false) => {
     emit('finish')
     closeWizard()
   } catch (err: any) {
-    // Error handled by store/toast
+    const message = err?.data?.message || err?.message || extractErrorMessage(err) || 'Could not generate fixtures. Please try again.'
+    toast.add({
+      title: 'Generation Failed',
+      description: message,
+      color: 'error'
+    })
+    console.error('Group setup generation failed:', err)
   } finally {
     loading.value = false
   }
@@ -397,42 +422,42 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
 </script>
 
 <template>
-  <UModal :open="open" @update:open="closeWizard" :ui="{ content: 'sm:max-w-3xl' }">
+  <UModal :open="open" @update:open="closeWizard" :ui="{ content: 'w-[calc(100vw-1rem)] sm:max-w-3xl' }">
     <template #content>
       <div class="flex flex-col overflow-hidden" style="max-height: 100dvh;">
         <!-- Header -->
         <!-- Header (always visible) -->
-        <div class="p-6 border-b border-gray-100 dark:border-white/[0.05] shrink-0">
+        <div class="p-4 sm:p-6 border-b border-gray-100 dark:border-white/[0.05] shrink-0">
           <div class="flex items-center justify-between">
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Group Stage Setup</h3>
-            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" @click="closeWizard" />
+            <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Group Stage Setup</h3>
+            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" size="sm" @click="closeWizard" />
           </div>
           
           <!-- Stepper -->
-          <div class="mt-6 flex items-center justify-center">
-            <div class="flex items-center gap-4">
-              <div class="flex items-center gap-2">
+          <div class="mt-5 sm:mt-6">
+            <div class="grid grid-cols-3 items-start gap-2 sm:flex sm:items-center sm:justify-center sm:gap-4">
+              <div class="flex min-w-0 flex-col items-center gap-1.5 sm:flex-row sm:gap-2">
                 <div :class="[
-                  'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all',
+                  'w-8 h-8 rounded-full flex shrink-0 items-center justify-center font-bold text-sm transition-all',
                   step >= 1 ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
                 ]">1</div>
-                <span :class="['text-sm font-medium', step >= 1 ? 'text-gray-900 dark:text-white' : 'text-gray-400']">General</span>
+                <span :class="['max-w-full truncate text-xs font-semibold sm:text-sm sm:font-medium', step >= 1 ? 'text-gray-900 dark:text-white' : 'text-gray-400']">General</span>
               </div>
-              <div class="w-12 h-px bg-gray-100 dark:bg-gray-800"></div>
-              <div class="flex items-center gap-2">
+              <div class="hidden w-12 h-px bg-gray-100 dark:bg-gray-800 sm:block"></div>
+              <div class="flex min-w-0 flex-col items-center gap-1.5 sm:flex-row sm:gap-2">
                 <div :class="[
-                  'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all',
+                  'w-8 h-8 rounded-full flex shrink-0 items-center justify-center font-bold text-sm transition-all',
                   step >= 2 ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
                 ]">2</div>
-                <span :class="['text-sm font-medium', step >= 2 ? 'text-gray-900 dark:text-white' : 'text-gray-400']">Groups</span>
+                <span :class="['max-w-full truncate text-xs font-semibold sm:text-sm sm:font-medium', step >= 2 ? 'text-gray-900 dark:text-white' : 'text-gray-400']">Groups</span>
               </div>
-              <div class="w-12 h-px bg-gray-100 dark:bg-gray-800"></div>
-              <div class="flex items-center gap-2">
+              <div class="hidden w-12 h-px bg-gray-100 dark:bg-gray-800 sm:block"></div>
+              <div class="flex min-w-0 flex-col items-center gap-1.5 sm:flex-row sm:gap-2">
                 <div :class="[
-                  'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all',
+                  'w-8 h-8 rounded-full flex shrink-0 items-center justify-center font-bold text-sm transition-all',
                   step >= 3 ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
                 ]">3</div>
-                <span :class="['text-sm font-medium', step >= 3 ? 'text-gray-900 dark:text-white' : 'text-gray-400']">Schedule</span>
+                <span :class="['max-w-full truncate text-xs font-semibold sm:text-sm sm:font-medium', step >= 3 ? 'text-gray-900 dark:text-white' : 'text-gray-400']">Schedule</span>
               </div>
             </div>
           </div>
@@ -440,7 +465,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
 
         <!-- Steps 1 & 2: normal scrollable body -->
         <!-- Steps 1 & 2: scrollable body -->
-        <div v-if="step !== 3" class="p-8 flex-1 min-h-0 overflow-y-auto scroll-smooth">
+        <div v-if="step !== 3" class="p-4 sm:p-8 flex-1 min-h-0 overflow-y-auto scroll-smooth">
           <!-- Step 1: Config -->
           <div v-if="step === 1" class="max-w-md mx-auto space-y-6">
             <div class="bg-primary-50/50 dark:bg-primary-950/20 p-4 rounded-xl border border-primary-100 dark:border-primary-900/30 mb-8">
@@ -487,19 +512,19 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
           </div>
 
           <!-- Step 2: Review -->
-          <div v-if="step === 2" class="space-y-6">
-            <div class="flex items-center justify-between">
-               <div>
+          <div v-if="step === 2" class="space-y-5 sm:space-y-6">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+               <div class="min-w-0">
                   <h4 class="font-bold text-gray-900 dark:text-white">Review Group Structure</h4>
                   <p class="text-sm text-gray-500">Verify the group structure before generating fixtures.</p>
                </div>
-               <div class="px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-bold">
+               <div class="self-start px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-bold sm:self-auto">
                   {{ participants.length }} Teams
                </div>
             </div>
 
             <!-- Group Grid (Read-only) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-1">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 sm:p-1">
                <div 
                   v-for="(teams, label) in groupAssignments" 
                   :key="label"
@@ -542,9 +567,9 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
         </div>
 
         <!-- Step 3: Manual Schedule — split layout: fixed form + scrollable list -->
-        <div v-if="step === 3" class="flex flex-col flex-1 min-h-0">
+        <div v-if="step === 3" class="flex-1 min-h-0 overflow-y-auto scroll-smooth">
            <!-- Fixed form area -->
-           <div class="p-6 border-b border-gray-100 dark:border-white/[0.05] bg-gray-50/80 dark:bg-gray-800/30 shrink-0">
+           <div class="p-4 sm:p-6 border-b border-gray-100 dark:border-white/[0.05] bg-gray-50/80 dark:bg-gray-800/30">
               <h4 class="text-sm font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wider">Add New Fixture</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
                  <UFormField label="Round / Matchday">
@@ -605,59 +630,61 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
               </div>
            </div>
 
-           <!-- Scrollable fixture list -->
-           <div class="flex-1 overflow-y-auto scroll-smooth p-6 space-y-3">
-              <div class="flex items-center justify-between px-1 mb-2">
-                 <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Fixtures ({{ manualFixtures.length }} / {{ expectedFixturesCount }})</span>
-                 <UButton v-if="manualFixtures.length > 0" size="xs" variant="ghost" color="error" icon="i-heroicons-trash" label="Clear All" @click="manualFixtures = []" />
-              </div>
+            <!-- Scrollable fixture list -->
+            <div class="p-4 sm:p-6 space-y-3">
+               <div class="flex items-center justify-between px-1 mb-2">
+                  <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Fixtures ({{ manualFixtures.length }} / {{ expectedFixturesCount }})</span>
+                  <UButton v-if="manualFixtures.length > 0" size="xs" variant="ghost" color="error" icon="i-heroicons-trash" label="Clear All" @click="manualFixtures = []" />
+               </div>
 
-              <div v-if="manualFixtures.length === 0" class="text-center py-12 border-2 border-dashed border-gray-100 dark:border-white/5 rounded-2xl">
-                 <UIcon name="i-heroicons-calendar" class="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                 <p class="text-sm text-gray-500">No manual fixtures added yet.</p>
-              </div>
+               <div v-if="manualFixtures.length === 0" class="text-center py-12 border-2 border-dashed border-gray-100 dark:border-white/5 rounded-2xl">
+                  <UIcon name="i-heroicons-calendar" class="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                  <p class="text-sm text-gray-500">No manual fixtures added yet.</p>
+               </div>
 
-              <div 
-                 v-for="(f, index) in manualFixtures" 
-                 :key="index"
-                 class="flex items-center gap-4 p-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-white/5 rounded-xl shadow-sm group"
-              >
-                 <div class="flex flex-col items-center justify-center px-4 border-r border-gray-100 dark:border-white/5">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase">MD</span>
-                    <span class="text-lg font-black text-primary-500">{{ f.round }}</span>
-                 </div>
+               <UAccordion v-else :items="manualFixturesByRound" multiple>
+                  <template v-for="roundData in manualFixturesByRound" :key="roundData.value" #[roundData.slot]>
+                     <div class="space-y-2">
+                        <div
+                           v-for="item in roundData.fixtures"
+                           :key="item.originalIndex"
+                           class="flex items-center gap-3 sm:gap-4 p-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-white/5 rounded-xl shadow-sm group"
+                        >
+                           <div class="min-w-0 flex-1 flex items-center justify-center gap-2 sm:gap-4">
+                              <div class="flex-1 text-right font-medium truncate">{{ getParticipantById(item.fixture.homeTeamId)?.customName }}</div>
+                              <div class="text-[10px] font-bold text-gray-300 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded">VS</div>
+                              <div class="flex-1 text-left font-medium truncate">{{ getParticipantById(item.fixture.awayTeamId)?.customName }}</div>
+                           </div>
 
-                 <div class="flex-1 flex items-center justify-center gap-4">
-                    <div class="flex-1 text-right font-medium truncate">{{ getParticipantById(f.homeTeamId)?.customName }}</div>
-                    <div class="text-[10px] font-bold text-gray-300 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded">VS</div>
-                    <div class="flex-1 text-left font-medium truncate">{{ getParticipantById(f.awayTeamId)?.customName }}</div>
-                 </div>
+                           <div class="text-xs text-gray-500 min-w-[200px] hidden sm:block">
+                              <div class="flex flex-col">
+                                 <span>{{ new Date(item.fixture.startTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) }}</span>
+                                 <span v-if="item.fixture.venue" class="text-[10px] text-gray-400 italic truncate max-w-[180px]">{{ item.fixture.venue }}</span>
+                              </div>
+                           </div>
 
-                 <div class="text-xs text-gray-500 min-w-[200px] hidden sm:block">
-                    <div class="flex flex-col">
-                       <span>{{ new Date(f.startTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) }}</span>
-                       <span v-if="f.venue" class="text-[10px] text-gray-400 italic truncate max-w-[180px]">{{ f.venue }}</span>
-                    </div>
-                 </div>
-
-                 <UButton 
-                    icon="i-heroicons-trash" 
-                    color="error" 
-                    variant="ghost" 
-                    size="xs" 
-                    class="opacity-0 group-hover:opacity-100 transition-opacity"
-                    @click="removeManualFixture(index)"
-                 />
-              </div>
-           </div>
+                           <UButton
+                              icon="i-heroicons-trash"
+                              color="error"
+                              variant="ghost"
+                              size="xs"
+                              class="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                              @click="removeManualFixture(item.originalIndex)"
+                           />
+                        </div>
+                     </div>
+                  </template>
+               </UAccordion>
+            </div>
         </div>
 
         <!-- Footer (always visible) -->
-        <div class="p-6 border-t border-gray-100 dark:border-white/[0.05] bg-white dark:bg-gray-900 shrink-0">
+        <div class="p-4 sm:p-6 border-t border-gray-100 dark:border-white/[0.05] bg-white dark:bg-gray-900 shrink-0">
           <!-- Step 1 Footer -->
           <div v-if="step === 1" class="flex justify-end">
-            <UButton color="primary" @click="nextStep" size="lg">
-              {{ config.schedulingMethod === 'manual' ? 'Next: Review Groups' : 'Review & Generate' }}
+            <UButton color="primary" @click="nextStep" size="lg" class="w-full sm:w-auto">
+              <span class="sm:hidden">Next</span>
+              <span class="hidden sm:inline">{{ config.schedulingMethod === 'manual' ? 'Next: Review Groups' : 'Review & Generate' }}</span>
               <template #trailing>
                 <UIcon name="i-heroicons-arrow-right" />
               </template>
@@ -665,15 +692,20 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
           </div>
 
           <!-- Step 2 Footer -->
-          <div v-if="step === 2" class="flex justify-between">
-            <UButton color="neutral" variant="ghost" @click="step = 1">Back to Setup</UButton>
+          <div v-if="step === 2" class="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 sm:flex sm:justify-between">
+            <UButton color="neutral" variant="ghost" class="justify-center" @click="step = 1">
+              <span class="sm:hidden">Back</span>
+              <span class="hidden sm:inline">Back to Setup</span>
+            </UButton>
             <UButton 
               color="primary" 
               @click="nextStep" 
               :loading="loading"
               size="lg"
+              class="justify-center"
             >
-              {{ config.schedulingMethod === 'manual' ? 'Next: Schedule Fixtures' : 'Finish & Generate' }}
+              <span class="sm:hidden">{{ config.schedulingMethod === 'manual' ? 'Next' : 'Generate' }}</span>
+              <span class="hidden sm:inline">{{ config.schedulingMethod === 'manual' ? 'Next: Schedule Fixtures' : 'Finish & Generate' }}</span>
               <template #trailing>
                 <UIcon :name="config.schedulingMethod === 'manual' ? 'i-heroicons-arrow-right' : 'i-heroicons-check'" />
               </template>
@@ -681,15 +713,20 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
           </div>
 
           <!-- Step 3 Footer -->
-          <div v-if="step === 3" class="flex justify-between">
-            <UButton color="neutral" variant="ghost" @click="step = 2" :disabled="loading">Back to Groups</UButton>
+          <div v-if="step === 3" class="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 sm:flex sm:justify-between">
+            <UButton color="neutral" variant="ghost" class="justify-center" @click="step = 2" :disabled="loading">
+              <span class="sm:hidden">Back</span>
+              <span class="hidden sm:inline">Back to Groups</span>
+            </UButton>
             <UButton 
               color="success" 
               @click="() => handleFinish()" 
               :loading="loading"
               size="lg"
+              class="justify-center"
             >
-              Finish & Generate Fixtures
+              <span class="sm:hidden">Generate</span>
+              <span class="hidden sm:inline">Finish & Generate Fixtures</span>
               <template #trailing>
                 <UIcon name="i-heroicons-check" />
               </template>
@@ -719,22 +756,22 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
             You have scheduled only <span class="font-bold text-amber-500">{{ manualFixtures.length }}</span> of the <span class="font-semibold text-gray-950 dark:text-white">{{ expectedFixturesCount }}</span> expected fixtures.
           </p>
           <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">
-            Finishing now will leave the tournament stage incomplete. Are you sure you want to finish and generate?
+            You can finish now and complete the remaining fixtures later from the tournament dashboard. Clicking <span class="font-semibold text-gray-950 dark:text-white">Generate Fixtures</span> will create the {{ manualFixtures.length }} fixtures you've added so far.
           </p>
         </div>
 
         <template #footer>
           <div class="flex items-center justify-end gap-3">
-            <UButton 
-              color="neutral" 
-              variant="ghost" 
-              label="Go Back" 
-              @click="showConfirmFinishModal = false" 
+            <UButton
+              color="neutral"
+              variant="ghost"
+              label="Go Back"
+              @click="showConfirmFinishModal = false"
               :disabled="loading"
             />
-            <UButton 
-              color="warning" 
-              label="Finish & Generate"
+            <UButton
+              color="warning"
+              label="Generate Fixtures"
               :loading="loading"
               @click="handleFinish(true)"
             />

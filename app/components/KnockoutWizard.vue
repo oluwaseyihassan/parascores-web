@@ -26,8 +26,6 @@ const isModalOpen = computed({
 
 const config = reactive({
   bracketSize: 2,
-  startDate: new Date().toISOString().split('T')[0],
-  intervalMinutes: 60,
   shuffleParticipants: false
 })
 
@@ -186,8 +184,6 @@ const handleFinish = async () => {
       await fixtureStore.generateFixtures(props.tournament.id, {
         clearExisting: true,
         shuffleParticipants: false,
-        startDate: config.startDate,
-        intervalMinutes: config.intervalMinutes,
         groupAssignments: { 'knockout': orderedParticipantIds }
       })
     }
