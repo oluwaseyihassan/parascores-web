@@ -104,7 +104,7 @@ const venueOptions = computed(() => {
 const roundOptions = computed(() => {
   const teamsCount = props.participants.length
   const groupsCount = config.numberOfGroups
-  if (!groupsCount || teamsCount <= 1) return [{ label: 'Group 1', value: 1 }]
+  if (!groupsCount || teamsCount <= 1) return [{ label: 'Matchday 1', value: 1 }]
   
   const avgTeamsPerGroup = Math.ceil(teamsCount / groupsCount)
   
@@ -118,7 +118,7 @@ const roundOptions = computed(() => {
   
   // Return exactly the expected number of matchdays
   const count = Math.max(1, expectedRounds)
-  return Array.from({ length: count }, (_, i) => ({ label: `Group ${i + 1}`, value: i + 1 }))
+  return Array.from({ length: count }, (_, i) => ({ label: `Matchday ${i + 1}`, value: i + 1 }))
 })
 
 // Filter participants based on current round selections
@@ -330,7 +330,7 @@ const handleFinish = async (force = false) => {
           round: f.round,
           startTime: f.startTime,
           venue: f.venue,
-          roundName: `Group ${f.round}`,
+          roundName: `Matchday ${f.round}`,
           stage: props.tournament.type === TournamentType.KNOCKOUT ? 'KNOCKOUT' : 'GROUP_STAGE'
         })
       ))
@@ -547,7 +547,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
            <div class="p-6 border-b border-gray-100 dark:border-white/[0.05] bg-gray-50/80 dark:bg-gray-800/30 shrink-0">
               <h4 class="text-sm font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wider">Add New Fixture</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
-                 <UFormField label="Round / Group">
+                 <UFormField label="Round / Matchday">
                     <USelectMenu 
                       v-model="addFixtureState.round" 
                       :items="roundOptions" 

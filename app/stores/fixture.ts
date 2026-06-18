@@ -188,14 +188,14 @@ export const useFixtureStore = defineStore('fixture', () => {
     const names: Record<number, string> = {}
     groupStageFixtures.value.forEach(fixture => {
       if (!names[fixture.round]) {
-        names[fixture.round] = fixture.roundName || `Group ${fixture.round}`
+        names[fixture.round] = fixture.roundName || `Matchday ${fixture.round}`
       }
     })
     return names
   })
 
   function getGroupStageRoundDisplayName(round: number): string {
-    return groupStageRoundNames.value[round] || `Group ${round}`
+    return groupStageRoundNames.value[round] || `Matchday ${round}`
   }
 
   // Helper function to get round display name
