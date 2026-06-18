@@ -60,6 +60,18 @@ const nextStep = async () => {
       }
     }
     
+    // Basic validation for Step 2
+    if (currentStep.value === 2) {
+      if (state.maxParticipants === undefined || state.maxParticipants === null || state.maxParticipants as any === '') {
+        error.value = 'Max participants is required'
+        return
+      }
+      if (typeof state.maxParticipants === 'number' && state.maxParticipants < 2) {
+        error.value = 'Must have at least 2 participants'
+        return
+      }
+    }
+    
     // Basic validation for Step 3
     if (currentStep.value === 3) {
       if (!state.start_date) {
@@ -72,6 +84,14 @@ const nextStep = async () => {
       }
       if (!state.organization_id) {
         error.value = 'Organization selection is required'
+        return
+      }
+      if (state.isPaidRegistration && (state.registrationFee === null || state.registrationFee === undefined || state.registrationFee as any === '')) {
+        error.value = 'Registration fee is required'
+        return
+      }
+      if (state.isPaidRegistration && typeof state.registrationFee === 'number' && state.registrationFee < 0) {
+        error.value = 'Registration fee must be positive'
         return
       }
     }
