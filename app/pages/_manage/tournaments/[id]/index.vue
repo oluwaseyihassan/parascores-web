@@ -551,7 +551,7 @@ const openAddFixtureModal = (round?: number, roundName?: string) => {
   
   // Set default stage based on tournament type and round name
   const name = (addFixtureState.roundName || '').toLowerCase()
-  if (name.includes('matchday')) {
+  if (name.includes('group')) {
     addFixtureState.stage = FixtureStage.GROUP_STAGE
   } else if (
     name.includes('final') || 
@@ -649,7 +649,7 @@ const roundNameOptions = computed(() => {
     const oneWayRoundCount = groupStageTeamCount % 2 === 0 ? groupStageTeamCount - 1 : groupStageTeamCount
     const roundCount = tournament.value?.doubleRoundRobin ? 2 * oneWayRoundCount : oneWayRoundCount
     for (let i = 1; i <= roundCount; i++) {
-      const name = `Matchday ${i}`
+      const name = `Group ${i}`
       options.push({ label: name, value: name, round: i })
     }
   }
@@ -708,7 +708,7 @@ const roundNameOptions = computed(() => {
   // Fallback if no options were generated
   if (options.length === 0) {
     for (let i = 1; i <= 10; i++) {
-      options.push({ label: `Matchday ${i}`, value: `Matchday ${i}`, round: i })
+      options.push({ label: `Group ${i}`, value: `Group ${i}`, round: i })
     }
   }
 
@@ -726,7 +726,7 @@ watch(() => addFixtureState.roundName, (val) => {
 
   // Auto-set stage based on round name
   const name = val.toLowerCase()
-  if (name.includes('matchday')) {
+  if (name.includes('group')) {
     addFixtureState.stage = FixtureStage.GROUP_STAGE
   } else if (
     name.includes('final') || 
@@ -1708,7 +1708,7 @@ const expectedRounds = computed(() => {
     const roundCount = hasDoubleRoundRobin ? 2 * oneWayRoundCount : oneWayRoundCount
 
     for (let i = 1; i <= roundCount; i++) {
-      items.push({ label: `Matchday ${i}`, round: i, stage: FixtureStage.GROUP_STAGE })
+      items.push({ label: `Group ${i}`, round: i, stage: FixtureStage.GROUP_STAGE })
     }
   }
 
@@ -2414,7 +2414,7 @@ const generateInviteLink = async (participant: Participant, openModal = true) =>
       },
     })
     if (response.data) {
-      const host = import.meta.client ? window.location.host.replace(/^manage\./, '') : 'parascores.com'
+      const host = import.meta.client ? window.location.host.replace(/^manage-dev\./, window.location.host.includes('lvh.me') ? '' : 'dev.').replace(/^manage\./, '') : 'parascores.com'
       const protocol = import.meta.dev ? 'http' : 'https'
       const baseUrl = `${protocol}://${host}`
       inviteLink.value = `${baseUrl}/join/${response.data.token}`
@@ -2640,7 +2640,7 @@ const openPromptModal = (options: {
 const showQRCodeModal = ref(false)
 const appConfig = useRuntimeConfig()
 const publicTournamentUrl = computed(() => {
-  const host = import.meta.client ? window.location.host.replace(/^manage\./, '') : 'parascores.com'
+  const host = import.meta.client ? window.location.host.replace(/^manage-dev\./, window.location.host.includes('lvh.me') ? '' : 'dev.').replace(/^manage\./, '') : 'parascores.com'
   const protocol = import.meta.dev ? 'http' : 'https'
   const baseUrl = appConfig.public.siteUrl || `${protocol}://${host}`
   
