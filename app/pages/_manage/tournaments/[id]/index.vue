@@ -85,10 +85,13 @@ async function handleUpgradeTournament() {
     const dashboardUrl = config.public.DASHBOARD_URL || window.location.origin
     const callbackUrl = `${dashboardUrl}/billing/callback`
 
+    const maxP = tournament.value?.maxParticipants
+    const feeInKobo = (typeof maxP === 'number' ? maxP * 1000 : 25000) * 100
+
     const response = await paymentStore.initializePayment(
       authStore.currentOrganization.id,
       'PER_TOURNAMENT',
-      5000 * 100,
+      feeInKobo,
       callbackUrl,
       tournamentId.value
     )
@@ -577,7 +580,7 @@ const openAddFixtureModal = (round?: number, roundName?: string) => {
 
 const participantOptionsAll = computed(() => {
   return participants.value.map(p => ({
-    label: p.customName || p.user?.name || p.team?.name || 'Unnamed',
+    label: p.customShortName || p.customName || p.user?.name || p.team?.name || 'Unnamed',
     value: p.id,
     groupId: p.groupId,
     avatar: p.logoUrl ? { src: p.logoUrl } : undefined
@@ -1019,6 +1022,7 @@ const addError = ref<string | null>(null)
 
 const addParticipantSchema = z.object({
   customName: z.string().min(1, 'Name is required').max(100),
+  customShortName: z.string().max(10, 'Short name must be 10 characters or less').optional().nullable(),
   seed: z.number().positive().optional().nullable(),
   logoUrl: z.string().optional().nullable()
 })
@@ -1027,6 +1031,7 @@ type AddParticipantSchema = z.output<typeof addParticipantSchema>
 
 const addParticipantState = reactive<Partial<AddParticipantSchema & { teamId: string | null }>>({
   customName: '',
+  customShortName: '',
   seed: null,
   logoUrl: null,
   teamId: null
@@ -1106,10 +1111,12 @@ const handleTeamExcelUpload = async (event: Event) => {
       const teamsToUpload = jsonData.map(row => {
         const keys = Object.keys(row)
         const nameKey = keys.find(k => k.toLowerCase().trim() === 'name' || k.toLowerCase().trim() === 'team')
+        const shortNameKey = keys.find(k => k.toLowerCase().trim() === 'shortname' || k.toLowerCase().trim() === 'short name' || k.toLowerCase().trim() === 'short_name')
         const seedKey = keys.find(k => k.toLowerCase().trim() === 'seed' || k.toLowerCase().trim() === 'rank')
 
         return {
           customName: nameKey ? String(row[nameKey]).trim() : '',
+          customShortName: shortNameKey ? String(row[shortNameKey]).trim() : null,
           seed: seedKey ? parseInt(row[seedKey]) || null : null,
           logoUrl: null
         }
@@ -1382,6 +1389,7 @@ const removeLogo = () => {
 
 const resetAddForm = () => {
   addParticipantState.customName = ''
+  addParticipantState.customShortName = ''
   addParticipantState.seed = null
   addParticipantState.logoUrl = null
   addParticipantState.teamId = null
@@ -1419,6 +1427,7 @@ const handleAddParticipant = async (event: FormSubmitEvent<AddParticipantSchema>
     
     await participantStore.addParticipant(tournamentId.value, {
       customName: event.data.customName,
+      customShortName: event.data.customShortName,
       seed: event.data.seed,
       logoUrl: logoUrl,
       teamId: addParticipantState.teamId
@@ -1440,6 +1449,7 @@ const editingParticipantId = ref<string | null>(null)
 
 const editParticipantState = reactive({
   customName: '',
+  customShortName: '',
   logoUrl: null as string | null,
   teamId: null as string | null
 })
@@ -1483,6 +1493,7 @@ const removeEditLogo = () => {
 const openEditParticipantModal = (participant: Participant) => {
   editingParticipantId.value = participant.id
   editParticipantState.customName = participant.customName || ''
+  editParticipantState.customShortName = participant.customShortName || ''
   editParticipantState.logoUrl = participant.logoUrl || null
   editParticipantState.teamId = participant.team_id || participant.team?.id || null
   editParticipantError.value = null
@@ -1519,6 +1530,7 @@ const handleEditParticipant = async () => {
     
     await participantStore.updateParticipant(editingParticipantId.value, {
       customName: editParticipantState.customName,
+      customShortName: editParticipantState.customShortName,
       logoUrl: finalLogoUrl,
       teamId: editParticipantState.teamId
     })
@@ -2845,7 +2857,7 @@ const copyTournamentLink = async () => {
               :loading="upgradingFromBanner"
               @click="handleUpgradeTournament"
             >
-              Upgrade (₦5,000)
+              Upgrade (₦{{ typeof tournament?.maxParticipants === 'number' ? (tournament.maxParticipants * 1000).toLocaleString() : '25,000' }})
             </UButton>
             <UButton
               size="sm"
@@ -3026,14 +3038,14 @@ const copyTournamentLink = async () => {
                             class="w-full h-full object-cover"
                           />
                           <span v-else class="text-[10px] font-medium text-gray-500">
-                            {{ (standing.participant?.customName || 'T').charAt(0).toUpperCase() }}
+                            {{ (standing.participant?.customShortName || standing.participant?.customName || 'T').charAt(0).toUpperCase() }}
                           </span>
                         </div>
 
                         <!-- Team name + stats -->
                         <div class="flex-1 min-w-0">
                           <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {{ standing.participant?.customName || 'Unknown' }}
+                            {{ standing.participant?.customShortName || standing.participant?.customName || 'Unknown' }}
                           </p>
                           <p class="text-xs text-gray-500">
                             {{ standing.points }} pts · {{ standing.played }}P · {{ standing.wins }}W {{ standing.draws }}D {{ standing.losses }}L
@@ -3589,7 +3601,7 @@ const copyTournamentLink = async () => {
                         <img 
                           v-if="participant.logoUrl" 
                           :src="participant.logoUrl" 
-                          :alt="participant.customName || 'Participant'"
+                          :alt="participant.customShortName || participant.customName || 'Participant'"
                           class="w-full h-full object-cover"
                         />
                         <span v-else class="text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -3750,7 +3762,7 @@ const copyTournamentLink = async () => {
                     >
                       <UAvatar 
                         :src="participant.logoUrl || undefined" 
-                        :alt="participant.customName || '?'" 
+                        :alt="participant.customShortName || participant.customName || '?'"
                         size="xs"
                         class="bg-gray-100 dark:bg-gray-700"
                       />
@@ -3822,9 +3834,9 @@ const copyTournamentLink = async () => {
                           class="flex items-center justify-between gap-2 p-2 rounded-lg bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] text-sm hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-all cursor-grab active:cursor-grabbing hover:shadow-sm"
                         >
                           <div class="flex items-center gap-2 min-w-0">
-                            <UAvatar 
-                              :src="participant.logoUrl || undefined" 
-                              :alt="participant.customName || '?'" 
+                            <UAvatar
+                              :src="participant.logoUrl || undefined"
+                              :alt="participant.customShortName || participant.customName || '?'"
                               size="xs"
                               class="bg-gray-100 dark:bg-gray-700 shrink-0"
                             />
@@ -4925,14 +4937,23 @@ const copyTournamentLink = async () => {
           </div>
 
 
-          <UFormField 
-            :label="tournament?.participantType === 'TEAM' ? 'Team Name' : 'Participant Name'" 
-            name="customName" 
+          <UFormField
+            :label="tournament?.participantType === 'TEAM' ? 'Team Name' : 'Participant Name'"
+            name="customName"
             required
           >
-            <UInput 
-              v-model="addParticipantState.customName" 
+            <UInput
+              v-model="addParticipantState.customName"
               :placeholder="tournament?.participantType === 'TEAM' ? 'e.g. Manchester United' : 'e.g. John Doe'"
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField label="Short Name (Optional)" name="customShortName">
+            <UInput
+              v-model="addParticipantState.customShortName"
+              placeholder="e.g. MUN"
+              :maxlength="10"
               class="w-full"
             />
           </UFormField>
@@ -5057,13 +5078,22 @@ const copyTournamentLink = async () => {
           </div>
 
 
-          <UFormField 
-            :label="tournament?.participantType === 'TEAM' ? 'Team Name' : 'Participant Name'" 
-            name="customName" 
+          <UFormField
+            :label="tournament?.participantType === 'TEAM' ? 'Team Name' : 'Participant Name'"
+            name="customName"
             required
           >
-            <UInput 
-              v-model="editParticipantState.customName" 
+            <UInput
+              v-model="editParticipantState.customName"
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField label="Short Name (Optional)" name="customShortName">
+            <UInput
+              v-model="editParticipantState.customShortName"
+              placeholder="e.g. MUN"
+              :maxlength="10"
               class="w-full"
             />
           </UFormField>

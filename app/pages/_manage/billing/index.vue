@@ -54,14 +54,14 @@ const plans = computed(() => [
   {
     name: 'Per Tournament',
     key: 'PER_TOURNAMENT' as const,
-    description: 'Upgrade a single tournament based on participant capacity.',
-    monthlyPrice: '5,000 - 25,000',
+    description: 'Upgrade a single tournament at ₦1,000 per team.',
+    monthlyPrice: '₦1k/team',
     yearlyPrice: null,
     planType: 'PER_TOURNAMENT',
     amountInKobo: 0,
     oneTime: true,
     features: [
-      { text: 'Dynamic pricing tiers', tooltip: 'Upgrade fee scales with max participants: <=4 (5k), <=8 (8k), <=16 (12k), <=32 (15k), >32 (25k).' },
+      { text: '₦1,000 per team pricing', tooltip: 'Upgrade fee is calculated as maxParticipants × ₦1,000. For example, a 16-team tournament costs ₦16,000.' },
       { text: 'Custom branding & logos', tooltip: 'Upload organization and tournament logos, and display your brand prominently on all public pages.' },
       { text: 'Advanced statistics for the tournament', tooltip: 'Unlock in-depth team/player performance tracking, player stats, and visual charts.' },
       { text: 'Priority email support', tooltip: 'Dedicated support queue. We guarantee a reply within 12 hours.' }
@@ -212,11 +212,7 @@ function handlePlanAction(plan: typeof plans.value[0]) {
 
 function getTournamentUpgradePrice(maxParticipants: number | null | undefined): number {
   if (typeof maxParticipants !== 'number') return 25000
-  if (maxParticipants <= 4) return 5000
-  if (maxParticipants <= 8) return 8000
-  if (maxParticipants <= 16) return 12000
-  if (maxParticipants <= 32) return 15000
-  return 25000
+  return maxParticipants * 1000
 }
 
 const selectedTournamentUpgradePrice = computed(() => {
@@ -570,8 +566,8 @@ const statusColor = computed(() => {
             <div class="mb-4 p-3 rounded-xl flex items-start gap-2.5 text-xs bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-gray-600 dark:text-gray-300">
               <UIcon name="i-heroicons-information-circle" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
               <div>
-                <span class="font-bold text-emerald-600 dark:text-emerald-400">Capacity-Based Pricing:</span>
-                Pricing is determined by the tournament's "Max Participants" limit. Set a capacity cap in the tournament's Dashboard settings to pay a lower price tier.
+                <span class="font-bold text-emerald-600 dark:text-emerald-400">₦1,000 per Team:</span>
+                Pricing is calculated as max participants × ₦1,000. For example, a 16-team tournament costs ₦16,000.
               </div>
             </div>
 
