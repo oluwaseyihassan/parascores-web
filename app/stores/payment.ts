@@ -118,6 +118,7 @@ export const usePaymentStore = defineStore('payment', () => {
     tournamentId: string
     teamId?: string
     customName?: string
+    customShortName?: string
     logoUrl?: string
     token: string
     callbackUrl: string

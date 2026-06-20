@@ -146,11 +146,11 @@ onMounted(() => {
                         <div class="w-4.5 h-4.5 rounded-full overflow-hidden flex-shrink-0" :class="isDark ? 'bg-gray-800' : 'bg-gray-100'">
                           <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
                           <span v-else class="flex items-center justify-center w-full h-full text-[7px] font-bold">
-                            {{ (standing.participant?.customName || 'T').charAt(0).toUpperCase() }}
+                            {{ (standing.participant?.customShortName || standing.participant?.customName || 'T').charAt(0).toUpperCase() }}
                           </span>
                         </div>
                         <span class="font-medium truncate max-w-[90px] sm:max-w-[160px]">
-                          {{ standing.participant?.customName || standing.participant?.user?.name || 'Unknown' }}
+                          {{ standing.participant?.customShortName || standing.participant?.customName || standing.participant?.user?.name || 'Unknown' }}
                         </span>
                       </div>
                     </td>

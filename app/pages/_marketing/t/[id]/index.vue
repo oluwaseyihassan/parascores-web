@@ -916,11 +916,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
                           <div class="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0">
                             <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
                             <span v-else class="flex items-center justify-center w-full h-full text-[9px] md:text-[10px] font-bold text-gray-500 uppercase">
-                              {{ (fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD').charAt(0) }}
+                              {{ (fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD').charAt(0) }}
                             </span>
                           </div>
                           <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, true)">
-                            {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
+                            {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                           </span>
                           <div v-if="getTeamCards(fixture, true).red > 0" class="w-3 h-4 bg-red-500 rounded-[2px] flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0">
                             {{ getTeamCards(fixture, true).red }}
@@ -936,11 +936,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
                           <div class="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0">
                             <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
                             <span v-else class="flex items-center justify-center w-full h-full text-[9px] md:text-[10px] font-bold text-gray-500 uppercase">
-                              {{ (fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD').charAt(0) }}
+                              {{ (fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD').charAt(0) }}
                             </span>
                           </div>
                           <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, false)">
-                            {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
+                            {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                           </span>
                           <div v-if="getTeamCards(fixture, false).red > 0" class="w-3 h-4 bg-red-500 rounded-[2px] flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0">
                             {{ getTeamCards(fixture, false).red }}
@@ -1050,11 +1050,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
                             <div class="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0">
                               <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
                               <span v-else class="flex items-center justify-center w-full h-full text-[9px] md:text-[10px] font-bold text-gray-500 uppercase">
-                                {{ (fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD').charAt(0) }}
+                                {{ (fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD').charAt(0) }}
                               </span>
                             </div>
                             <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, true)">
-                              {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
+                              {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                             </span>
                             <span v-if="flashingFixtures.get(fixture.id) === 'home'" class="goal-text shrink-0">GOAL!!!</span>
                           </div>
@@ -1064,11 +1064,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
                             <div class="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0">
                               <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
                               <span v-else class="flex items-center justify-center w-full h-full text-[9px] md:text-[10px] font-bold text-gray-500 uppercase">
-                                {{ (fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD').charAt(0) }}
+                                {{ (fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD').charAt(0) }}
                               </span>
                             </div>
                             <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, false)">
-                              {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
+                              {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                             </span>
                             <span v-if="flashingFixtures.get(fixture.id) === 'away'" class="goal-text shrink-0">GOAL!!!</span>
                           </div>
@@ -1153,11 +1153,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
                           <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
                             <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
                             <span v-else class="flex items-center justify-center w-full h-full text-[8px] md:text-[9px] font-bold text-gray-500">
-                              {{ (standing.participant?.customName || 'T').charAt(0) }}
+                              {{ (standing.participant?.customShortName || standing.participant?.customName || 'T').charAt(0) }}
                             </span>
                           </div>
                           <div class="flex flex-col min-w-0">
-                            <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px] text-gray-800 dark:text-gray-200">{{ standing.participant?.customName || 'Unknown' }}</span>
+                            <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px] text-gray-800 dark:text-gray-200">{{ standing.participant?.customShortName || standing.participant?.customName || 'Unknown' }}</span>
                             <NuxtLink 
                               v-if="standing.participant?.team_id || standing.participant?.team?.id"
                               :to="`/team/${standing.participant?.team_id || standing.participant?.team?.id}`"
@@ -1232,12 +1232,12 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 <div class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 transition-colors relative bg-gray-100 dark:bg-white/10">
                   <img v-if="participant.logoUrl" :src="participant.logoUrl" class="w-full h-full object-cover" />
                   <span v-else class="flex items-center justify-center w-full h-full text-lg font-bold text-gray-500">
-                    {{ (participant.customName || 'P').charAt(0).toUpperCase() }}
+                    {{ (participant.customShortName || participant.customName || 'P').charAt(0).toUpperCase() }}
                   </span>
                 </div>
                 <div class="flex-1 min-w-0">
                   <h4 class="text-base font-semibold truncate transition-colors text-gray-800 group-hover:text-gray-900 dark:text-gray-200 dark:group-hover:text-white">
-                    {{ participant.customName || 'Unknown' }}
+                    {{ participant.customShortName || participant.customName || 'Unknown' }}
                   </h4>
                   <NuxtLink 
                     v-if="participant.team_id || participant.team?.id"

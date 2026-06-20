@@ -256,11 +256,11 @@ function formatDate(dateStr?: string | null) {
                     <div :class="isDark ? 'bg-gradient-to-br from-zinc-700 to-zinc-800 border-white/10' : 'bg-gradient-to-br from-gray-100 to-gray-200 border-black/5'" class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 shadow-sm border">
                       <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
                       <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-zinc-400">
-                        {{ (fixture.homeTeam?.customName || 'H').charAt(0) }}
+                        {{ (fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || 'H').charAt(0) }}
                       </span>
                     </div>
                     <span :class="isDark ? 'text-zinc-200 group-hover:text-white' : 'text-gray-800 group-hover:text-black'" class="text-[11.5px] font-semibold truncate transition-colors">
-                      {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
+                      {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                     </span>
                   </div>
 
@@ -269,11 +269,11 @@ function formatDate(dateStr?: string | null) {
                     <div :class="isDark ? 'bg-gradient-to-br from-zinc-700 to-zinc-800 border-white/10' : 'bg-gradient-to-br from-gray-100 to-gray-200 border-black/5'" class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 shadow-sm border">
                       <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
                       <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-zinc-400">
-                        {{ (fixture.awayTeam?.customName || 'A').charAt(0) }}
+                        {{ (fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || 'A').charAt(0) }}
                       </span>
                     </div>
                     <span :class="isDark ? 'text-zinc-200 group-hover:text-white' : 'text-gray-800 group-hover:text-black'" class="text-[11.5px] font-semibold truncate transition-colors">
-                      {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
+                      {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                     </span>
                   </div>
                 </div>
@@ -370,11 +370,11 @@ function formatDate(dateStr?: string | null) {
                       <div :class="isDark ? 'bg-gradient-to-br from-zinc-700 to-zinc-800 border-white/10' : 'bg-gradient-to-br from-gray-100 to-gray-200 border-black/5'" class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 shadow-sm border">
                         <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
                         <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-zinc-400">
-                          {{ (fixture.homeTeam?.customName || 'H').charAt(0) }}
+                          {{ (fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || 'H').charAt(0) }}
                         </span>
                       </div>
                       <span :class="isDark ? 'text-zinc-200 group-hover:text-white' : 'text-gray-800 group-hover:text-black'" class="text-[11.5px] font-semibold truncate transition-colors">
-                        {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
+                        {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                       </span>
                     </div>
 
@@ -383,11 +383,11 @@ function formatDate(dateStr?: string | null) {
                       <div :class="isDark ? 'bg-gradient-to-br from-zinc-700 to-zinc-800 border-white/10' : 'bg-gradient-to-br from-gray-100 to-gray-200 border-black/5'" class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 shadow-sm border">
                         <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
                         <span v-else class="flex items-center justify-center w-full h-full text-[8px] font-bold text-zinc-400">
-                          {{ (fixture.awayTeam?.customName || 'A').charAt(0) }}
+                          {{ (fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || 'A').charAt(0) }}
                         </span>
                       </div>
                       <span :class="isDark ? 'text-zinc-200 group-hover:text-white' : 'text-gray-800 group-hover:text-black'" class="text-[11.5px] font-semibold truncate transition-colors">
-                        {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
+                        {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                       </span>
                     </div>
                   </div>

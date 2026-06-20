@@ -605,7 +605,7 @@ const positionStats = computed((): StatCard[] => {
             </h4>
             <div class="flex items-center gap-2 mt-1">
               <span class="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold uppercase tracking-wider">
-                {{ player.participant.customName || 'Individual' }}
+                {{ player.participant.customShortName || player.participant.customName || 'Individual' }}
               </span>
               <span v-if="player.number" class="text-xs text-gray-400 font-bold">• #{{ player.number }}</span>
             </div>
@@ -638,7 +638,7 @@ const positionStats = computed((): StatCard[] => {
                   {{ profile.participant?.tournament?.name || 'Tournament Profile' }}
                 </p>
                 <div class="flex items-center gap-2 mt-0.5 text-xs text-gray-400">
-                  <span>{{ profile.participant?.customName }}</span>
+                  <span>{{ profile.participant?.customShortName || profile.participant?.customName }}</span>
                   <span v-if="profile.number">• #{{ profile.number }}</span>
                   <span v-if="profile.position">• {{ getPositionLabel(profile.position) }}</span>
                 </div>

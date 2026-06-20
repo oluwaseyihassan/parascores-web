@@ -205,6 +205,7 @@ export interface Participant {
   team_id?: string | null
   
   customName?: string | null
+  customShortName?: string | null
   logoUrl?: string | null
   seed?: number | null
   status: ParticipantStatus

@@ -31,6 +31,7 @@ const paymentStore = usePaymentStore()
 const selectedTeamId = ref<string | 'new'>('new')
 const formState = ref({
   customName: '',
+  customShortName: '',
   logoUrl: ''
 })
 
@@ -76,6 +77,7 @@ const removeLogo = () => {
 
 const schema = z.object({
   customName: z.string().min(2, 'Team name must be at least 2 characters').optional().or(z.literal('')),
+  customShortName: z.string().max(10, 'Short name must be 10 characters or less').optional().or(z.literal('')),
   logoUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   teamId: z.string().optional()
 })
@@ -177,13 +179,14 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
       teamId = newTeam.id
     }
 
-    // Check if tournament requires paid registration
+      // Check if tournament requires paid registration
     if (invite.value?.tournament?.isPaidRegistration) {
       const callbackUrl = window.location.origin + window.location.pathname
       const response = await paymentStore.initializeRegistration({
         tournamentId: invite.value.tournament.id,
         teamId,
         customName: selectedTeamId.value === 'new' ? event.data.customName : undefined,
+        customShortName: selectedTeamId.value === 'new' ? event.data.customShortName : undefined,
         logoUrl: selectedTeamId.value === 'new' ? finalLogoUrl : undefined,
         token,
         callbackUrl,
@@ -200,6 +203,7 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
     const response = await inviteStore.acceptInvite(token, {
       teamId,
       customName: selectedTeamId.value === 'new' ? event.data.customName : undefined,
+      customShortName: selectedTeamId.value === 'new' ? event.data.customShortName : undefined,
       logoUrl: selectedTeamId.value === 'new' ? finalLogoUrl : undefined
     })
     
@@ -304,6 +308,10 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
             <div v-if="selectedTeamId === 'new'" class="space-y-6 pt-4 border-t border-gray-100 dark:border-white/5 animate-in fade-in duration-300">
               <UFormField label="New Team Name" name="customName">
                 <UInput v-model="formState.customName" placeholder="Enter team name" size="lg" />
+              </UFormField>
+
+              <UFormField label="Short Name (Optional)" name="customShortName">
+                <UInput v-model="formState.customShortName" placeholder="e.g. MUN" size="lg" :maxlength="10" />
               </UFormField>
 
               <UFormField label="Team Logo (Optional)" name="logoUrl">
