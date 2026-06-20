@@ -171,7 +171,7 @@ const formatDate = (dateStr: string) => {
         <p class="text-gray-500 mb-2">
           <span v-if="joinStatus === 'PENDING'">Your request to join </span>
           <span v-else>You've successfully joined </span>
-          <strong class="text-gray-900 dark:text-white">{{ invite?.participant?.customName }}</strong>
+          <strong class="text-gray-900 dark:text-white">{{ invite?.participant?.customShortName || invite?.participant?.customName }}</strong>
         </p>
         
         <p v-if="joinStatus === 'PENDING'" class="text-sm text-gray-400 mb-8 px-4">
@@ -257,9 +257,9 @@ const formatDate = (dateStr: string) => {
             >
               <img :src="invite.participant.logoUrl" class="w-full h-full object-cover" />
             </div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-              {{ invite.participant?.customName || 'Unknown Team' }}
-            </h2>
+              <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+                {{ invite.participant?.customShortName || invite.participant?.customName || 'Unknown Team' }}
+              </h2>
           </div>
 
           <!-- Current Players -->

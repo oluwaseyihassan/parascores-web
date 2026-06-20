@@ -58,7 +58,7 @@
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
                     <UAvatar :src="match.homeTeam?.logoUrl || undefined" :alt="match.homeTeam?.customName || undefined" size="sm" />
-                    <span class="font-bold text-sm truncate max-w-[120px] text-gray-900 dark:text-white">{{ match.homeTeam?.customName || 'TBD' }}</span>
+                    <span class="font-bold text-sm truncate max-w-[120px] text-gray-900 dark:text-white">{{ match.homeTeam?.customShortName || match.homeTeam?.customName || 'TBD' }}</span>
                   </div>
                   <span class="text-2xl font-black text-gray-900 dark:text-white">{{ match.homeScore ?? 0 }}</span>
                 </div>
@@ -66,7 +66,7 @@
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
                     <UAvatar :src="match.awayTeam?.logoUrl || undefined" :alt="match.awayTeam?.customName || undefined" size="sm" />
-                    <span class="font-bold text-sm truncate max-w-[120px] text-gray-900 dark:text-white">{{ match.awayTeam?.customName || 'TBD' }}</span>
+                    <span class="font-bold text-sm truncate max-w-[120px] text-gray-900 dark:text-white">{{ match.awayTeam?.customShortName || match.awayTeam?.customName || 'TBD' }}</span>
                   </div>
                   <span class="text-2xl font-black text-gray-900 dark:text-white">{{ match.awayScore ?? 0 }}</span>
                 </div>
@@ -101,87 +101,77 @@
           </div>
         </div>
 
-        <div v-if="loadingUpcoming" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div v-for="i in 4" :key="i" class="h-[180px] bg-white/5 rounded-2xl animate-pulse"></div>
+        <div v-if="loadingUpcoming" class="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x">
+          <div v-for="i in 4" :key="i" class="min-w-[260px] h-[140px] bg-white/5 rounded-2xl animate-pulse"></div>
         </div>
 
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div v-else class="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x">
           <NuxtLink
             v-for="match in filteredUpcoming"
             :key="match.id"
-            :to="toTournament(match.tournament as any)"
-            class="upcoming-card group relative overflow-hidden rounded-2xl bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-white/[0.05] hover:border-blue-500/30 transition-all duration-500"
-
+            :to="toMain(`/t/${match.tournament?.customName || match.tournament?.id}/fixture/${match.id}`)"
+            class="min-w-[260px] md:min-w-[300px] snap-start group relative overflow-hidden rounded-2xl border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-transparent hover:border-blue-500/30 dark:hover:border-blue-500/30 transition-all duration-300"
           >
-            <!-- Subtle gradient background -->
-            <div class="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-blue-500/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            
-            <div class="relative p-5">
-              <!-- Header: Tournament + Countdown -->
-              <div class="flex items-center justify-between mb-5">
-                <div class="flex items-center gap-2 min-w-0">
-                  <div class="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></div>
-                  <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">{{ match.tournament?.customName || match.tournament?.name }}</span>
-                  <span v-if="match.roundName" class="text-[10px] text-gray-600 shrink-0">&middot; {{ match.roundName }}</span>
-                </div>
-                <span class="shrink-0 ml-2 px-2.5 py-1 rounded-lg bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/20 text-blue-400 text-[10px] font-black tracking-wide">
-                  {{ formatCountdown(match.startTime) }}
+            <div class="relative p-5 flex flex-col h-full justify-between">
+              <!-- Header: Short codes vs -->
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 min-w-0">
+                <span class="min-w-0 text-lg font-bold text-gray-900 dark:text-white tracking-wide truncate text-right">
+                  {{ match.homeTeam?.customShortName || match.homeTeam?.customName || match.homeTeamPlaceholder || 'TBD' }}
+                </span>
+                <span class="text-xs font-black text-gray-400 uppercase shrink-0">vs</span>
+                <span class="min-w-0 text-lg font-bold text-gray-900 dark:text-white tracking-wide truncate text-left">
+                  {{ match.awayTeam?.customShortName || match.awayTeam?.customName || match.awayTeamPlaceholder || 'TBD' }}
                 </span>
               </div>
 
-              <!-- Match: Teams VS -->
-              <div class="flex items-center justify-between gap-3">
-                <!-- Home Team -->
-                <div class="flex-1 flex flex-col items-center gap-2.5 min-w-0">
-                  <div class="relative">
-                    <UAvatar 
-                      :src="match.homeTeam?.logoUrl || undefined" 
-                      :alt="match.homeTeam?.customName || undefined" 
-                      size="lg" 
-                      class="ring-2 ring-gray-100 dark:ring-white/10 group-hover:ring-blue-500/30 transition-all duration-300"
-                    />
-                  </div>
-                  <span class="font-bold text-sm text-center text-gray-800 dark:text-gray-200 truncate max-w-full leading-tight">
-                    {{ match.homeTeam?.customName || match.homeTeamPlaceholder || 'TBD' }}
+              <!-- Teams & Time -->
+              <div class="flex items-center justify-between gap-4 mt-3">
+                <!-- Home logo -->
+                <div class="w-11 h-11 rounded-lg flex items-center justify-center overflow-hidden shrink-0" :class="match.homeTeam?.logoUrl ? '' : 'border border-gray-200 dark:border-white/[0.06]'">
+                  <img
+                    v-if="match.homeTeam?.logoUrl"
+                    :src="match.homeTeam.logoUrl"
+                    class="w-full h-full object-cover"
+                    :alt="match.homeTeam?.customShortName || match.homeTeam?.customName || 'Home'"
+                  />
+                  <span v-else class="text-xs font-bold text-gray-500 dark:text-gray-400">
+                    {{ (match.homeTeam?.customShortName || match.homeTeam?.customName || 'H').charAt(0) }}
                   </span>
                 </div>
 
-                <!-- VS Divider -->
-                <div class="flex flex-col items-center gap-1 shrink-0 px-2">
-                  <div class="w-px h-4 bg-gradient-to-b from-transparent via-gray-200 dark:via-white/10 to-transparent"></div>
-                  <span class="text-[10px] font-black text-gray-400 dark:text-gray-600 uppercase tracking-widest">vs</span>
-                  <div class="w-px h-4 bg-gradient-to-b from-transparent via-gray-200 dark:via-white/10 to-transparent"></div>
+                <!-- Time -->
+                <div class="flex-1 text-center">
+                  <div class="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    {{ formatMatchDay(match.startTime) }}
+                  </div>
+                  <div class="text-lg font-black text-gray-900 dark:text-white tabular-nums">
+                    {{ formatMatchClock(match.startTime) }}
+                  </div>
                 </div>
 
-                <!-- Away Team -->
-                <div class="flex-1 flex flex-col items-center gap-2.5 min-w-0">
-                  <div class="relative">
-                    <UAvatar 
-                      :src="match.awayTeam?.logoUrl || undefined" 
-                      :alt="match.awayTeam?.customName || undefined" 
-                      size="lg" 
-                      class="ring-2 ring-gray-100 dark:ring-white/10 group-hover:ring-blue-500/30 transition-all duration-300"
-                    />
-                  </div>
-                  <span class="font-bold text-sm text-center text-gray-800 dark:text-gray-200 truncate max-w-full leading-tight">
-                    {{ match.awayTeam?.customName || match.awayTeamPlaceholder || 'TBD' }}
+                <!-- Away logo -->
+                <div class="w-11 h-11 rounded-lg flex items-center justify-center overflow-hidden shrink-0" :class="match.awayTeam?.logoUrl ? '' : 'border border-gray-200 dark:border-white/[0.06]'">
+                  <img
+                    v-if="match.awayTeam?.logoUrl"
+                    :src="match.awayTeam.logoUrl"
+                    class="w-full h-full object-cover"
+                    :alt="match.awayTeam?.customShortName || match.awayTeam?.customName || 'Away'"
+                  />
+                  <span v-else class="text-xs font-bold text-gray-500 dark:text-gray-400">
+                    {{ (match.awayTeam?.customShortName || match.awayTeam?.customName || 'A').charAt(0) }}
                   </span>
                 </div>
               </div>
 
-              <!-- Footer: Time + Venue -->
-              <div class="mt-5 pt-3 border-t border-white/[0.04] flex items-center justify-between text-[11px] text-gray-500">
-                <div class="flex items-center gap-3 min-w-0">
-                  <span v-if="match.startTime" class="flex items-center gap-1.5 shrink-0">
-                    <UIcon name="i-heroicons-clock" class="w-3 h-3 text-gray-600" />
-                    {{ formatMatchTime(match.startTime) }}
-                  </span>
-                  <span v-if="match.venue" class="flex items-center gap-1.5 truncate">
-                    <UIcon name="i-heroicons-map-pin" class="w-3 h-3 text-gray-600 shrink-0" />
-                    <span class="truncate">{{ match.venue }}</span>
-                  </span>
-                </div>
-                <UIcon name="i-heroicons-arrow-right" class="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300 shrink-0" />
+              <!-- Footer: Tournament -->
+              <div class="mt-3 pt-3 border-t border-gray-200 dark:border-white/[0.04] flex items-center justify-center gap-2 text-[10px] text-gray-500 dark:text-gray-500">
+                <img
+                  v-if="match.tournament?.logoUrl"
+                  :src="match.tournament.logoUrl"
+                  class="w-4 h-4 object-contain"
+                  :alt="match.tournament?.name || 'Tournament'"
+                />
+                <span class="truncate">{{ match.tournament?.name }}</span>
               </div>
             </div>
           </NuxtLink>
@@ -510,6 +500,28 @@ function formatMatchTime(dateStr: string) {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true
+  })
+}
+
+function formatMatchDay(dateStr?: string | null) {
+  if (!dateStr) return 'TBD'
+  const date = new Date(dateStr)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000)
+  const matchDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+  if (matchDay.getTime() === today.getTime()) return 'Today'
+  if (matchDay.getTime() === tomorrow.getTime()) return 'Tomorrow'
+  return date.toLocaleDateString('en-US', { weekday: 'short' })
+}
+
+function formatMatchClock(dateStr?: string | null) {
+  if (!dateStr) return '--:--'
+  return new Date(dateStr).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
   })
 }
 

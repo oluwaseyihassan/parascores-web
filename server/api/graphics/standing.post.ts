@@ -172,13 +172,13 @@ export default defineEventHandler(async (event) => {
                                           fontWeight: 'bold',
                                           color: 'white'
                                       },
-                                      children: (row.participant?.customName || 'T').charAt(0).toUpperCase()
+                                      children: (row.participant?.customShortName || row.participant?.customName || 'T').charAt(0).toUpperCase()
                                   }
                               },
                               {
                                   type: 'span',
                                   props: {
-                                      children: row.participant?.customName || 'Team',
+                                      children: row.participant?.customShortName || row.participant?.customName || 'Team',
                                       style: { fontSize: '24px', fontWeight: 600, color: 'white' }
                                   }
                               }

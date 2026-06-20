@@ -4,6 +4,7 @@ import type { ApiResponse } from './auth'
 
 export interface CreateParticipantData {
   customName: string
+  customShortName?: string | null
   logoUrl?: string | null
   seed?: number | null
   groupId?: string | null

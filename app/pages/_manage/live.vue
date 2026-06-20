@@ -167,7 +167,7 @@ const handleMatchEnded = async () => {
               <!-- Home Team -->
               <div class="flex items-center gap-2 sm:gap-3 flex-1 justify-end min-w-0">
                 <span class="font-medium text-gray-900 dark:text-white text-right truncate">
-                  {{ fixture.homeTeam?.customName || 'Home' }}
+                  {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || 'Home' }}
                 </span>
                 <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0">
                   <img 
@@ -176,7 +176,7 @@ const handleMatchEnded = async () => {
                     class="w-full h-full object-cover"
                   />
                   <span v-else class="text-xs sm:text-sm font-bold text-gray-600 dark:text-gray-300">
-                    {{ (fixture.homeTeam?.customName || 'H').charAt(0).toUpperCase() }}
+                    {{ (fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || 'H').charAt(0).toUpperCase() }}
                   </span>
                 </div>
               </div>
@@ -201,11 +201,11 @@ const handleMatchEnded = async () => {
                     class="w-full h-full object-cover"
                   />
                   <span v-else class="text-xs sm:text-sm font-bold text-gray-600 dark:text-gray-300">
-                    {{ (fixture.awayTeam?.customName || 'A').charAt(0).toUpperCase() }}
+                    {{ (fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || 'A').charAt(0).toUpperCase() }}
                   </span>
                 </div>
                 <span class="font-medium text-gray-900 dark:text-white truncate">
-                  {{ fixture.awayTeam?.customName || 'Away' }}
+                  {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || 'Away' }}
                 </span>
               </div>
             </div>

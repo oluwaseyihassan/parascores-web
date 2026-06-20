@@ -2,6 +2,7 @@
 import type { Fixture } from '~/types'
 import { FixtureStatus } from '~/types'
 import { computed } from 'vue'
+import { getParticipantName } from '~/utils/participant'
 
 const props = defineProps<{
   fixture: Fixture
@@ -21,8 +22,8 @@ const hasActions = computed(() => {
 const matchTimer = useMatchTimer(30000)
 const liveMinuteLabel = computed(() => matchTimer.formatMinuteLabel(props.fixture))
 
-const homeTeamName = computed(() => props.fixture.homeTeam?.customName || props.fixture.homeTeamPlaceholder || 'TBD')
-const awayTeamName = computed(() => props.fixture.awayTeam?.customName || props.fixture.awayTeamPlaceholder || 'TBD')
+const homeTeamName = computed(() => getParticipantName(props.fixture.homeTeam, props.fixture.homeTeamPlaceholder || 'TBD'))
+const awayTeamName = computed(() => getParticipantName(props.fixture.awayTeam, props.fixture.awayTeamPlaceholder || 'TBD'))
 
 const isStarted = computed(() => {
   return props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.COMPLETED

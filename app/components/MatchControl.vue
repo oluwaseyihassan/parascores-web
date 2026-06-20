@@ -677,8 +677,7 @@ const isScoreTiedOrAggregateTied = computed(() => {
 // Check if the fixture already has penalty scores
 const hasPenalties = computed(() => {
   if (!selectedFixture.value) return false
-  return (selectedFixture.value.homePenaltyScore != null && selectedFixture.value.homePenaltyScore > 0)
-    || (selectedFixture.value.awayPenaltyScore != null && selectedFixture.value.awayPenaltyScore > 0)
+  return selectedFixture.value.homePenaltyScore != null || selectedFixture.value.awayPenaltyScore != null
 })
 
 // Warning: completed knockout match with tied aggregate and no decisive penalties
@@ -729,7 +728,9 @@ const updateMatchTime = async () => {
   
   if (props.tournament?.start_date && props.tournament?.end_date) {
     const startDate = new Date(props.tournament.start_date)
+    startDate.setHours(0, 0, 0, 0)
     const endDate = new Date(props.tournament.end_date)
+    endDate.setHours(23, 59, 59, 999)
     if (newDate < startDate || newDate > endDate) {
       useToast().add({
         title: 'Date out of range',
@@ -1246,24 +1247,53 @@ const reopenMatch = async () => {
 
 const savePenalties = async () => {
   if (!selectedFixture.value) return
-  
+
   updatingMatch.value = true
   try {
     await fixtureStore.updateFixture(selectedFixture.value.id, {
-      homePenaltyScore: selectedFixture.value.homePenaltyScore ?? 0,
-      awayPenaltyScore: selectedFixture.value.awayPenaltyScore ?? 0
+      homePenaltyScore: selectedFixture.value.homePenaltyScore ?? null,
+      awayPenaltyScore: selectedFixture.value.awayPenaltyScore ?? null
     })
-    
+
     emit('fixture-updated', selectedFixture.value!)
-    
-    useToast().add({ 
-      title: 'Penalties Saved', 
+
+    useToast().add({
+      title: 'Penalties Saved',
       description: 'Penalty shootout scores have been updated.',
       icon: 'i-heroicons-bolt',
-      color: 'success' 
+      color: 'success'
     })
   } catch (error: any) {
     handleError(error, { title: 'Failed to save penalties' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const removePenalties = async () => {
+  if (!selectedFixture.value) return
+
+  updatingMatch.value = true
+  try {
+    await fixtureStore.updateFixture(selectedFixture.value.id, {
+      homePenaltyScore: null,
+      awayPenaltyScore: null
+    })
+
+    selectedFixture.value.homePenaltyScore = null
+    selectedFixture.value.awayPenaltyScore = null
+    showPenaltyOverride.value = false
+
+    emit('fixture-updated', selectedFixture.value!)
+
+    useToast().add({
+      title: 'Penalties Removed',
+      description: 'Penalty shootout scores have been cleared.',
+      icon: 'i-heroicons-trash',
+      color: 'success'
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to remove penalties' })
   } finally {
     updatingMatch.value = false
   }
@@ -1632,9 +1662,9 @@ const downloadGraphic = async () => {
             <div class="mc-team">
               <div class="mc-team__logo">
                 <img v-if="selectedFixture.homeTeam?.logoUrl" :src="selectedFixture.homeTeam.logoUrl" class="w-full h-full object-cover" />
-                <span v-else class="mc-team__initial">{{ (selectedFixture.homeTeam?.customName || 'H').charAt(0) }}</span>
+                <span v-else class="mc-team__initial">{{ (selectedFixture.homeTeam?.customShortName || selectedFixture.homeTeam?.customName || 'H').charAt(0) }}</span>
               </div>
-              <span class="mc-team__name">{{ selectedFixture.homeTeam?.customName || 'Home' }}</span>
+              <span class="mc-team__name">{{ selectedFixture.homeTeam?.customShortName || selectedFixture.homeTeam?.customName || 'Home' }}</span>
             </div>
 
             <!-- Score -->
@@ -1676,9 +1706,9 @@ const downloadGraphic = async () => {
             <div class="mc-team mc-team--away">
               <div class="mc-team__logo">
                 <img v-if="selectedFixture.awayTeam?.logoUrl" :src="selectedFixture.awayTeam.logoUrl" class="w-full h-full object-cover" />
-                <span v-else class="mc-team__initial">{{ (selectedFixture.awayTeam?.customName || 'A').charAt(0) }}</span>
+                <span v-else class="mc-team__initial">{{ (selectedFixture.awayTeam?.customShortName || selectedFixture.awayTeam?.customName || 'A').charAt(0) }}</span>
               </div>
-              <span class="mc-team__name">{{ selectedFixture.awayTeam?.customName || 'Away' }}</span>
+              <span class="mc-team__name">{{ selectedFixture.awayTeam?.customShortName || selectedFixture.awayTeam?.customName || 'Away' }}</span>
             </div>
           </div>
 
@@ -1977,7 +2007,7 @@ const downloadGraphic = async () => {
                     >
                       <img v-if="selectedFixture.homeTeam?.logoUrl" :src="selectedFixture.homeTeam.logoUrl" class="w-3.5 h-3.5 object-contain flex-shrink-0" />
                       <span class="truncate block min-w-0 flex-1 text-center">
-                        {{ selectedFixture.homeTeam?.customName || 'Home Team' }}
+                        {{ selectedFixture.homeTeam?.customShortName || selectedFixture.homeTeam?.customName || 'Home Team' }}
                       </span>
                       <span v-if="lineupViewMode === 'pitch' && homeFormation" class="text-[10px] opacity-75 font-semibold flex-shrink-0">({{ homeFormation }})</span>
                     </button>
@@ -1989,7 +2019,7 @@ const downloadGraphic = async () => {
                     >
                       <span v-if="lineupViewMode === 'pitch' && awayFormation" class="text-[10px] opacity-75 font-semibold flex-shrink-0">({{ awayFormation }})</span>
                       <span class="truncate block min-w-0 flex-1 text-center">
-                        {{ selectedFixture.awayTeam?.customName || 'Away Team' }}
+                        {{ selectedFixture.awayTeam?.customShortName || selectedFixture.awayTeam?.customName || 'Away Team' }}
                       </span>
                       <img v-if="selectedFixture.awayTeam?.logoUrl" :src="selectedFixture.awayTeam.logoUrl" class="w-3.5 h-3.5 object-contain flex-shrink-0" />
                     </button>
@@ -2010,7 +2040,7 @@ const downloadGraphic = async () => {
                           :players="homePlayers"
                           v-model:selectedLineupIds="selectedLineupIds"
                           :formation="homeFormation"
-                          :teamName="selectedFixture.homeTeam?.customName || 'Home'"
+                          :teamName="selectedFixture.homeTeam?.customShortName || selectedFixture.homeTeam?.customName || 'Home'"
                           :is-dark="isDark"
                           :lineupPositions="lineupPositions"
                           @update-player-position="(playerId, pos) => handlePlayerPositionUpdate('home', playerId, pos)"
@@ -2029,7 +2059,7 @@ const downloadGraphic = async () => {
                           :players="awayPlayers"
                           v-model:selectedLineupIds="selectedLineupIds"
                           :formation="awayFormation"
-                          :teamName="selectedFixture.awayTeam?.customName || 'Away'"
+                          :teamName="selectedFixture.awayTeam?.customShortName || selectedFixture.awayTeam?.customName || 'Away'"
                           :is-dark="isDark"
                           :lineupPositions="lineupPositions"
                           @update-player-position="(playerId, pos) => handlePlayerPositionUpdate('away', playerId, pos)"
@@ -2051,7 +2081,7 @@ const downloadGraphic = async () => {
                       <div class="flex items-center gap-2 min-w-0">
                         <img v-if="selectedFixture.homeTeam?.logoUrl" :src="selectedFixture.homeTeam.logoUrl" class="w-4 h-4 object-contain flex-shrink-0" />
                         <span class="text-xs font-bold uppercase tracking-wider text-gray-500 truncate min-w-0">
-                          {{ selectedFixture.homeTeam?.customName || 'Home Roster' }}
+                          {{ selectedFixture.homeTeam?.customShortName || selectedFixture.homeTeam?.customName || 'Home Roster' }}
                         </span>
                       </div>
                       <div class="flex gap-1.5 flex-shrink-0">
@@ -2083,7 +2113,7 @@ const downloadGraphic = async () => {
                       <div class="flex items-center gap-2 min-w-0">
                         <img v-if="selectedFixture.awayTeam?.logoUrl" :src="selectedFixture.awayTeam.logoUrl" class="w-4 h-4 object-contain flex-shrink-0" />
                         <span class="text-xs font-bold uppercase tracking-wider text-gray-500 truncate min-w-0">
-                          {{ selectedFixture.awayTeam?.customName || 'Away Roster' }}
+                          {{ selectedFixture.awayTeam?.customShortName || selectedFixture.awayTeam?.customName || 'Away Roster' }}
                         </span>
                       </div>
                       <div class="flex gap-1.5 flex-shrink-0">
@@ -2141,13 +2171,13 @@ const downloadGraphic = async () => {
               <div v-if="showPenaltyCollapsible" class="mc-section__body">
                 <div class="flex items-end justify-center gap-8">
                   <div class="flex flex-col items-center gap-1.5">
-                    <span class="mc-pen-label">{{ selectedFixture.homeTeam?.customName || 'Home' }}</span>
+                    <span class="mc-pen-label">{{ selectedFixture.homeTeam?.customShortName || selectedFixture.homeTeam?.customName || 'Home' }}</span>
                     <UInput v-model.number="selectedFixture.homePenaltyScore" type="number" :min="0" placeholder="0"
                       class="w-20 text-center" :ui="{ base: 'text-center text-xl font-bold' }" />
                   </div>
                   <span class="text-gray-400 font-medium pb-2">–</span>
                   <div class="flex flex-col items-center gap-1.5">
-                    <span class="mc-pen-label">{{ selectedFixture.awayTeam?.customName || 'Away' }}</span>
+                    <span class="mc-pen-label">{{ selectedFixture.awayTeam?.customShortName || selectedFixture.awayTeam?.customName || 'Away' }}</span>
                     <UInput v-model.number="selectedFixture.awayPenaltyScore" type="number" :min="0" placeholder="0"
                       class="w-20 text-center" :ui="{ base: 'text-center text-xl font-bold' }" />
                   </div>
@@ -2159,9 +2189,9 @@ const downloadGraphic = async () => {
                     :loading="updatingMatch" @click="savePenalties"
                   />
                   <UButton
-                    v-if="hasPenalties && !isScoreTiedOrAggregateTied"
-                    size="xs" color="warning" variant="soft" icon="i-heroicons-x-circle" label="Clear"
-                    @click="selectedFixture!.homePenaltyScore = 0; selectedFixture!.awayPenaltyScore = 0"
+                    v-if="hasPenalties"
+                    size="xs" color="warning" variant="soft" icon="i-heroicons-trash" label="Remove Penalties"
+                    :loading="updatingMatch" @click="removePenalties"
                   />
                 </div>
                 <p class="text-xs text-center text-gray-400 dark:text-gray-500 mt-2">Penalty shootout scores to determine the winner.</p>
@@ -2377,7 +2407,7 @@ const downloadGraphic = async () => {
               </h3>
               <UBadge :color="scoringTeam === 'home' ? 'primary' : 'warning'" variant="subtle" size="sm" class="min-w-0">
                 <span class="truncate max-w-[120px] sm:max-w-[200px] block">
-                  {{ scoringTeam === 'home' ? selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customName }}
+                  {{ scoringTeam === 'home' ? selectedFixture?.homeTeam?.customShortName || selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customShortName || selectedFixture?.awayTeam?.customName }}
                 </span>
               </UBadge>
             </div>
@@ -2480,7 +2510,7 @@ const downloadGraphic = async () => {
               </h3>
               <UBadge :color="cardTeam === 'home' ? 'primary' : 'warning'" variant="subtle" size="sm" class="min-w-0">
                 <span class="truncate max-w-[120px] sm:max-w-[200px] block">
-                  {{ cardTeam === 'home' ? selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customName }}
+                  {{ cardTeam === 'home' ? selectedFixture?.homeTeam?.customShortName || selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customShortName || selectedFixture?.awayTeam?.customName }}
                 </span>
               </UBadge>
             </div>
@@ -2557,7 +2587,7 @@ const downloadGraphic = async () => {
               </h3>
               <UBadge :color="subTeam === 'home' ? 'primary' : 'warning'" variant="subtle" size="sm" class="min-w-0">
                 <span class="truncate max-w-[120px] sm:max-w-[200px] block">
-                  {{ subTeam === 'home' ? selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customName }}
+                  {{ subTeam === 'home' ? selectedFixture?.homeTeam?.customShortName || selectedFixture?.homeTeam?.customName : selectedFixture?.awayTeam?.customShortName || selectedFixture?.awayTeam?.customName }}
                 </span>
               </UBadge>
             </div>

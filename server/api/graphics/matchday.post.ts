@@ -252,7 +252,7 @@ export default defineEventHandler(async (event) => {
                                 {
                                     type: 'span',
                                     props: {
-                                        children: homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD',
+                                        children: homeTeam?.customShortName || homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD',
                                         style: { fontSize: '22px', fontWeight: 600, color: 'white', textAlign: 'right', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
                                     }
                                 },
@@ -263,7 +263,7 @@ export default defineEventHandler(async (event) => {
                                     type: 'div',
                                     props: {
                                         style: { width: 44, height: 44, borderRadius: '22px', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold', color: 'white' },
-                                        children: (homeTeam?.customName || fixture.homeTeamPlaceholder || 'H').charAt(0).toUpperCase()
+                                        children: (homeTeam?.customShortName || homeTeam?.customName || fixture.homeTeamPlaceholder || 'H').charAt(0).toUpperCase()
                                     }
                                 }
                             ]
@@ -295,13 +295,13 @@ export default defineEventHandler(async (event) => {
                                     type: 'div',
                                     props: {
                                         style: { width: 44, height: 44, borderRadius: '22px', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold', color: 'white' },
-                                        children: (awayTeam?.customName || fixture.awayTeamPlaceholder || 'A').charAt(0).toUpperCase()
+                                        children: (awayTeam?.customShortName || awayTeam?.customName || fixture.awayTeamPlaceholder || 'A').charAt(0).toUpperCase()
                                     }
                                 },
                                 {
                                     type: 'span',
                                     props: {
-                                        children: awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD',
+                                        children: awayTeam?.customShortName || awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD',
                                         style: { fontSize: '22px', fontWeight: 600, color: 'white', textAlign: 'left', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
                                     }
                                 }

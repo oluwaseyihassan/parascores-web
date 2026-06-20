@@ -52,18 +52,18 @@ const tableData = computed(() => {
       <template #participant-cell="{ row }">
         <div class="flex items-center gap-2">
           <div class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
-            <img 
-              v-if="getRow(row).participant?.logoUrl" 
-              :src="getRow(row).participant?.logoUrl || ''" 
-              :alt="getRow(row).participant?.customName || 'Team'"
+            <img
+              v-if="getRow(row).participant?.logoUrl"
+              :src="getRow(row).participant?.logoUrl || ''"
+              :alt="getRow(row).participant?.customShortName || getRow(row).participant?.customName || 'Team'"
               class="w-full h-full object-cover"
             />
             <span v-else class="text-[10px] font-medium text-gray-600 dark:text-gray-300">
-              {{ (getRow(row).participant?.customName || 'T').charAt(0).toUpperCase() }}
+              {{ (getRow(row).participant?.customShortName || getRow(row).participant?.customName || 'T').charAt(0).toUpperCase() }}
             </span>
           </div>
           <span class="font-medium text-gray-900 dark:text-white truncate max-w-[100px] sm:max-w-[180px]">
-            {{ getRow(row).participant?.customName || getRow(row).participant?.user?.name || 'Unknown' }}
+            {{ getRow(row).participant?.customShortName || getRow(row).participant?.customName || getRow(row).participant?.user?.name || 'Unknown' }}
           </span>
         </div>
       </template>

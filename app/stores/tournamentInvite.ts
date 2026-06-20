@@ -63,7 +63,7 @@ export const useTournamentInviteStore = defineStore('tournamentInvite', () => {
   // Accept an invite (Join team)
   const acceptInvite = async (
     token: string,
-    data: { customName?: string; logoUrl?: string; teamId?: string }
+    data: { customName?: string; customShortName?: string; logoUrl?: string; teamId?: string }
   ) => {
     loading.value = true
     error.value = null

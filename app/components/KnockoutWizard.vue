@@ -226,7 +226,7 @@ const getParticipantOptions = () => {
   const options = props.participants
     .filter(p => selections.has(p.id))
     .map(p => ({
-      label: p.customName || p.user?.name || p.team?.name || 'Unnamed',
+      label: p.customShortName || p.customName || p.user?.name || p.team?.name || 'Unnamed',
       value: p.id
     }))
     
@@ -400,7 +400,7 @@ const previewFixturesByRound = computed(() => {
                  >
                    <UCheckbox :model-value="selectedParticipantIds.includes(p.id)" />
                    <UAvatar v-if="p.logoUrl" :src="p.logoUrl" size="xs" />
-                   <span class="text-sm truncate">{{ p.customName || p.user?.name || p.team?.name }}</span>
+                    <span class="text-sm truncate">{{ p.customShortName || p.customName || p.user?.name || p.team?.name }}</span>
                  </div>
                </div>
             </div>

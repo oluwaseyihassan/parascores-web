@@ -16,8 +16,8 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    const homeName = homeTeam?.customName || match.homeTeamPlaceholder || 'Home Team'
-    const awayName = awayTeam?.customName || match.awayTeamPlaceholder || 'Away Team'
+    const homeName = homeTeam?.customShortName || homeTeam?.customName || match.homeTeamPlaceholder || 'Home Team'
+    const awayName = awayTeam?.customShortName || awayTeam?.customName || match.awayTeamPlaceholder || 'Away Team'
     const homeLogo = homeTeam?.logoUrl
     const awayLogo = awayTeam?.logoUrl
 

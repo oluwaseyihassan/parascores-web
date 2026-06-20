@@ -325,6 +325,23 @@ const awaySubs = computed(() => {
               <span class="text-[11px] font-bold text-gray-400 uppercase tracking-widest block">
                 {{ (fixture.roundName || `Round ${fixture.round}`).replace(/^Group\s+Stage\s*-\s*/i, '') }}<template v-if="fixture.matchNumber"> · Match {{ fixture.matchNumber }}</template>
               </span>
+
+              <!-- Tournament link -->
+              <NuxtLink
+                v-if="tournament"
+                :to="toMain(`/t/${tournament.customName || tournament.id}`)"
+                :external="isManage"
+                class="inline-flex items-center justify-center gap-2 mt-2 text-[12px] font-bold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              >
+                <img
+                  v-if="tournament.logoUrl"
+                  :src="tournament.logoUrl"
+                  class="w-4 h-4 object-contain"
+                  :alt="tournament.name"
+                />
+                <span class="truncate max-w-[220px]">{{ tournament.name }}</span>
+              </NuxtLink>
+
               <div v-if="fixture.venue" class="flex items-center justify-center gap-1.5 mt-1.5 opacity-60">
                 <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-gray-400" />
                 <span class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
@@ -340,11 +357,11 @@ const awaySubs = computed(() => {
                 <div class="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden mb-2.5 flex-shrink-0 flex items-center justify-center ring-1 ring-white/10" :class="isDark ? 'bg-white/5' : 'bg-gray-100 ring-gray-200'">
                   <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover p-1" />
                   <span v-else class="text-xl font-bold text-gray-400">
-                    {{ (fixture.homeTeam?.customName || 'H').charAt(0) }}
+                    {{ (fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || 'H').charAt(0) }}
                   </span>
                 </div>
                 <span class="text-[15px] font-bold transition-colors max-w-full truncate px-2" :class="isDark ? 'text-white' : 'text-gray-900'">
-                  {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
+                  {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                 </span>
               </div>
 
@@ -387,11 +404,11 @@ const awaySubs = computed(() => {
                 <div class="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden mb-2.5 flex-shrink-0 flex items-center justify-center ring-1 ring-white/10" :class="isDark ? 'bg-white/5' : 'bg-gray-100 ring-gray-200'">
                   <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover p-1" />
                   <span v-else class="text-xl font-bold text-gray-400">
-                    {{ (fixture.awayTeam?.customName || 'A').charAt(0) }}
+                    {{ (fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || 'A').charAt(0) }}
                   </span>
                 </div>
                 <span class="text-[15px] font-bold transition-colors max-w-full truncate px-2" :class="isDark ? 'text-white' : 'text-gray-900'">
-                  {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
+                  {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                 </span>
               </div>
             </div>
@@ -589,7 +606,7 @@ const awaySubs = computed(() => {
                 >
                   <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-3.5 h-3.5 object-contain flex-shrink-0" />
                   <span class="truncate block min-w-0 flex-1 text-center">
-                    {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team' }}
+                    {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team' }}
                   </span>
                 </button>
                 <button
@@ -599,7 +616,7 @@ const awaySubs = computed(() => {
                   @click="activeMobileLineupTeam = 'away'"
                 >
                   <span class="truncate block min-w-0 flex-1 text-center">
-                    {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team' }}
+                    {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team' }}
                   </span>
                   <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-3.5 h-3.5 object-contain flex-shrink-0" />
                 </button>
@@ -614,7 +631,7 @@ const awaySubs = computed(() => {
                 v-if="fixture.homeFormation"
                 :players="homeLineup"
                 :formation="fixture.homeFormation"
-                :team-name="fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team'"
+                :team-name="fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team'"
                 :team-logo-url="fixture.homeTeam?.logoUrl"
                 :is-dark="isDark"
                 :inverted="false"
@@ -626,7 +643,7 @@ const awaySubs = computed(() => {
                 v-if="fixture.awayFormation"
                 :players="awayLineup"
                 :formation="fixture.awayFormation"
-                :team-name="fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team'"
+                :team-name="fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team'"
                 :team-logo-url="fixture.awayTeam?.logoUrl"
                 :is-dark="isDark"
                 :inverted="true"
@@ -642,7 +659,7 @@ const awaySubs = computed(() => {
               <div :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm', { 'hidden md:block': activeMobileLineupTeam !== 'home' }]" class="border rounded-xl overflow-hidden self-start min-w-0">
                 <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                   <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
-                    {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team' }} Substitutes
+                    {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team' }} Substitutes
                   </h3>
                   <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">Subs</span>
                 </div>
@@ -685,7 +702,7 @@ const awaySubs = computed(() => {
               <div :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm', { 'hidden md:block': activeMobileLineupTeam !== 'away' }]" class="border rounded-xl overflow-hidden self-start min-w-0">
                 <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                   <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
-                    {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team' }} Substitutes
+                    {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team' }} Substitutes
                   </h3>
                   <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">Subs</span>
                 </div>
@@ -731,7 +748,7 @@ const awaySubs = computed(() => {
             <div :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm', { 'hidden md:block': activeMobileLineupTeam !== 'home' }]" class="border rounded-xl overflow-hidden self-start min-w-0">
               <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                 <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
-                  {{ fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team' }}
+                  {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'Home Team' }}
                 </h3>
                 <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">Lineup</span>
               </div>
@@ -832,7 +849,7 @@ const awaySubs = computed(() => {
             <div :class="[isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm', { 'hidden md:block': activeMobileLineupTeam !== 'away' }]" class="border rounded-xl overflow-hidden self-start min-w-0">
               <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
                 <h3 class="text-[12px] font-semibold uppercase tracking-wider text-gray-400 truncate pr-4">
-                  {{ fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team' }}
+                  {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'Away Team' }}
                 </h3>
                 <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">Lineup</span>
               </div>

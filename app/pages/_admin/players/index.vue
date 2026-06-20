@@ -113,7 +113,7 @@ const formatDate = (dateStr: string) => {
                 {{ p.name }}
               </td>
               <td class="px-6 py-4 text-sm text-slate-300 font-bold">
-                {{ p.participant?.customName || 'Unassigned' }}
+                {{ p.participant?.customShortName || p.participant?.customName || 'Unassigned' }}
               </td>
               <td class="px-6 py-4 text-sm text-slate-400">
                 {{ p.participant?.tournament?.name || 'Unassigned' }}

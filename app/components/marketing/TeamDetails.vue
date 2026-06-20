@@ -217,11 +217,11 @@ function getMatchAggregate(match: Fixture) {
             <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden mb-3 flex items-center justify-center ring-1 bg-gray-100 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
               <img v-if="participant.logoUrl" :src="participant.logoUrl" class="w-full h-full object-cover p-2" />
               <span v-else class="text-3xl font-bold text-gray-400">
-                {{ (participant.customName || 'T').charAt(0).toUpperCase() }}
+                {{ (participant.customShortName || participant.customName || 'T').charAt(0).toUpperCase() }}
               </span>
             </div>
             <h1 class="text-xl md:text-2xl font-bold transition-colors text-center text-gray-900 dark:text-white">
-              {{ participant.customName || 'Unnamed Team' }}
+              {{ participant.customShortName || participant.customName || 'Unnamed Team' }}
             </h1>
 
             <div v-if="participant.team_id || participant.team?.id" class="mt-4 animate-in fade-in slide-in-from-top-1 duration-500 delay-200">
@@ -354,11 +354,11 @@ function getMatchAggregate(match: Fixture) {
                   <!-- Home -->
                   <div class="flex-1 flex justify-end items-center gap-1.5 sm:gap-3 min-w-0">
                     <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="match.homeTeamId === participant?.id ? 'text-gray-900 dark:text-white' : 'text-gray-500'">
-                      {{ match.homeTeam?.customName || match.homeTeamPlaceholder || 'Home' }}
+                      {{ match.homeTeam?.customShortName || match.homeTeam?.customName || match.homeTeamPlaceholder || 'Home' }}
                     </span>
                     <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border bg-gray-100 border-gray-200 dark:bg-white/5 dark:border-white/5">
                       <img v-if="match.homeTeam?.logoUrl" :src="match.homeTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
-                      <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.homeTeam?.customName || 'H').charAt(0) }}</span>
+                      <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.homeTeam?.customShortName || match.homeTeam?.customName || 'H').charAt(0) }}</span>
                     </div>
                   </div>
                   
@@ -387,10 +387,10 @@ function getMatchAggregate(match: Fixture) {
                   <div class="flex-1 flex justify-start items-center gap-1.5 sm:gap-3 min-w-0">
                     <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border bg-gray-100 border-gray-200 dark:bg-white/5 dark:border-white/5">
                       <img v-if="match.awayTeam?.logoUrl" :src="match.awayTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
-                      <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.awayTeam?.customName || 'A').charAt(0) }}</span>
+                      <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.awayTeam?.customShortName || match.awayTeam?.customName || 'A').charAt(0) }}</span>
                     </div>
                     <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="match.awayTeamId === participant?.id ? 'text-gray-900 dark:text-white' : 'text-gray-500'">
-                      {{ match.awayTeam?.customName || match.awayTeamPlaceholder || 'Away' }}
+                      {{ match.awayTeam?.customShortName || match.awayTeam?.customName || match.awayTeamPlaceholder || 'Away' }}
                     </span>
                   </div>
                 </div>
@@ -443,7 +443,7 @@ function getMatchAggregate(match: Fixture) {
                         <div class="flex items-center gap-2.5">
                           <div class="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border bg-gray-100 border-gray-200 dark:bg-white/5 dark:border-white/10">
                             <img v-if="row.participant?.logoUrl" :src="row.participant.logoUrl" class="w-full h-full object-cover" />
-                            <span v-else class="text-[9px] font-bold text-gray-400">{{ (row.participant?.customName || '?').charAt(0) }}</span>
+                            <span v-else class="text-[9px] font-bold text-gray-400">{{ (row.participant?.customShortName || row.participant?.customName || '?').charAt(0) }}</span>
                           </div>
                           <span
                             class="font-semibold text-sm truncate max-w-[140px]"
@@ -453,7 +453,7 @@ function getMatchAggregate(match: Fixture) {
                                 : 'text-gray-800 dark:text-gray-200'
                             ]"
                           >
-                            {{ row.participant?.customName || 'Unknown' }}
+                            {{ row.participant?.customShortName || row.participant?.customName || 'Unknown' }}
                           </span>
                         </div>
                       </td>

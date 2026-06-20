@@ -146,8 +146,7 @@ const hasNoWinner = (matchup: any): boolean => {
 const getTeamName = (matchup: any, isHome: boolean) => {
   const team = isHome ? matchup.homeTeam : matchup.awayTeam
   if (team) {
-    if (team.customName) return team.customName
-    if (team.user?.name) return team.user.name
+    return team.customShortName || team.customName || team.user?.name || 'TBD'
   }
   return isHome ? (matchup.homeTeamPlaceholder || 'TBD') : (matchup.awayTeamPlaceholder || 'TBD')
 }

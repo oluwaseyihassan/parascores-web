@@ -403,6 +403,7 @@ export default defineEventHandler(async (event) => {
 // Helpers
 function getTeamName(matchup: any, isHome: boolean) {
     const team = isHome ? matchup.homeTeam : matchup.awayTeam
+    if (team?.customShortName) return team.customShortName
     if (team?.customName) return team.customName
     const placeholder = isHome ? matchup.homeTeamPlaceholder : matchup.awayTeamPlaceholder
     return placeholder || 'TBD'

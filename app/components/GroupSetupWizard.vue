@@ -390,7 +390,9 @@ const addManualFixture = () => {
     const fixtureDate = new Date(addFixtureState.startTime)
     if (!isNaN(fixtureDate.getTime())) {
       const startDate = new Date(props.tournament.start_date)
+      startDate.setHours(0, 0, 0, 0)
       const endDate = new Date(props.tournament.end_date)
+      endDate.setHours(23, 59, 59, 999)
       if (fixtureDate < startDate || fixtureDate > endDate) {
         toast.add({
           title: 'Date out of range',

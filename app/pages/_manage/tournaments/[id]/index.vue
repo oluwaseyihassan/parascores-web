@@ -815,7 +815,9 @@ const handleAddFixture = async () => {
     const fixtureDate = new Date(addFixtureState.startTime)
     if (!isNaN(fixtureDate.getTime())) {
       const startDate = new Date(tournament.value.start_date)
+      startDate.setHours(0, 0, 0, 0)
       const endDate = new Date(tournament.value.end_date)
+      endDate.setHours(23, 59, 59, 999)
       if (fixtureDate < startDate || fixtureDate > endDate) {
         useToast().add({
           title: 'Date out of range',
