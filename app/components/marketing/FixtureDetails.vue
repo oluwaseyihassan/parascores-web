@@ -331,7 +331,7 @@ const awaySubs = computed(() => {
                 v-if="tournament"
                 :to="toMain(`/t/${tournament.customName || tournament.id}`)"
                 :external="isManage"
-                class="inline-flex items-center justify-center gap-2 mt-2 text-[12px] font-bold text-emerald-500 hover:text-emerald-400 transition-colors"
+                class="inline-flex items-center justify-center gap-2 mt-2 text-[12px] font-bold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
               >
                 <img
                   v-if="tournament.logoUrl"
@@ -340,9 +340,6 @@ const awaySubs = computed(() => {
                   :alt="tournament.name"
                 />
                 <span class="truncate max-w-[220px]">{{ tournament.name }}</span>
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
               </NuxtLink>
 
               <div v-if="fixture.venue" class="flex items-center justify-center gap-1.5 mt-1.5 opacity-60">

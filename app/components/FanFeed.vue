@@ -110,16 +110,16 @@
             v-for="match in filteredUpcoming"
             :key="match.id"
             :to="toMain(`/t/${match.tournament?.customName || match.tournament?.id}/fixture/${match.id}`)"
-            class="min-w-[260px] md:min-w-[300px] snap-start group relative overflow-hidden rounded-2xl bg-[#111318] border border-white/[0.06] hover:border-blue-500/30 transition-all duration-300"
+            class="min-w-[260px] md:min-w-[300px] snap-start group relative overflow-hidden rounded-2xl border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-transparent hover:border-blue-500/30 dark:hover:border-blue-500/30 transition-all duration-300"
           >
             <div class="relative p-5 flex flex-col h-full justify-between">
               <!-- Header: Short codes vs -->
-              <div class="flex items-center justify-center gap-3">
-                <span class="text-lg font-bold text-white tracking-wide">
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 min-w-0">
+                <span class="min-w-0 text-lg font-bold text-gray-900 dark:text-white tracking-wide truncate text-right">
                   {{ match.homeTeam?.customShortName || match.homeTeam?.customName || match.homeTeamPlaceholder || 'TBD' }}
                 </span>
-                <span class="text-xs font-black text-gray-500 uppercase">vs</span>
-                <span class="text-lg font-bold text-white tracking-wide">
+                <span class="text-xs font-black text-gray-400 uppercase shrink-0">vs</span>
+                <span class="min-w-0 text-lg font-bold text-gray-900 dark:text-white tracking-wide truncate text-left">
                   {{ match.awayTeam?.customShortName || match.awayTeam?.customName || match.awayTeamPlaceholder || 'TBD' }}
                 </span>
               </div>
@@ -127,44 +127,44 @@
               <!-- Teams & Time -->
               <div class="flex items-center justify-between gap-4 mt-3">
                 <!-- Home logo -->
-                <div class="w-11 h-11 rounded-lg bg-[#1a1d24] flex items-center justify-center overflow-hidden shrink-0 border border-white/[0.06]">
+                <div class="w-11 h-11 rounded-lg flex items-center justify-center overflow-hidden shrink-0" :class="match.homeTeam?.logoUrl ? '' : 'border border-gray-200 dark:border-white/[0.06]'">
                   <img
                     v-if="match.homeTeam?.logoUrl"
                     :src="match.homeTeam.logoUrl"
                     class="w-full h-full object-cover"
                     :alt="match.homeTeam?.customShortName || match.homeTeam?.customName || 'Home'"
                   />
-                  <span v-else class="text-xs font-bold text-gray-400">
+                  <span v-else class="text-xs font-bold text-gray-500 dark:text-gray-400">
                     {{ (match.homeTeam?.customShortName || match.homeTeam?.customName || 'H').charAt(0) }}
                   </span>
                 </div>
 
                 <!-- Time -->
                 <div class="flex-1 text-center">
-                  <div class="text-[11px] font-bold text-blue-400 uppercase tracking-wider">
+                  <div class="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                     {{ formatMatchDay(match.startTime) }}
                   </div>
-                  <div class="text-lg font-black text-white tabular-nums">
+                  <div class="text-lg font-black text-gray-900 dark:text-white tabular-nums">
                     {{ formatMatchClock(match.startTime) }}
                   </div>
                 </div>
 
                 <!-- Away logo -->
-                <div class="w-11 h-11 rounded-lg bg-[#1a1d24] flex items-center justify-center overflow-hidden shrink-0 border border-white/[0.06]">
+                <div class="w-11 h-11 rounded-lg flex items-center justify-center overflow-hidden shrink-0" :class="match.awayTeam?.logoUrl ? '' : 'border border-gray-200 dark:border-white/[0.06]'">
                   <img
                     v-if="match.awayTeam?.logoUrl"
                     :src="match.awayTeam.logoUrl"
                     class="w-full h-full object-cover"
                     :alt="match.awayTeam?.customShortName || match.awayTeam?.customName || 'Away'"
                   />
-                  <span v-else class="text-xs font-bold text-gray-400">
+                  <span v-else class="text-xs font-bold text-gray-500 dark:text-gray-400">
                     {{ (match.awayTeam?.customShortName || match.awayTeam?.customName || 'A').charAt(0) }}
                   </span>
                 </div>
               </div>
 
               <!-- Footer: Tournament -->
-              <div class="mt-3 pt-3 border-t border-white/[0.04] flex items-center justify-center gap-2 text-[10px] text-gray-500">
+              <div class="mt-3 pt-3 border-t border-gray-200 dark:border-white/[0.04] flex items-center justify-center gap-2 text-[10px] text-gray-500 dark:text-gray-500">
                 <img
                   v-if="match.tournament?.logoUrl"
                   :src="match.tournament.logoUrl"
