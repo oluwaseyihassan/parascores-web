@@ -463,6 +463,11 @@ function formatType(type: string) {
   }
   return map[type] || type
 }
+function formatCount(count: number) {
+  if (count >= 1000000) return (count / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (count >= 1000) return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+  return count.toString()
+}
 function getTypeBadgeClasses(type: string) {
   switch (type) {
     case 'KNOCKOUT': return 'bg-red-500/20 text-red-400 border-red-500/30'
@@ -707,7 +712,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 </UButton>
 
                 <span v-if="tournament.followerCount != null" class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ tournament.followerCount.toLocaleString() }} follower{{ tournament.followerCount === 1 ? '' : 's' }}
+                  {{ formatCount(tournament.followerCount) }} follower{{ tournament.followerCount === 1 ? '' : 's' }}
                 </span>
 
                 <!-- Winner Badge in Hero -->
