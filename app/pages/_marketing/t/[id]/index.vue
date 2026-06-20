@@ -265,13 +265,19 @@ async function toggleFollow() {
   isFollowing.value = !wasFollowing
   togglingFollow.value = true
   try {
-    if (wasFollowing) {
-      await tournamentStore.unfollowTournament(tournamentId)
-      toast.add({ title: 'Unfollowed', description: 'You have unfollowed this tournament.', color: 'neutral' })
-    } else {
-      await tournamentStore.followTournament(tournamentId)
-      toast.add({ title: 'Followed', description: 'You are now following this tournament!', color: 'success' })
-    }
+      if (wasFollowing) {
+        await tournamentStore.unfollowTournament(tournamentId)
+        if (tournament.value && tournament.value.followerCount != null && tournament.value.followerCount > 0) {
+          tournament.value.followerCount--
+        }
+        toast.add({ title: 'Unfollowed', description: 'You have unfollowed this tournament.', color: 'neutral' })
+      } else {
+        await tournamentStore.followTournament(tournamentId)
+        if (tournament.value) {
+          tournament.value.followerCount = (tournament.value.followerCount ?? 0) + 1
+        }
+        toast.add({ title: 'Followed', description: 'You are now following this tournament!', color: 'success' })
+      }
   } catch (err: any) {
     // Revert on failure
     isFollowing.value = wasFollowing
@@ -699,6 +705,10 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 >
                   {{ isFollowing ? 'Unfollow' : 'Follow' }}
                 </UButton>
+
+                <span v-if="tournament.followerCount != null" class="text-sm text-gray-500 dark:text-gray-400">
+                  {{ tournament.followerCount.toLocaleString() }} follower{{ tournament.followerCount === 1 ? '' : 's' }}
+                </span>
 
                 <!-- Winner Badge in Hero -->
                 <div v-if="winnerParticipant" class="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400 text-black font-black uppercase tracking-widest text-[11px] shadow-lg shadow-amber-400/20 animate-in zoom-in duration-500 whitespace-nowrap">
