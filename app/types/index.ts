@@ -158,6 +158,7 @@ export interface Tournament {
   isPinned?: boolean
   isPremium?: boolean
   pendingRequestsCount?: number
+  followerCount?: number
 
    // Advanced Options
   twoLegsKnockout?: boolean
