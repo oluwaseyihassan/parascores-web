@@ -108,15 +108,28 @@ onMounted(async () => {
     return
   }
 
+  // Prevent re-verifying on refresh after a successful verification
+  if (sessionStorage.getItem(`verified:${token}`) === '1') {
+    verified.value = true
+    return
+  }
+
   try {
     const response = await authStore.verifyEmail(token)
     if (response?.success) {
       verified.value = true
+      sessionStorage.setItem(`verified:${token}`, '1')
     } else {
       error.value = response?.message || 'Verification failed. Please try again.'
     }
   } catch (err: any) {
-    error.value = err?.message || 'Verification failed. The link may have expired.'
+    // Extract a readable backend message if available
+    const backendMessage = err?.data?.message || err?.response?._data?.message
+    if (backendMessage) {
+      error.value = backendMessage
+    } else {
+      error.value = 'Verification failed. The link may have expired or already been used.'
+    }
   }
 })
 </script>
