@@ -9,7 +9,9 @@ export default defineNuxtConfig({
   devtools: { enabled: process.env.NODE_ENV === 'development' },
 
   devServer: {
-    port: 3001
+    port: 3001,
+    host: "dev.parascores.com",
+    https: true
   },
 
   modules: [
