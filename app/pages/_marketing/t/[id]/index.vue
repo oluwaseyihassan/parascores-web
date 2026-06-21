@@ -151,6 +151,16 @@ const { data: overviewData, status, error: fetchError } = await useAsyncData(
   { lazy: false }
 )
 
+// Backend returns the follower count as `_count.followers`; normalize it to `followerCount`.
+function normalizeFollowerCount(t: Tournament | null | undefined) {
+  if (t && t.followerCount == null && t._count?.followers != null) {
+    t.followerCount = t._count.followers
+  }
+}
+
+// Normalize the initially fetched tournament
+normalizeFollowerCount(overviewData.value?.data?.tournament)
+
 // Derived reactive state from the fetched data
 const tournament = computed(() => overviewData.value?.data?.tournament || null)
 const fixtures = ref<Fixture[]>(overviewData.value?.data?.fixtures || [])
@@ -165,6 +175,7 @@ const error = ref<string | null>(fetchError.value ? extractErrorMessage(fetchErr
 // Sync refs when overviewData refreshes (e.g. client-side navigation)
 watch(overviewData, (newData) => {
   if (newData?.data) {
+    normalizeFollowerCount(newData.data.tournament)
     fixtures.value = newData.data.fixtures || []
     standings.value = (newData.data.standings as Standing[]) || []
     participants.value = newData.data.participants || []
