@@ -248,6 +248,11 @@ watchEffect(() => {
 const isFollowing = ref(false)
 const togglingFollow = ref(false)
 
+function notificationsEnabled(): boolean {
+  if (typeof window === 'undefined' || !('Notification' in window)) return false
+  return Notification.permission === 'granted' && localStorage.getItem('parascores_notifications_enabled') === 'true'
+}
+
 // Initialize follow state once auth is ready
 watch(() => authStore.isAuthenticated, async (isAuth) => {
   if (isAuth) {
@@ -288,6 +293,14 @@ async function toggleFollow() {
           tournament.value.followerCount = (tournament.value.followerCount ?? 0) + 1
         }
         toast.add({ title: 'Followed', description: 'You are now following this tournament!', color: 'success' })
+        if (!notificationsEnabled()) {
+          toast.add({
+            title: 'Notifications Off',
+            description: 'Turn on notifications to get live match alerts for this tournament.',
+            color: 'warning',
+            actions: [{ label: 'Enable', onClick: () => { navigateTo('/following') } }]
+          })
+        }
       }
   } catch (err: any) {
     // Revert on failure
