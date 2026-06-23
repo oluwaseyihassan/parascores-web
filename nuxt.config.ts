@@ -10,8 +10,8 @@ export default defineNuxtConfig({
 
   devServer: {
     port: 3001,
-    host: "dev.parascores.com",
-    https: true
+    // host: "dev.parascores.com",
+    // https: true
   },
 
   modules: [

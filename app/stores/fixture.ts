@@ -23,6 +23,7 @@ export interface UpdateFixtureData {
   timerElapsedSeconds?: number | null
   timerIsRunning?: boolean | null
   matchDuration?: number
+  manOfTheMatchPlayerId?: string | null
 }
 
 export interface CreateFixtureData {

@@ -266,13 +266,16 @@ export interface Fixture {
 
   homeTeam?: Participant | null
   awayTeam?: Participant | null
-  
+
   tournament?: Tournament | null
   matchEvents?: MatchEvent[]
   lineupPlayers?: Player[]
   homeFormation?: string | null
   awayFormation?: string | null
   lineupPositions?: Record<string, string> | null
+
+  manOfTheMatchPlayerId?: string | null
+  manOfTheMatchPlayer?: Player | null
 }
 
 export interface Group {
