@@ -357,7 +357,9 @@ function groupByRound(list: Fixture[]) {
   }
   // Sort fixtures within each group by date and time
   for (const key in grouped) {
-    grouped[key].fixtures.sort((a, b) => {
+    const group = grouped[key]
+    if (!group) continue
+    group.fixtures.sort((a, b) => {
       if (a.startTime && b.startTime) {
         return new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       }
