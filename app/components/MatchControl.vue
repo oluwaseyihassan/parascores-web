@@ -99,6 +99,9 @@ const isDark = computed(() => colorMode.value === 'dark')
 const selectedLineupIds = ref<string[]>([])
 const showLineupCollapsible = ref(false)
 const savingLineups = ref(false)
+const selectedManOfTheMatchPlayerId = ref<string | null>(null)
+const savingMotm = ref(false)
+const showMotmCollapsible = ref(true)
 const homeFormation = ref<string>('')
 const awayFormation = ref<string>('')
 const lineupViewMode = ref<'list' | 'pitch'>('pitch')
@@ -214,6 +217,7 @@ watch(() => props.fixture, async (newFixture) => {
     lineupPositions.value = (newFixture.lineupPositions as Record<string, string>) || {}
     lineupViewMode.value = (newFixture.homeFormation || newFixture.awayFormation) ? 'pitch' : 'list'
     activeLineupTeam.value = 'home'
+    selectedManOfTheMatchPlayerId.value = newFixture.manOfTheMatchPlayerId || null
     await loadMatchData(newFixture)
   }
 }, { immediate: true })
@@ -230,6 +234,7 @@ watch(() => props.open, async (isOpen) => {
     lineupPositions.value = (props.fixture.lineupPositions as Record<string, string>) || {}
     lineupViewMode.value = (props.fixture.homeFormation || props.fixture.awayFormation) ? 'pitch' : 'list'
     activeLineupTeam.value = 'home'
+    selectedManOfTheMatchPlayerId.value = props.fixture.manOfTheMatchPlayerId || null
     matchVenue.value = props.fixture.venue || ''
     showScheduleCollapsible.value = props.fixture.status === 'SCHEDULED'
     if (props.fixture.startTime) {
@@ -267,6 +272,7 @@ watch(() => props.open, async (isOpen) => {
     awayFormation.value = ''
     changedPositions.value = {}
     activeLineupTeam.value = 'home'
+    selectedManOfTheMatchPlayerId.value = null
   }
 })
 
@@ -312,6 +318,7 @@ const loadMatchData = async (fixture: Fixture) => {
       selectedLineupIds.value = detailedFixture.lineupPlayers?.map((p: any) => p.id) || []
       homeFormation.value = detailedFixture.homeFormation || ''
       awayFormation.value = detailedFixture.awayFormation || ''
+      selectedManOfTheMatchPlayerId.value = detailedFixture.manOfTheMatchPlayerId || null
     }
 
     const promises: Promise<any>[] = []
@@ -788,6 +795,32 @@ const cardTeamPlayers = computed(() => {
 
 const subTeamPlayers = computed(() => {
   return subTeam.value === 'home' ? homePlayers.value : awayPlayers.value
+})
+
+const motmPlayerOptions = computed(() => {
+  const homeTeamName = selectedFixture.value?.homeTeam?.customShortName || selectedFixture.value?.homeTeam?.customName || 'Home'
+  const awayTeamName = selectedFixture.value?.awayTeam?.customShortName || selectedFixture.value?.awayTeam?.customName || 'Away'
+  const home = homePlayers.value.map(p => ({
+    label: `${homeTeamName}: ${p.number ? '#' + p.number + ' ' : ''}${p.name}`,
+    value: p.id
+  }))
+  const away = awayPlayers.value.map(p => ({
+    label: `${awayTeamName}: ${p.number ? '#' + p.number + ' ' : ''}${p.name}`,
+    value: p.id
+  }))
+  return [...home, ...away]
+})
+
+const motmDisplayName = computed(() => {
+  const playerId = selectedManOfTheMatchPlayerId.value || selectedFixture.value?.manOfTheMatchPlayerId
+  if (!playerId) return null
+  const player = [...homePlayers.value, ...awayPlayers.value].find(p => p.id === playerId)
+  return player || selectedFixture.value?.manOfTheMatchPlayer || null
+})
+
+const selectedMotmModel = computed({
+  get: () => selectedManOfTheMatchPlayerId.value || undefined,
+  set: (val) => selectedManOfTheMatchPlayerId.value = val || null
 })
 
 const teamSubEvents = computed(() => {
@@ -1296,6 +1329,60 @@ const removePenalties = async () => {
     handleError(error, { title: 'Failed to remove penalties' })
   } finally {
     updatingMatch.value = false
+  }
+}
+
+const saveManOfTheMatch = async () => {
+  if (!selectedFixture.value) return
+
+  savingMotm.value = true
+  try {
+    await fixtureStore.updateFixture(selectedFixture.value.id, {
+      manOfTheMatchPlayerId: selectedManOfTheMatchPlayerId.value
+    })
+
+    selectedFixture.value.manOfTheMatchPlayerId = selectedManOfTheMatchPlayerId.value
+    const selectedPlayer = [...homePlayers.value, ...awayPlayers.value].find(p => p.id === selectedManOfTheMatchPlayerId.value)
+    selectedFixture.value.manOfTheMatchPlayer = selectedPlayer || null
+
+    emit('fixture-updated', selectedFixture.value!)
+
+    useToast().add({
+      title: 'Man of the Match Saved',
+      description: selectedPlayer ? `${selectedPlayer.name} is the Man of the Match.` : 'Man of the Match selection saved.',
+      color: 'success'
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to save Man of the Match' })
+  } finally {
+    savingMotm.value = false
+  }
+}
+
+const clearManOfTheMatch = async () => {
+  if (!selectedFixture.value) return
+
+  savingMotm.value = true
+  try {
+    await fixtureStore.updateFixture(selectedFixture.value.id, {
+      manOfTheMatchPlayerId: null
+    })
+
+    selectedManOfTheMatchPlayerId.value = null
+    selectedFixture.value.manOfTheMatchPlayerId = null
+    selectedFixture.value.manOfTheMatchPlayer = null
+
+    emit('fixture-updated', selectedFixture.value!)
+
+    useToast().add({
+      title: 'Man of the Match Cleared',
+      description: 'The Man of the Match selection has been removed.',
+      color: 'neutral'
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to clear Man of the Match' })
+  } finally {
+    savingMotm.value = false
   }
 }
 
@@ -2276,6 +2363,58 @@ const downloadGraphic = async () => {
               </div>
             </div>
 
+            <!-- Man of the Match -->
+            <div v-if="tournament?.participantType !== ParticipantType.INDIVIDUAL && selectedFixture.status === 'COMPLETED'" class="mc-section">
+              <button class="mc-section__toggle" @click="showMotmCollapsible = !showMotmCollapsible">
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-heroicons-star" class="w-3.5 h-3.5 text-amber-500" />
+                  <span>Man of the Match</span>
+                  <span v-if="motmDisplayName" class="mc-tag">{{ motmDisplayName.name }}</span>
+                </div>
+                <UIcon :name="showMotmCollapsible ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" class="w-4 h-4 text-gray-400" />
+              </button>
+              <div v-if="showMotmCollapsible" class="mc-section__body">
+                <div v-if="loadingPlayers" class="flex items-center justify-center gap-2 py-6 text-sm text-gray-400">
+                  <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" /> Loading…
+                </div>
+                <div v-else-if="motmPlayerOptions.length === 0" class="py-6 text-center text-sm text-gray-400">
+                  No players available to select.
+                </div>
+                <div v-else class="space-y-4">
+                  <UFormField label="Select Man of the Match">
+                    <USelect
+                      v-model="selectedMotmModel"
+                      :items="motmPlayerOptions"
+                      placeholder="Choose a player..."
+                      value-key="value"
+                      class="w-full"
+                    />
+                  </UFormField>
+                  <div class="flex items-center justify-end gap-2">
+                    <UButton
+                      v-if="selectedManOfTheMatchPlayerId"
+                      size="xs"
+                      color="warning"
+                      variant="soft"
+                      icon="i-heroicons-trash"
+                      label="Clear"
+                      :loading="savingMotm"
+                      @click="clearManOfTheMatch"
+                    />
+                    <UButton
+                      size="xs"
+                      color="success"
+                      variant="soft"
+                      icon="i-heroicons-check"
+                      label="Save"
+                      :loading="savingMotm"
+                      @click="saveManOfTheMatch"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div><!-- /mc-sections -->
 
           <!-- ── Action Bar ──────────────────────────────────── -->
@@ -2302,56 +2441,76 @@ const downloadGraphic = async () => {
 
               <!-- Live Match Timer Control Buttons -->
               <template v-if="selectedFixture.status === 'LIVE'">
-                <!-- Pause / Resume Clock -->
-                <button
-                  v-if="selectedFixture.timerIsRunning"
-                  class="mc-primary-btn mc-primary-btn--pause"
-                  :disabled="updatingMatch"
-                  @click="pauseMatch"
-                >
-                  <UIcon name="i-heroicons-pause" class="w-4 h-4" />
-                  <span>Pause Clock</span>
-                </button>
-                <button
-                  v-else
-                  class="mc-primary-btn mc-primary-btn--resume"
-                  :disabled="updatingMatch"
-                  @click="resumeMatch"
-                >
-                  <UIcon name="i-heroicons-play" class="w-4 h-4" />
-                  <span>Resume Clock</span>
-                </button>
+                <div class="mc-action-group">
+                  <!-- Pause / Resume Clock -->
+                  <button
+                    v-if="selectedFixture.timerIsRunning"
+                    class="mc-primary-btn mc-primary-btn--pause"
+                    :disabled="updatingMatch"
+                    @click="pauseMatch"
+                  >
+                    <UIcon name="i-heroicons-pause" class="w-4 h-4" />
+                    <span class="hidden sm:inline">Pause Clock</span>
+                    <span class="sm:hidden">Pause</span>
+                  </button>
+                  <button
+                    v-else
+                    class="mc-primary-btn mc-primary-btn--resume"
+                    :disabled="updatingMatch"
+                    @click="resumeMatch"
+                  >
+                    <UIcon name="i-heroicons-play" class="w-4 h-4" />
+                    <span class="hidden sm:inline">Resume Clock</span>
+                    <span class="sm:hidden">Resume</span>
+                  </button>
 
-                <!-- Halftime / Start 2nd Half -->
-                <button
-                  v-if="!isHalftime"
-                  class="mc-primary-btn mc-primary-btn--halftime"
-                  :disabled="updatingMatch"
-                  @click="setHalftime"
-                >
-                  <UIcon name="i-heroicons-clock" class="w-4 h-4" />
-                  <span>Halftime</span>
-                </button>
-                <button
-                  v-else
-                  class="mc-primary-btn mc-primary-btn--secondhalf"
-                  :disabled="updatingMatch"
-                  @click="startSecondHalf"
-                >
-                  <UIcon name="i-heroicons-forward" class="w-4 h-4" />
-                  <span>Start 2nd Half</span>
-                </button>
+                  <!-- Halftime / Start 2nd Half -->
+                  <button
+                    v-if="!isHalftime"
+                    class="mc-primary-btn mc-primary-btn--halftime"
+                    :disabled="updatingMatch"
+                    @click="setHalftime"
+                  >
+                    <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+                    <span class="hidden sm:inline">Halftime</span>
+                    <span class="sm:hidden">HT</span>
+                  </button>
+                  <button
+                    v-else
+                    class="mc-primary-btn mc-primary-btn--secondhalf"
+                    :disabled="updatingMatch"
+                    @click="startSecondHalf"
+                  >
+                    <UIcon name="i-heroicons-forward" class="w-4 h-4" />
+                    <span class="hidden sm:inline">Start 2nd Half</span>
+                    <span class="sm:hidden">2nd Half</span>
+                  </button>
+                </div>
+
+                <div class="mc-action-divider" role="separator" aria-hidden="true" />
+
+                <div class="mc-action-group">
+                  <button
+                    class="mc-primary-btn mc-primary-btn--undo"
+                    :disabled="updatingMatch"
+                    @click="undoStartMatch"
+                  >
+                    <UIcon name="i-heroicons-arrow-uturn-left" class="w-4 h-4" />
+                    <span class="hidden sm:inline">Undo Start</span>
+                    <span class="sm:hidden">Undo</span>
+                  </button>
+                  <button
+                    class="mc-primary-btn mc-primary-btn--end"
+                    :disabled="updatingMatch"
+                    @click="endMatch"
+                  >
+                    <UIcon name="i-heroicons-flag" class="w-4 h-4" />
+                    <span class="hidden sm:inline">{{ updatingMatch ? 'Ending…' : 'End Match' }}</span>
+                    <span class="sm:hidden">{{ updatingMatch ? 'Ending…' : 'End' }}</span>
+                  </button>
+                </div>
               </template>
 
-              <button
-                v-if="selectedFixture.status === 'LIVE'"
-                class="mc-primary-btn mc-primary-btn--end"
-                :disabled="updatingMatch"
-                @click="endMatch"
-              >
-                <UIcon name="i-heroicons-flag" class="w-4 h-4" />
-                <span>{{ updatingMatch ? 'Ending…' : 'End Match' }}</span>
-              </button>
               <button
                 v-if="selectedFixture.status === 'COMPLETED'"
                 class="mc-primary-btn mc-primary-btn--reopen"
@@ -2360,15 +2519,6 @@ const downloadGraphic = async () => {
               >
                 <UIcon name="i-heroicons-arrow-path" class="w-4 h-4" />
                 <span>{{ updatingMatch ? 'Reopening…' : 'Reopen Match' }}</span>
-              </button>
-              <button
-                v-if="selectedFixture.status === 'LIVE'"
-                class="mc-primary-btn mc-primary-btn--reopen"
-                :disabled="updatingMatch"
-                @click="undoStartMatch"
-              >
-                <UIcon name="i-heroicons-arrow-uturn-left" class="w-4 h-4" />
-                <span>{{ updatingMatch ? 'Undoing…' : 'Undo Start' }}</span>
               </button>
             </div>
 
@@ -3302,6 +3452,11 @@ const downloadGraphic = async () => {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #9ca3af;
+  max-width: 5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
 }
 
 /* ── Events ────────────────────────────────────────────────── */
@@ -3429,20 +3584,39 @@ const downloadGraphic = async () => {
   margin-left: auto;
 }
 
+.mc-action-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mc-action-divider {
+  width: 1px;
+  height: 24px;
+  background: #e5e7eb;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+:root.dark .mc-action-divider { background: rgba(255,255,255,0.08); }
+
 /* Primary action buttons */
 .mc-primary-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   font-size: 0.8125rem;
   font-weight: 700;
-  padding: 7px 16px;
+  padding: 8px 14px;
   border-radius: 9px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  transition: background 0.15s, transform 0.1s, border-color 0.15s;
   white-space: nowrap;
   line-height: 1.4;
+  min-height: 36px;
 }
 
 .mc-primary-btn:disabled { opacity: 0.5; cursor: default; }
@@ -3457,12 +3631,18 @@ const downloadGraphic = async () => {
 .mc-primary-btn--start:hover:not(:disabled) { background: #047857; }
 
 .mc-primary-btn--end {
-  background: #dc2626;
-  color: #fff;
-  border-color: #b91c1c;
-  box-shadow: 0 2px 6px rgba(220,38,38,0.3);
+  background: #fff;
+  color: #dc2626;
+  border-color: #dc2626;
+  box-shadow: 0 1px 3px rgba(220,38,38,0.08);
 }
-.mc-primary-btn--end:hover:not(:disabled) { background: #b91c1c; }
+.mc-primary-btn--end:hover:not(:disabled) { background: #fef2f2; }
+:root.dark .mc-primary-btn--end {
+  background: rgba(220,38,38,0.1);
+  color: #f87171;
+  border-color: rgba(220,38,38,0.4);
+}
+:root.dark .mc-primary-btn--end:hover:not(:disabled) { background: rgba(220,38,38,0.18); }
 
 .mc-primary-btn--reopen {
   background: #d97706;
@@ -3471,6 +3651,20 @@ const downloadGraphic = async () => {
   box-shadow: 0 2px 6px rgba(217,119,6,0.3);
 }
 .mc-primary-btn--reopen:hover:not(:disabled) { background: #b45309; }
+
+.mc-primary-btn--undo {
+  background: #fff;
+  color: #6b7280;
+  border-color: #d1d5db;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.mc-primary-btn--undo:hover:not(:disabled) { background: #f3f4f6; }
+:root.dark .mc-primary-btn--undo {
+  background: rgba(255,255,255,0.05);
+  color: #9ca3af;
+  border-color: rgba(255,255,255,0.1);
+}
+:root.dark .mc-primary-btn--undo:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
 
 .mc-primary-btn--locked {
   background: #f3f4f6;

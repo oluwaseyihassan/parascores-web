@@ -133,6 +133,21 @@ const matchTimer = useMatchTimer()
 const liveMinuteLabel = computed(() => fixture.value ? matchTimer.formatMinuteLabel(fixture.value) : '')
 const liveClock = computed(() => fixture.value ? matchTimer.formatClock(fixture.value) : '')
 
+const manOfTheMatch = computed(() => {
+  if (!fixture.value) return null
+  if (fixture.value.manOfTheMatchPlayer) return fixture.value.manOfTheMatchPlayer
+  if (fixture.value.manOfTheMatchPlayerId && fixture.value.matchEvents) {
+    return fixture.value.matchEvents.find(e => e.player?.id === fixture.value!.manOfTheMatchPlayerId)?.player || null
+  }
+  return null
+})
+
+const teamName = computed(() => {
+  const participant = manOfTheMatch.value?.participant
+  if (!participant) return ''
+  return participant.customName || participant.team?.name || participant.user?.name || ''
+})
+
 // Helpers
 function formatTime(dateStr?: string | null) {
   if (!dateStr) return ''
@@ -445,6 +460,38 @@ const awaySubs = computed(() => {
       <section class="max-w-3xl mx-auto px-4 py-8">
         <!-- Match Events Tab -->
         <div v-show="activeTab === 'events'">
+          <!-- Player of the Match -->
+          <div v-if="manOfTheMatch" class="mb-4 md:mb-6 border rounded-xl overflow-hidden" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'">
+            <div class="px-4 py-3 md:px-5 md:py-4">
+              <h3 class="text-[14px] font-bold mb-3 md:mb-4 text-center" :class="isDark ? 'text-white' : 'text-gray-900'">Player of the Match</h3>
+              <div class="flex items-center gap-3">
+                <UAvatar
+                  :src="manOfTheMatch.avatarUrl || undefined"
+                  :alt="manOfTheMatch.name"
+                  size="md"
+                  class="shrink-0"
+                  :class="isDark ? 'bg-white/10' : 'bg-gray-100'"
+                />
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold truncate" :class="isDark ? 'text-white' : 'text-gray-900'">{{ manOfTheMatch.name }}</p>
+                  <div class="flex items-center gap-1.5">
+                    <img
+                      v-if="manOfTheMatch.participant?.logoUrl || manOfTheMatch.participant?.team?.logoUrl"
+                      :src="manOfTheMatch.participant?.logoUrl || manOfTheMatch.participant?.team?.logoUrl"
+                      :alt="teamName"
+                      class="shrink-0 w-4 h-4 rounded-full object-cover"
+                    />
+                    <p class="text-xs truncate" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+                      {{ teamName }}
+                    </p>
+                  </div>
+                </div>
+                <div class="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-blue-500 text-white">
+                  <UIcon name="i-heroicons-star" class="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </div>
+          </div>
           <div v-if="timelineEvents.length > 0" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl  overflow-hidden relative pb-10">
             <div class="px-3 md:px-5 py-4 md:py-6 flex flex-col items-center">
               <h3 class="text-[14px] font-bold mb-6 md:mb-8 relative z-10 z-[1]" :class="isDark ? 'text-white' : 'text-gray-900'">Events</h3>
@@ -988,7 +1035,7 @@ const awaySubs = computed(() => {
               </div>
               <div class="flex items-center justify-between px-5 py-3">
                 <span class="text-sm text-gray-500">Status</span>
-                <span 
+                <span
                   class="text-sm font-medium"
                   :class="{
                     'text-red-400': isLive,
