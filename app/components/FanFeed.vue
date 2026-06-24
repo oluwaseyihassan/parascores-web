@@ -21,161 +21,169 @@
       </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-6 pb-24 space-y-16">
-      <!-- Live Now Section -->
-      <section v-if="authStore.isAuthenticated && (filteredLive.length > 0 || loadingLive)">
-        <div class="flex items-center justify-between mb-8">
-          <div class="flex items-center gap-3">
-            <h2 class="text-2xl font-bold">Live Now</h2>
+     <main class="max-w-7xl mx-auto px-6 pb-24 space-y-16">
 
-          </div>
-          <UButton variant="link" color="neutral" :to="toMain('/explore')" icon="i-heroicons-arrow-right" class="text-sm">
-            View All
-          </UButton>
-        </div>
-
-        <div v-if="loadingLive" class="flex gap-6 overflow-x-auto pb-4 hide-scrollbar">
-          <div v-for="i in 3" :key="i" class="min-w-[320px] h-[180px] bg-white/5 rounded-2xl animate-pulse"></div>
-        </div>
-
-        <div v-else class="flex gap-6 overflow-x-auto pb-4 hide-scrollbar snap-x">
-          <NuxtLink 
-            v-for="match in filteredLive" 
-            :key="match.id"
-            :to="toMain(`/t/${match.tournament?.customName || match.tournament?.id}/fixture/${match.id}`)"
-            class="min-w-[320px] md:min-w-[380px] snap-start group relative overflow-hidden rounded-2xl border border-gray-200 dark:border-white/[0.05] bg-white dark:bg-[#0A0A0A] p-5 transition-[border-color] duration-300 hover:border-red-500/40 dark:hover:border-red-500/40 flex flex-col h-full"
-          >
-            <!-- Background Glow -->
-            <div class="absolute -right-16 -top-16 h-32 w-32 rounded-full bg-red-500/5 blur-3xl transition-opacity duration-500 group-hover:bg-red-500/10"></div>
-            
-            <div class="relative z-10 flex flex-col h-full">
-              <div class="flex items-center justify-between mb-4">
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">{{ match.tournament?.customName || match.tournament?.name }}</span>
-                <span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-[10px] font-black italic">LIVE</span>
-              </div>
-              
-              <div class="flex-1 flex flex-col justify-center gap-4">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <UAvatar :src="match.homeTeam?.logoUrl || undefined" :alt="match.homeTeam?.customName || undefined" size="sm" />
-                    <span class="font-bold text-sm truncate max-w-[120px] text-gray-900 dark:text-white">{{ match.homeTeam?.customShortName || match.homeTeam?.customName || 'TBD' }}</span>
+      <!-- Match Feed (live + upcoming combined) -->
+      <section v-if="authStore.isAuthenticated">
+        <div class="flex items-center bg-gray-100 dark:bg-[#1A1A1A] rounded-full p-1 mb-4 border-0">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-chevron-left"
+            size="xs"
+            class="rounded-full text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            @click="prevDate"
+          />
+          <!-- Calendar Picker -->
+          <UPopover v-model:open="calendarOpen" class="flex-1">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              class="w-full justify-center font-semibold text-gray-900 hover:bg-gray-200 dark:text-white dark:hover:bg-white/5 border-0 ring-0"
+              :ui="{ trailingIcon: 'w-3 h-3' }"
+              trailing-icon="i-heroicons-chevron-down"
+            >
+              {{ formatDateTab(selectedDate) }}
+            </UButton>
+            <template #content>
+              <UCalendar
+                v-model="selectedDateValue"
+              >
+                <template #day="{ day }">
+                  <div class="flex flex-col items-center justify-center leading-none">
+                    <span>{{ day.day }}</span>
+                    <span
+                        v-if="isDateHighlightable(day)"
+                        class="mt-1 w-1.5 h-1.5 rounded-full bg-blue-500"
+                    />
                   </div>
-                  <span class="text-2xl font-black text-gray-900 dark:text-white">{{ match.homeScore ?? 0 }}</span>
-                </div>
-                
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <UAvatar :src="match.awayTeam?.logoUrl || undefined" :alt="match.awayTeam?.customName || undefined" size="sm" />
-                    <span class="font-bold text-sm truncate max-w-[120px] text-gray-900 dark:text-white">{{ match.awayTeam?.customShortName || match.awayTeam?.customName || 'TBD' }}</span>
-                  </div>
-                  <span class="text-2xl font-black text-gray-900 dark:text-white">{{ match.awayScore ?? 0 }}</span>
-                </div>
+                </template>
+              </UCalendar>
+              <div class="flex items-center justify-center px-3 py-2 border-t border-gray-100 dark:border-white/[0.06]">
+                <UButton
+                  color="primary"
+                  size="sm"
+                  @click="goToToday"
+                >
+                  Today
+                </UButton>
               </div>
-              
-              <div class="mt-4 pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-[11px] text-gray-400">
-                <div class="flex items-center gap-1.5 min-w-0">
-                  <UIcon name="i-heroicons-map-pin" class="w-3 h-3 text-gray-500 shrink-0" />
-                  <span class="truncate">{{ match.venue || 'No Venue' }}</span>
-                </div>
-                <UIcon name="i-heroicons-arrow-right" class="w-4 h-4 text-red-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300 shrink-0" />
+              <div class="flex items-center justify-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-white/[0.06]">
+                <span class="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span class="text-xs text-gray-500 dark:text-gray-400">Matchdays for tournaments you follow</span>
               </div>
-            </div>
-          </NuxtLink>
-          
-          <div v-if="filteredLive.length === 0" class="w-full py-12 flex flex-col items-center justify-center border border-white/5 bg-white/2 rounded-2xl">
-            <UIcon name="i-heroicons-clock" class="w-8 h-8 text-gray-600 mb-2" />
-            <p class="text-gray-500 text-sm italic">No matches live at the moment</p>
-          </div>
+            </template>
+          </UPopover>
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-chevron-right"
+            size="xs"
+            class="rounded-full text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            @click="nextDate"
+          />
         </div>
-      </section>
 
-      <!-- Upcoming Matches (from followed tournaments only) -->
-      <section v-if="authStore.isAuthenticated && (filteredUpcoming.length > 0 || loadingUpcoming)">
-        <div class="flex items-center justify-between mb-8">
-          <div class="flex items-center gap-3">
-            <h2 class="text-2xl font-bold">Upcoming Matches</h2>
-            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
-              <UIcon name="i-heroicons-calendar" class="w-3 h-3" />
-              Scheduled
+        <!-- Loading -->
+        <div v-if="loadingMatches" class="space-y-4">
+          <div v-for="i in 2" :key="i" class="rounded-2xl border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[#0A0A0A] p-4 h-32 animate-pulse"></div>
+        </div>
+
+        <!-- Empty -->
+        <div v-else-if="filteredMatches.length === 0" class="py-12 flex flex-col items-center justify-center border border-gray-200 dark:border-white/[0.06] rounded-2xl bg-white dark:bg-[#0A0A0A]">
+          <UIcon name="i-heroicons-calendar" class="w-8 h-8 text-gray-400 mb-2" />
+          <p class="text-gray-500 text-sm">No matches for {{ formatDateTab(selectedDate) }}.</p>
+        </div>
+
+        <!-- Grouped Matches -->
+        <UAccordion v-else v-model="openItems" :items="accordionItems" type="multiple" class="space-y-3 sm:space-y-4">
+          <template #leading="{ item }">
+            <img
+              v-if="item.tournament?.logoUrl"
+              :src="item.tournament.logoUrl"
+              class="w-4 h-4 object-contain"
+              :alt="item.tournament?.name || 'Tournament'"
+            />
+          </template>
+          <template #default="{ item }">
+            <span class="cursor-pointer hover:text-gray-900 dark:hover:text-white transition-colors" @click.stop="navigateToTournament(item.tournament)">
+              {{ item.label }}
             </span>
-          </div>
-        </div>
-
-        <div v-if="loadingUpcoming" class="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x">
-          <div v-for="i in 4" :key="i" class="min-w-[260px] h-[140px] bg-white/5 rounded-2xl animate-pulse"></div>
-        </div>
-
-        <div v-else class="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x">
-          <NuxtLink
-            v-for="match in filteredUpcoming"
-            :key="match.id"
-            :to="toMain(`/t/${match.tournament?.customName || match.tournament?.id}/fixture/${match.id}`)"
-            class="min-w-[260px] md:min-w-[300px] snap-start group relative overflow-hidden rounded-2xl border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-transparent hover:border-blue-500/30 dark:hover:border-blue-500/30 transition-all duration-300"
-          >
-            <div class="relative p-5 flex flex-col h-full justify-between">
-              <!-- Header: Short codes vs -->
-              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 min-w-0">
-                <span class="min-w-0 text-lg font-bold text-gray-900 dark:text-white tracking-wide truncate text-right">
-                  {{ match.homeTeam?.customShortName || match.homeTeam?.customName || match.homeTeamPlaceholder || 'TBD' }}
-                </span>
-                <span class="text-xs font-black text-gray-400 uppercase shrink-0">vs</span>
-                <span class="min-w-0 text-lg font-bold text-gray-900 dark:text-white tracking-wide truncate text-left">
-                  {{ match.awayTeam?.customShortName || match.awayTeam?.customName || match.awayTeamPlaceholder || 'TBD' }}
-                </span>
-              </div>
-
-              <!-- Teams & Time -->
-              <div class="flex items-center justify-between gap-4 mt-3">
-                <!-- Home logo -->
-                <div class="w-11 h-11 rounded-lg flex items-center justify-center overflow-hidden shrink-0" :class="match.homeTeam?.logoUrl ? '' : 'border border-gray-200 dark:border-white/[0.06]'">
-                  <img
-                    v-if="match.homeTeam?.logoUrl"
-                    :src="match.homeTeam.logoUrl"
-                    class="w-full h-full object-cover"
-                    :alt="match.homeTeam?.customShortName || match.homeTeam?.customName || 'Home'"
-                  />
-                  <span v-else class="text-xs font-bold text-gray-500 dark:text-gray-400">
-                    {{ (match.homeTeam?.customShortName || match.homeTeam?.customName || 'H').charAt(0) }}
+          </template>
+          <template v-for="item in accordionItems" :key="item.value" #[item.slot]>
+            <div class="space-y-1">
+              <!-- Matches -->
+              <NuxtLink
+                v-for="match in item.fixtures"
+                :key="match.id"
+                :to="toMain(`/t/${match.tournament?.customName || match.tournament?.id}/fixture/${match.id}`)"
+                class="group flex flex-col px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-100 dark:border-white/[0.05] last:border-b-0 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors"
+              >
+                <!-- Status label above names -->
+                <div v-if="match.status === 'LIVE' || match.status === 'COMPLETED'" class="text-center mb-0.5 sm:mb-1">
+                  <span
+                    v-if="match.status === 'LIVE'"
+                    class="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-red-500"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                    {{ matchTimer.formatMinuteLabel(match) }}
+                  </span>
+                  <span
+                    v-else-if="match.status === 'COMPLETED'"
+                    class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-500"
+                  >
+                    FT
                   </span>
                 </div>
 
-                <!-- Time -->
-                <div class="flex-1 text-center">
-                  <div class="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                    {{ formatMatchDay(match.startTime) }}
+                <div class="flex items-center gap-2 sm:gap-3">
+                  <!-- Home Team -->
+                  <div class="flex-1 flex items-center justify-end gap-1.5 sm:gap-2 min-w-0">
+                    <span class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate text-right max-w-[50%]">
+                      {{ match.homeTeam?.customShortName || match.homeTeam?.customName || match.homeTeamPlaceholder || 'TBD' }}
+                    </span>
+                    <img
+                      v-if="match.homeTeam?.logoUrl"
+                      :src="match.homeTeam.logoUrl"
+                      class="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover shrink-0"
+                      :alt="match.homeTeam?.customShortName || match.homeTeam?.customName || 'Home'"
+                    />
+                    <span v-else class="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[8px] sm:text-[9px] font-bold bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 shrink-0">
+                      {{ (match.homeTeam?.customShortName || match.homeTeam?.customName || 'H').charAt(0) }}
+                    </span>
                   </div>
-                  <div class="text-lg font-black text-gray-900 dark:text-white tabular-nums">
-                    {{ formatMatchClock(match.startTime) }}
+
+                  <!-- Center Score / Time -->
+                  <div class="w-16 sm:w-20 shrink-0 text-center">
+                    <div v-if="match.status === 'LIVE' || match.status === 'COMPLETED'" class="text-xs sm:text-sm font-black text-gray-900 dark:text-white tabular-nums">
+                      {{ match.homeScore ?? 0 }} - {{ match.awayScore ?? 0 }}
+                    </div>
+                    <div v-else class="text-xs sm:text-sm font-black text-gray-900 dark:text-white tabular-nums">
+                      {{ formatMatchClock(match.startTime) }}
+                    </div>
+                  </div>
+
+                  <!-- Away Team -->
+                  <div class="flex-1 flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <img
+                      v-if="match.awayTeam?.logoUrl"
+                      :src="match.awayTeam.logoUrl"
+                      class="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover shrink-0"
+                      :alt="match.awayTeam?.customShortName || match.awayTeam?.customName || 'Away'"
+                    />
+                    <span v-else class="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[8px] sm:text-[9px] font-bold bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 shrink-0">
+                      {{ (match.awayTeam?.customShortName || match.awayTeam?.customName || 'A').charAt(0) }}
+                    </span>
+                    <span class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate max-w-[50%]">
+                      {{ match.awayTeam?.customShortName || match.awayTeam?.customName || match.awayTeamPlaceholder || 'TBD' }}
+                    </span>
                   </div>
                 </div>
-
-                <!-- Away logo -->
-                <div class="w-11 h-11 rounded-lg flex items-center justify-center overflow-hidden shrink-0" :class="match.awayTeam?.logoUrl ? '' : 'border border-gray-200 dark:border-white/[0.06]'">
-                  <img
-                    v-if="match.awayTeam?.logoUrl"
-                    :src="match.awayTeam.logoUrl"
-                    class="w-full h-full object-cover"
-                    :alt="match.awayTeam?.customShortName || match.awayTeam?.customName || 'Away'"
-                  />
-                  <span v-else class="text-xs font-bold text-gray-500 dark:text-gray-400">
-                    {{ (match.awayTeam?.customShortName || match.awayTeam?.customName || 'A').charAt(0) }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- Footer: Tournament -->
-              <div class="mt-3 pt-3 border-t border-gray-200 dark:border-white/[0.04] flex items-center justify-center gap-2 text-[10px] text-gray-500 dark:text-gray-500">
-                <img
-                  v-if="match.tournament?.logoUrl"
-                  :src="match.tournament.logoUrl"
-                  class="w-4 h-4 object-contain"
-                  :alt="match.tournament?.name || 'Tournament'"
-                />
-                <span class="truncate">{{ match.tournament?.name }}</span>
-              </div>
+              </NuxtLink>
             </div>
-          </NuxtLink>
-        </div>
+          </template>
+        </UAccordion>
       </section>
 
       <!-- Followed Tournaments Section -->
@@ -389,6 +397,9 @@
 
 <script setup lang="ts">
 import type { Tournament, Fixture } from '~/types'
+import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
+
+type DateRange = { start: DateValue; end: DateValue }
 
 const authStore = useAuthStore()
 const tournamentStore = useTournamentStore()
@@ -396,14 +407,22 @@ const { toMain, toManage, toTournament } = useHost()
 
 // Live Stream (SSE)
 const { isConnected } = useLiveStream()
+const matchTimer = useMatchTimer()
 
 // State
-const liveMatches = ref<Fixture[]>([])
-const upcomingMatches = ref<Fixture[]>([])
+const matches = ref<Fixture[]>([])
 const trendingTournaments = ref<Tournament[]>([])
-const loadingLive = ref(false)
-const loadingUpcoming = ref(false)
+const fixtureDates = ref<string[]>([])
+const loadingMatches = ref(false)
 const loadingTrending = ref(false)
+const selectedDate = ref<string>(getTodayKey())
+const selectedDateValue = ref<any>(null)
+const calendarOpen = ref(false)
+
+function getTodayKey() {
+  const today = new Date()
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+}
 
 // Computed
 const greetingTime = computed(() => {
@@ -421,38 +440,148 @@ const userName = computed(() => {
 // Filter live and upcoming to only followed tournaments
 const followedIds = computed(() => new Set(tournamentStore.followedTournaments.map(t => t.id)))
 
-const filteredLive = computed(() => {
-  if (followedIds.value.size === 0) return []
-  return liveMatches.value.filter(m => m.tournament_id && followedIds.value.has(m.tournament_id))
+function groupFixturesByTournament(list: any[]) {
+  const grouped: Record<string, { tournament: any; fixtures: any[] }> = {}
+  for (const match of list) {
+    const tournamentId = match.tournament_id || 'unknown'
+    if (!grouped[tournamentId]) {
+      grouped[tournamentId] = {
+        tournament: match.tournament,
+        fixtures: []
+      }
+    }
+    grouped[tournamentId].fixtures.push(match)
+  }
+  for (const key in grouped) {
+    const group = grouped[key]
+    if (!group) continue
+    group.fixtures.sort((a, b) => {
+      if (a.startTime && b.startTime) {
+        return new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      }
+      if (a.startTime) return -1
+      if (b.startTime) return 1
+      return (a.matchNumber || 0) - (b.matchNumber || 0)
+    })
+  }
+  return Object.values(grouped)
+}
+
+const filteredMatches = computed(() => {
+  if (followedIds.value.size === 0) return matches.value
+  return matches.value.filter(m => m.tournament_id && followedIds.value.has(m.tournament_id))
 })
 
-const filteredUpcoming = computed(() => {
-  if (followedIds.value.size === 0) return []
-  return upcomingMatches.value.filter(m => m.tournament_id && followedIds.value.has(m.tournament_id))
-})
+const matchesByTournament = computed(() => groupFixturesByTournament(filteredMatches.value))
+
+const accordionItems = computed(() =>
+  matchesByTournament.value.map((group, index) => ({
+    label: group.tournament?.name || 'Tournament',
+    value: `tournament-${index}`,
+    slot: `tournament-${index}`,
+    class: 'rounded-2xl border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-[#0A0A0A] overflow-hidden',
+    ui: {
+      header: 'px-3 py-1 sm:px-4 sm:py-1.5 bg-gray-50 dark:bg-white/[0.02]',
+      label: 'text-[10px] sm:text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider',
+      trigger: 'flex items-center gap-2',
+      content: 'border-t border-gray-100 dark:border-white/[0.05] overflow-visible',
+    },
+    tournament: group.tournament,
+    fixtures: group.fixtures,
+  }))
+)
+
+const openItems = ref<string[]>([])
+
+watch(accordionItems, (items) => {
+  openItems.value = items.map(item => item.value)
+}, { immediate: true })
+
+// Date-based helpers
+function getMatchDateKey(dateStr?: string | null) {
+  if (!dateStr) return 'unknown'
+  const d = new Date(dateStr)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function formatDateTab(dateKey: string) {
+  const today = getTodayKey()
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowKey = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
+
+  if (dateKey === today) return 'Today'
+  if (dateKey === tomorrowKey) return 'Tomorrow'
+
+  const d = new Date(dateKey)
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+function isDateHighlightable(date: DateValue) {
+  const dateKey = `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`
+  return fixtureDates.value.includes(dateKey)
+}
+
+function goToToday() {
+  const today = getTodayKey()
+  selectedDate.value = today
+  selectedDateValue.value = parseDate(today)
+  calendarOpen.value = false
+  fetchMatches()
+}
+
+function prevDate() {
+  const d = new Date(selectedDate.value)
+  d.setDate(d.getDate() - 1)
+  selectedDate.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  selectedDateValue.value = parseDate(selectedDate.value)
+  fetchMatches()
+}
+
+function nextDate() {
+  const d = new Date(selectedDate.value)
+  d.setDate(d.getDate() + 1)
+  selectedDate.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  selectedDateValue.value = parseDate(selectedDate.value)
+  fetchMatches()
+}
+
+function navigateToTournament(tournament: any) {
+  if (!tournament) return
+  navigateTo(toMain(`/t/${tournament.customName || tournament.id}`))
+}
 
 // Fetching
-async function fetchLiveMatches() {
-  loadingLive.value = true
+async function fetchMatches() {
+  loadingMatches.value = true
   try {
-    const res = await $publicApi<any>('/fixtures/live')
-    liveMatches.value = res.data || []
+    const res = await $publicApi<any>(`/fixtures/by-date?date=${selectedDate.value}`)
+    matches.value = res.data || []
   } catch (err) {
-    console.error('Failed to fetch live matches:', err)
+    console.error('Failed to fetch matches:', err)
   } finally {
-    loadingLive.value = false
+    loadingMatches.value = false
   }
 }
 
-async function fetchUpcoming() {
-  loadingUpcoming.value = true
+async function fetchFixtureDates() {
+  const ids = tournamentStore.followedTournaments.map(t => t.id).filter(Boolean)
+  if (ids.length === 0) {
+    fixtureDates.value = []
+    return
+  }
   try {
-    const res = await $publicApi<any>('/fixtures/upcoming?limit=8')
-    upcomingMatches.value = res.data || []
+    const res = await $publicApi<any>(`/fixtures/dates?tournamentIds=${ids.join(',')}`)
+    const utcDates = res.data || []
+    fixtureDates.value = utcDates.map((utcDate: string) => {
+      const d = new Date(`${utcDate}T00:00:00Z`)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    })
   } catch (err) {
-    console.error('Failed to fetch upcoming matches:', err)
-  } finally {
-    loadingUpcoming.value = false
+    console.error('Failed to fetch fixture dates:', err)
   }
 }
 
@@ -479,6 +608,8 @@ function formatTimeAgo(dateStr: string) {
   const days = Math.floor(hours / 24)
   return `${days}d ago`
 }
+
+
 
 function formatCountdown(dateStr?: string | null) {
   if (!dateStr) return 'TBD'
@@ -531,32 +662,37 @@ function handleLiveUpdate(event: Event) {
   if (!payload?.data) return
 
   const updatedFixture = payload.data as Fixture
+  const idx = matches.value.findIndex((m) => m.id === updatedFixture.id)
 
-  if (updatedFixture.status === 'LIVE') {
-    // Update existing or add to live list
-    const idx = liveMatches.value.findIndex((m) => m.id === updatedFixture.id)
-    if (idx !== -1) {
-      liveMatches.value[idx] = updatedFixture
-    } else {
-      liveMatches.value.unshift(updatedFixture)
-    }
-  } else if (updatedFixture.status === 'COMPLETED') {
-    // Remove from live
-    liveMatches.value = liveMatches.value.filter((m) => m.id !== updatedFixture.id)
-  } else {
-    // If status changed to something other than LIVE (e.g. CANCELLED), remove from live
-    liveMatches.value = liveMatches.value.filter((m) => m.id !== updatedFixture.id)
+  if (idx !== -1) {
+    matches.value[idx] = updatedFixture
+  } else if (getMatchDateKey(updatedFixture.startTime) === selectedDate.value) {
+    matches.value.push(updatedFixture)
   }
 }
 
+// Watch calendar selection and update date + refetch
+watch(selectedDateValue, (value) => {
+  if (!value || !('year' in value)) return
+  selectedDate.value = `${value.year}-${String(value.month).padStart(2, '0')}-${String(value.day).padStart(2, '0')}`
+  calendarOpen.value = false
+  fetchMatches()
+})
+
+// Refetch fixture dates when followed tournaments change
+watch(() => tournamentStore.followedTournaments.map(t => t.id).join(','), () => {
+  fetchFixtureDates()
+}, { immediate: true })
+
 // Initial Load
-onMounted(() => {
-  fetchLiveMatches()
-  fetchUpcoming()
+onMounted(async () => {
+  selectedDateValue.value = parseDate(selectedDate.value)
+  fetchMatches()
   fetchTrendingTournaments()
   if (authStore.isAuthenticated && tournamentStore.followedTournaments.length === 0) {
-    tournamentStore.fetchFollowedTournaments()
+    await tournamentStore.fetchFollowedTournaments()
   }
+  fetchFixtureDates()
 
   // Listen for SSE-dispatched events
   window.addEventListener('live-match-update', handleLiveUpdate)

@@ -161,6 +161,9 @@ export interface Tournament {
   followerCount?: number
   _count?: {
     followers?: number
+    participants?: number
+    groups?: number
+    standings?: number
   }
 
    // Advanced Options
@@ -194,12 +197,6 @@ export interface Tournament {
 
   organization_id?: string | null
   organization?: Organization | null
-  
-  _count?: {
-    participants?: number
-    groups?: number
-    standings?: number
-  }
 }
 
 export interface Participant {
