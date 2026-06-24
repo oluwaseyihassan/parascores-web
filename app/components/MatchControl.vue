@@ -141,6 +141,13 @@ const cardData = reactive({
   minute: null as number | null
 })
 
+// Walkover modal
+const showWalkoverModal = ref(false)
+const walkoverScore = ref(3)
+
+// Swap confirmation modal
+const showSwapConfirmModal = ref(false)
+
 // Substitution modal
 const showSubstitutionModal = ref(false)
 const subTeam = ref<'home' | 'away'>('home')
@@ -1246,6 +1253,45 @@ const endMatch = async () => {
   }
 }
 
+const setWalkover = async (winner: 'home' | 'away') => {
+  if (!selectedFixture.value) return
+
+  updatingMatch.value = true
+  try {
+    const homeScore = winner === 'home' ? walkoverScore.value : 0
+    const awayScore = winner === 'away' ? walkoverScore.value : 0
+
+    const updatePayload = {
+      status: FixtureStatus.COMPLETED,
+      homeScore,
+      awayScore,
+      timerIsRunning: false,
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
+
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    emit('fixture-updated', selectedFixture.value!)
+    emit('match-ended')
+    showWalkoverModal.value = false
+    closeModal()
+
+    useToast().add({
+      title: 'Walkover Recorded',
+      description: `${winner === 'home' ? selectedFixture.value.homeTeam?.customName || 'Home' : selectedFixture.value.awayTeam?.customName || 'Away'} wins by walkover (${homeScore}-${awayScore}).`,
+      icon: 'i-heroicons-flag',
+      color: 'success'
+    })
+  } catch (error: any) {
+    errorMessage.value = extractErrorMessage(error)
+    handleError(error, { title: 'Failed to record walkover' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
 const reopenMatch = async () => {
   if (!selectedFixture.value) return
   
@@ -1459,6 +1505,11 @@ const refreshMatchEvents = async () => {
   } finally {
     loadingEvents.value = false
   }
+}
+
+const confirmSwapTeams = async () => {
+  showSwapConfirmModal.value = false
+  await swapTeams()
 }
 
 const swapTeams = async () => {
@@ -1769,7 +1820,7 @@ const downloadGraphic = async () => {
               <button
                 class="mc-swap-btn"
                 :disabled="swappingTeams || updatingMatch"
-                @click="swapTeams"
+                @click="showSwapConfirmModal = true"
                 title="Swap home and away"
               >
                 <UIcon :name="swappingTeams ? 'i-heroicons-arrow-path' : 'i-heroicons-arrows-right-left'" :class="['w-3 h-3', swappingTeams && 'animate-spin']" />
@@ -2524,13 +2575,18 @@ const downloadGraphic = async () => {
 
             <!-- Secondary actions -->
             <div class="mc-action-bar__secondary">
+              <button
+                v-if="selectedFixture.status !== 'COMPLETED'"
+                class="mc-sec-btn"
+                :disabled="updatingMatch"
+                @click="showWalkoverModal = true"
+              >
+                <UIcon name="i-heroicons-flag" class="w-3.5 h-3.5" />
+                <span>Walkover</span>
+              </button>
               <button v-if="canShare" class="mc-sec-btn" :disabled="sharingMatch" @click="handleShareGraphic">
                 <UIcon name="i-heroicons-share" class="w-3.5 h-3.5" />
                 <span>Share</span>
-              </button>
-              <button class="mc-sec-btn" :disabled="downloading" @click="downloadGraphic">
-                <UIcon name="i-heroicons-arrow-down-tray" class="w-3.5 h-3.5" />
-                <span>Export</span>
               </button>
               <button class="mc-sec-btn" @click="closeModal">
                 <UIcon name="i-heroicons-x-mark" class="w-3.5 h-3.5" />
@@ -2923,6 +2979,111 @@ const downloadGraphic = async () => {
               color="error"
               :loading="loadingEvents"
               @click="confirmDeleteEvent"
+            />
+          </div>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Walkover Modal -->
+  <UModal v-model:open="showWalkoverModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-flag" class="w-5 h-5 text-error-500" />
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                Record Walkover
+              </h3>
+            </div>
+            <UButton
+              icon="i-heroicons-x-mark"
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              @click="showWalkoverModal = false"
+            />
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            Select the team that wins by walkover. This will end the match and set the score to <span class="font-semibold">3-0</span> by default.
+          </p>
+
+          <UFormField label="Walkover score">
+            <UInput
+              v-model.number="walkoverScore"
+              type="number"
+              :min="1"
+              :max="99"
+              icon="i-heroicons-trophy"
+            />
+          </UFormField>
+
+          <div class="grid grid-cols-2 gap-3">
+            <UButton
+              color="primary"
+              variant="soft"
+              :label="`Home Walkover (${selectedFixture?.homeTeam?.customShortName || selectedFixture?.homeTeam?.customName || 'Home'})`"
+              :loading="updatingMatch"
+              @click="setWalkover('home')"
+            />
+            <UButton
+              color="warning"
+              variant="soft"
+              :label="`Away Walkover (${selectedFixture?.awayTeam?.customShortName || selectedFixture?.awayTeam?.customName || 'Away'})`"
+              :loading="updatingMatch"
+              @click="setWalkover('away')"
+            />
+          </div>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Swap Teams Confirmation Modal -->
+  <UModal v-model:open="showSwapConfirmModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-arrows-right-left" class="w-5 h-5 text-warning-500" />
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                Swap Teams
+              </h3>
+            </div>
+            <UButton
+              icon="i-heroicons-x-mark"
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              @click="showSwapConfirmModal = false"
+            />
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            Are you sure you want to swap home and away teams? This will also swap scores, penalties, and lineups.
+          </p>
+
+          <div class="flex justify-end gap-3 pt-2">
+            <UButton
+              label="Cancel"
+              variant="ghost"
+              color="neutral"
+              @click="showSwapConfirmModal = false"
+            />
+            <UButton
+              label="Swap Teams"
+              icon="i-heroicons-arrows-right-left"
+              color="warning"
+              :loading="swappingTeams"
+              @click="confirmSwapTeams"
             />
           </div>
         </div>
