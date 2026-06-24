@@ -313,31 +313,32 @@ const awaySubs = computed(() => {
     <div v-else-if="fixture && tournament">
       <!-- Match Header -->
       <section class="relative overflow-hidden transition-colors" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200'">
-        <div class="relative max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-0">
+        <div class="relative max-w-3xl mx-auto px-3 sm:px-4 md:px-6 pt-6 sm:pt-8 md:pt-10 pb-0">
           <!-- Header Controls -->
-          <div class="flex items-center justify-between mb-8">
+          <div class="flex items-center justify-between mb-4 sm:mb-6 md:mb-8">
             <!-- Back + Tournament -->
-            <button @click="$emit('back')" class="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-emerald-400 transition-colors cursor-pointer">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button @click="$emit('back')" class="inline-flex items-center gap-2 text-[11px] sm:text-xs text-gray-400 hover:text-emerald-400 transition-colors cursor-pointer">
+              <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
               Back
             </button>
 
             <!-- Full Page Link -->
-            <NuxtLink v-if="!isFullPage" :to="toMain(`/t/${tournament.customName || tournament.id}/fixture/${fixture.id}`)" :external="isManage" class="inline-flex items-center gap-1.5 text-xs text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-full border border-emerald-500/20">
-              View Full Match Page
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <NuxtLink v-if="!isFullPage" :to="toMain(`/t/${tournament.customName || tournament.id}/fixture/${fixture.id}`)" :external="isManage" class="inline-flex items-center gap-1.5 text-[10px] sm:text-xs text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-emerald-500/20">
+              <span class="hidden sm:inline">View Full Match Page</span>
+              <span class="sm:hidden">Full Page</span>
+              <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </NuxtLink>
           </div>
 
           <!-- Match Header (FotMob Style) -->
-          <div class="pb-8">
+          <div class="pb-4 sm:pb-6 md:pb-8">
             <!-- Round info -->
-            <div class="text-center mb-6">
-              <span class="text-[11px] font-bold text-gray-400 uppercase tracking-widest block">
+            <div class="text-center mb-3 sm:mb-4 md:mb-6">
+              <span class="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-widest block">
                 {{ (fixture.roundName || `Round ${fixture.round}`).replace(/^Group\s+Stage\s*-\s*/i, '') }}<template v-if="fixture.matchNumber"> · Match {{ fixture.matchNumber }}</template>
               </span>
 
@@ -346,69 +347,69 @@ const awaySubs = computed(() => {
                 v-if="tournament"
                 :to="toMain(`/t/${tournament.customName || tournament.id}`)"
                 :external="isManage"
-                class="inline-flex items-center justify-center gap-2 mt-2 text-[12px] font-bold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                class="inline-flex items-center justify-center gap-1.5 sm:gap-2 mt-1.5 sm:mt-2 text-[11px] sm:text-[12px] font-bold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
               >
                 <img
                   v-if="tournament.logoUrl"
                   :src="tournament.logoUrl"
-                  class="w-4 h-4 object-contain"
+                  class="w-3 h-3 sm:w-4 sm:h-4 object-contain"
                   :alt="tournament.name"
                 />
-                <span class="truncate max-w-[220px]">{{ tournament.name }}</span>
+                <span class="truncate max-w-[160px] sm:max-w-[220px]">{{ tournament.name }}</span>
               </NuxtLink>
 
-              <div v-if="fixture.venue" class="flex items-center justify-center gap-1.5 mt-1.5 opacity-60">
-                <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-gray-400" />
-                <span class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+              <div v-if="fixture.venue" class="flex items-center justify-center gap-1.5 mt-1 opacity-60">
+                <UIcon name="i-heroicons-map-pin" class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400" />
+                <span class="text-[9px] sm:text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                   {{ fixture.venue }}
                 </span>
               </div>
             </div>
 
             <!-- Scoreboard -->
-            <div class="flex items-center justify-center max-w-xl mx-auto mb-6 w-full">
+            <div class="flex items-center justify-center max-w-xl mx-auto mb-4 sm:mb-6 w-full">
               <!-- Home Team -->
               <div class="flex-1 flex flex-col items-center text-center min-w-0">
-                <div class="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden mb-2.5 flex-shrink-0 flex items-center justify-center ring-1 ring-white/10" :class="isDark ? 'bg-white/5' : 'bg-gray-100 ring-gray-200'">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full overflow-hidden mb-2 sm:mb-2.5 flex-shrink-0 flex items-center justify-center ring-1 ring-white/10" :class="isDark ? 'bg-white/5' : 'bg-gray-100 ring-gray-200'">
                   <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover p-1" />
-                  <span v-else class="text-xl font-bold text-gray-400">
+                  <span v-else class="text-base sm:text-lg md:text-xl font-bold text-gray-400">
                     {{ (fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || 'H').charAt(0) }}
                   </span>
                 </div>
-                <span class="text-[15px] font-bold transition-colors max-w-full truncate px-2" :class="isDark ? 'text-white' : 'text-gray-900'">
+                <span class="text-[12px] sm:text-[13px] md:text-[15px] font-bold transition-colors max-w-full truncate px-1 sm:px-2" :class="isDark ? 'text-white' : 'text-gray-900'">
                   {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
                 </span>
               </div>
 
               <!-- Score Center -->
-              <div class="flex-shrink-0 min-w-[7rem] sm:min-w-[8rem] md:min-w-[10rem] flex flex-col items-center justify-center px-2">
+              <div class="flex-shrink-0 min-w-[5rem] sm:min-w-[7rem] md:min-w-[10rem] flex flex-col items-center justify-center px-1 sm:px-2">
                 <template v-if="isLive || isCompleted">
-                  <div class="flex items-center justify-center gap-2 md:gap-3 mb-1">
-                    <span class="text-[32px] md:text-[40px] font-bold tracking-tight leading-none transition-colors whitespace-nowrap" :class="isDark ? 'text-white' : 'text-gray-900'">
+                  <div class="flex items-center justify-center gap-1.5 sm:gap-2 md:gap-3 mb-1">
+                    <span class="text-[24px] sm:text-[32px] md:text-[40px] font-bold tracking-tight leading-none transition-colors whitespace-nowrap" :class="isDark ? 'text-white' : 'text-gray-900'">
                       {{ fixture.homeScore ?? 0 }} <span class="text-gray-500 font-normal mx-1">-</span> {{ fixture.awayScore ?? 0 }}
                     </span>
                   </div>
-                  <div class="text-[13px] font-medium text-gray-400 mt-1 flex items-center justify-center gap-1.5">
+                  <div class="text-[11px] sm:text-[13px] font-medium text-gray-400 mt-1 flex items-center justify-center gap-1.5">
                     <template v-if="isLive">
-                      <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                      <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 animate-pulse"></span>
                       <span class="text-red-400">{{ liveMinuteLabel || 'Live' }}</span>
                     </template>
                     <span v-else>Full time</span>
                   </div>
-                  <div v-if="hasPenalties" class="text-[11px] text-gray-500 mt-1">
+                  <div v-if="hasPenalties" class="text-[10px] sm:text-[11px] text-gray-500 mt-1">
                     ({{ fixture.homePenaltyScore ?? 0 }} - {{ fixture.awayPenaltyScore ?? 0 }} pens)
                   </div>
                 </template>
                 <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
-                  <span class="text-[32px] md:text-[40px] font-bold tracking-tight leading-none transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">-</span>
-                  <span class="text-[13px] font-medium text-red-400 mt-2">Cancelled</span>
+                  <span class="text-[24px] sm:text-[32px] md:text-[40px] font-bold tracking-tight leading-none transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">-</span>
+                  <span class="text-[11px] sm:text-[13px] font-medium text-red-400 mt-2">Cancelled</span>
                 </template>
                 <template v-else>
-                  <span v-if="fixture.startTime" class="text-xl sm:text-2xl font-bold block mb-1 transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">
+                  <span v-if="fixture.startTime" class="text-lg sm:text-xl md:text-2xl font-bold block mb-1 transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">
                     {{ formatTime(fixture.startTime) }}
                   </span>
-                  <span v-else class="text-[32px] font-bold text-gray-600 block mb-1">-</span>
-                  <span v-if="fixture.startTime" class="text-[10px] sm:text-[12px] text-gray-400 block text-center">
+                  <span v-else class="text-[24px] sm:text-[32px] font-bold text-gray-600 block mb-1">-</span>
+                  <span v-if="fixture.startTime" class="text-[9px] sm:text-[10px] md:text-[12px] text-gray-400 block text-center">
                     {{ formatFullDate(fixture.startTime) }}
                   </span>
                 </template>
@@ -416,38 +417,38 @@ const awaySubs = computed(() => {
 
               <!-- Away Team -->
               <div class="flex-1 flex flex-col items-center text-center min-w-0">
-                <div class="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden mb-2.5 flex-shrink-0 flex items-center justify-center ring-1 ring-white/10" :class="isDark ? 'bg-white/5' : 'bg-gray-100 ring-gray-200'">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full overflow-hidden mb-2 sm:mb-2.5 flex-shrink-0 flex items-center justify-center ring-1 ring-white/10" :class="isDark ? 'bg-white/5' : 'bg-gray-100 ring-gray-200'">
                   <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover p-1" />
-                  <span v-else class="text-xl font-bold text-gray-400">
+                  <span v-else class="text-base sm:text-lg md:text-xl font-bold text-gray-400">
                     {{ (fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || 'A').charAt(0) }}
                   </span>
                 </div>
-                <span class="text-[15px] font-bold transition-colors max-w-full truncate px-2" :class="isDark ? 'text-white' : 'text-gray-900'">
+                <span class="text-[12px] sm:text-[13px] md:text-[15px] font-bold transition-colors max-w-full truncate px-1 sm:px-2" :class="isDark ? 'text-white' : 'text-gray-900'">
                   {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
                 </span>
               </div>
             </div>
           </div>
         </div>
-        <div class="max-w-3xl mx-auto px-6 mt-4">
-          <nav class="flex gap-6 border-b transition-colors" :class="isDark ? 'border-white/[0.08]' : 'border-gray-200'">
+        <div class="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 mt-2 sm:mt-4">
+          <nav class="flex gap-4 sm:gap-6 border-b transition-colors" :class="isDark ? 'border-white/[0.08]' : 'border-gray-200'">
             <button
               @click="activeTab = 'events'"
-              class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
+              class="pb-2 sm:pb-3 text-xs sm:text-sm font-medium border-b-2 transition-colors duration-200"
               :class="activeTab === 'events' ? 'border-emerald-500 text-emerald-400' : tabInactiveClass"
             >
               Match Events
             </button>
             <button
               @click="activeTab = 'info'"
-              class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
+              class="pb-2 sm:pb-3 text-xs sm:text-sm font-medium border-b-2 transition-colors duration-200"
               :class="activeTab === 'info' ? 'border-emerald-500 text-emerald-400' : tabInactiveClass"
             >
               Match Info
             </button>
             <button
               @click="activeTab = 'lineups'"
-              class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
+              class="pb-2 sm:pb-3 text-xs sm:text-sm font-medium border-b-2 transition-colors duration-200"
               :class="activeTab === 'lineups' ? 'border-emerald-500 text-emerald-400' : tabInactiveClass"
             >
               Lineups
@@ -457,52 +458,52 @@ const awaySubs = computed(() => {
       </section>
 
       <!-- Match Details Content -->
-      <section class="max-w-3xl mx-auto px-4 py-8">
+      <section class="max-w-3xl mx-auto px-3 py-6 md:px-4 md:py-8">
         <!-- Match Events Tab -->
         <div v-show="activeTab === 'events'">
           <!-- Player of the Match -->
-          <div v-if="manOfTheMatch" class="mb-4 md:mb-6 border rounded-xl overflow-hidden" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'">
-            <div class="px-4 py-3 md:px-5 md:py-4">
-              <h3 class="text-[14px] font-bold mb-3 md:mb-4 text-center" :class="isDark ? 'text-white' : 'text-gray-900'">Player of the Match</h3>
-              <div class="flex items-center gap-3">
+          <div v-if="manOfTheMatch" class="mb-3 md:mb-6 border rounded-xl overflow-hidden" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'">
+            <div class="px-3 py-2.5 md:px-5 md:py-4">
+              <h3 class="text-[13px] md:text-[14px] font-bold mb-2 md:mb-4 text-center" :class="isDark ? 'text-white' : 'text-gray-900'">Player of the Match</h3>
+              <div class="flex items-center gap-2 md:gap-3">
                 <UAvatar
                   :src="manOfTheMatch.avatarUrl || undefined"
                   :alt="manOfTheMatch.name"
-                  size="md"
+                  size="sm"
                   class="shrink-0"
                   :class="isDark ? 'bg-white/10' : 'bg-gray-100'"
                 />
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-semibold truncate" :class="isDark ? 'text-white' : 'text-gray-900'">{{ manOfTheMatch.name }}</p>
+                  <p class="text-xs md:text-sm font-semibold truncate" :class="isDark ? 'text-white' : 'text-gray-900'">{{ manOfTheMatch.name }}</p>
                   <div class="flex items-center gap-1.5">
                     <img
                       v-if="manOfTheMatch.participant?.logoUrl || manOfTheMatch.participant?.team?.logoUrl"
                       :src="manOfTheMatch.participant?.logoUrl || manOfTheMatch.participant?.team?.logoUrl"
                       :alt="teamName"
-                      class="shrink-0 w-4 h-4 rounded-full object-cover"
+                      class="shrink-0 w-3 h-3 md:w-4 md:h-4 rounded-full object-cover"
                     />
-                    <p class="text-xs truncate" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+                    <p class="text-[11px] md:text-xs truncate" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
                       {{ teamName }}
                     </p>
                   </div>
                 </div>
-                <div class="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-blue-500 text-white">
-                  <UIcon name="i-heroicons-star" class="w-3.5 h-3.5" />
+                <div class="shrink-0 flex items-center gap-1 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-[10px] md:text-xs font-semibold bg-blue-500 text-white">
+                  <UIcon name="i-heroicons-star" class="w-3 h-3 md:w-3.5 md:h-3.5" />
                 </div>
               </div>
             </div>
           </div>
-          <div v-if="timelineEvents.length > 0" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl  overflow-hidden relative pb-10">
-            <div class="px-3 md:px-5 py-4 md:py-6 flex flex-col items-center">
-              <h3 class="text-[14px] font-bold mb-6 md:mb-8 relative z-10 z-[1]" :class="isDark ? 'text-white' : 'text-gray-900'">Events</h3>
+          <div v-if="timelineEvents.length > 0" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl  overflow-hidden relative pb-8 md:pb-10">
+            <div class="px-2 md:px-5 py-3 md:py-6 flex flex-col items-center">
+              <h3 class="text-[13px] md:text-[14px] font-bold mb-4 md:mb-8 relative z-10 z-[1]" :class="isDark ? 'text-white' : 'text-gray-900'">Events</h3>
               
               <!-- Center Line (Removed) -->
 
               <div class="w-full flex flex-col relative z-10">
-                <div 
-                  v-for="(event, index) in timelineEvents" 
+                <div
+                  v-for="(event, index) in timelineEvents"
                   :key="event.id"
-                  class="flex w-full items-center group transition-opacity duration-300 py-4 border-b last:border-b-0"
+                  class="flex w-full items-center group transition-opacity duration-300 py-3 md:py-4 border-b last:border-b-0"
                   :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'"
                 >
                   <!-- Left Side (Home) -->
@@ -511,20 +512,20 @@ const awaySubs = computed(() => {
                       <div class="flex flex-col items-start md:items-end justify-center min-w-0">
                         <div class="flex items-center gap-1.5 flex-row md:flex-row-reverse min-w-0">
                           <!-- Event Icon (Left side has it on the right closest to center) -->
-                          <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-                            <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-4 h-4 md:w-5 md:h-5" :class="event.type === 'OWN_GOAL' ? 'text-red-500' : (isDark ? 'text-white' : 'text-gray-900')" />
-                            <div v-else-if="event.type === 'YELLOW_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-yellow-400 rounded-[2px] shadow-sm"></div>
-                            <div v-else-if="event.type === 'RED_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-red-500 rounded-[2px] shadow-sm"></div>
+                          <div class="flex-shrink-0 w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
+                            <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-3 h-3 md:w-5 md:h-5" :class="event.type === 'OWN_GOAL' ? 'text-red-500' : (isDark ? 'text-white' : 'text-gray-900')" />
+                            <div v-else-if="event.type === 'YELLOW_CARD'" class="w-2.5 h-[11px] md:w-3.5 md:h-[18px] bg-yellow-400 rounded-[2px] shadow-sm"></div>
+                            <div v-else-if="event.type === 'RED_CARD'" class="w-2.5 h-[11px] md:w-3.5 md:h-[18px] bg-red-500 rounded-[2px] shadow-sm"></div>
                             <div v-else-if="event.type === 'SUBSTITUTION'" class="flex items-center justify-center">
-                              <UIcon name="i-heroicons-arrows-right-left" class="w-4 h-4 md:w-5 md:h-5 text-gray-400 transform rotate-90" />
+                              <UIcon name="i-heroicons-arrows-right-left" class="w-3 h-3 md:w-5 md:h-5 text-gray-400 transform rotate-90" />
                             </div>
-                            <IconsAssistIcon v-else-if="event.type === 'ASSIST'" class="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
-                            <span v-else class="text-xs md:text-sm">{{ getEventIcon(event.type) }}</span>
+                            <IconsAssistIcon v-else-if="event.type === 'ASSIST'" class="w-3 h-3 md:w-5 md:h-5 text-gray-400" />
+                            <span v-else class="text-[10px] md:text-sm">{{ getEventIcon(event.type) }}</span>
                           </div>
-                          
+
                           <!-- Event Details -->
                           <div class="flex flex-col items-start md:items-end min-w-0">
-                            <p class="text-[13px] md:text-[14px] font-semibold tracking-tight transition-colors flex flex-wrap justify-start md:justify-end md:items-center gap-1 md:gap-1.5" :class="isDark ? 'text-white' : 'text-gray-900'">
+                            <p class="text-[12px] md:text-[14px] font-semibold tracking-tight transition-colors flex flex-wrap justify-start md:justify-end md:items-center gap-1 md:gap-1.5" :class="isDark ? 'text-white' : 'text-gray-900'">
                               <span v-if="event.type === 'SUBSTITUTION'" class="text-emerald-500 break-all min-w-0">{{ event.player?.name || 'Player In' }}</span>
                               <span v-else class="break-all min-w-0 text-left md:text-right">
                                 {{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}
@@ -541,13 +542,13 @@ const awaySubs = computed(() => {
                             </p>
                             
                             <!-- Subtitle / Assist / Sub Out -->
-                            <p v-if="event.type === 'SUBSTITUTION'" class="text-[11px] md:text-[12px] text-red-500 font-medium tracking-tight">
+                            <p v-if="event.type === 'SUBSTITUTION'" class="text-[10px] md:text-[12px] text-red-500 font-medium tracking-tight">
                               {{ event.relatedPlayer?.name || 'Player Out' }}
                             </p>
-                            <p v-else-if="['GOAL', 'PENALTY'].includes(event.type) && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
+                            <p v-else-if="['GOAL', 'PENALTY'].includes(event.type) && event.relatedPlayer" class="text-[11px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
                               assist by {{ event.relatedPlayer.name }}
                             </p>
-                            <p v-else-if="event.type === 'PENALTY_SAVE' && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
+                            <p v-else-if="event.type === 'PENALTY_SAVE' && event.relatedPlayer" class="text-[11px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
                               penalty by {{ event.relatedPlayer.name }}
                             </p>
                           </div>
@@ -558,9 +559,9 @@ const awaySubs = computed(() => {
 
                   <!-- Center Minute Bubble -->
                   <div class="flex-shrink-0 md:w-12 flex justify-center items-center relative md:mx-0"
-                       :class="isHomeEvent(event) ? 'order-1 md:order-2 w-8 mr-2 md:mr-0' : 'order-2 md:order-2 w-8 ml-2 md:ml-0'">
-                    <div 
-                      class="flex items-center justify-center text-[12px] md:text-[11px] font-bold z-10 transition-colors md:rounded-full md:w-8 md:h-8 md:shadow-sm"
+                       :class="isHomeEvent(event) ? 'order-1 md:order-2 w-6 mr-1.5 md:mr-0' : 'order-2 md:order-2 w-6 ml-1.5 md:ml-0'">
+                    <div
+                      class="flex items-center justify-center text-[11px] md:text-[11px] font-bold z-10 transition-colors md:rounded-full md:w-8 md:h-8 md:shadow-sm"
                       :class="isDark ? 'text-gray-400 md:bg-white/10 md:text-gray-300 md:ring-1 md:ring-white/20' : 'text-gray-500 md:bg-gray-100 md:text-gray-600 md:ring-1 md:ring-gray-200'"
                     >
                       <span v-if="event.minute != null">{{ event.minute }}'</span>
@@ -572,47 +573,47 @@ const awaySubs = computed(() => {
 
                   <!-- Right Side (Away) -->
                   <div class="flex-1 flex justify-end md:justify-start text-left md:w-1/2 min-w-0" :class="!isHomeEvent(event) ? 'order-1 md:order-3' : 'hidden md:flex order-3'">
-                    <div v-if="!isHomeEvent(event)" class="flex items-center gap-2 md:gap-3 min-w-0">
+                    <div v-if="!isHomeEvent(event)" class="flex items-center gap-1.5 md:gap-3 min-w-0">
                       <div class="flex flex-col items-end md:items-start justify-center min-w-0">
                         <div class="flex items-center gap-1.5 flex-row-reverse md:flex-row min-w-0">
                           <!-- Event Icon -->
-                          <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-                            <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-4 h-4 md:w-5 md:h-5" :class="event.type === 'OWN_GOAL' ? 'text-red-500' : (isDark ? 'text-white' : 'text-gray-900')" />
-                            <div v-else-if="event.type === 'YELLOW_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-yellow-400 rounded-[2px] shadow-sm"></div>
-                            <div v-else-if="event.type === 'RED_CARD'" class="w-3 h-[14px] md:w-3.5 md:h-[18px] bg-red-500 rounded-[2px] shadow-sm"></div>
+                          <div class="flex-shrink-0 w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
+                            <IconsSoccerBallIcon v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)" class="w-3 h-3 md:w-5 md:h-5" :class="event.type === 'OWN_GOAL' ? 'text-red-500' : (isDark ? 'text-white' : 'text-gray-900')" />
+                            <div v-else-if="event.type === 'YELLOW_CARD'" class="w-2.5 h-[11px] md:w-3.5 md:h-[18px] bg-yellow-400 rounded-[2px] shadow-sm"></div>
+                            <div v-else-if="event.type === 'RED_CARD'" class="w-2.5 h-[11px] md:w-3.5 md:h-[18px] bg-red-500 rounded-[2px] shadow-sm"></div>
                             <div v-else-if="event.type === 'SUBSTITUTION'" class="flex items-center justify-center">
-                              <UIcon name="i-heroicons-arrows-right-left" class="w-4 h-4 md:w-5 md:h-5 text-gray-400 transform rotate-90" />
+                              <UIcon name="i-heroicons-arrows-right-left" class="w-3 h-3 md:w-5 md:h-5 text-gray-400 transform rotate-90" />
                             </div>
-                            <IconsAssistIcon v-else-if="event.type === 'ASSIST'" class="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
-                            <span v-else class="text-xs md:text-sm">{{ getEventIcon(event.type) }}</span>
+                            <IconsAssistIcon v-else-if="event.type === 'ASSIST'" class="w-3 h-3 md:w-5 md:h-5 text-gray-400" />
+                            <span v-else class="text-[10px] md:text-sm">{{ getEventIcon(event.type) }}</span>
                           </div>
-                          
+
                           <!-- Event Details -->
                           <div class="flex flex-col items-end md:items-start min-w-0">
-                            <p class="text-[13px] md:text-[14px] font-semibold tracking-tight transition-colors flex flex-wrap justify-end md:justify-start md:items-center gap-1 md:gap-1.5" :class="isDark ? 'text-white' : 'text-gray-900'">
+                            <p class="text-[12px] md:text-[14px] font-semibold tracking-tight transition-colors flex flex-wrap justify-end md:justify-start md:items-center gap-1 md:gap-1.5" :class="isDark ? 'text-white' : 'text-gray-900'">
                               <span v-if="event.type === 'SUBSTITUTION'" class="text-emerald-500 break-all min-w-0">{{ event.player?.name || 'Player In' }}</span>
                               <span v-else class="break-all min-w-0 text-right md:text-left">
                                 {{ event.player?.name || event.participant?.customName || getEventLabel(event.type) }}
-                                <span v-if="event.type === 'PENALTY'" class="text-xs text-gray-400 font-normal ml-0.5">(P)</span>
-                                <span v-if="event.type === 'MISSED_PENALTY'" class="text-xs text-red-500 font-normal ml-0.5">(Missed)</span>
-                                <span v-if="event.type === 'PENALTY_SAVE'" class="text-xs text-amber-500 font-normal ml-0.5">(Saved)</span>
-                                <span v-if="event.type === 'OWN_GOAL'" class="text-xs text-red-500 font-normal ml-0.5">(OG)</span>
+                                <span v-if="event.type === 'PENALTY'" class="text-[10px] md:text-xs text-gray-400 font-normal ml-0.5">(P)</span>
+                                <span v-if="event.type === 'MISSED_PENALTY'" class="text-[10px] md:text-xs text-red-500 font-normal ml-0.5">(Missed)</span>
+                                <span v-if="event.type === 'PENALTY_SAVE'" class="text-[10px] md:text-xs text-amber-500 font-normal ml-0.5">(Saved)</span>
+                                <span v-if="event.type === 'OWN_GOAL'" class="text-[10px] md:text-xs text-red-500 font-normal ml-0.5">(OG)</span>
                               </span>
-                              
+
                               <!-- Score after goal -->
                               <span v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type) && event.scoreAtTime" class="text-gray-500 ml-1">
                                 (<span :class="event.scoringTeam === 'home' ? 'text-emerald-500' : ''">{{ event.currentHomeScore }}</span> - <span :class="event.scoringTeam === 'away' ? 'text-emerald-500' : ''">{{ event.currentAwayScore }}</span>)
                               </span>
                             </p>
-                            
+
                             <!-- Subtitle / Assist / Sub Out -->
-                            <p v-if="event.type === 'SUBSTITUTION'" class="text-[11px] md:text-[12px] text-red-500 font-medium tracking-tight">
+                            <p v-if="event.type === 'SUBSTITUTION'" class="text-[10px] md:text-[12px] text-red-500 font-medium tracking-tight">
                               {{ event.relatedPlayer?.name || 'Player Out' }}
                             </p>
-                            <p v-else-if="['GOAL', 'PENALTY'].includes(event.type) && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
+                            <p v-else-if="['GOAL', 'PENALTY'].includes(event.type) && event.relatedPlayer" class="text-[11px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
                               assist by {{ event.relatedPlayer.name }}
                             </p>
-                            <p v-else-if="event.type === 'PENALTY_SAVE' && event.relatedPlayer" class="text-[12px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
+                            <p v-else-if="event.type === 'PENALTY_SAVE' && event.relatedPlayer" class="text-[11px] md:text-[13px] text-gray-400/80 flex items-center gap-1">
                               penalty by {{ event.relatedPlayer.name }}
                             </p>
                           </div>
