@@ -373,57 +373,57 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     />
 
     <!-- Form -->
-    <UForm :schema="schema" :state="state" @submit="onSubmit" class="space-y-8">
-      
+    <UForm :schema="schema" :state="state" @submit="onSubmit" class="space-y-6 sm:space-y-8">
+
       <!-- Basic Info -->
-      <UCard>
+      <UCard :ui="{ header: 'px-3 py-2 sm:px-4 sm:py-3' }">
         <template #header>
           <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-indigo-500" />
-            <span class="font-medium">Basic Information</span>
+            <UIcon name="i-heroicons-information-circle" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+            <span class="font-medium text-sm sm:text-base">Basic Information</span>
           </div>
         </template>
 
-        <div class="space-y-4">
+        <div class="space-y-3 sm:space-y-4">
           <!-- Logo Upload -->
-          <div class="flex items-start gap-4">
-            <input 
+          <div class="flex items-start gap-3 sm:gap-4">
+            <input
               ref="logoFileInput"
-              type="file" 
+              type="file"
               accept="image/*"
               class="hidden"
               @change="handleLogoChange"
             />
-            
-            <button 
+
+            <button
               type="button"
-              class="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 group"
+              class="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 group"
               @click="triggerLogoInput"
               :disabled="uploadingLogo"
             >
-              <img 
-                v-if="logoPreview" 
-                :src="logoPreview" 
+              <img
+                v-if="logoPreview"
+                :src="logoPreview"
                 alt="Logo preview"
                 class="w-full h-full object-cover"
               />
-              <div 
+              <div
                 v-else
                 class="w-full h-full flex flex-col items-center justify-center text-gray-400 group-hover:text-indigo-500 transition-colors"
               >
-                <UIcon name="i-heroicons-photo" class="w-8 h-8" />
-                <span class="text-xs mt-1">Add Logo</span>
+                <UIcon name="i-heroicons-photo" class="w-6 h-6 sm:w-8 sm:h-8" />
+                <span class="text-[10px] sm:text-xs mt-1">Add Logo</span>
               </div>
-              
+
               <div v-if="uploadingLogo" class="absolute inset-0 bg-black/50 flex items-center justify-center">
-                <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 text-white animate-spin" />
+                <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 sm:w-6 sm:h-6 text-white animate-spin" />
               </div>
             </button>
-            
+
             <div class="flex-1">
               <p class="text-sm font-medium text-gray-900 dark:text-white">Tournament Logo</p>
-              <p class="text-xs text-gray-500 mt-1">Recommended: Square image, at least 200x200px</p>
-              
+              <p class="text-[10px] sm:text-xs text-gray-500 mt-1">Recommended: Square image, at least 200x200px</p>
+
               <UButton
                 v-if="logoPreview"
                 size="xs"
@@ -441,18 +441,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
           <!-- Banner Upload -->
           <div class="flex flex-col gap-2">
-            <input 
-              ref="bannerFileInput"
-              type="file" 
-              accept="image/*"
-              class="hidden"
-              @change="handleBannerChange"
-            />
-            
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-sm font-medium text-gray-900 dark:text-white">Tournament Banner</p>
-                <p class="text-xs text-gray-500">Recommended: 1200x400px or similar wide format</p>
+                <p class="text-[10px] sm:text-xs text-gray-500">Recommended: 1200x400px or similar wide format</p>
               </div>
               <UButton
                 v-if="bannerPreview"
@@ -466,38 +458,38 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 Remove
               </UButton>
             </div>
-            
-            <button 
+
+            <button
               type="button"
-              class="relative w-full h-32 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 group"
+              class="relative w-full h-24 sm:h-28 md:h-32 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 group"
               @click="triggerBannerInput"
               :disabled="uploadingBanner"
             >
-              <img 
-                v-if="bannerPreview" 
-                :src="bannerPreview" 
+              <img
+                v-if="bannerPreview"
+                :src="bannerPreview"
                 alt="Banner preview"
                 class="w-full h-full object-cover"
               />
-              <div 
+              <div
                 v-else
                 class="w-full h-full flex flex-col items-center justify-center text-gray-400 group-hover:text-indigo-500 transition-colors"
               >
-                <UIcon name="i-heroicons-photo" class="w-8 h-8" />
-                <span class="text-xs mt-1">Add Banner</span>
+                <UIcon name="i-heroicons-photo" class="w-6 h-6 sm:w-8 sm:h-8" />
+                <span class="text-[10px] sm:text-xs mt-1">Add Banner</span>
               </div>
-              
+
               <div v-if="uploadingBanner" class="absolute inset-0 bg-black/50 flex items-center justify-center">
-                <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 text-white animate-spin" />
+                <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 sm:w-6 sm:h-6 text-white animate-spin" />
               </div>
             </button>
           </div>
 
           <UFormField label="Tournament Name" name="name" required>
-            <UInput 
-              v-model="state.name" 
+            <UInput
+              v-model="state.name"
               placeholder="e.g. Premier Football League 2026"
-              size="lg"
+              size="md"
               class="w-full"
             />
           </UFormField>
@@ -569,15 +561,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       </UCard>
 
       <!-- Tournament Format -->
-      <UCard>
+      <UCard :ui="{ header: 'px-3 py-2 sm:px-4 sm:py-3' }">
         <template #header>
           <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-indigo-500" />
-            <span class="font-medium">Tournament Format</span>
+            <UIcon name="i-heroicons-trophy" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+            <span class="font-medium text-sm sm:text-base">Tournament Format</span>
           </div>
         </template>
 
-        <div class="space-y-6">
+        <div class="space-y-4 sm:space-y-6">
           <UAlert
             icon="i-heroicons-exclamation-triangle"
             color="warning"
@@ -587,71 +579,72 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           />
 
           <UFormField label="Tournament Type" name="type" required>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
               <button
                 v-for="opt in tournamentTypes"
                 :key="opt.value"
                 type="button"
                 @click="state.type = opt.value"
-                class="p-4 rounded-lg border-2 text-left transition-all"
+                class="p-3 sm:p-4 rounded-lg border-2 text-left transition-all"
                 :class="[
                   state.type === opt.value
                     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
                     : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                 ]"
               >
-                <p class="font-medium text-gray-900 dark:text-white">{{ opt.label }}</p>
-                <p class="text-xs text-gray-500 mt-1">{{ opt.description }}</p>
+                <p class="font-medium text-sm text-gray-900 dark:text-white">{{ opt.label }}</p>
+                <p class="text-[10px] sm:text-xs text-gray-500 mt-1">{{ opt.description }}</p>
               </button>
             </div>
           </UFormField>
 
           <UFormField label="Participant Type" name="participantType" required>
-            <div class="flex gap-3">
+            <div class="flex gap-2 sm:gap-3">
               <button
                 v-for="opt in participantTypes"
                 :key="opt.value"
                 type="button"
                 @click="state.participantType = opt.value"
-                class="flex-1 p-4 rounded-lg border-2 flex items-center gap-3 transition-all"
+                class="flex-1 p-3 sm:p-4 rounded-lg border-2 flex items-center gap-2 sm:gap-3 transition-all"
                 :class="[
                   state.participantType === opt.value
                     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
                     : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                 ]"
               >
-                <UIcon :name="opt.icon" class="w-5 h-5" />
-                <span class="font-medium text-gray-900 dark:text-white">{{ opt.label }}</span>
+                <UIcon :name="opt.icon" class="w-4 h-4 sm:w-5 sm:h-5" />
+                <span class="font-medium text-sm text-gray-900 dark:text-white">{{ opt.label }}</span>
               </button>
             </div>
           </UFormField>
 
           <UFormField label="Max Participants" name="maxParticipants" required>
-            <UInput 
-              v-model.number="state.maxParticipants" 
+            <UInput
+              v-model.number="state.maxParticipants"
               type="number"
               placeholder="e.g. 16"
               :min="2"
               class="w-full md:w-1/2"
+              size="sm"
             />
           </UFormField>
 
           <template v-if="state.type === TournamentType.KNOCKOUT || state.type === TournamentType.HYBRID">
-             <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-                <h3 class="font-medium text-gray-900 dark:text-white">Knockout Options</h3>
-                
-                <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                  <div>
-                    <p class="font-medium text-gray-900 dark:text-white">Two-Legged Ties</p>
-                    <p class="text-sm text-gray-500">Knockout rounds (except Final) will have Home and Away legs</p>
+             <div class="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-800">
+                <h3 class="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Knockout Options</h3>
+
+                <div class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <div class="flex-1 pr-3">
+                    <p class="font-medium text-sm text-gray-900 dark:text-white">Two-Legged Ties</p>
+                    <p class="text-[11px] sm:text-sm text-gray-500">Knockout rounds (except Final) will have Home and Away legs</p>
                   </div>
                   <USwitch v-model="state.twoLegsKnockout" />
                 </div>
 
-                <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                  <div>
-                    <p class="font-medium text-gray-900 dark:text-white">Third-Place Match</p>
-                    <p class="text-sm text-gray-500">Generate a playoff match for semi-final losers</p>
+                <div class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <div class="flex-1 pr-3">
+                    <p class="font-medium text-sm text-gray-900 dark:text-white">Third-Place Match</p>
+                    <p class="text-[11px] sm:text-sm text-gray-500">Generate a playoff match for semi-final losers</p>
                   </div>
                   <USwitch v-model="state.thirdPlaceMatch" />
                 </div>
@@ -659,13 +652,13 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </template>
 
           <template v-if="[TournamentType.ROUND_ROBIN, TournamentType.LEAGUE, TournamentType.GROUP, TournamentType.HYBRID].includes(state.type as any)">
-             <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-                <h3 class="font-medium text-gray-900 dark:text-white">Round Robin / Group Options</h3>
-                
-                <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                  <div>
-                    <p class="font-medium text-gray-900 dark:text-white">Double Round Robin</p>
-                    <p class="text-sm text-gray-500">Teams will play each other twice (Home and Away)</p>
+             <div class="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-800">
+                <h3 class="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Round Robin / Group Options</h3>
+
+                <div class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <div class="flex-1 pr-3">
+                    <p class="font-medium text-sm text-gray-900 dark:text-white">Double Round Robin</p>
+                    <p class="text-[11px] sm:text-sm text-gray-500">Teams will play each other twice (Home and Away)</p>
                   </div>
                   <USwitch v-model="state.doubleRoundRobin" />
                 </div>
@@ -675,30 +668,31 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       </UCard>
 
       <!-- Schedule -->
-      <UCard>
+      <UCard :ui="{ header: 'px-3 py-2 sm:px-4 sm:py-3' }">
         <template #header>
           <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-calendar" class="w-5 h-5 text-indigo-500" />
-            <span class="font-medium">Schedule</span>
+            <UIcon name="i-heroicons-calendar" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+            <span class="font-medium text-sm sm:text-base">Schedule</span>
           </div>
         </template>
 
-        <div class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-3 sm:space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <UFormField label="Start Date" name="start_date" required>
               <UPopover>
-                <UButton 
-                  variant="outline" 
+                <UButton
+                  variant="outline"
                   color="neutral"
                   icon="i-heroicons-calendar"
+                  size="sm"
                   class="w-full justify-start"
                   :class="!startDate && 'text-gray-400'"
                 >
                   {{ formatDateDisplay(startDate) }}
                 </UButton>
                 <template #content>
-                  <UCalendar 
-                    v-model="startDate" 
+                  <UCalendar
+                    v-model="startDate"
                   />
                 </template>
               </UPopover>
@@ -706,18 +700,19 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
             <UFormField label="End Date" name="end_date" required>
               <UPopover>
-                <UButton 
-                  variant="outline" 
+                <UButton
+                  variant="outline"
                   color="neutral"
                   icon="i-heroicons-calendar"
+                  size="sm"
                   class="w-full justify-start"
                   :class="!endDate && 'text-gray-400'"
                 >
                   {{ formatDateDisplay(endDate) }}
                 </UButton>
                 <template #content>
-                  <UCalendar 
-                    v-model="endDate" 
+                  <UCalendar
+                    v-model="endDate"
                     :min-value="startDate as CalendarDate"
                   />
                 </template>
@@ -726,35 +721,36 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </div>
 
           <UFormField label="Timezone" name="timezone" required>
-            <USelect 
-              v-model="state.timezone" 
+            <USelect
+              v-model="state.timezone"
               :items="timezones"
               value-key="value"
               option-label="label"
               class="w-full md:w-1/2"
+              size="sm"
             />
           </UFormField>
         </div>
       </UCard>
 
       <!-- Visibility & Settings -->
-      <UCard>
+      <UCard :ui="{ header: 'px-3 py-2 sm:px-4 sm:py-3' }">
         <template #header>
           <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-cog-6-tooth" class="w-5 h-5 text-indigo-500" />
-            <span class="font-medium">Visibility & Settings</span>
+            <UIcon name="i-heroicons-cog-6-tooth" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+            <span class="font-medium text-sm sm:text-base">Visibility & Settings</span>
           </div>
         </template>
 
-        <div class="space-y-6">
+        <div class="space-y-4 sm:space-y-6">
           <UFormField label="Visibility" name="visibility" required>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
               <button
                 v-for="opt in visibilityOptions"
                 :key="opt.value"
                 type="button"
                 @click="state.visibility = opt.value"
-                class="p-4 rounded-lg border-2 text-left transition-all"
+                class="p-3 sm:p-4 rounded-lg border-2 text-left transition-all"
                 :class="[
                   state.visibility === opt.value
                     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
@@ -762,40 +758,41 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 ]"
               >
                 <div class="flex items-center gap-2 mb-1">
-                  <UIcon :name="opt.icon" class="w-4 h-4 text-gray-400" />
-                  <p class="font-medium text-gray-900 dark:text-white">{{ opt.label }}</p>
+                  <UIcon :name="opt.icon" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />
+                  <p class="font-medium text-sm text-gray-900 dark:text-white">{{ opt.label }}</p>
                 </div>
-                <p class="text-xs text-gray-500">{{ opt.description }}</p>
+                <p class="text-[10px] sm:text-xs text-gray-500">{{ opt.description }}</p>
               </button>
             </div>
           </UFormField>
 
-          <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-            <div class="flex-1 pr-4">
-              <p class="font-medium text-gray-900 dark:text-white">Auto-approve Join Requests</p>
-              <p class="text-sm text-gray-500">When enabled, players joining via invite link are added immediately. When disabled, you must manually approve each request in the "Manage Players" section to ensure roster integrity.</p>
+          <div class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+            <div class="flex-1 pr-3">
+              <p class="font-medium text-sm text-gray-900 dark:text-white">Auto-approve Join Requests</p>
+              <p class="text-[11px] sm:text-sm text-gray-500">When enabled, players joining via invite link are added immediately. When disabled, you must manually approve each request.</p>
             </div>
             <USwitch v-model="state.autoApprove" />
           </div>
 
-          <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-            <div class="flex-1 pr-4">
-              <p class="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+          <div class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+            <div class="flex-1 pr-3">
+              <p class="font-medium text-sm text-gray-900 dark:text-white flex items-center gap-2">
                 Paid Registration
               </p>
-              <p class="text-sm text-gray-500">Require teams to pay a registration fee to join.</p>
+              <p class="text-[11px] sm:text-sm text-gray-500">Require teams to pay a registration fee to join.</p>
             </div>
             <USwitch v-model="state.isPaidRegistration" />
           </div>
 
-          <div v-if="state.isPaidRegistration" class="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-4 animate-in fade-in duration-200">
+          <div v-if="state.isPaidRegistration" class="p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-3 sm:space-y-4 animate-in fade-in duration-200">
             <UFormField label="Registration Fee (₦)" name="registrationFee" required>
-              <UInput 
-                v-model.number="state.registrationFee" 
-                type="number" 
-                placeholder="e.g. 5000" 
+              <UInput
+                v-model.number="state.registrationFee"
+                type="number"
+                placeholder="e.g. 5000"
                 min="0"
                 class="w-full"
+                size="sm"
                 icon="i-heroicons-banknotes"
               />
             </UFormField>
@@ -805,13 +802,13 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
 
       <!-- Submit -->
-      <div class="flex items-center justify-end gap-3 pt-4">
-        <UButton 
+      <div class="flex items-center justify-end gap-3 pt-2 sm:pt-4">
+        <UButton
           type="submit"
-          label="Save Settings" 
+          label="Save Settings"
           icon="i-heroicons-check"
           color="primary"
-          size="lg"
+          size="md"
           :loading="loading"
         />
       </div>

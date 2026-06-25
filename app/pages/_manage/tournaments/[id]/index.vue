@@ -2729,97 +2729,100 @@ const copyTournamentLink = async () => {
     <!-- Tournament Content -->
     <template v-else-if="tournament">
       <!-- Banner -->
-      <div 
-        class="w-full h-48 rounded-xl overflow-hidden mb-6"
+      <div
+        class="w-full h-32 sm:h-40 md:h-48 rounded-xl overflow-hidden mb-4 sm:mb-6"
       >
-        <img 
-          :src="tournament.bannerUrl || PLACEHOLDER_BANNER" 
+        <img
+          :src="tournament.bannerUrl || PLACEHOLDER_BANNER"
           :alt="tournament.name"
           class="w-full h-full object-cover opacity-70"
         />
       </div>
 
       <!-- Header -->
-      <div class="flex flex-col items-center text-center mb-8 -mt-16 relative z-10">
+      <div class="flex flex-col items-center text-center mb-6 sm:mb-8 -mt-12 sm:-mt-14 md:-mt-16 relative z-10">
         <!-- Logo -->
-        <div 
-          class="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 mb-4 ring-4 ring-white dark:ring-black shadow-xl"
+        <div
+          class="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 mb-3 sm:mb-4 ring-4 ring-white dark:ring-black shadow-xl"
         >
-          <img 
-            :src="tournament.logoUrl || PLACEHOLDER_LOGO" 
+          <img
+            :src="tournament.logoUrl || PLACEHOLDER_LOGO"
             :alt="tournament.name"
             class="w-full h-full object-cover"
           />
         </div>
 
         <!-- Title & Meta -->
-        <div class="mb-4">
+        <div class="mb-3 sm:mb-4">
           <div class="flex flex-col items-center justify-center mb-2">
-            <div v-if="tournament.organization" class="flex items-center gap-1.5 mb-1.5">
-              <img 
-                v-if="tournament.organization.logoUrl" 
-                :src="tournament.organization.logoUrl" 
-                class="w-4 h-4 rounded-full object-cover" 
+            <div v-if="tournament.organization" class="flex items-center gap-1.5 mb-1">
+              <img
+                v-if="tournament.organization.logoUrl"
+                :src="tournament.organization.logoUrl"
+                class="w-3 h-3 sm:w-4 sm:h-4 rounded-full object-cover"
               />
-              <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+              <span class="text-[9px] sm:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
                 {{ tournament.organization.name }}
               </span>
             </div>
             <div class="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
-              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {{ tournament.name }}
               </h1>
               <div class="flex flex-wrap items-center justify-center gap-2 shrink-0">
-                <UBadge v-if="tournamentStatus" :color="tournamentStatus.color" variant="subtle">
+                <UBadge v-if="tournamentStatus" :color="tournamentStatus.color" variant="subtle" size="sm">
                   {{ tournamentStatus.label }}
                 </UBadge>
-                <span 
+                <span
                   v-if="tournament.isPremium || isPro"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm"
                 >
-                  <UIcon name="i-heroicons-bolt-solid" class="w-3 h-3" />
+                  <UIcon name="i-heroicons-bolt-solid" class="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                   Premium
                 </span>
               </div>
             </div>
           </div>
-          
-          <div class="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-500">
+
+          <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500">
             <div class="flex items-center gap-1">
-              <UIcon name="i-heroicons-calendar" class="w-4 h-4" />
+              <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>{{ formatDate(tournament.start_date) }} - {{ formatDate(tournament.end_date) }}</span>
             </div>
             <div v-if="tournament.location" class="flex items-center gap-1">
-              <UIcon name="i-heroicons-map-pin" class="w-4 h-4" />
+              <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>{{ tournament.location }}</span>
             </div>
             <div class="flex items-center gap-1">
-              <UIcon :name="visibilityLabels[tournament.visibility].icon" class="w-4 h-4" />
+              <UIcon :name="visibilityLabels[tournament.visibility].icon" class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>{{ visibilityLabels[tournament.visibility].label }}</span>
             </div>
           </div>
         </div>
 
         <!-- Actions -->
-        <div class="flex gap-2">
-          <UButton 
-            icon="i-heroicons-qr-code" 
-            variant="outline" 
+        <div class="flex flex-wrap justify-center gap-2">
+          <UButton
+            icon="i-heroicons-qr-code"
+            variant="outline"
             color="neutral"
+            size="sm"
             @click="showQRCodeModal = true"
             label="QR Code"
           />
-          <UButton 
-            icon="i-heroicons-photo" 
-            variant="outline" 
+          <UButton
+            icon="i-heroicons-photo"
+            variant="outline"
             color="neutral"
+            size="sm"
             :to="`/tournaments/${tournament.id}/graphics`"
             label="Graphics"
           />
-          <UButton 
-            icon="i-heroicons-code-bracket" 
-            variant="outline" 
+          <UButton
+            icon="i-heroicons-code-bracket"
+            variant="outline"
             color="neutral"
+            size="sm"
             :to="`/widgets?t=${tournament.customName || tournament.id}`"
             label="Widgets"
           />
@@ -2829,7 +2832,7 @@ const copyTournamentLink = async () => {
       <!-- Premium Upgrade Banner -->
       <div
         v-if="showUpgradeBanner"
-        class="mb-8 relative overflow-hidden rounded-2xl border border-amber-200/60 dark:border-amber-500/20 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-yellow-950/20 p-6 shadow-sm"
+        class="mb-6 sm:mb-8 relative overflow-hidden rounded-xl sm:rounded-2xl border border-amber-200/60 dark:border-amber-500/20 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-yellow-950/20 p-4 sm:p-6 shadow-sm"
       >
         <!-- Decorative glow -->
         <div class="absolute -top-10 -right-10 w-40 h-40 bg-amber-400/10 dark:bg-amber-400/5 rounded-full blur-3xl" />
@@ -3190,16 +3193,16 @@ const copyTournamentLink = async () => {
       </UModal>
 
       <!-- Content Container -->
-      <div class="max-w-4xl mx-auto w-full">
+      <div class="max-w-4xl mx-auto w-full px-3 sm:px-4">
         <!-- Main Content -->
         <div class="w-full">
-          <UTabs 
+          <UTabs
             v-model="activeTab"
-            :items="tabItems" 
+            :items="tabItems"
             class="w-full"
-            :ui="{ 
+            :ui="{
               list: 'overflow-x-auto flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1',
-              trigger: 'shrink-0 min-w-max whitespace-nowrap'
+              trigger: 'shrink-0 min-w-max whitespace-nowrap text-xs sm:text-sm py-2 sm:py-2.5 px-2 sm:px-3'
             }"
           >
             <!-- Overview Tab -->
@@ -3221,76 +3224,76 @@ const copyTournamentLink = async () => {
                 </template>
               </UAlert>
 
-              <UCard v-if="tournament.description" class="mt-4">
+              <UCard v-if="tournament.description" class="mt-3 sm:mt-4">
                 <template #header>
                   <div class="flex items-center gap-2">
-                    <UIcon name="i-heroicons-document-text" class="w-5 h-5 text-indigo-500" />
-                    <span class="font-medium">About</span>
+                    <UIcon name="i-heroicons-document-text" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+                    <span class="font-medium text-sm sm:text-base">About</span>
                   </div>
                 </template>
-                <p class="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
+                <p class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
                   {{ tournament.description }}
                 </p>
               </UCard>
-              <UCard v-else class="mt-4">
-                <div class="text-center py-8 text-gray-500">
-                  <UIcon name="i-heroicons-document-text" class="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+              <UCard v-else class="mt-3 sm:mt-4">
+                <div class="text-center py-6 sm:py-8 text-gray-500 text-sm">
+                  <UIcon name="i-heroicons-document-text" class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
                   <p>No description available.</p>
                 </div>
               </UCard>
 
               <!-- Details, Organizer, Sponsors & Socials Grid -->
-              <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-3 sm:mt-4">
                 <!-- Tournament Details (Mobile/Main flow) -->
                 <UCard class="lg:col-span-2 border border-gray-100 dark:border-gray-800 shadow-sm transition-all h-fit">
                   <template #header>
                     <div class="flex items-center gap-2">
-                      <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-indigo-500" />
-                      <span class="font-medium">Details</span>
+                      <UIcon name="i-heroicons-information-circle" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+                      <span class="font-medium text-sm sm:text-base">Details</span>
                     </div>
                   </template>
-                  
-                  <div class="space-y-4">
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                      <span class="text-sm text-gray-500">Sport</span>
-                      <span class="font-medium capitalize">{{ tournament.sport.toLowerCase() }}</span>
+
+                  <div class="space-y-3 sm:space-y-4 text-sm">
+                    <div class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-xs sm:text-sm text-gray-500">Sport</span>
+                      <span class="font-medium text-xs sm:text-sm capitalize">{{ tournament.sport.toLowerCase() }}</span>
                     </div>
-                    
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                      <span class="text-sm text-gray-500">Format</span>
-                      <span class="font-medium">
-                        {{ tournament.type === TournamentType.ROUND_ROBIN ? 'Round Robin' : 
-                           tournament.type === TournamentType.KNOCKOUT ? 'Knockout' : 
+
+                    <div class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-xs sm:text-sm text-gray-500">Format</span>
+                      <span class="font-medium text-xs sm:text-sm">
+                        {{ tournament.type === TournamentType.ROUND_ROBIN ? 'Round Robin' :
+                           tournament.type === TournamentType.KNOCKOUT ? 'Knockout' :
                            tournament.type === TournamentType.GROUP ? 'Group Stage' :
                            'Hybrid (Groups + Knockout)' }}
                       </span>
                     </div>
-                    
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                      <span class="text-sm text-gray-500">Participants</span>
-                      <span class="font-medium capitalize">{{ tournament.participantType.toLowerCase() }}s</span>
+
+                    <div class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-xs sm:text-sm text-gray-500">Participants</span>
+                      <span class="font-medium text-xs sm:text-sm capitalize">{{ tournament.participantType.toLowerCase() }}s</span>
                     </div>
-                    
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                      <span class="text-sm text-gray-500">Max Size</span>
-                      <span class="font-medium">{{ tournament.maxParticipants || 'Unlimited' }}</span>
+
+                    <div class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-xs sm:text-sm text-gray-500">Max Size</span>
+                      <span class="font-medium text-xs sm:text-sm">{{ tournament.maxParticipants || 'Unlimited' }}</span>
                     </div>
-                    
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                      <span class="text-sm text-gray-500">Timezone</span>
-                      <span class="font-medium text-sm">{{ tournament.timezone || 'UTC' }}</span>
+
+                    <div class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-xs sm:text-sm text-gray-500">Timezone</span>
+                      <span class="font-medium text-xs sm:text-sm">{{ tournament.timezone || 'UTC' }}</span>
                     </div>
-                    
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                      <span class="text-sm text-gray-500">Auto-approve</span>
-                      <UBadge :color="tournament.autoApprove ? 'success' : 'neutral'" variant="subtle" size="sm">
+
+                    <div class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-xs sm:text-sm text-gray-500">Auto-approve</span>
+                      <UBadge :color="tournament.autoApprove ? 'success' : 'neutral'" variant="subtle" size="xs">
                         {{ tournament.autoApprove ? 'Yes' : 'No' }}
                       </UBadge>
                     </div>
                   </div>
                 </UCard>
-                
-                <div class="flex flex-col gap-6 lg:col-span-1">
+
+                <div class="flex flex-col gap-4 sm:gap-6 lg:col-span-1">
                   <!-- Organization -->
                   <UCard v-if="tournament.organization" class="border border-gray-100 dark:border-gray-800 shadow-sm transition-all h-fit">
                     <template #header>
@@ -3576,30 +3579,30 @@ const copyTournamentLink = async () => {
                 </div>
                 
                 <!-- Empty State -->
-                <div v-else-if="!participants.length" class="py-8 text-center text-gray-400">
-                  <UIcon name="i-heroicons-user-group" class="w-12 h-12 mx-auto mb-2" />
+                <div v-else-if="!participants.length" class="py-6 sm:py-8 text-center text-gray-400 text-sm">
+                  <UIcon name="i-heroicons-user-group" class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2" />
                   <p>No participants yet</p>
-                  <p class="text-sm">Add teams or individuals to get started</p>
-                  <UButton 
-                    size="sm" 
-                    variant="outline" 
-                    icon="i-heroicons-plus" 
-                    class="mt-4"
+                  <p class="text-xs sm:text-sm">Add teams or individuals to get started</p>
+                  <UButton
+                    size="sm"
+                    variant="outline"
+                    icon="i-heroicons-plus"
+                    class="mt-3 sm:mt-4"
                     @click="openAddModal"
                   >
                     Add Participant
                   </UButton>
                 </div>
-                
+
                 <!-- Participant List -->
                 <div v-else class="divide-y divide-gray-100 dark:divide-gray-800">
-                  <div 
-                    v-for="participant in participants" 
+                  <div
+                    v-for="participant in participants"
                     :key="participant.id"
-                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 py-3 first:pt-0 last:pb-0"
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 py-2.5 sm:py-3 first:pt-0 last:pb-0"
                   >
-                    <div class="flex items-center gap-3 min-w-0 flex-1">
-                      <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
+                    <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                      <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
                         <img 
                           v-if="participant.logoUrl" 
                           :src="participant.logoUrl" 
@@ -3787,55 +3790,55 @@ const copyTournamentLink = async () => {
                 </UCard>
 
                 <!-- Groups Grid -->
-                <div v-if="groupStore.groups.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div 
-                    v-for="group in groupStore.groups" 
+                <div v-if="groupStore.groups.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div
+                    v-for="group in groupStore.groups"
                     :key="group.id"
                     class="group flex flex-col"
                   >
                     <div class="bg-white dark:bg-[#0a0a0a] rounded-xl border border-gray-200 dark:border-white/[0.08] shadow-sm overflow-hidden flex flex-col h-full hover:shadow-md transition-shadow">
                       <!-- Group Header -->
-                      <div class="p-4 border-b border-gray-200 dark:border-white/[0.08] flex items-center justify-between bg-gray-50/50 dark:bg-white/[0.02]">
+                      <div class="p-3 sm:p-4 border-b border-gray-200 dark:border-white/[0.08] flex items-center justify-between bg-gray-50/50 dark:bg-white/[0.02]">
                         <div class="flex items-center gap-2 min-w-0">
                           <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
-                          <h4 class="font-bold text-gray-900 dark:text-white truncate">{{ group.name }}</h4>
+                          <h4 class="font-bold text-sm sm:text-base text-gray-900 dark:text-white truncate">{{ group.name }}</h4>
                           <span class="text-xs text-gray-400 font-normal">({{ getGroupParticipants(group.id).length }})</span>
                         </div>
-                        
+
                         <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <UButton 
-                            size="xs" 
-                            variant="ghost" 
-                            color="neutral" 
-                            icon="i-heroicons-pencil" 
+                          <UButton
+                            size="xs"
+                            variant="ghost"
+                            color="neutral"
+                            icon="i-heroicons-pencil"
                             @click="handleRenameGroup(group)"
                           />
-                          <UButton 
-                            size="xs" 
-                            variant="ghost" 
-                            color="error" 
-                            icon="i-heroicons-trash" 
+                          <UButton
+                            size="xs"
+                            variant="ghost"
+                            color="error"
+                            icon="i-heroicons-trash"
                             @click="handleDeleteGroup(group.id)"
                           />
                         </div>
                       </div>
 
                       <!-- Group Content (Teams) -->
-                      <div 
-                        class="p-3 flex-1 space-y-2 min-h-[100px] max-h-[300px] overflow-y-auto transition-all duration-200"
+                      <div
+                        class="p-2 sm:p-3 flex-1 space-y-1.5 sm:space-y-2 min-h-[80px] sm:min-h-[100px] max-h-[240px] sm:max-h-[300px] overflow-y-auto transition-all duration-200"
                         :class="[dropTargetGroupId === group.id ? 'bg-indigo-50/50 dark:bg-indigo-950/20 ring-2 ring-inset ring-indigo-500/50' : '']"
                         @dragover="handleDragOver($event, group.id)"
                         @dragleave="handleDragLeave"
                         @drop="handleDrop(group.id)"
                       >
-                        <div 
-                          v-for="participant in getGroupParticipants(group.id)" 
+                        <div
+                          v-for="participant in getGroupParticipants(group.id)"
                           :key="participant.id"
                           draggable="true"
                           @dragstart="handleDragStart(participant.id)"
-                          class="flex items-center justify-between gap-2 p-2 rounded-lg bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] text-sm hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-all cursor-grab active:cursor-grabbing hover:shadow-sm"
+                          class="flex items-center justify-between gap-2 p-1.5 sm:p-2 rounded-lg bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] text-xs sm:text-sm hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-all cursor-grab active:cursor-grabbing hover:shadow-sm"
                         >
-                          <div class="flex items-center gap-2 min-w-0">
+                          <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
                             <UAvatar
                               :src="participant.logoUrl || undefined"
                               :alt="participant.customShortName || participant.customName || '?'"
@@ -3846,20 +3849,20 @@ const copyTournamentLink = async () => {
                               {{ participant.customName || 'Unnamed' }}
                             </span>
                           </div>
-                          <UButton 
-                            size="xs" 
-                            variant="ghost" 
-                            color="error" 
-                            icon="i-heroicons-x-mark" 
-                            @click="handleAssignToGroup(participant.id, null)" 
+                          <UButton
+                            size="xs"
+                            variant="ghost"
+                            color="error"
+                            icon="i-heroicons-x-mark"
+                            @click="handleAssignToGroup(participant.id, null)"
                           />
                         </div>
 
-                        <div 
+                        <div
                           v-if="getGroupParticipants(group.id).length === 0"
-                          class="flex flex-col items-center justify-center py-8 text-center text-gray-400"
+                          class="flex flex-col items-center justify-center py-6 sm:py-8 text-center text-gray-400"
                         >
-                          <UIcon name="i-heroicons-user-group" class="w-8 h-8 mb-2 opacity-20" />
+                          <UIcon name="i-heroicons-user-group" class="w-6 h-6 sm:w-8 sm:h-8 mb-2 opacity-20" />
                           <p class="text-xs">No teams assigned yet</p>
                         </div>
                       </div>
@@ -3868,15 +3871,15 @@ const copyTournamentLink = async () => {
                 </div>
 
                 <!-- Empty State Groups -->
-                <div v-else class="text-center py-20 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-                  <div class="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
-                    <UIcon name="i-heroicons-rectangle-group" class="w-10 h-10 text-gray-300 dark:text-gray-600" />
+                <div v-else class="text-center py-12 sm:py-20 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 px-4">
+                  <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                    <UIcon name="i-heroicons-rectangle-group" class="w-8 h-8 sm:w-10 sm:h-10 text-gray-300 dark:text-gray-600" />
                   </div>
-                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">No groups created</h3>
-                  <p class="text-gray-500 max-w-xs mx-auto mt-1 mb-6">Create groups manually to organize your tournament participants.</p>
+                  <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">No groups created</h3>
+                  <p class="text-sm text-gray-500 max-w-xs mx-auto mt-1 mb-6">Create groups manually to organize your tournament participants.</p>
                   <div class="max-w-xs mx-auto flex gap-2">
-                    <UInput v-model="newGroupName" placeholder="e.g. Group A" class="flex-1" />
-                    <UButton color="primary" label="Create Group" @click="handleAddGroup" />
+                    <UInput v-model="newGroupName" placeholder="e.g. Group A" class="flex-1" size="sm" />
+                    <UButton color="primary" size="sm" label="Create Group" @click="handleAddGroup" />
                   </div>
                 </div>
               </div>
@@ -4023,40 +4026,40 @@ const copyTournamentLink = async () => {
                 </div>
                 
                 <!-- Empty State -->
-                <div v-else-if="!fixtures.length && !participants.length" class="py-8 text-center text-gray-400">
-                  <UIcon name="i-heroicons-calendar-days" class="w-12 h-12 mx-auto mb-2" />
+                <div v-else-if="!fixtures.length && !participants.length" class="py-6 sm:py-8 text-center text-gray-400 text-sm">
+                  <UIcon name="i-heroicons-calendar-days" class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2" />
                   <p>No fixtures scheduled</p>
-                  <p class="text-sm mb-4">Generate fixtures automatically or add them manually</p>
-                  <div v-if="participants.length >= 2" class="flex items-center justify-center gap-3">
-                    <UButton 
-                      size="sm" 
-                      variant="outline" 
+                  <p class="text-xs sm:text-sm mb-4">Generate fixtures automatically or add them manually</p>
+                  <div v-if="participants.length >= 2" class="flex items-center justify-center gap-2 sm:gap-3">
+                    <UButton
+                      size="sm"
+                      variant="outline"
                       icon="i-heroicons-sparkles"
                       :loading="generating"
                       @click="openGenerateModal"
                     >
-                      Generate Fixtures
+                      Generate
                     </UButton>
-                    <UButton 
-                      size="sm" 
-                      variant="outline" 
+                    <UButton
+                      size="sm"
+                      variant="outline"
                       color="neutral"
                       icon="i-heroicons-plus"
                       @click="openAddFixtureModal()"
                     >
-                      Add Manually
+                      Add
                     </UButton>
                   </div>
                   <p v-else class="text-xs text-gray-400 mt-2">
                     Need at least 2 participants
                   </p>
                 </div>
-                
+
                 <!-- Today Empty State -->
-                <div v-else-if="showTodayOnly && !hasTodayFixtures" class="py-8 text-center text-gray-400">
-                  <UIcon name="i-heroicons-calendar" class="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <div v-else-if="showTodayOnly && !hasTodayFixtures" class="py-6 sm:py-8 text-center text-gray-400 text-sm">
+                  <UIcon name="i-heroicons-calendar" class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 opacity-50" />
                   <p>No fixtures scheduled for today</p>
-                  <UButton size="sm" variant="soft" color="primary" class="mt-4" @click="showTodayOnly = false">
+                  <UButton size="sm" variant="soft" color="primary" class="mt-3 sm:mt-4" @click="showTodayOnly = false">
                     View All Fixtures
                   </UButton>
                 </div>
@@ -4347,77 +4350,80 @@ const copyTournamentLink = async () => {
 
             <!-- Settings Tab -->
             <template #settings>
-              <div class="mt-4 space-y-8 w-full">
+              <div class="mt-3 sm:mt-4 space-y-4 sm:space-y-6 w-full">
                 <TournamentSettings :tournament="tournament" />
-                
-                <UCard class="border-indigo-200 dark:border-indigo-900/50" :ui="{ header: 'bg-indigo-50 dark:bg-indigo-900/20' }">
+
+                <UCard class="border-indigo-200 dark:border-indigo-900/50" :ui="{ header: 'bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 sm:px-4 sm:py-3' }">
                   <template #header>
                     <div class="flex items-center gap-2">
-                      <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 text-indigo-500" />
-                      <span class="font-medium text-indigo-700 dark:text-indigo-400">Seasons</span>
+                      <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+                      <span class="font-medium text-sm text-indigo-700 dark:text-indigo-400">Seasons</span>
                     </div>
                   </template>
-                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                     <div>
                       <h4 class="text-sm font-medium text-gray-900 dark:text-white">Start New Season</h4>
-                      <p class="text-sm text-gray-500 mt-1">
+                      <p class="text-xs sm:text-sm text-gray-500 mt-1">
                         Clone this tournament's settings into a new season. Active teams and fixtures will not be copied.
                       </p>
                     </div>
-                    <UButton 
-                      color="neutral" 
-                      variant="soft" 
+                    <UButton
+                      color="neutral"
+                      variant="soft"
+                      size="sm"
                       icon="i-heroicons-document-duplicate"
-                      label="Start New Season" 
-                      @click="showSeasonModal = true" 
+                      label="Start New Season"
+                      @click="showSeasonModal = true"
                     />
                   </div>
                 </UCard>
-                
-                <UCard class="border-amber-200 dark:border-amber-900/50" :ui="{ header: 'bg-amber-50 dark:bg-amber-900/20' }">
+
+                <UCard class="border-amber-200 dark:border-amber-900/50" :ui="{ header: 'bg-amber-50 dark:bg-amber-900/20 px-3 py-2 sm:px-4 sm:py-3' }">
                   <template #header>
                     <div class="flex items-center gap-2">
-                      <UIcon name="i-heroicons-arrows-right-left" class="w-5 h-5 text-amber-500" />
-                      <span class="font-medium text-amber-700 dark:text-amber-400">Transfer Ownership</span>
+                      <UIcon name="i-heroicons-arrows-right-left" class="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+                      <span class="font-medium text-sm text-amber-700 dark:text-amber-400">Transfer Ownership</span>
                     </div>
                   </template>
-                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                     <div>
                       <h4 class="text-sm font-medium text-gray-900 dark:text-white">Transfer to another organization</h4>
-                      <p class="text-sm text-gray-500 mt-1">
+                      <p class="text-xs sm:text-sm text-gray-500 mt-1">
                         Move this tournament to another organization you are an admin of. You may lose access to it in this workspace.
                       </p>
                     </div>
-                    <UButton 
-                      color="neutral" 
-                      variant="soft" 
+                    <UButton
+                      color="neutral"
+                      variant="soft"
+                      size="sm"
                       icon="i-heroicons-arrows-right-left"
-                      label="Transfer Ownership" 
-                      @click="showTransferModal = true" 
+                      label="Transfer Ownership"
+                      @click="showTransferModal = true"
                     />
                   </div>
                 </UCard>
-                
-                <UCard class="border-red-200 dark:border-red-900/50" :ui="{ header: 'bg-red-50 dark:bg-red-900/20' }">
+
+                <UCard class="border-red-200 dark:border-red-900/50" :ui="{ header: 'bg-red-50 dark:bg-red-900/20 px-3 py-2 sm:px-4 sm:py-3' }">
                   <template #header>
                     <div class="flex items-center gap-2">
-                      <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-red-500" />
-                      <span class="font-medium text-red-600 dark:text-red-400">Danger Zone</span>
+                      <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+                      <span class="font-medium text-sm text-red-600 dark:text-red-400">Danger Zone</span>
                     </div>
                   </template>
-                  <div class="flex items-center justify-between">
+                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                     <div>
                       <h4 class="text-sm font-medium text-gray-900 dark:text-white">Delete this tournament</h4>
-                      <p class="text-sm text-gray-500 mt-1">
+                      <p class="text-xs sm:text-sm text-gray-500 mt-1">
                         Once you delete a tournament, there is no going back. Please be certain.
                       </p>
                     </div>
-                    <UButton 
-                      color="error" 
-                      variant="soft" 
-                      label="Delete Tournament" 
+                    <UButton
+                      color="error"
+                      variant="soft"
+                      size="sm"
+                      label="Delete Tournament"
                       :loading="deletingTournament"
-                      @click="handleDeleteTournament" 
+                      @click="handleDeleteTournament"
                     />
                   </div>
                 </UCard>

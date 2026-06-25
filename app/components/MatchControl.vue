@@ -3984,4 +3984,184 @@ const downloadGraphic = async () => {
   word-break: break-all !important;
   overflow-wrap: break-word !important;
 }
+
+/* ── Mobile compact layout ───────────────────────────────────── */
+@media (max-width: 640px) {
+  .mc-shell {
+    border-radius: 12px;
+  }
+
+  .mc-header {
+    padding: 10px 12px;
+  }
+
+  .mc-header__title {
+    font-size: 0.75rem;
+  }
+
+  .mc-header__icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mc-header__close {
+    width: 24px;
+    height: 24px;
+  }
+
+  .mc-body {
+    padding: 10px;
+  }
+
+  .mc-scoreboard {
+    padding: 12px 6px;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .mc-team__logo {
+    width: 42px;
+    height: 42px;
+  }
+
+  .mc-team__initial {
+    font-size: 0.9rem;
+  }
+
+  .mc-team__name {
+    font-size: 0.6875rem;
+    max-width: 80px;
+  }
+
+  .mc-score-val {
+    font-size: 1.75rem;
+    min-width: 1.6rem;
+  }
+
+  .mc-score-sep {
+    font-size: 1.25rem;
+  }
+
+  .mc-swap-btn {
+    font-size: 0.55rem;
+    padding: 1px 6px;
+  }
+
+  .mc-match-time--live {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+  }
+
+  .mc-controls {
+    gap: 8px;
+  }
+
+  .mc-ctrl-side {
+    gap: 4px;
+  }
+
+  .mc-btn {
+    font-size: 0.6rem;
+    padding: 3px 6px;
+    border-radius: 6px;
+  }
+
+  .mc-btn--minus {
+    padding: 3px 6px;
+  }
+
+  .card-icon {
+    width: 6px;
+    height: 9px;
+  }
+
+  .mc-sections {
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .mc-section {
+    border-radius: 8px;
+  }
+
+  .mc-section__head,
+  .mc-section__toggle {
+    padding: 8px 10px;
+    font-size: 0.6875rem;
+  }
+
+  .mc-section__body {
+    padding: 8px;
+  }
+
+  .mc-events-list {
+    max-height: 200px;
+    padding: 6px;
+  }
+
+  .mc-event {
+    gap: 6px;
+    padding: 4px 3px;
+  }
+
+  .mc-event__min {
+    width: 26px;
+    height: 26px;
+    font-size: 0.55rem;
+  }
+
+  .mc-event__player {
+    font-size: 0.75rem;
+  }
+
+  .mc-event__assist {
+    font-size: 0.55rem;
+    padding-left: 16px;
+  }
+
+  .mc-event__assist--right {
+    padding-right: 16px;
+  }
+
+  .mc-action-bar {
+    margin-top: 10px;
+    padding-top: 10px;
+    gap: 6px;
+  }
+
+  .mc-primary-btn {
+    font-size: 0.75rem;
+    padding: 6px 10px;
+    min-height: 30px;
+    border-radius: 7px;
+  }
+
+  .mc-sec-btn {
+    font-size: 0.625rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+
+  .mc-timer-badge {
+    font-size: 0.6rem;
+    padding: 1px 6px;
+  }
+
+  .mc-roster-box {
+    padding: 10px;
+  }
+
+  .mc-roster-list {
+    max-height: 180px;
+  }
+
+  .mc-pen-label {
+    font-size: 0.55rem;
+  }
+
+  .mc-tag {
+    font-size: 0.525rem;
+    padding: 1px 5px;
+  }
+}
 </style>
