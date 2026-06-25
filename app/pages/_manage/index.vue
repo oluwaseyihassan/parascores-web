@@ -142,19 +142,19 @@ watch(loadMoreTrigger, (el) => {
 <template>
   <div>
     <!-- Welcome Message -->
-    <div class="mb-6">
-      <h2 class="text-lg text-gray-500 dark:text-gray-400">
+    <div class="mb-4 sm:mb-6">
+      <h2 class="text-sm sm:text-lg text-gray-500 dark:text-gray-400">
         Welcome back, <span class="text-emerald-500 font-medium">{{ userFirstName }}</span>
       </h2>
     </div>
 
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white sm:truncate">My Tournaments</h1>
-        <p class="text-gray-500">Manage your leagues, cups, and competitions</p>
+        <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white sm:truncate">My Tournaments</h1>
+        <p class="text-sm text-gray-500">Manage your leagues, cups, and competitions</p>
       </div>
-      <div class="flex items-center gap-3 self-start md:self-auto flex-wrap">
+      <div class="flex items-center gap-2 sm:gap-3 self-start md:self-auto flex-wrap">
         <USelect
           v-model="filterStatus"
           :items="[
@@ -163,150 +163,159 @@ watch(loadMoreTrigger, (el) => {
             { label: 'Completed', value: 'completed' },
             { label: 'Public Only', value: 'public' }
           ]"
-          class="w-[140px]"
-          size="md"
+          class="w-[120px] sm:w-[140px]"
+          size="sm"
           variant="outline"
         />
         <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-          <UButton 
-            icon="i-heroicons-squares-2x2" 
-            color="neutral" 
-            variant="ghost" 
-            size="xs" 
+          <UButton
+            icon="i-heroicons-squares-2x2"
+            color="neutral"
+            variant="ghost"
+            size="xs"
             :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': viewMode === 'grid' }"
-            @click="viewMode = 'grid'" 
+            @click="viewMode = 'grid'"
           />
-          <UButton 
-            icon="i-heroicons-list-bullet" 
-            color="neutral" 
-            variant="ghost" 
+          <UButton
+            icon="i-heroicons-list-bullet"
+            color="neutral"
+            variant="ghost"
             size="xs"
             :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': viewMode === 'list' }"
-            @click="viewMode = 'list'" 
+            @click="viewMode = 'list'"
           />
         </div>
-        <UButton 
-          label="Create Tournament" 
+        <UButton
+          label="Create Tournament"
           icon="i-heroicons-plus"
-          color="primary" 
-          size="lg"
+          color="primary"
+          size="sm"
+          class="hidden sm:inline-flex"
+          to="/tournaments/new"
+        />
+        <UButton
+          icon="i-heroicons-plus"
+          color="primary"
+          size="sm"
+          class="sm:hidden"
           to="/tournaments/new"
         />
       </div>
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
       <!-- Total -->
-      <button 
+      <button
         @click="filterStatus = 'all'"
-        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
+        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-3 sm:p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[64px] sm:min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
         :class="[
-          filterStatus === 'all' 
-            ? 'border-indigo-500 dark:border-indigo-500/80 ring-2 ring-indigo-500/20 shadow-md' 
+          filterStatus === 'all'
+            ? 'border-indigo-500 dark:border-indigo-500/80 ring-2 ring-indigo-500/20 shadow-md'
             : 'border-gray-200 dark:border-white/[0.06] hover:border-indigo-500/30 dark:hover:shadow-indigo-500/5'
         ]"
       >
-        <div class="relative z-10 pr-12">
-          <p class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Total Tournaments</p>
-          <p class="text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">{{ totalCount }}</p>
+        <div class="relative z-10 pr-10 sm:pr-12">
+          <p class="text-[9px] sm:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Total Tournaments</p>
+          <p class="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">{{ totalCount }}</p>
         </div>
-        <div class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl flex items-center justify-center border border-indigo-100/50 dark:border-indigo-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
-          <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+        <div class="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg sm:rounded-xl flex items-center justify-center border border-indigo-100/50 dark:border-indigo-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
+          <UIcon name="i-heroicons-trophy" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 dark:text-indigo-400" />
         </div>
       </button>
 
       <!-- Active -->
-      <button 
+      <button
         @click="filterStatus = 'ongoing'"
-        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
+        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-3 sm:p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[64px] sm:min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
         :class="[
-          filterStatus === 'ongoing' 
-            ? 'border-emerald-500 dark:border-emerald-500/80 ring-2 ring-emerald-500/20 shadow-md' 
+          filterStatus === 'ongoing'
+            ? 'border-emerald-500 dark:border-emerald-500/80 ring-2 ring-emerald-500/20 shadow-md'
             : 'border-gray-200 dark:border-white/[0.06] hover:border-emerald-500/30 dark:hover:shadow-emerald-500/5'
         ]"
       >
-        <div class="relative z-10 pr-12">
-          <p class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Active</p>
-          <p class="text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">
+        <div class="relative z-10 pr-10 sm:pr-12">
+          <p class="text-[9px] sm:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Active</p>
+          <p class="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">
             {{ tournaments.filter(t => new Date(t.end_date) >= new Date()).length }}
           </p>
         </div>
-        <div class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl flex items-center justify-center border border-emerald-100/50 dark:border-emerald-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
-          <UIcon name="i-heroicons-play" class="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+        <div class="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg sm:rounded-xl flex items-center justify-center border border-emerald-100/50 dark:border-emerald-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
+          <UIcon name="i-heroicons-play" class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 dark:text-emerald-400" />
         </div>
       </button>
 
       <!-- Completed -->
-      <button 
+      <button
         @click="filterStatus = 'completed'"
-        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
+        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-3 sm:p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[64px] sm:min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
         :class="[
-          filterStatus === 'completed' 
-            ? 'border-violet-500 dark:border-violet-500/80 ring-2 ring-violet-500/20 shadow-md' 
+          filterStatus === 'completed'
+            ? 'border-violet-500 dark:border-violet-500/80 ring-2 ring-violet-500/20 shadow-md'
             : 'border-gray-200 dark:border-white/[0.06] hover:border-violet-500/30 dark:hover:shadow-violet-500/5'
         ]"
       >
-        <div class="relative z-10 pr-12">
-          <p class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Completed</p>
-          <p class="text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">
+        <div class="relative z-10 pr-10 sm:pr-12">
+          <p class="text-[9px] sm:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Completed</p>
+          <p class="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">
             {{ tournaments.filter(t => new Date(t.end_date) < new Date()).length }}
           </p>
         </div>
-        <div class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-violet-50 dark:bg-violet-950/40 rounded-xl flex items-center justify-center border border-violet-100/50 dark:border-violet-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
-          <UIcon name="i-heroicons-check-circle" class="w-5 h-5 text-violet-500 dark:text-violet-400" />
+        <div class="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-violet-50 dark:bg-violet-950/40 rounded-lg sm:rounded-xl flex items-center justify-center border border-violet-100/50 dark:border-violet-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
+          <UIcon name="i-heroicons-check-circle" class="w-4 h-4 sm:w-5 sm:h-5 text-violet-500 dark:text-violet-400" />
         </div>
       </button>
 
       <!-- Public -->
-      <button 
+      <button
         @click="filterStatus = 'public'"
-        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
+        class="relative text-left overflow-hidden bg-white dark:bg-gray-900 border rounded-xl p-3 sm:p-4 hover:-translate-y-0.5 transition-all duration-300 hover:shadow-md group min-h-[64px] sm:min-h-[82px] flex flex-col justify-center cursor-pointer w-full focus:outline-none"
         :class="[
-          filterStatus === 'public' 
-            ? 'border-blue-500 dark:border-blue-500/80 ring-2 ring-blue-500/20 shadow-md' 
+          filterStatus === 'public'
+            ? 'border-blue-500 dark:border-blue-500/80 ring-2 ring-blue-500/20 shadow-md'
             : 'border-gray-200 dark:border-white/[0.06] hover:border-blue-500/30 dark:hover:shadow-blue-500/5'
         ]"
       >
-        <div class="relative z-10 pr-12">
-          <p class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Public</p>
-          <p class="text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">
+        <div class="relative z-10 pr-10 sm:pr-12">
+          <p class="text-[9px] sm:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Public</p>
+          <p class="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">
             {{ tournaments.filter(t => t.visibility === 'PUBLIC').length }}
           </p>
         </div>
-        <div class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-blue-50 dark:bg-blue-950/40 rounded-xl flex items-center justify-center border border-blue-100/50 dark:border-blue-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
-          <UIcon name="i-heroicons-globe-alt" class="w-5 h-5 text-blue-500 dark:text-blue-400" />
+        <div class="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 dark:bg-blue-950/40 rounded-lg sm:rounded-xl flex items-center justify-center border border-blue-100/50 dark:border-blue-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
+          <UIcon name="i-heroicons-globe-alt" class="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 dark:text-blue-400" />
         </div>
       </button>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading && tournaments.length === 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div v-if="loading && tournaments.length === 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       <UCard v-for="i in 6" :key="i" class="animate-pulse">
-        <div class="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg mb-4"></div>
+        <div class="h-24 sm:h-32 bg-gray-200 dark:bg-gray-700 rounded-lg mb-4"></div>
         <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
         <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
       </UCard>
     </div>
 
     <!-- Empty State -->
-    <UCard 
-      v-else-if="!loading && tournaments.length === 0" 
-      class="flex flex-col items-center justify-center py-16 text-center"
+    <UCard
+      v-else-if="!loading && tournaments.length === 0"
+      class="flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
     >
-      <div class="w-20 h-20 bg-indigo-50 dark:bg-indigo-950/40 rounded-full flex items-center justify-center mb-6">
-        <UIcon name="i-heroicons-trophy" class="w-10 h-10 text-indigo-500" />
+      <div class="w-16 h-16 sm:w-20 sm:h-20 bg-indigo-50 dark:bg-indigo-950/40 rounded-full flex items-center justify-center mb-4 sm:mb-6">
+        <UIcon name="i-heroicons-trophy" class="w-8 h-8 sm:w-10 sm:h-10 text-indigo-500" />
       </div>
-      <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">No tournaments yet</h3>
-      <p class="text-gray-500 max-w-md mx-auto mb-8">
-        Create your first tournament to start managing leagues, cups, and competitions. 
+      <h3 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">No tournaments yet</h3>
+      <p class="text-sm text-gray-500 max-w-md mx-auto mb-6 sm:mb-8">
+        Create your first tournament to start managing leagues, cups, and competitions.
         Add teams, schedule fixtures, and track scores all in one place.
       </p>
-      <UButton 
-        label="Create Your First Tournament" 
+      <UButton
+        label="Create Your First Tournament"
         icon="i-heroicons-plus"
-        color="primary" 
-        size="xl"
+        color="primary"
+        size="md"
+        class="sm:size-xl"
         to="/tournaments/new"
       />
     </UCard>
@@ -314,11 +323,11 @@ watch(loadMoreTrigger, (el) => {
     <!-- Tournaments View -->
     <div v-else>
       <!-- Filter Empty State -->
-      <div v-if="filteredTournaments.length === 0" class="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl p-8 shadow-sm">
-        <div class="w-16 h-16 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
-          <UIcon name="i-heroicons-funnel" class="w-8 h-8 text-gray-400" />
+      <div v-if="filteredTournaments.length === 0" class="flex flex-col items-center justify-center py-12 sm:py-16 text-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-sm">
+        <div class="w-14 h-14 sm:w-16 sm:h-16 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
+          <UIcon name="i-heroicons-funnel" class="w-7 h-7 sm:w-8 sm:h-8 text-gray-400" />
         </div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">No tournaments found</h3>
+        <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1">No tournaments found</h3>
         <p class="text-sm text-gray-500 max-w-sm">
           No tournaments fit the selected filter criteria. Try clicking on another stats card above.
         </p>
@@ -326,72 +335,72 @@ watch(loadMoreTrigger, (el) => {
 
       <div v-else>
         <!-- Grid View -->
-        <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div 
-          v-for="(tournament, index) in filteredTournaments" 
-          :key="tournament.id" 
+        <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div
+          v-for="(tournament, index) in filteredTournaments"
+          :key="tournament.id"
           class="relative group card-fade-in bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl flex flex-col hover:border-emerald-500/50 transition-[border-color,box-shadow] duration-300 hover:shadow-lg dark:hover:shadow-emerald-500/10 overflow-hidden"
           :style="{ animationDelay: `${index * 75}ms` }"
         >
           <!-- Pending Requests Badge -->
-          <div 
-            v-if="tournament.pendingRequestsCount && tournament.pendingRequestsCount > 0" 
-            class="absolute top-3 left-3 z-30"
+          <div
+            v-if="tournament.pendingRequestsCount && tournament.pendingRequestsCount > 0"
+            class="absolute top-2 left-2 sm:top-3 sm:left-3 z-30"
             title="Pending player join requests"
           >
-            <UBadge color="error" variant="solid" size="md" class="rounded-full shadow-lg ring-2 ring-white dark:ring-gray-900 font-bold">
+            <UBadge color="error" variant="solid" size="sm" class="rounded-full shadow-lg ring-2 ring-white dark:ring-gray-900 font-bold">
               {{ tournament.pendingRequestsCount }}
             </UBadge>
           </div>
 
           <!-- Banner -->
-          <div class="h-28 w-full relative overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
-            <img 
-              v-if="tournament.bannerUrl" 
-              :src="tournament.bannerUrl" 
-              :alt="tournament.name" 
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+          <div class="h-24 sm:h-28 w-full relative overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+            <img
+              v-if="tournament.bannerUrl"
+              :src="tournament.bannerUrl"
+              :alt="tournament.name"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-            <div 
-              v-else 
-              class="w-full h-full bg-gray-200 dark:bg-gray-800/80 group-hover:scale-105 transition-transform duration-500" 
+            <div
+              v-else
+              class="w-full h-full bg-gray-200 dark:bg-gray-800/80 group-hover:scale-105 transition-transform duration-500"
             ></div>
-            
+
             <!-- Pin Button (Star) -->
-            <button 
+            <button
               @click.stop.prevent="togglePin(tournament)"
-              class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-lg bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm transition-all z-20"
+              class="absolute top-2 right-2 sm:top-3 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm transition-all z-20"
               :class="tournament.isPinned ? 'text-amber-400' : 'text-white/80 hover:text-white'"
               :title="tournament.isPinned ? 'Unpin tournament' : 'Pin to top'"
             >
-              <UIcon :name="tournament.isPinned ? 'i-heroicons-star-solid' : 'i-heroicons-star'" class="w-4 h-4 pointer-events-none" />
+              <UIcon :name="tournament.isPinned ? 'i-heroicons-star-solid' : 'i-heroicons-star'" class="w-3.5 h-3.5 sm:w-4 sm:h-4 pointer-events-none" />
             </button>
           </div>
 
-          <NuxtLink 
+          <NuxtLink
             :to="`/tournaments/${tournament.customName || tournament.id}`"
-            class="flex flex-col flex-1 p-5 pt-8 relative focus:outline-none"
+            class="flex flex-col flex-1 p-4 sm:p-5 pt-7 sm:pt-8 relative focus:outline-none"
           >
             <!-- Logo overlaying the banner -->
-            <div class="absolute -top-6 left-4 w-12 h-12 rounded-xl bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-white/10 shadow-md shrink-0 z-10 p-0.5">
-              <img 
-                v-if="tournament.logoUrl" 
-                :src="tournament.logoUrl" 
-                :alt="tournament.name" 
-                class="w-full h-full object-cover rounded-lg" 
+            <div class="absolute -top-5 sm:-top-6 left-3 sm:left-4 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-white/10 shadow-md shrink-0 z-10 p-0.5">
+              <img
+                v-if="tournament.logoUrl"
+                :src="tournament.logoUrl"
+                :alt="tournament.name"
+                class="w-full h-full object-cover rounded-lg"
               />
-              <img 
-                v-else 
-                :src="PLACEHOLDER_LOGO" 
-                alt="Placeholder" 
-                class="w-full h-full object-cover rounded-lg" 
+              <img
+                v-else
+                :src="PLACEHOLDER_LOGO"
+                alt="Placeholder"
+                class="w-full h-full object-cover rounded-lg"
               />
             </div>
 
             <!-- Format & Sport Badges (Top Right of Content Area) -->
-            <div class="absolute -top-6 right-4 flex flex-col items-end gap-1">
+            <div class="absolute -top-5 sm:-top-6 right-3 sm:right-4 flex flex-col items-end gap-1">
               <span :class="[
-                'px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border shadow-sm',
+                'px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider rounded border shadow-sm',
                 getTypeBadgeStyle(tournament.type)
               ]">
                 {{ tournament.type.replace(/_/g, ' ') }}
@@ -399,33 +408,33 @@ watch(loadMoreTrigger, (el) => {
             </div>
 
             <!-- Content Area: Name -->
-            <div class="flex-1 mt-2">
-              <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block mb-1">
+            <div class="flex-1 mt-1 sm:mt-2">
+              <span class="text-[9px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block mb-1">
                 {{ tournament.sport }}
               </span>
-              <h3 class="font-bold text-base text-gray-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
+              <h3 class="font-bold text-sm sm:text-base text-gray-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
                 {{ tournament.name }}
               </h3>
             </div>
 
             <!-- Metadata Footer -->
-            <div class="mt-5 pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400 font-semibold">
-              <div class="flex flex-wrap items-center gap-4">
+            <div class="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between gap-x-4 gap-y-2 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 font-semibold">
+              <div class="flex flex-wrap items-center gap-3 sm:gap-4">
                 <div class="flex items-center gap-1.5">
-                  <UIcon name="i-heroicons-calendar" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                  <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500" />
                   <span>{{ formatDate(tournament.start_date) }}</span>
                 </div>
                 <div v-if="tournament.location" class="flex items-center gap-1.5">
-                  <UIcon name="i-heroicons-map-pin" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                  <span class="truncate max-w-[120px]">{{ tournament.location }}</span>
+                  <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500" />
+                  <span class="truncate max-w-[100px] sm:max-w-[120px]">{{ tournament.location }}</span>
                 </div>
               </div>
-              
+
               <!-- Visibility Icon (Bottom Right) -->
-              <div class="w-7 h-7 flex items-center justify-center bg-gray-100 dark:bg-white/5 rounded-md flex-shrink-0">
-                <UIcon 
-                  :name="getVisibilityIcon(tournament.visibility)" 
-                  class="w-4 h-4 text-gray-500 dark:text-gray-400"
+              <div class="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center bg-gray-100 dark:bg-white/5 rounded-md flex-shrink-0">
+                <UIcon
+                  :name="getVisibilityIcon(tournament.visibility)"
+                  class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-400"
                   :title="tournament.visibility"
                 />
               </div>
@@ -435,22 +444,22 @@ watch(loadMoreTrigger, (el) => {
       </div>
 
       <!-- List View -->
-      <div v-else-if="viewMode === 'list'" class="flex flex-col gap-3">
-        <div 
-          v-for="(tournament, index) in filteredTournaments" 
-          :key="tournament.id" 
+      <div v-else-if="viewMode === 'list'" class="flex flex-col gap-2 sm:gap-3">
+        <div
+          v-for="(tournament, index) in filteredTournaments"
+          :key="tournament.id"
           class="group card-fade-in relative flex items-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl hover:border-emerald-500/40 transition-[border-color,box-shadow] duration-300 hover:shadow-lg hover:shadow-emerald-500/5"
           :style="{ animationDelay: `${index * 50}ms` }"
         >
-          <NuxtLink 
+          <NuxtLink
             :to="`/tournaments/${tournament.customName || tournament.id}`"
-            class="flex flex-1 items-center gap-4 p-3 pr-2 focus:outline-none min-w-0"
+            class="flex flex-1 items-center gap-3 sm:gap-4 p-2.5 sm:p-3 pr-2 focus:outline-none min-w-0"
           >
           <!-- Logo -->
-          <UAvatar 
-            :src="tournament.logoUrl || PLACEHOLDER_LOGO" 
+          <UAvatar
+            :src="tournament.logoUrl || PLACEHOLDER_LOGO"
             :alt="tournament.name"
-            size="md"
+            size="sm"
             class="ring-1 ring-gray-200 dark:ring-gray-800"
           >
             <!-- Pending Requests Indicator for List View -->
@@ -462,48 +471,48 @@ watch(loadMoreTrigger, (el) => {
           <!-- Info -->
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
-              <h3 class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">
+              <h3 class="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">
                 {{ tournament.name }}
               </h3>
               <span :class="[
-                'flex-shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border',
+                'flex-shrink-0 px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider rounded border',
                 getTypeBadgeStyle(tournament.type)
               ]">
                 {{ tournament.type.replace(/_/g, ' ') }}
               </span>
             </div>
-            
-            <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 min-w-0">
+
+            <div class="flex items-center gap-3 sm:gap-4 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 min-w-0">
               <div class="flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
-                <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 flex-shrink-0" />
+                <UIcon name="i-heroicons-calendar" class="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
                 <span>{{ formatDate(tournament.start_date) }}</span>
               </div>
               <div v-if="tournament.location" class="flex items-center gap-1 min-w-0">
-                <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 flex-shrink-0" />
+                <UIcon name="i-heroicons-map-pin" class="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
                 <span class="truncate">{{ tournament.location }}</span>
               </div>
             </div>
           </div>
 
           <!-- Status/Icon -->
-          <div class="flex items-center gap-3">
-             <div class="bg-gray-100 flex items-center justify-center shrink-0 w-8 h-8 dark:bg-gray-800 rounded-lg">
-                <UIcon 
-                  :name="getVisibilityIcon(tournament.visibility)" 
-                  class="w-4 h-4 text-gray-500" 
+          <div class="flex items-center gap-2 sm:gap-3">
+             <div class="bg-gray-100 flex items-center justify-center shrink-0 w-7 h-7 sm:w-8 sm:h-8 dark:bg-gray-800 rounded-lg">
+                <UIcon
+                  :name="getVisibilityIcon(tournament.visibility)"
+                  class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500"
                 />
              </div>
-             <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors mr-2" />
+             <UIcon name="i-heroicons-chevron-right" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 group-hover:text-emerald-500 transition-colors mr-1 sm:mr-2" />
           </div>
           </NuxtLink>
-          
+
           <button
              @click.prevent="togglePin(tournament)"
-             class="w-8 h-8 flex items-center justify-center shrink-0 mr-3 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10"
+             class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center shrink-0 mr-2 sm:mr-3 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10"
              :class="tournament.isPinned ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-500' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'"
              :title="tournament.isPinned ? 'Unpin tournament' : 'Pin to top'"
           >
-             <UIcon :name="tournament.isPinned ? 'i-heroicons-star-solid' : 'i-heroicons-star'" class="w-4 h-4 pointer-events-none" />
+             <UIcon :name="tournament.isPinned ? 'i-heroicons-star-solid' : 'i-heroicons-star'" class="w-3.5 h-3.5 sm:w-4 sm:h-4 pointer-events-none" />
           </button>
         </div>
       </div>
