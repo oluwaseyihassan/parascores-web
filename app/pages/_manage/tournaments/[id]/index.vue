@@ -4599,12 +4599,12 @@ const copyTournamentLink = async () => {
   </div>
 
   <!-- Manage Players Modal -->
-  <UModal v-model:open="showManagePlayersModal">
+  <UModal v-model:open="showManagePlayersModal" :ui="{ content: 'sm:max-w-lg' }">
     <template #content>
-      <UCard>
+      <UCard class="ring-0 shadow-none" :ui="{ root: 'divide-y divide-gray-100 dark:divide-gray-800' }">
         <template #header>
           <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
               Manage Players - {{ selectedParticipant?.customName }}
             </h3>
             <div class="flex items-center gap-2">
@@ -4619,7 +4619,7 @@ const copyTournamentLink = async () => {
           </div>
         </template>
 
-        <div class="space-y-6 max-h-[70vh] overflow-y-auto px-1 py-1 pr-3">
+        <div class="space-y-4 max-h-[60vh] overflow-y-auto px-1 py-1 pr-3">
           <!-- Excel Upload Instructions -->
           <UAlert
             icon="i-heroicons-information-circle"
@@ -4853,12 +4853,12 @@ const copyTournamentLink = async () => {
   </UModal>
 
   <!-- Add Participant Modal -->
-  <UModal v-model:open="showAddModal">
+  <UModal v-model:open="showAddModal" :ui="{ content: 'sm:max-w-md' }">
     <template #content>
-      <UCard>
+      <UCard class="ring-0 shadow-none" :ui="{ root: 'divide-y divide-gray-100 dark:divide-gray-800' }">
         <template #header>
           <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
               Add Participant
             </h3>
             <UButton 
@@ -4996,12 +4996,12 @@ const copyTournamentLink = async () => {
   </UModal>
 
   <!-- Edit Participant Modal -->
-  <UModal v-model:open="showEditModal">
+  <UModal v-model:open="showEditModal" :ui="{ content: 'sm:max-w-md' }">
     <template #content>
-      <UCard>
+      <UCard class="ring-0 shadow-none" :ui="{ root: 'divide-y divide-gray-100 dark:divide-gray-800' }">
         <template #header>
           <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
               Edit Participant
             </h3>
             <UButton 
