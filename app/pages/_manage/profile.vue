@@ -210,6 +210,18 @@ const formatDate = (dateString: string) => {
 
 <template>
   <div class="max-w-2xl mx-auto">
+    <!-- Back Button -->
+    <div class="mb-6">
+      <UButton
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        icon="i-heroicons-arrow-left"
+        label="Back"
+        @click="$router.back()"
+      />
+    </div>
+
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Profile</h1>
