@@ -349,6 +349,18 @@ const positionStats = computed((): StatCard[] => {
 
 <template>
   <div class="max-w-3xl mx-auto py-10 px-4 sm:px-6 min-h-screen">
+    <!-- Back Button -->
+    <div class="mb-6">
+      <UButton
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        icon="i-heroicons-arrow-left"
+        label="Back"
+        @click="$router.back()"
+      />
+    </div>
+
     <!-- Loading -->
     <div v-if="loading" class="flex flex-col items-center justify-center py-24 bg-white dark:bg-white/[0.02] rounded-3xl border border-gray-100 dark:border-white/[0.05]">
       <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-emerald-500 mb-3" />
