@@ -223,6 +223,18 @@ useSeoMeta({
 
 <template>
   <div class="max-w-2xl mx-auto px-6 py-12">
+    <!-- Back Button -->
+    <div class="mb-6">
+      <UButton
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        icon="i-heroicons-arrow-left"
+        label="Back"
+        @click="$router.back()"
+      />
+    </div>
+
     <!-- Verifying Payment State -->
     <div v-if="verifyingPayment" class="text-center py-24 bg-white dark:bg-[#0A0A0A] p-8 rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm w-full">
       <UIcon name="i-heroicons-arrow-path" class="w-12 h-12 animate-spin text-emerald-500 mx-auto mb-4" />

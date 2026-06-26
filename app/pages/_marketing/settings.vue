@@ -116,6 +116,18 @@ useSeoMeta({
 
 <template>
   <div class="max-w-2xl mx-auto px-6 py-12">
+    <!-- Back Button -->
+    <div class="mb-6">
+      <UButton
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        icon="i-heroicons-arrow-left"
+        label="Back"
+        @click="$router.back()"
+      />
+    </div>
+
     <!-- Header -->
     <div class="mb-10">
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Settings</h1>
