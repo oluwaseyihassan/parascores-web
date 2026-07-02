@@ -79,7 +79,10 @@ const matchupsByRound = computed(() => {
     } else {
       for (let i = 0; i < roundFixtures.length; i++) {
         const f = roundFixtures[i]!
-        const isThirdPlace = isFinalRound && props.thirdPlaceMatch && i === 1
+        const roundName = (f.roundName || '').toLowerCase()
+        const isThirdPlace = isFinalRound && props.thirdPlaceMatch && (
+          roundName.includes('third') || roundName.includes('3rd') || (i === 1 && !roundName.includes('final'))
+        )
         matchups.push({
           id: f.id,
           fixtures: [f],
