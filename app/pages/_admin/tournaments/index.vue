@@ -12,6 +12,7 @@ const { loading, error } = storeToRefs(adminStore)
 const tournaments = ref<any[]>([])
 const search = ref('')
 const selectedSport = ref('all')
+const selectedPremium = ref('all')
 const page = ref(1)
 const limit = ref(20)
 const total = ref(0)
@@ -23,7 +24,8 @@ const loadTournaments = async () => {
       page: page.value,
       limit: limit.value,
       search: search.value || undefined,
-      sport: selectedSport.value === 'all' ? undefined : selectedSport.value
+      sport: selectedSport.value === 'all' ? undefined : selectedSport.value,
+      isPremium: selectedPremium.value === 'all' ? undefined : selectedPremium.value
     })
     if (data) {
       tournaments.value = data.items
@@ -35,7 +37,7 @@ const loadTournaments = async () => {
   }
 }
 
-watch([page, selectedSport], () => {
+watch([page, selectedSport, selectedPremium], () => {
   loadTournaments()
 })
 
@@ -176,6 +178,14 @@ const getStatus = (startStr: string, endStr: string) => {
         />
       </div>
       <div class="flex items-center gap-3 shrink-0">
+        <select 
+          v-model="selectedPremium"
+          class="bg-slate-900 border border-slate-800 text-slate-200 text-sm font-semibold rounded-xl px-3.5 py-2 focus:ring-rose-500 focus:border-rose-500 focus:outline-none"
+        >
+          <option value="all">All Statuses</option>
+          <option value="true">Premium Only</option>
+          <option value="false">Free Only</option>
+        </select>
         <select 
           v-model="selectedSport"
           class="bg-slate-900 border border-slate-800 text-slate-200 text-sm font-semibold rounded-xl px-3.5 py-2 focus:ring-rose-500 focus:border-rose-500 focus:outline-none"

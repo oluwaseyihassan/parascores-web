@@ -208,7 +208,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   // ─── Tournaments ───────────────────────────────────────────
-  async function fetchTournaments(params: { page?: number; limit?: number; search?: string; sport?: string } = {}) {
+  async function fetchTournaments(params: { page?: number; limit?: number; search?: string; sport?: string; isPremium?: string } = {}) {
     loading.value = true
     error.value = null
     try {
@@ -217,6 +217,7 @@ export const useAdminStore = defineStore('admin', () => {
       if (params.limit) query.append('limit', params.limit.toString())
       if (params.search) query.append('search', params.search)
       if (params.sport) query.append('sport', params.sport)
+      if (params.isPremium !== undefined) query.append('isPremium', params.isPremium)
 
       const res = await $api<any>(
         `/admin/tournaments?${query.toString()}`,

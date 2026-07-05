@@ -81,7 +81,9 @@ const upgradePrice = computed(() => {
     return tournament.value.tournamentPrice / 100
   }
   if (tournament.value.paymentPerTeam && tournament.value.paymentPerTeam > 0) {
-    return tournament.value.paymentPerTeam / 100
+    const teamCount = participants.value?.length || 0
+    const calculatedFee = (tournament.value.paymentPerTeam / 100) * teamCount
+    return calculatedFee > 0 ? calculatedFee : 1000
   }
   return 1000
 })
