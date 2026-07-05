@@ -48,6 +48,7 @@ onMounted(() => {
   loadTournaments()
 })
 
+// ─── Delete Logic ────────────────────────────────────────────
 const deleteTournamentId = ref<string | null>(null)
 const deleteTournamentName = ref('')
 const isDeleteModalOpen = ref(false)
@@ -78,6 +79,50 @@ const performDelete = async () => {
   }
 }
 
+// ─── Pricing Modal Logic ─────────────────────────────────────
+const isPricingModalOpen = ref(false)
+const pricingTournament = ref<any>(null)
+const pricingForm = reactive({
+  tournamentPrice: null as number | null,
+  paymentPerTeam: null as number | null,
+})
+const savingPricing = ref(false)
+
+const openPricingModal = (t: any) => {
+  pricingTournament.value = t
+  // Convert from kobo (backend) to naira (display)
+  pricingForm.tournamentPrice = t.tournamentPrice ? t.tournamentPrice / 100 : null
+  pricingForm.paymentPerTeam = t.paymentPerTeam ? t.paymentPerTeam / 100 : null
+  isPricingModalOpen.value = true
+}
+
+const savePricing = async () => {
+  if (!pricingTournament.value) return
+  savingPricing.value = true
+  try {
+    await adminStore.updateTournamentPricing(pricingTournament.value.id, {
+      tournamentPrice: pricingForm.tournamentPrice,
+      paymentPerTeam: pricingForm.paymentPerTeam,
+    })
+    useToast().add({
+      title: 'Pricing Updated',
+      description: `Pricing for "${pricingTournament.value.name}" has been saved successfully.`,
+      color: 'success'
+    })
+    isPricingModalOpen.value = false
+    loadTournaments()
+  } catch (err) {
+    useToast().add({
+      title: 'Update Failed',
+      description: 'Failed to save tournament pricing. Please try again.',
+      color: 'error'
+    })
+  } finally {
+    savingPricing.value = false
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleDateString('en-US', {
@@ -85,6 +130,13 @@ const formatDate = (dateStr: string) => {
     day: 'numeric',
     year: 'numeric'
   })
+}
+
+const formatCurrency = (val: number) => {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN'
+  }).format(val)
 }
 
 const getStatus = (startStr: string, endStr: string) => {
@@ -153,7 +205,8 @@ const getStatus = (startStr: string, endStr: string) => {
               <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Tournament Name</th>
               <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Organization</th>
               <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Sport / Format</th>
-              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Uptime Details</th>
+              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Tournament Price</th>
+              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Per Team</th>
               <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Status</th>
               <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-400">Actions</th>
             </tr>
@@ -164,11 +217,12 @@ const getStatus = (startStr: string, endStr: string) => {
               <td class="px-6 py-4.5"><div class="h-5 w-24 bg-slate-800 rounded"></div></td>
               <td class="px-6 py-4.5"><div class="h-5 w-24 bg-slate-800 rounded"></div></td>
               <td class="px-6 py-4.5"><div class="h-5 w-20 bg-slate-800 rounded"></div></td>
+              <td class="px-6 py-4.5"><div class="h-5 w-20 bg-slate-800 rounded"></div></td>
               <td class="px-6 py-4.5"><div class="h-5 w-16 bg-slate-800 rounded"></div></td>
-              <td class="px-6 py-4.5"><div class="h-8 w-10 bg-slate-800 rounded ml-auto"></div></td>
+              <td class="px-6 py-4.5"><div class="h-8 w-20 bg-slate-800 rounded ml-auto"></div></td>
             </tr>
             <tr v-else-if="tournaments.length === 0">
-              <td colspan="6" class="px-6 py-12 text-center text-slate-500 text-sm">
+              <td colspan="7" class="px-6 py-12 text-center text-slate-500 text-sm">
                 No tournaments registered matching your search criteria.
               </td>
             </tr>
@@ -199,10 +253,22 @@ const getStatus = (startStr: string, endStr: string) => {
                 </div>
               </td>
               <td class="px-6 py-4">
-                <div class="flex flex-col text-xs text-slate-400 font-semibold gap-0.5">
-                  <span>Start: {{ formatDate(t.start_date) }}</span>
-                  <span>End: {{ formatDate(t.end_date) }}</span>
-                </div>
+                <span 
+                  v-if="t.tournamentPrice" 
+                  class="text-sm font-extrabold text-emerald-400"
+                >
+                  {{ formatCurrency(t.tournamentPrice / 100) }}
+                </span>
+                <span v-else class="text-xs text-slate-600 italic">Not set</span>
+              </td>
+              <td class="px-6 py-4">
+                <span 
+                  v-if="t.paymentPerTeam" 
+                  class="text-sm font-extrabold text-violet-400"
+                >
+                  {{ formatCurrency(t.paymentPerTeam / 100) }}
+                </span>
+                <span v-else class="text-xs text-slate-600 italic">Not set</span>
               </td>
               <td class="px-6 py-4">
                 <span 
@@ -219,13 +285,22 @@ const getStatus = (startStr: string, endStr: string) => {
                 </span>
               </td>
               <td class="px-6 py-4 text-right">
-                <UButton
-                  size="sm"
-                  color="error"
-                  variant="ghost"
-                  icon="i-heroicons-trash"
-                  @click="openDeleteConfirm(t)"
-                />
+                <div class="flex items-center justify-end gap-1">
+                  <UButton
+                    size="sm"
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-heroicons-currency-dollar"
+                    @click="openPricingModal(t)"
+                  />
+                  <UButton
+                    size="sm"
+                    color="error"
+                    variant="ghost"
+                    icon="i-heroicons-trash"
+                    @click="openDeleteConfirm(t)"
+                  />
+                </div>
               </td>
             </tr>
           </tbody>
@@ -292,5 +367,88 @@ const getStatus = (startStr: string, endStr: string) => {
         </div>
       </template>
     </UModal>
+
+    <!-- Pricing Configuration Modal -->
+    <UModal v-model="isPricingModalOpen" title="Set Tournament Pricing">
+      <template #body>
+        <div class="space-y-5">
+          <!-- Tournament info header -->
+          <div class="flex items-center gap-3 bg-slate-900/50 rounded-xl p-3 border border-slate-800">
+            <div class="w-9 h-9 rounded-lg bg-rose-950/30 border border-rose-900/30 text-rose-500 flex items-center justify-center font-bold text-xs shrink-0">
+              {{ pricingTournament?.name?.charAt(0)?.toUpperCase() }}
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-extrabold text-white truncate">{{ pricingTournament?.name }}</p>
+              <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">{{ pricingTournament?.sport }} · {{ pricingTournament?.type }}</p>
+            </div>
+          </div>
+
+          <!-- Tournament Price -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Tournament Price (₦)
+            </label>
+            <p class="text-[11px] text-slate-500">The total price the tournament organizer should pay to use the platform.</p>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-bold">₦</span>
+              <input
+                v-model.number="pricingForm.tournamentPrice"
+                type="number"
+                min="0"
+                step="100"
+                placeholder="e.g. 5000"
+                class="w-full bg-slate-900 border border-slate-800 text-white text-sm font-semibold rounded-xl pl-8 pr-4 py-2.5 placeholder-slate-600 focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 focus:outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          <!-- Payment Per Team -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Payment Per Team (₦)
+            </label>
+            <p class="text-[11px] text-slate-500">The amount each participating team should pay to register for this tournament.</p>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-bold">₦</span>
+              <input
+                v-model.number="pricingForm.paymentPerTeam"
+                type="number"
+                min="0"
+                step="100"
+                placeholder="e.g. 1000"
+                class="w-full bg-slate-900 border border-slate-800 text-white text-sm font-semibold rounded-xl pl-8 pr-4 py-2.5 placeholder-slate-600 focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 focus:outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          <!-- Info note -->
+          <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-[11px] text-slate-400 flex items-start gap-2">
+            <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0 mt-0.5 text-slate-500" />
+            <span>Leave a field empty or set to 0 to indicate no charge. Changes take effect immediately for new registrations.</span>
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            @click="isPricingModalOpen = false"
+          >
+            Cancel
+          </UButton>
+          <UButton
+            color="primary"
+            variant="solid"
+            icon="i-heroicons-check"
+            :loading="savingPricing"
+            @click="savePricing"
+          >
+            Save Pricing
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>
+

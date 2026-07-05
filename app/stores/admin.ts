@@ -251,6 +251,30 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  async function updateTournamentPricing(id: string, data: { tournamentPrice?: number | null; paymentPerTeam?: number | null }) {
+    loading.value = true
+    error.value = null
+    try {
+      const body: any = {}
+      if (data.tournamentPrice !== undefined) {
+        body.tournamentPrice = data.tournamentPrice !== null ? Math.round(data.tournamentPrice * 100) : null
+      }
+      if (data.paymentPerTeam !== undefined) {
+        body.paymentPerTeam = data.paymentPerTeam !== null ? Math.round(data.paymentPerTeam * 100) : null
+      }
+      const res = await $api<ApiResponse<any>>(`/admin/tournaments/${id}/pricing`, {
+        method: 'PATCH',
+        body,
+      })
+      return res.data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update tournament pricing'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // ─── Organizations ─────────────────────────────────────────
   async function fetchOrganizations(params: { page?: number; limit?: number; search?: string } = {}) {
     loading.value = true
@@ -429,6 +453,7 @@ export const useAdminStore = defineStore('admin', () => {
     updateUserRole,
     fetchTournaments,
     deleteTournament,
+    updateTournamentPricing,
     fetchOrganizations,
     fetchOrganization,
     fetchPayments,
