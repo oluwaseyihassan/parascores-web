@@ -336,7 +336,7 @@ const getStatus = (startStr: string, endStr: string) => {
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <UModal v-model="isDeleteModalOpen" title="Delete Tournament">
+    <UModal v-model:open="isDeleteModalOpen" title="Delete Tournament">
       <template #body>
         <div class="space-y-4">
           <p class="text-sm text-slate-300">
@@ -369,7 +369,7 @@ const getStatus = (startStr: string, endStr: string) => {
     </UModal>
 
     <!-- Pricing Configuration Modal -->
-    <UModal v-model="isPricingModalOpen" title="Set Tournament Pricing">
+    <UModal v-model:open="isPricingModalOpen" title="Set Tournament Pricing">
       <template #body>
         <div class="space-y-5">
           <!-- Tournament info header -->
