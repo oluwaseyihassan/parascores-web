@@ -36,7 +36,7 @@
             variant="green"
             size="lg"
             block
-            @click="navigateTo({ path: '/login', query: route.query })"
+            @click="navigateTo({ path: '/login', query: route.query });"
           >
             Go to Login
           </UButton>
@@ -55,7 +55,7 @@
               variant="green"
               size="lg"
               block
-              @click="navigateTo({ path: '/signup', query: route.query })"
+              @click="navigateTo({ path: '/signup', query: route.query });"
             >
               Back to Sign Up
             </UButton>
@@ -80,7 +80,7 @@
             variant="green"
             size="lg"
             block
-            @click="navigateTo({ path: '/signup', query: route.query })"
+            @click="navigateTo({ path: '/signup', query: route.query });"
           >
             Back to Sign Up
           </UButton>

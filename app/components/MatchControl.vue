@@ -2338,7 +2338,7 @@ const downloadGraphic = async () => {
 
             <!-- Edit penalties toggle -->
             <div v-if="selectedFixture.status === 'COMPLETED' && !isScoreTiedOrAggregateTied && !hasPenalties && !showPenaltyOverride" class="flex justify-center">
-              <UButton size="xs" variant="link" color="neutral" icon="i-heroicons-bolt" label="Edit Penalties" @click="showPenaltyOverride = true" />
+              <UButton size="xs" variant="link" color="neutral" icon="i-heroicons-bolt" label="Edit Penalties" @click="showPenaltyOverride = true;" />
             </div>
 
             <!-- Match Events -->
@@ -2623,7 +2623,7 @@ const downloadGraphic = async () => {
               color="neutral" 
               size="sm"
               class="shrink-0"
-              @click="showGoalModal = false"
+              @click="showGoalModal = false;"
             />
           </div>
         </template>
@@ -2688,7 +2688,7 @@ const downloadGraphic = async () => {
               label="Cancel" 
               variant="ghost" 
               color="neutral"
-              @click="showGoalModal = false"
+              @click="showGoalModal = false;"
             />
             <UButton 
               label="Record Goal" 
@@ -2720,7 +2720,7 @@ const downloadGraphic = async () => {
                 </span>
               </UBadge>
             </div>
-            <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" class="shrink-0" @click="showCardModal = false" />
+            <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" class="shrink-0" @click="showCardModal = false;" />
           </div>
         </template>
 
@@ -2766,7 +2766,7 @@ const downloadGraphic = async () => {
 
           <!-- Actions -->
           <div class="flex justify-end gap-3 pt-2">
-            <UButton label="Cancel" variant="ghost" color="neutral" @click="showCardModal = false" />
+            <UButton label="Cancel" variant="ghost" color="neutral" @click="showCardModal = false;" />
             <UButton 
               label="Record Card" 
               icon="i-heroicons-check"
@@ -2797,7 +2797,7 @@ const downloadGraphic = async () => {
                 </span>
               </UBadge>
             </div>
-            <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" class="shrink-0" @click="showSubstitutionModal = false" />
+            <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" class="shrink-0" @click="showSubstitutionModal = false;" />
           </div>
         </template>
 
@@ -2843,7 +2843,7 @@ const downloadGraphic = async () => {
 
           <!-- Actions -->
           <div class="flex justify-end gap-3 pt-2">
-            <UButton label="Cancel" variant="ghost" color="neutral" @click="showSubstitutionModal = false" />
+            <UButton label="Cancel" variant="ghost" color="neutral" @click="showSubstitutionModal = false;" />
             <UButton 
               label="Record Substitution" 
               icon="i-heroicons-check"
@@ -2875,7 +2875,7 @@ const downloadGraphic = async () => {
               variant="ghost" 
               color="neutral" 
               size="sm"
-              @click="showEditEventModal = false"
+              @click="showEditEventModal = false;"
             />
           </div>
         </template>
@@ -2922,7 +2922,7 @@ const downloadGraphic = async () => {
               label="Cancel" 
               variant="ghost" 
               color="neutral"
-              @click="showEditEventModal = false"
+              @click="showEditEventModal = false;"
             />
             <UButton 
               label="Save Changes" 
@@ -2954,7 +2954,7 @@ const downloadGraphic = async () => {
               variant="ghost" 
               color="neutral" 
               size="sm"
-              @click="showDeleteEventModal = false"
+              @click="showDeleteEventModal = false;"
             />
           </div>
         </template>
@@ -2971,7 +2971,7 @@ const downloadGraphic = async () => {
               label="Cancel" 
               variant="ghost" 
               color="neutral"
-              @click="showDeleteEventModal = false"
+              @click="showDeleteEventModal = false;"
             />
             <UButton 
               label="Delete Event" 
@@ -3003,7 +3003,7 @@ const downloadGraphic = async () => {
               variant="ghost"
               color="neutral"
               size="sm"
-              @click="showWalkoverModal = false"
+              @click="showWalkoverModal = false;"
             />
           </div>
         </template>
@@ -3061,7 +3061,7 @@ const downloadGraphic = async () => {
               variant="ghost"
               color="neutral"
               size="sm"
-              @click="showSwapConfirmModal = false"
+              @click="showSwapConfirmModal = false;"
             />
           </div>
         </template>
@@ -3076,7 +3076,7 @@ const downloadGraphic = async () => {
               label="Cancel"
               variant="ghost"
               color="neutral"
-              @click="showSwapConfirmModal = false"
+              @click="showSwapConfirmModal = false;"
             />
             <UButton
               label="Swap Teams"

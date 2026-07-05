@@ -2720,7 +2720,7 @@ const copyTournamentLink = async () => {
             variant="ghost" 
             icon="i-heroicons-x-mark" 
             class="rounded-full"
-            @click="error = null" 
+            @click="error = null;" 
           />
         </div>
       </template>
@@ -2807,7 +2807,7 @@ const copyTournamentLink = async () => {
             variant="outline"
             color="neutral"
             size="sm"
-            @click="showQRCodeModal = true"
+            @click="showQRCodeModal = true;"
             label="QR Code"
           />
           <UButton
@@ -2886,7 +2886,7 @@ const copyTournamentLink = async () => {
                 <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
                   Tournament QR Code
                 </h3>
-                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showQRCodeModal = false" />
+                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showQRCodeModal = false;" />
               </div>
             </template>
 
@@ -2945,7 +2945,7 @@ const copyTournamentLink = async () => {
                 <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
                   Advance to Knockout Stage
                 </h3>
-                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showAdvanceModal = false" />
+                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showAdvanceModal = false;" />
               </div>
             </template>
 
@@ -2954,7 +2954,7 @@ const copyTournamentLink = async () => {
                 <!-- Auto Option -->
                 <button 
                   type="button"
-                  @click="manualSelection = false"
+                  @click="manualSelection = false;"
                   class="flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all group"
                   :class="!manualSelection ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/20 ring-1 ring-primary-500' : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'"
                 >
@@ -2993,7 +2993,7 @@ const copyTournamentLink = async () => {
                     icon="i-heroicons-cursor-arrow-rays" 
                     size="xs" 
                     label="Wait, I want to pick teams manually..." 
-                    @click="manualSelection = true"
+                    @click="manualSelection = true;"
                     class="mx-auto flex"
                  />
               </div>
@@ -3079,7 +3079,7 @@ const copyTournamentLink = async () => {
 
             <template #footer>
               <div class="flex items-center justify-end gap-3">
-                <UButton color="neutral" variant="ghost" label="Cancel" @click="showAdvanceModal = false" />
+                <UButton color="neutral" variant="ghost" label="Cancel" @click="showAdvanceModal = false;" />
                 <UButton 
                   color="primary" 
                   :label="manualSelection ? `Advance ${selectedParticipantIds.length} Teams` : 'Confirm & Generate Bracket'"
@@ -3102,7 +3102,7 @@ const copyTournamentLink = async () => {
                 <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
                   Add Venue
                 </h3>
-                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showAddVenueModal = false" />
+                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showAddVenueModal = false;" />
               </div>
             </template>
 
@@ -3126,7 +3126,7 @@ const copyTournamentLink = async () => {
               </UFormField>
 
               <div class="flex items-center justify-end gap-3 pt-2">
-                <UButton color="neutral" variant="ghost" label="Cancel" @click="showAddVenueModal = false" />
+                <UButton color="neutral" variant="ghost" label="Cancel" @click="showAddVenueModal = false;" />
                 <UButton 
                   color="primary" 
                   label="Add Venue" 
@@ -3149,7 +3149,7 @@ const copyTournamentLink = async () => {
                 <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
                   Invite Link
                 </h3>
-                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showInviteModal = false" />
+                <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showInviteModal = false;" />
               </div>
             </template>
 
@@ -3218,7 +3218,7 @@ const copyTournamentLink = async () => {
                 description="Teams or players are waiting for your approval to join. Review them in the Participants tab."
               >
                 <template #actions>
-                  <UButton size="xs" color="warning" @click="activeTab = '1'">
+                  <UButton size="xs" color="warning" @click="activeTab = '1';">
                     Review Now
                   </UButton>
                 </template>
@@ -3342,7 +3342,7 @@ const copyTournamentLink = async () => {
                             variant="ghost" 
                             :color="manageModes.sponsors ? 'primary' : 'neutral'"
                             :icon="manageModes.sponsors ? 'i-heroicons-check' : 'i-heroicons-pencil-square'" 
-                            @click="manageModes.sponsors = !manageModes.sponsors" 
+                            @click="manageModes.sponsors = !manageModes.sponsors;" 
                             :label="manageModes.sponsors ? 'Done' : 'Manage'"
                           />
                           <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSponsorModal" />
@@ -3427,7 +3427,7 @@ const copyTournamentLink = async () => {
                             variant="ghost" 
                             :color="manageModes.venues ? 'primary' : 'neutral'"
                             :icon="manageModes.venues ? 'i-heroicons-check' : 'i-heroicons-pencil-square'" 
-                            @click="manageModes.venues = !manageModes.venues" 
+                            @click="manageModes.venues = !manageModes.venues;" 
                             :label="manageModes.venues ? 'Done' : 'Manage'"
                           />
                           <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddVenueModal" />
@@ -3475,7 +3475,7 @@ const copyTournamentLink = async () => {
                             variant="ghost" 
                             :color="manageModes.socials ? 'primary' : 'neutral'"
                             :icon="manageModes.socials ? 'i-heroicons-check' : 'i-heroicons-pencil-square'" 
-                            @click="manageModes.socials = !manageModes.socials" 
+                            @click="manageModes.socials = !manageModes.socials;" 
                             :label="manageModes.socials ? 'Done' : 'Manage' "
                           />
                           <UButton size="xs" variant="ghost" icon="i-heroicons-plus" @click="openAddSocialModal" />
@@ -3539,7 +3539,7 @@ const copyTournamentLink = async () => {
                         variant="ghost" 
                         color="success"
                         icon="i-heroicons-link" 
-                        @click="showTournamentInviteModal = true"
+                        @click="showTournamentInviteModal = true;"
                       >
                         <span class="hidden sm:inline">Invite</span>
                       </UButton>
@@ -3936,7 +3936,7 @@ const copyTournamentLink = async () => {
                         :variant="showTodayOnly ? 'solid' : 'ghost'"
                         :color="showTodayOnly ? 'primary' : 'neutral'"
                         icon="i-heroicons-calendar"
-                        @click="showTodayOnly = !showTodayOnly"
+                        @click="showTodayOnly = !showTodayOnly;"
                         label="Today"
                       />
                       <UButton 
@@ -3952,7 +3952,7 @@ const copyTournamentLink = async () => {
                         size="xs"
                         variant="ghost"
                         icon="i-heroicons-sparkles"
-                        @click="showKnockoutWizard = true"
+                        @click="showKnockoutWizard = true;"
                         label="Setup Brackets"
                         class="text-amber-500 hover:text-amber-600 font-bold"
                         title="Setup brackets step-by-step"
@@ -4059,7 +4059,7 @@ const copyTournamentLink = async () => {
                 <div v-else-if="showTodayOnly && !hasTodayFixtures" class="py-6 sm:py-8 text-center text-gray-400 text-sm">
                   <UIcon name="i-heroicons-calendar" class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 opacity-50" />
                   <p>No fixtures scheduled for today</p>
-                  <UButton size="sm" variant="soft" color="primary" class="mt-3 sm:mt-4" @click="showTodayOnly = false">
+                  <UButton size="sm" variant="soft" color="primary" class="mt-3 sm:mt-4" @click="showTodayOnly = false;">
                     View All Fixtures
                   </UButton>
                 </div>
@@ -4373,7 +4373,7 @@ const copyTournamentLink = async () => {
                       size="sm"
                       icon="i-heroicons-document-duplicate"
                       label="Start New Season"
-                      @click="showSeasonModal = true"
+                      @click="showSeasonModal = true;"
                     />
                   </div>
                 </UCard>
@@ -4398,7 +4398,7 @@ const copyTournamentLink = async () => {
                       size="sm"
                       icon="i-heroicons-arrows-right-left"
                       label="Transfer Ownership"
-                      @click="showTransferModal = true"
+                      @click="showTransferModal = true;"
                     />
                   </div>
                 </UCard>
@@ -4473,7 +4473,7 @@ const copyTournamentLink = async () => {
           </div>
 
           <div class="flex justify-end gap-3 mt-6">
-            <UButton color="neutral" variant="ghost" @click="showLinkCodeModal = false">Close</UButton>
+            <UButton color="neutral" variant="ghost" @click="showLinkCodeModal = false;">Close</UButton>
             <UButton 
               color="primary" 
               icon="i-heroicons-document-duplicate"
@@ -4525,7 +4525,7 @@ const copyTournamentLink = async () => {
             </UFormField>
 
             <div class="flex justify-end gap-3 mt-6">
-              <UButton color="neutral" variant="ghost" @click="showTransferModal = false">Cancel</UButton>
+              <UButton color="neutral" variant="ghost" @click="showTransferModal = false;">Cancel</UButton>
               <UButton type="submit" color="neutral" :loading="transferringTournament" :disabled="!targetOrganizationId">
                 Transfer Ownership
               </UButton>
@@ -4583,7 +4583,7 @@ const copyTournamentLink = async () => {
                 label="Cancel" 
                 variant="ghost" 
                 color="neutral"
-                @click="showSeasonModal = false"
+                @click="showSeasonModal = false;"
               />
               <UButton 
                 type="submit"
@@ -4613,7 +4613,7 @@ const copyTournamentLink = async () => {
                 variant="ghost" 
                 color="neutral" 
                 size="sm"
-                @click="showManagePlayersModal = false"
+                @click="showManagePlayersModal = false;"
               />
             </div>
           </div>
@@ -4681,7 +4681,7 @@ const copyTournamentLink = async () => {
                   size="sm"
                   icon="i-heroicons-share"
                   label="Share Link"
-                  @click="selectedParticipant && generateInviteLink(selectedParticipant)"
+                  @click="selectedParticipant && generateInviteLink(selectedParticipant);"
                 />
               </div>
             </template>
@@ -4866,7 +4866,7 @@ const copyTournamentLink = async () => {
               variant="ghost" 
               color="neutral" 
               size="sm"
-              @click="showAddModal = false"
+              @click="showAddModal = false;"
             />
           </div>
         </template>
@@ -4981,7 +4981,7 @@ const copyTournamentLink = async () => {
               label="Cancel" 
               variant="ghost" 
               color="neutral"
-              @click="showAddModal = false"
+              @click="showAddModal = false;"
             />
             <UButton 
               type="submit"
@@ -5009,7 +5009,7 @@ const copyTournamentLink = async () => {
               variant="ghost" 
               color="neutral" 
               size="sm"
-              @click="showEditModal = false"
+              @click="showEditModal = false;"
             />
           </div>
         </template>
@@ -5111,7 +5111,7 @@ const copyTournamentLink = async () => {
               label="Cancel" 
               variant="ghost" 
               color="neutral"
-              @click="showEditModal = false"
+              @click="showEditModal = false;"
             />
             <UButton 
               type="submit"
@@ -5140,7 +5140,7 @@ const copyTournamentLink = async () => {
               variant="ghost" 
               color="neutral" 
               size="sm"
-              @click="showGenerateModal = false"
+              @click="showGenerateModal = false;"
             />
           </div>
         </template>
@@ -5222,7 +5222,7 @@ const copyTournamentLink = async () => {
               label="Cancel" 
               variant="ghost" 
               color="neutral"
-              @click="showGenerateModal = false"
+              @click="showGenerateModal = false;"
             />
             <UButton 
               label="Generate" 
@@ -5250,7 +5250,7 @@ const copyTournamentLink = async () => {
               variant="ghost" 
               color="neutral" 
               size="sm"
-              @click="showAddFixtureModal = false"
+              @click="showAddFixtureModal = false;"
             />
           </div>
         </template>
@@ -5383,7 +5383,7 @@ const copyTournamentLink = async () => {
               label="Cancel" 
               variant="ghost" 
               color="neutral"
-              @click="showAddFixtureModal = false"
+              @click="showAddFixtureModal = false;"
             />
             <UButton 
               label="Add Fixture" 
@@ -5521,7 +5521,7 @@ const copyTournamentLink = async () => {
               label="Cancel" 
               variant="ghost" 
               color="neutral"
-              @click="showAddSponsorModal = false"
+              @click="showAddSponsorModal = false;"
             />
             <UButton 
               type="submit"
@@ -5624,7 +5624,7 @@ const copyTournamentLink = async () => {
                   icon="i-heroicons-trash"
                   label="Remove"
                   :disabled="uploadingSponsorLogo"
-                  @click="removeSponsorLogo(); editSponsorState.logoUrl = ''"
+                  @click="removeSponsorLogo(); editSponsorState.logoUrl = '';"
                   class="px-0"
                 />
               </div>
@@ -5644,7 +5644,7 @@ const copyTournamentLink = async () => {
               label="Cancel"
               variant="ghost"
               color="neutral"
-              @click="showEditSponsorModal = false"
+              @click="showEditSponsorModal = false;"
             />
             <UButton
               type="submit"
@@ -5721,7 +5721,7 @@ const copyTournamentLink = async () => {
               label="Cancel" 
               variant="ghost" 
               color="neutral"
-              @click="showAddSocialModal = false"
+              @click="showAddSocialModal = false;"
             />
             <UButton 
               type="submit"
@@ -5746,7 +5746,7 @@ const copyTournamentLink = async () => {
                 class="w-5 h-5" :class="confirmModalState.color === 'error' ? 'text-red-500' : 'text-blue-500'" />
               {{ confirmModalState.title }}
             </h3>
-            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="confirmModalState.isOpen = false" />
+            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="confirmModalState.isOpen = false;" />
           </div>
         </template>
 
@@ -5762,7 +5762,7 @@ const copyTournamentLink = async () => {
               color="neutral" 
               variant="ghost" 
               :label="confirmModalState.cancelLabel" 
-              @click="confirmModalState.isOpen = false" 
+              @click="confirmModalState.isOpen = false;" 
               :disabled="confirmModalState.loading"
             />
             <UButton 
@@ -5786,7 +5786,7 @@ const copyTournamentLink = async () => {
             <h3 class="text-base font-semibold text-gray-900 dark:text-white">
               {{ promptModalState.title }}
             </h3>
-            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="promptModalState.isOpen = false" />
+            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="promptModalState.isOpen = false;" />
           </div>
         </template>
 
@@ -5807,7 +5807,7 @@ const copyTournamentLink = async () => {
               color="neutral" 
               variant="ghost" 
               :label="promptModalState.cancelLabel" 
-              @click="promptModalState.isOpen = false" 
+              @click="promptModalState.isOpen = false;" 
               :disabled="promptModalState.loading"
             />
             <UButton 

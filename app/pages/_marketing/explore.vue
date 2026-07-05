@@ -256,7 +256,7 @@ let observer: IntersectionObserver | null = null
 
 function setupObserver() {
   observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && hasMore.value && !loading.value) {
+    if (entries[0]?.isIntersecting && hasMore.value && !loading.value) {
       fetchPublicTournaments(currentPage.value + 1, true)
     }
   }, { rootMargin: '200px' })

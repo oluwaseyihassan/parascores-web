@@ -131,7 +131,7 @@ const themeOptions = [
           color="neutral" 
           size="sm"
           class="hover:bg-gray-100 dark:hover:bg-white/10 shrink-0"
-          @click="sidebarCollapsed = !sidebarCollapsed" 
+          @click="sidebarCollapsed = !sidebarCollapsed;" 
         />
       </div>
 

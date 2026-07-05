@@ -168,7 +168,7 @@ const isMobileMenuOpen = ref(false)
             variant="ghost"
             color="neutral"
             size="sm"
-            @click="isMobileMenuOpen = !isMobileMenuOpen"
+            @click="isMobileMenuOpen = !isMobileMenuOpen;"
           >
             <UIcon :name="isMobileMenuOpen ? 'i-heroicons-x-mark' : 'i-heroicons-bars-3'" class="w-6 h-6 text-white" />
           </UButton>
@@ -208,7 +208,7 @@ const isMobileMenuOpen = ref(false)
                   variant="ghost"
                   color="neutral"
                   size="sm"
-                  @click="isMobileMenuOpen = false"
+                  @click="isMobileMenuOpen = false;"
                 >
                   <UIcon name="i-heroicons-x-mark" class="w-5 h-5 text-slate-400" />
                 </UButton>

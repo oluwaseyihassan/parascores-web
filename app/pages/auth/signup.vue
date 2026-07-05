@@ -70,7 +70,7 @@
                 color="neutral"
                 size="lg"
                 block
-                @click="navigateTo({ path: '/login', query: $route.query })"
+                @click="navigateTo({ path: '/login', query: $route.query });"
               >
                 Go to Login
               </UButton>

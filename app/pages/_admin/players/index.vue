@@ -165,7 +165,7 @@ const formatDate = (dateStr: string) => {
             color="neutral"
             variant="outline"
             :disabled="page === 1"
-            @click="page--"
+            @click="page--;"
           >
             Previous
           </UButton>
@@ -174,7 +174,7 @@ const formatDate = (dateStr: string) => {
             color="neutral"
             variant="outline"
             :disabled="page === totalPages"
-            @click="page++"
+            @click="page++;"
           >
             Next
           </UButton>

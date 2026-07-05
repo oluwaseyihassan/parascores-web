@@ -91,7 +91,7 @@ const revokeInvite = async (id: string) => {
             <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
               Tournament Invites
             </h3>
-            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark-20-solid" class="-my-1" @click="isOpen = false" />
+            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark-20-solid" class="-my-1" @click="isOpen = false;" />
           </div>
         </template>
 

@@ -884,21 +884,21 @@ function getTeamCards(fixture: any, isHome: boolean) {
                   :color="legFilter === 'ALL' ? 'primary' : 'neutral'"
                   :variant="legFilter === 'ALL' ? 'solid' : 'soft'"
                   label="All"
-                  @click="legFilter = 'ALL'"
+                  @click="legFilter = 'ALL';"
                 />
                 <UButton
                   size="sm"
                   :color="legFilter === '1' ? 'primary' : 'neutral'"
                   :variant="legFilter === '1' ? 'solid' : 'soft'"
                   label="Leg 1"
-                  @click="legFilter = '1'"
+                  @click="legFilter = '1';"
                 />
                 <UButton
                   size="sm"
                   :color="legFilter === '2' ? 'primary' : 'neutral'"
                   :variant="legFilter === '2' ? 'solid' : 'soft'"
                   label="Leg 2"
-                  @click="legFilter = '2'"
+                  @click="legFilter = '2';"
                 />
               </div>
             </div>

@@ -318,7 +318,7 @@ const getStatus = (startStr: string, endStr: string) => {
             color="neutral"
             variant="outline"
             :disabled="page === 1"
-            @click="page--"
+            @click="page--;"
           >
             Previous
           </UButton>
@@ -327,7 +327,7 @@ const getStatus = (startStr: string, endStr: string) => {
             color="neutral"
             variant="outline"
             :disabled="page === totalPages"
-            @click="page++"
+            @click="page++;"
           >
             Next
           </UButton>
@@ -353,7 +353,7 @@ const getStatus = (startStr: string, endStr: string) => {
           <UButton
             color="neutral"
             variant="ghost"
-            @click="isDeleteModalOpen = false"
+            @click="isDeleteModalOpen = false;"
           >
             Cancel
           </UButton>
@@ -433,7 +433,7 @@ const getStatus = (startStr: string, endStr: string) => {
           <UButton
             color="neutral"
             variant="ghost"
-            @click="isPricingModalOpen = false"
+            @click="isPricingModalOpen = false;"
           >
             Cancel
           </UButton>

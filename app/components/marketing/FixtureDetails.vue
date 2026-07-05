@@ -477,8 +477,8 @@ const awaySubs = computed(() => {
                   <p class="text-xs md:text-sm font-semibold truncate" :class="isDark ? 'text-white' : 'text-gray-900'">{{ manOfTheMatch.name }}</p>
                   <div class="flex items-center gap-1.5">
                     <img
-                      v-if="manOfTheMatch.participant?.logoUrl || manOfTheMatch.participant?.team?.logoUrl"
-                      :src="manOfTheMatch.participant?.logoUrl || manOfTheMatch.participant?.team?.logoUrl"
+                      v-if="(manOfTheMatch.participant as any)?.logoUrl || (manOfTheMatch.participant as any)?.team?.logoUrl"
+                      :src="(manOfTheMatch.participant as any)?.logoUrl || (manOfTheMatch.participant as any)?.team?.logoUrl"
                       :alt="teamName"
                       class="shrink-0 w-3 h-3 md:w-4 md:h-4 rounded-full object-cover"
                     />

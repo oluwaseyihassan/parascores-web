@@ -176,7 +176,7 @@ useSeoMeta({
                 color="neutral" 
                 size="sm" 
                 icon="i-heroicons-pencil-square"
-                @click="isEditing = true"
+                @click="isEditing = true;"
                 class="rounded-xl font-bold"
               >
                 Edit Name
@@ -186,7 +186,7 @@ useSeoMeta({
               <UInput v-model="name" placeholder="Full Name" size="lg" />
               <div class="flex gap-2">
                 <UButton color="success" size="sm" :loading="updatingProfile" @click="handleUpdateProfile">Save</UButton>
-                <UButton variant="ghost" color="neutral" size="sm" @click="isEditing = false">Cancel</UButton>
+                <UButton variant="ghost" color="neutral" size="sm" @click="isEditing = false;">Cancel</UButton>
               </div>
             </div>
           </div>
@@ -210,7 +210,7 @@ useSeoMeta({
               variant="outline" 
               color="neutral" 
               class="w-full justify-center rounded-xl font-bold"
-              @click="showPasswordModal = true"
+              @click="showPasswordModal = true;"
             >
               Change Password
             </UButton>
@@ -263,7 +263,7 @@ useSeoMeta({
           <template #header>
             <div class="flex items-center justify-between">
               <h3 class="text-lg font-bold text-gray-900 dark:text-white">Change Password</h3>
-              <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" @click="showPasswordModal = false" />
+              <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" @click="showPasswordModal = false;" />
             </div>
           </template>
 
@@ -279,7 +279,7 @@ useSeoMeta({
             </UFormField>
 
             <div class="pt-4 flex justify-end gap-3">
-              <UButton variant="ghost" color="neutral" @click="showPasswordModal = false">Cancel</UButton>
+              <UButton variant="ghost" color="neutral" @click="showPasswordModal = false;">Cancel</UButton>
               <UButton type="submit" color="success" :loading="changingPassword">Update Password</UButton>
             </div>
           </form>

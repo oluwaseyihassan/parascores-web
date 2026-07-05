@@ -587,7 +587,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             variant="ghost" 
             icon="i-heroicons-x-mark" 
             class="rounded-full hover:bg-red-200 dark:hover:bg-red-900/50"
-            @click="error = null" 
+            @click="error = null;" 
           />
         </div>
       </template>
