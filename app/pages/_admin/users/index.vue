@@ -261,7 +261,7 @@ const formatDate = (dateStr: string) => {
     </div>
 
     <!-- Delete Confirmation Drawer / Modal -->
-    <UModal v-model="isDeleteModalOpen" title="Confirm Account Deletion">
+    <UModal v-model:open="isDeleteModalOpen" title="Confirm Account Deletion">
       <template #body>
         <div class="space-y-4">
           <p class="text-sm text-slate-300">
