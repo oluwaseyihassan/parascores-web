@@ -410,7 +410,7 @@ const previewFixturesByRound = computed(() => {
                  Teams Selected: {{ selectedParticipantIds.length }} / {{ config.bracketSize }}
                </span>
                <div class="flex items-center gap-2">
-                 <UButton size="xs" variant="ghost" color="primary" @click="selectedParticipantIds = participants.map(p => p.id)">Select All</UButton>
+                 <UButton size="xs" variant="ghost" color="primary" @click="selectedParticipantIds = participants.map(p => p.id);">Select All</UButton>
                  <UButton size="xs" variant="ghost" color="primary" @click="selectedParticipantIds = []">Clear All</UButton>
                </div>
             </div>
@@ -471,7 +471,7 @@ const previewFixturesByRound = computed(() => {
 
           <!-- Step 2 Footer -->
           <div v-if="step === 2" class="flex justify-between">
-            <UButton color="neutral" variant="ghost" @click="step = 1">Back</UButton>
+            <UButton color="neutral" variant="ghost" @click="step = 1;">Back</UButton>
             <UButton color="primary" @click="goToPairing" size="lg">
               Next: Match Pairing
               <template #trailing>
@@ -482,7 +482,7 @@ const previewFixturesByRound = computed(() => {
 
           <!-- Step 3 Footer -->
           <div v-if="step === 3" class="flex justify-between">
-            <UButton color="neutral" variant="ghost" @click="step = 2" :disabled="loading">Back</UButton>
+            <UButton color="neutral" variant="ghost" @click="step = 2;" :disabled="loading">Back</UButton>
             <UButton color="success" @click="handleFinish" :loading="loading" size="lg">
               Finish & Generate Bracket
               <template #trailing>

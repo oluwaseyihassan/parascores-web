@@ -81,7 +81,7 @@ const handleMatchEnded = async () => {
         variant="ghost" 
         color="neutral"
         :loading="loading"
-        @click="fixtureStore.fetchLiveFixtures(authStore.activeOrganizationId || undefined)"
+        @click="fixtureStore.fetchLiveFixtures(authStore.activeOrganizationId || undefined);"
       >
         Refresh
       </UButton>

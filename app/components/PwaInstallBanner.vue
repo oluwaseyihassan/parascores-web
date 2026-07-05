@@ -77,7 +77,7 @@ const dismissBanner = () => {
                 <UIcon name="i-heroicons-device-phone-mobile" class="w-5 h-5 text-emerald-500" />
                 <span class="font-bold text-gray-900 dark:text-white">Install on iOS</span>
               </div>
-              <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" @click="showIOSModal = false" />
+              <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" @click="showIOSModal = false;" />
             </div>
           </template>
 
@@ -127,7 +127,7 @@ const dismissBanner = () => {
             <UButton 
               color="success" 
               class="rounded-xl font-bold px-6" 
-              @click="showIOSModal = false"
+              @click="showIOSModal = false;"
             >
               Got it
             </UButton>

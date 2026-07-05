@@ -327,7 +327,7 @@ const statusColor = computed(() => {
             variant="ghost"
             size="sm"
             icon="i-heroicons-x-mark"
-            @click="showCancelModal = true"
+            @click="showCancelModal = true;"
           />
         </div>
       </div>
@@ -627,7 +627,7 @@ const statusColor = computed(() => {
                 color="neutral"
                 variant="soft"
                 class="flex-1 font-bold"
-                @click="showTournamentSelector = false"
+                @click="showTournamentSelector = false;"
               />
               <UButton
                 :label="selectedTournamentUpgradePrice ? `Pay ₦${selectedTournamentUpgradePrice.toLocaleString()} & Upgrade` : 'Select a Tournament'"
@@ -681,7 +681,7 @@ const statusColor = computed(() => {
                 color="neutral"
                 variant="soft"
                 class="flex-1 font-bold"
-                @click="showCancelModal = false"
+                @click="showCancelModal = false;"
               />
               <UButton
                 label="Cancel Plan"

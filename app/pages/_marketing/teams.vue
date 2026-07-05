@@ -278,7 +278,7 @@ useSeoMeta({
               <h3 class="text-xl font-bold text-gray-900 dark:text-white">
                 {{ editingTeam ? 'Edit Team Profile' : 'New Team Profile' }}
               </h3>
-              <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" @click="showCreateModal = false" />
+              <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" @click="showCreateModal = false;" />
             </div>
           </template>
 
@@ -326,7 +326,7 @@ useSeoMeta({
 
 
             <div class="flex justify-end gap-3 mt-8">
-              <UButton variant="ghost" color="neutral" class="rounded-xl font-bold" @click="showCreateModal = false">Cancel</UButton>
+              <UButton variant="ghost" color="neutral" class="rounded-xl font-bold" @click="showCreateModal = false;">Cancel</UButton>
               <UButton type="submit" color="success" :loading="teamStore.loading || uploadingLogo" class="rounded-xl font-bold px-6 shadow-lg shadow-emerald-500/20">
                 {{ editingTeam ? 'Update Profile' : 'Create Profile' }}
               </UButton>
@@ -361,7 +361,7 @@ useSeoMeta({
           </UFormField>
 
           <div class="flex justify-end gap-3 mt-6">
-            <UButton color="neutral" variant="ghost" @click="showClaimModal = false">Cancel</UButton>
+            <UButton color="neutral" variant="ghost" @click="showClaimModal = false;">Cancel</UButton>
             <UButton 
               color="primary" 
               :loading="claimingParticipant"

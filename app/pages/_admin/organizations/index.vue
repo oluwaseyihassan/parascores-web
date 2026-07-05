@@ -172,7 +172,7 @@ const formatDate = (dateStr: string) => {
                   color="neutral"
                   variant="ghost"
                   icon="i-heroicons-eye"
-                  @click="navigateTo(`/organizations/${org.id}`)"
+                  @click="navigateTo(`/organizations/${org.id}`);"
                 />
               </td>
             </tr>
@@ -191,7 +191,7 @@ const formatDate = (dateStr: string) => {
             color="neutral"
             variant="outline"
             :disabled="page === 1"
-            @click="page--"
+            @click="page--;"
           >
             Previous
           </UButton>
@@ -200,7 +200,7 @@ const formatDate = (dateStr: string) => {
             color="neutral"
             variant="outline"
             :disabled="page === totalPages"
-            @click="page++"
+            @click="page++;"
           >
             Next
           </UButton>

@@ -423,7 +423,7 @@ const formatDate = (dateString: string) => {
           <template #header>
             <div class="flex items-center justify-between">
               <h3 class="text-base font-semibold">Change Password</h3>
-              <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showPasswordModal = false" />
+              <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showPasswordModal = false;" />
             </div>
           </template>
 
@@ -441,7 +441,7 @@ const formatDate = (dateString: string) => {
             </UFormField>
 
             <div class="flex justify-end gap-3 pt-4">
-              <UButton label="Cancel" variant="ghost" color="neutral" @click="showPasswordModal = false" />
+              <UButton label="Cancel" variant="ghost" color="neutral" @click="showPasswordModal = false;" />
               <UButton type="submit" label="Update Password" color="primary" :loading="changingPassword" />
             </div>
           </UForm>

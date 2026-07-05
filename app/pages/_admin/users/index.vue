@@ -215,7 +215,7 @@ const formatDate = (dateStr: string) => {
                     color="neutral"
                     variant="ghost"
                     icon="i-heroicons-eye"
-                    @click="navigateTo(`/users/${user.id}`)"
+                    @click="navigateTo(`/users/${user.id}`);"
                   />
                   <UButton
                     size="sm"
@@ -243,7 +243,7 @@ const formatDate = (dateStr: string) => {
             color="neutral"
             variant="outline"
             :disabled="page === 1"
-            @click="page--"
+            @click="page--;"
           >
             Previous
           </UButton>
@@ -252,7 +252,7 @@ const formatDate = (dateStr: string) => {
             color="neutral"
             variant="outline"
             :disabled="page === totalPages"
-            @click="page++"
+            @click="page++;"
           >
             Next
           </UButton>
@@ -278,7 +278,7 @@ const formatDate = (dateStr: string) => {
           <UButton
             color="neutral"
             variant="ghost"
-            @click="isDeleteModalOpen = false"
+            @click="isDeleteModalOpen = false;"
           >
             Cancel
           </UButton>

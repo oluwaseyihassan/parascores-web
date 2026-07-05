@@ -69,7 +69,7 @@
                 color="neutral"
                 size="lg"
                 block
-                @click="navigateTo('/login')"
+                @click="navigateTo('/login');"
               >
                 Back to Login
               </UButton>

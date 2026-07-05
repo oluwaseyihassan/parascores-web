@@ -254,7 +254,7 @@
                 variant="outline"
                 icon="i-heroicons-arrow-left"
                 class="font-semibold"
-                @click="step--"
+                @click="step--;"
                 :disabled="loading"
               >
                 Back
@@ -295,7 +295,7 @@
                 color="neutral"
                 icon="i-heroicons-arrow-left"
                 class="hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                @click="navigateTo(authStore.isOrganizer ? '/' : frontendUrl, { external: true })"
+                @click="navigateTo(authStore.isOrganizer ? '/' : frontendUrl, { external: true });"
               >
                 {{ authStore.isOrganizer ? 'Return to Dashboard' : 'Return to Fan Portal' }}
               </UButton>

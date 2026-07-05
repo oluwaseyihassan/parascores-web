@@ -695,7 +695,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
 
           <!-- Step 2 Footer -->
           <div v-if="step === 2" class="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 sm:flex sm:justify-between">
-            <UButton color="neutral" variant="ghost" class="justify-center" @click="step = 1">
+            <UButton color="neutral" variant="ghost" class="justify-center" @click="step = 1;">
               <span class="sm:hidden">Back</span>
               <span class="hidden sm:inline">Back to Setup</span>
             </UButton>
@@ -716,7 +716,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
 
           <!-- Step 3 Footer -->
           <div v-if="step === 3" class="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 sm:flex sm:justify-between">
-            <UButton color="neutral" variant="ghost" class="justify-center" @click="step = 2" :disabled="loading">
+            <UButton color="neutral" variant="ghost" class="justify-center" @click="step = 2;" :disabled="loading">
               <span class="sm:hidden">Back</span>
               <span class="hidden sm:inline">Back to Groups</span>
             </UButton>
@@ -749,7 +749,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
               <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-amber-500" />
               Incomplete Fixtures
             </h3>
-            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showConfirmFinishModal = false" />
+            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="showConfirmFinishModal = false;" />
           </div>
         </template>
 
@@ -768,7 +768,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
               color="neutral"
               variant="ghost"
               label="Go Back"
-              @click="showConfirmFinishModal = false"
+              @click="showConfirmFinishModal = false;"
               :disabled="loading"
             />
             <UButton

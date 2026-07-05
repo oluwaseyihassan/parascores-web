@@ -555,7 +555,7 @@ const positionStats = computed((): StatCard[] => {
                   variant="ghost"
                   color="neutral"
                   size="xs"
-                  @click="isEditing = false"
+                  @click="isEditing = false;"
                   class="rounded-xl font-black uppercase tracking-widest text-[9px] px-4 py-2"
                 >
                   Cancel
@@ -709,7 +709,7 @@ const positionStats = computed((): StatCard[] => {
               color="neutral"
               variant="soft"
               class="flex-1 font-bold rounded-xl"
-              @click="showClaimModal = false"
+              @click="showClaimModal = false;"
             />
             <UButton
               label="Pay ₦500 & Claim"

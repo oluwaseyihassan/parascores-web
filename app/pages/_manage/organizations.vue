@@ -763,7 +763,7 @@ const handleConfirmDelete = async () => {
                                 class="w-5 h-5" :class="confirmModalState.color === 'error' ? 'text-red-500' : 'text-blue-500'" />
                             {{ confirmModalState.title }}
                         </h3>
-                        <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="confirmModalState.isOpen = false" />
+                        <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="confirmModalState.isOpen = false;" />
                     </div>
                 </template>
 
@@ -779,7 +779,7 @@ const handleConfirmDelete = async () => {
                             color="neutral" 
                             variant="ghost" 
                             :label="confirmModalState.cancelLabel" 
-                            @click="confirmModalState.isOpen = false" 
+                            @click="confirmModalState.isOpen = false;" 
                             :disabled="confirmModalState.loading"
                         />
                         <UButton 
@@ -804,7 +804,7 @@ const handleConfirmDelete = async () => {
                             <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-red-500" />
                             Delete {{ deleteOrgName }}
                         </h3>
-                        <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="deleteModalOpen = false" />
+                        <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="deleteModalOpen = false;" />
                     </div>
                 </template>
 
@@ -851,7 +851,7 @@ const handleConfirmDelete = async () => {
                             color="neutral"
                             variant="ghost"
                             label="Cancel"
-                            @click="deleteModalOpen = false"
+                            @click="deleteModalOpen = false;"
                             :disabled="requestingCode || confirmingDelete"
                         />
                         <UButton

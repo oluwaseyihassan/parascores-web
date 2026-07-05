@@ -304,7 +304,7 @@ useSeoMeta({
               <UInput v-model="editName" placeholder="Full Name" size="lg" />
               <div class="flex gap-2">
                 <UButton color="success" size="sm" :loading="updatingProfile" @click="handleUpdateProfile">Save</UButton>
-                <UButton variant="ghost" color="neutral" size="sm" @click="isEditing = false">Cancel</UButton>
+                <UButton variant="ghost" color="neutral" size="sm" @click="isEditing = false;">Cancel</UButton>
               </div>
             </div>
           </div>
@@ -491,7 +491,7 @@ useSeoMeta({
             />
           </UFormField>
           <div class="flex justify-end gap-3 mt-6">
-            <UButton color="neutral" variant="ghost" @click="showClaimModal = false">Cancel</UButton>
+            <UButton color="neutral" variant="ghost" @click="showClaimModal = false;">Cancel</UButton>
             <UButton 
               color="primary" 
               :loading="verifyingCode"
@@ -536,7 +536,7 @@ useSeoMeta({
           </div>
 
           <div class="flex justify-end gap-3">
-            <UButton color="neutral" variant="ghost" @click="verifiedPlayer = null" :disabled="claimingPlayer">Back</UButton>
+            <UButton color="neutral" variant="ghost" @click="verifiedPlayer = null;" :disabled="claimingPlayer">Back</UButton>
             <UButton 
               color="primary" 
               :loading="claimingPlayer"
@@ -565,7 +565,7 @@ useSeoMeta({
         </template>
 
         <div class="flex justify-end gap-3 mt-4">
-          <UButton color="neutral" variant="ghost" @click="showUnlinkModal = false" :disabled="unlinkingPlayer">Cancel</UButton>
+          <UButton color="neutral" variant="ghost" @click="showUnlinkModal = false;" :disabled="unlinkingPlayer">Cancel</UButton>
           <UButton 
             color="error" 
             :loading="unlinkingPlayer"

@@ -36,7 +36,7 @@
             variant="green"
             size="lg"
             block
-            @click="navigateTo('/login')"
+            @click="navigateTo('/login');"
           >
             Go to Login
           </UButton>
@@ -55,7 +55,7 @@
               variant="green"
               size="lg"
               block
-              @click="navigateTo('/forgot-password')"
+              @click="navigateTo('/forgot-password');"
             >
               Request New Reset Link
             </UButton>
@@ -64,7 +64,7 @@
               color="neutral"
               size="lg"
               block
-              @click="navigateTo('/login')"
+              @click="navigateTo('/login');"
             >
               Back to Login
             </UButton>

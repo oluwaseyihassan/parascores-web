@@ -174,7 +174,7 @@ watch(loadMoreTrigger, (el) => {
             variant="ghost"
             size="xs"
             :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': viewMode === 'grid' }"
-            @click="viewMode = 'grid'"
+            @click="viewMode = 'grid';"
           />
           <UButton
             icon="i-heroicons-list-bullet"
@@ -182,7 +182,7 @@ watch(loadMoreTrigger, (el) => {
             variant="ghost"
             size="xs"
             :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500': viewMode === 'list' }"
-            @click="viewMode = 'list'"
+            @click="viewMode = 'list';"
           />
         </div>
         <UButton
