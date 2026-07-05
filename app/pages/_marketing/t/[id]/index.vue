@@ -452,7 +452,13 @@ const winnerId = computed(() => {
     const koFixtures = fixtures.value.filter(f => f.stage === FixtureStage.KNOCKOUT)
     if (!koFixtures.length) return null
     const maxRound = Math.max(...koFixtures.map(f => f.round))
-    const finalMatch = koFixtures.filter(f => f.round === maxRound).sort((a, b) => a.matchNumber - b.matchNumber)[0]
+    const finalRoundFixtures = koFixtures.filter(f => f.round === maxRound)
+
+    // Identify the final match, excluding the third-place play-off if present
+    const finalMatch = finalRoundFixtures.find(f => {
+      const name = (f.roundName || '').toLowerCase()
+      return name.includes('final') && !name.includes('third') && !name.includes('3rd')
+    }) || finalRoundFixtures.sort((a, b) => a.matchNumber - b.matchNumber)[0]
     
     if (finalMatch && finalMatch.status === FixtureStatus.COMPLETED) {
       const hs = finalMatch.homeScore ?? 0
