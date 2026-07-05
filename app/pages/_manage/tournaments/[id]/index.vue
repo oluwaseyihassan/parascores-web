@@ -75,6 +75,17 @@ const showUpgradeBanner = computed(() => {
   return true
 })
 
+const upgradePrice = computed(() => {
+  if (!tournament.value) return 1000
+  if (tournament.value.tournamentPrice && tournament.value.tournamentPrice > 0) {
+    return tournament.value.tournamentPrice / 100
+  }
+  if (tournament.value.paymentPerTeam && tournament.value.paymentPerTeam > 0) {
+    return tournament.value.paymentPerTeam / 100
+  }
+  return 1000
+})
+
 const upgradingFromBanner = ref(false)
 
 async function handleUpgradeTournament() {
@@ -85,8 +96,7 @@ async function handleUpgradeTournament() {
     const dashboardUrl = config.public.DASHBOARD_URL || window.location.origin
     const callbackUrl = `${dashboardUrl}/billing/callback`
 
-    const maxP = tournament.value?.maxParticipants
-    const feeInKobo = (typeof maxP === 'number' ? maxP * 1000 : 25000) * 100
+    const feeInKobo = upgradePrice.value * 100
 
     const response = await paymentStore.initializePayment(
       authStore.currentOrganization.id,
@@ -2862,7 +2872,7 @@ const copyTournamentLink = async () => {
               :loading="upgradingFromBanner"
               @click="handleUpgradeTournament"
             >
-              Upgrade (₦{{ typeof tournament?.maxParticipants === 'number' ? (tournament.maxParticipants * 1000).toLocaleString() : '25,000' }})
+              Upgrade (₦{{ upgradePrice.toLocaleString() }})
             </UButton>
             <UButton
               size="sm"

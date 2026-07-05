@@ -157,6 +157,8 @@ export interface Tournament {
   registrationFee?: number
   isPinned?: boolean
   isPremium?: boolean
+  tournamentPrice?: number | null
+  paymentPerTeam?: number | null
   pendingRequestsCount?: number
   followerCount?: number
   _count?: {
