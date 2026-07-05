@@ -47,18 +47,18 @@ export default defineEventHandler(async (event) => {
                 w => `https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`,
                 w => `https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@5.0.8/files/roboto-mono-latin-${w}-normal.woff`
             )
-            fontData = result[0]
-            regularFontData = result[1]
-            monoFontData = result[2]
+            fontData = result[0]!
+            regularFontData = result[1]!
+            monoFontData = result[2]!
         } catch (err) {
             console.warn('Primary font CDN failed, trying fallback...', err)
             const result = await fetchFonts(
                 w => `https://unpkg.com/@fontsource/inter@5.0.8/files/inter-latin-${w}-normal.woff`,
                 w => `https://unpkg.com/@fontsource/roboto-mono@5.0.8/files/roboto-mono-latin-${w}-normal.woff`
             )
-            fontData = result[0]
-            regularFontData = result[1]
-            monoFontData = result[2]
+            fontData = result[0]!
+            regularFontData = result[1]!
+            monoFontData = result[2]!
         }
     } catch (e) {
         console.error('Font loading failed:', e)
