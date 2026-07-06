@@ -64,17 +64,18 @@ export const useFixtureStore = defineStore('fixture', () => {
       const customEvent = e as CustomEvent
       const { type, data } = customEvent.detail
 
-      if (type === 'fixture_updated') {
+        if (type === 'fixture_updated') {
         const fixtureIdx = fixtures.value.findIndex(f => f.id === data.id)
         if (fixtureIdx !== -1) fixtures.value[fixtureIdx] = { ...fixtures.value[fixtureIdx], ...data }
         
+        const isLiveStatus = data.status === FixtureStatus.LIVE || data.status === FixtureStatus.EXTRATIME
         const liveIdx = liveFixtures.value.findIndex(f => f.id === data.id)
         if (liveIdx !== -1) {
           liveFixtures.value[liveIdx] = { ...liveFixtures.value[liveIdx], ...data }
-          if (data.status !== FixtureStatus.LIVE) {
+          if (!isLiveStatus) {
             liveFixtures.value.splice(liveIdx, 1) // Remove if no longer live
           }
-        } else if (data.status === FixtureStatus.LIVE) {
+        } else if (isLiveStatus) {
           liveFixtures.value.push(data) // Add if newly live
         }
       }

@@ -26,7 +26,7 @@ const homeTeamName = computed(() => getParticipantName(props.fixture.homeTeam, p
 const awayTeamName = computed(() => getParticipantName(props.fixture.awayTeam, props.fixture.awayTeamPlaceholder || 'TBD'))
 
 const isStarted = computed(() => {
-  return props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.COMPLETED
+  return props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.EXTRATIME || props.fixture.status === FixtureStatus.COMPLETED
 })
 
 const hasPenalties = computed(() => {
@@ -37,6 +37,7 @@ const normalizedStatus = computed(() => props.fixture.status.toLowerCase())
 
 const statusLabel = computed(() => {
   if (props.fixture.status === FixtureStatus.LIVE) return liveMinuteLabel.value || 'Live'
+  if (props.fixture.status === FixtureStatus.EXTRATIME) return liveMinuteLabel.value || 'Extra Time'
   if (props.fixture.status === FixtureStatus.COMPLETED) return 'Final'
   if (props.fixture.status === FixtureStatus.CANCELLED) return 'Cancelled'
   if (!props.fixture.startTime) return 'Unscheduled'
@@ -56,13 +57,13 @@ const scheduleLabel = computed(() => {
 })
 
 const primaryActionLabel = computed(() => {
-  if (props.fixture.status === FixtureStatus.LIVE) return 'Control'
+  if (props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.EXTRATIME) return 'Control'
   if (props.fixture.status === FixtureStatus.COMPLETED) return 'Details'
   return 'Edit'
 })
 
 const primaryActionIcon = computed(() => {
-  if (props.fixture.status === FixtureStatus.LIVE) return 'i-heroicons-adjustments-horizontal'
+  if (props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.EXTRATIME) return 'i-heroicons-adjustments-horizontal'
   if (props.fixture.status === FixtureStatus.COMPLETED) return 'i-heroicons-clipboard-document-list'
   return 'i-heroicons-pencil-square'
 })
@@ -223,7 +224,8 @@ const getInitial = (name: string) => {
   background: #9ca3af;
 }
 
-.fixture-card--live .fixture-card__accent {
+.fixture-card--live .fixture-card__accent,
+.fixture-card--extratime .fixture-card__accent {
   background: #f59e0b;
 }
 
@@ -346,17 +348,20 @@ const getInitial = (name: string) => {
   background: currentColor;
 }
 
-.fixture-status--live {
+.fixture-status--live,
+.fixture-status--extratime {
   color: #d97706;
   background: rgba(245, 158, 11, 0.13);
 }
 
-:root.dark .fixture-status--live {
+:root.dark .fixture-status--live,
+:root.dark .fixture-status--extratime {
   color: #fbbf24;
   background: rgba(245, 158, 11, 0.16);
 }
 
-.fixture-status--live .fixture-status__dot {
+.fixture-status--live .fixture-status__dot,
+.fixture-status--extratime .fixture-status__dot {
   animation: pulse 1.6s ease-in-out infinite;
 }
 

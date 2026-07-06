@@ -1,6 +1,11 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useTournamentStore } from '~/stores/tournament'
 import { useHost } from '~/composables/useHost'
+import { FixtureStatus } from '~/types'
+
+function isLiveStreamStatus(status: string) {
+  return status === FixtureStatus.LIVE || status === FixtureStatus.EXTRATIME
+}
 
 // Singleton state
 let eventSource: EventSource | null = null
@@ -54,7 +59,7 @@ function handleBrowserNotification(payload: any) {
     })
     
     // If we just loaded and it's already LIVE, show initial notification
-    if (fixture.status === 'LIVE') {
+    if (isLiveStreamStatus(fixture.status)) {
       showNotification(
         `⚽ Live Match: ${homeName} vs ${awayName}`,
         `This followed match is now LIVE! (Score: ${homeScore} - ${awayScore})`
@@ -70,14 +75,14 @@ function handleBrowserNotification(payload: any) {
   })
 
   // 1. Kickoff: transition from not LIVE to LIVE
-  if (cached.status !== 'LIVE' && fixture.status === 'LIVE') {
+  if (!isLiveStreamStatus(cached.status) && isLiveStreamStatus(fixture.status)) {
     showNotification(
       `⚽ Kickoff: ${homeName} vs ${awayName}`,
       `The match has started and is now LIVE!`
     )
   }
   // 2. Goal: score increased while LIVE
-  else if (fixture.status === 'LIVE' && (homeScore > cached.homeScore || awayScore > cached.awayScore)) {
+  else if (isLiveStreamStatus(fixture.status) && (homeScore > cached.homeScore || awayScore > cached.awayScore)) {
     const homeDiff = homeScore - cached.homeScore
     const awayDiff = awayScore - cached.awayScore
     

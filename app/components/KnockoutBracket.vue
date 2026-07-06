@@ -20,7 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const getAggregateStatus = (fixtures: Fixture[]): FixtureStatus => {
-  if (fixtures.some(f => f.status === FixtureStatus.LIVE)) return FixtureStatus.LIVE
+  if (fixtures.some(f => f.status === FixtureStatus.LIVE || f.status === FixtureStatus.EXTRATIME)) return FixtureStatus.LIVE
   if (fixtures.every(f => f.status === FixtureStatus.COMPLETED)) return FixtureStatus.COMPLETED
   if (fixtures.some(f => f.status === FixtureStatus.SCHEDULED)) return FixtureStatus.SCHEDULED
   return FixtureStatus.CANCELLED
@@ -284,7 +284,7 @@ const resetZoom = () => {
                 :style="{ gridRow: getMatchGridRow(roundIndex, matchIndex) }"
               >
                 <div class="match-card" :class="{
-                  'match-card--live': matchup.status === FixtureStatus.LIVE,
+                  'match-card--live': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME,
                   'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
                 }">
                   <!-- Home team row -->
@@ -310,9 +310,9 @@ const resetZoom = () => {
                       </span>
                       <span class="score" :class="{
                         'score--winner': getWinnerState(matchup, true) === 'winner',
-                        'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED,
+                        'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
                       }">
-                        {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? matchup.homeScore : '-' }}
+                        {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME ? matchup.homeScore : '-' }}
                       </span>
                     </div>
                   </div>
@@ -343,9 +343,9 @@ const resetZoom = () => {
                       </span>
                       <span class="score" :class="{
                         'score--winner': getWinnerState(matchup, false) === 'winner',
-                        'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED,
+                        'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
                       }">
-                        {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? matchup.awayScore : '-' }}
+                        {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME ? matchup.awayScore : '-' }}
                       </span>
                     </div>
                   </div>
@@ -365,9 +365,9 @@ const resetZoom = () => {
                   <!-- Footer: status + actions -->
                   <div class="match-footer">
                     <!-- Live indicator -->
-                    <div v-if="matchup.status === FixtureStatus.LIVE" class="status-live">
+                    <div v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME" class="status-live">
                       <span class="live-dot" />
-                      <span>Live</span>
+                      <span>{{ matchup.status === FixtureStatus.EXTRATIME ? 'ET' : 'Live' }}</span>
                     </div>
                     <div v-else-if="matchup.status === FixtureStatus.COMPLETED && !hasNoWinner(matchup)" class="status-done">
                       <UIcon name="i-heroicons-check-circle" class="w-3 h-3" />
@@ -395,7 +395,7 @@ const resetZoom = () => {
                           Start
                         </button>
                         <button
-                          v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED"
+                          v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED"
                           class="action-btn action-btn--control"
                           @click.stop="emit('control-match', matchup.fixtures[0])"
                         >
@@ -415,7 +415,7 @@ const resetZoom = () => {
                             L{{ (i as number) + 1 }}
                           </button>
                           <button
-                            v-else-if="leg.status === FixtureStatus.LIVE || leg.status === FixtureStatus.COMPLETED"
+                            v-else-if="leg.status === FixtureStatus.LIVE || leg.status === FixtureStatus.EXTRATIME || leg.status === FixtureStatus.COMPLETED"
                             class="action-btn action-btn--control"
                             @click.stop="emit('control-match', leg)"
                           >
@@ -467,7 +467,7 @@ const resetZoom = () => {
             3rd Place Play-off
           </div>
           <div class="match-card" :class="{
-            'match-card--live': matchup.status === FixtureStatus.LIVE,
+            'match-card--live': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME,
             'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
           }">
             <div class="team-row" :class="{
@@ -483,9 +483,9 @@ const resetZoom = () => {
                 <span v-if="matchup.homePenaltyScore != null" class="pen-score">({{ matchup.homePenaltyScore }})</span>
                 <span class="score" :class="{
                   'score--winner': getWinnerState(matchup, true) === 'winner',
-                  'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED,
+                  'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
                 }">
-                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? matchup.homeScore : '-' }}
+                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME ? matchup.homeScore : '-' }}
                 </span>
               </div>
             </div>
@@ -503,9 +503,9 @@ const resetZoom = () => {
                 <span v-if="matchup.awayPenaltyScore != null" class="pen-score">({{ matchup.awayPenaltyScore }})</span>
                 <span class="score" :class="{
                   'score--winner': getWinnerState(matchup, false) === 'winner',
-                  'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED,
+                  'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
                 }">
-                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE ? matchup.awayScore : '-' }}
+                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME ? matchup.awayScore : '-' }}
                 </span>
               </div>
             </div>
@@ -520,7 +520,7 @@ const resetZoom = () => {
               </span>
             </div>
             <div class="match-footer">
-              <div v-if="matchup.status === FixtureStatus.LIVE" class="status-live"><span class="live-dot" /><span>Live</span></div>
+              <div v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME" class="status-live"><span class="live-dot" /><span>{{ matchup.status === FixtureStatus.EXTRATIME ? 'ET' : 'Live' }}</span></div>
               <div v-else-if="matchup.status === FixtureStatus.COMPLETED && !hasNoWinner(matchup)" class="status-done"><UIcon name="i-heroicons-check-circle" class="w-3 h-3" /><span>FT</span></div>
               <div v-else-if="hasNoWinner(matchup)" class="status-warn"><UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3" /><span>No winner</span></div>
               <div v-else class="status-sched"><UIcon name="i-heroicons-clock" class="w-3 h-3" /><span>Scheduled</span></div>
@@ -534,7 +534,7 @@ const resetZoom = () => {
                   <UIcon name="i-heroicons-play" class="w-3 h-3" />Start
                 </button>
                 <button
-                  v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.COMPLETED"
+                  v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED"
                   class="action-btn action-btn--control"
                   @click.stop="emit('control-match', matchup.fixtures[0])"
                 >

@@ -2,7 +2,7 @@
 import { FixtureStatus, MatchEventType, ParticipantType, FixtureStage } from '~/types'
 import type { Fixture, Player, MatchEvent } from '~/types'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
-import { useMatchTimer } from '~/composables/useMatchTimer'
+import { useMatchTimer, isFixtureLiveStatus } from '~/composables/useMatchTimer'
 
 const props = withDefaults(defineProps<{
   fixture: Fixture | null
@@ -66,11 +66,11 @@ const liveMinuteLabel = computed(() => {
 })
 
 const isTimerRunning = computed(() => {
-  return selectedFixture.value?.status === FixtureStatus.LIVE && !!selectedFixture.value?.timerIsRunning
+  return isFixtureLiveStatus(selectedFixture.value?.status) && !!selectedFixture.value?.timerIsRunning
 })
 
 const isTimerPaused = computed(() => {
-  return selectedFixture.value?.status === FixtureStatus.LIVE && !selectedFixture.value?.timerIsRunning
+  return isFixtureLiveStatus(selectedFixture.value?.status) && !selectedFixture.value?.timerIsRunning
 })
 
 const halftimeSeconds = computed(() => {
@@ -208,6 +208,7 @@ watch(() => subData.playerInId, (newId) => {
 const fixtureStatusColors: Record<FixtureStatus, 'info' | 'success' | 'warning' | 'neutral'> = {
   [FixtureStatus.SCHEDULED]: 'info',
   [FixtureStatus.LIVE]: 'warning',
+  [FixtureStatus.EXTRATIME]: 'warning',
   [FixtureStatus.COMPLETED]: 'success',
   [FixtureStatus.CANCELLED]: 'neutral'
 }
@@ -284,7 +285,7 @@ watch(() => props.open, async (isOpen) => {
 })
 
 watch(showScheduleCollapsible, (isOpen) => {
-  if (isOpen && selectedFixture.value?.status === FixtureStatus.LIVE) {
+  if (isOpen && isFixtureLiveStatus(selectedFixture.value?.status)) {
     const currentElapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0
     const rawMinute = Math.floor(currentElapsed / 60)
     adjustedMinute.value = Math.min(rawMinute, adjustTimerMaxMinutes.value)
@@ -560,6 +561,51 @@ const startSecondHalf = async () => {
     updatingMatch.value = false
   }
 }
+
+const startExtraTime = async () => {
+  if (!selectedFixture.value) return
+
+  updatingMatch.value = true
+  try {
+    const now = new Date().toISOString()
+    const currentElapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0
+    const updatePayload = {
+      status: FixtureStatus.EXTRATIME,
+      timerIsRunning: true,
+      timerStartedAt: now,
+      timerElapsedSeconds: currentElapsed,
+      matchDuration: 120
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
+
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    matchDuration.value = 120
+
+    emit('fixture-updated', selectedFixture.value!)
+
+    useToast().add({
+      title: 'Extra Time Started',
+      description: 'The match is now in extra time.',
+      icon: 'i-heroicons-clock',
+      color: 'warning'
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to start extra time' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const canStartExtraTime = computed(() => {
+  if (!selectedFixture.value) return false
+  if (selectedFixture.value.status !== FixtureStatus.LIVE) return false
+  // Only offer extra time for knockout stage matches
+  if (selectedFixture.value.stage !== FixtureStage.KNOCKOUT && selectedFixture.value.stage != null) return false
+  return isScoreTiedOrAggregateTied.value
+})
 
 const adjustMatchTimer = async () => {
   if (!selectedFixture.value) return
@@ -959,7 +1005,7 @@ const openGoalModal = (team: 'home' | 'away', type: MatchEventType = MatchEventT
   goalData.scorerId = undefined
   goalData.assisterId = undefined
   
-  const currentMin = selectedFixture.value?.status === FixtureStatus.LIVE 
+  const currentMin = isFixtureLiveStatus(selectedFixture.value?.status)
     ? (matchTimer.getMinute(selectedFixture.value) ?? null)
     : null
   goalData.minute = currentMin
@@ -978,7 +1024,7 @@ const openCardModal = (team: 'home' | 'away') => {
   cardData.type = MatchEventType.YELLOW_CARD
   cardData.playerId = undefined
   
-  const currentMin = selectedFixture.value?.status === FixtureStatus.LIVE 
+  const currentMin = isFixtureLiveStatus(selectedFixture.value?.status)
     ? (matchTimer.getMinute(selectedFixture.value) ?? null)
     : null
   cardData.minute = currentMin
@@ -1025,7 +1071,7 @@ const openSubstitutionModal = (team: 'home' | 'away') => {
   subData.playerOutId = undefined
   subData.playerInId = undefined
   
-  const currentMin = selectedFixture.value?.status === FixtureStatus.LIVE 
+  const currentMin = isFixtureLiveStatus(selectedFixture.value?.status)
     ? (matchTimer.getMinute(selectedFixture.value) ?? null)
     : null
   subData.minute = currentMin
@@ -1754,7 +1800,7 @@ const downloadGraphic = async () => {
             
             <!-- Live Clock Badge -->
             <span
-              v-if="selectedFixture && selectedFixture.status === 'LIVE'"
+              v-if="selectedFixture && isFixtureLiveStatus(selectedFixture.status)"
               class="mc-timer-badge ml-2"
               :class="{ 'mc-timer-badge--paused': isTimerPaused }"
             >
@@ -1826,7 +1872,7 @@ const downloadGraphic = async () => {
                 <UIcon :name="swappingTeams ? 'i-heroicons-arrow-path' : 'i-heroicons-arrows-right-left'" :class="['w-3 h-3', swappingTeams && 'animate-spin']" />
                 <span>Swap</span>
               </button>
-              <div v-if="selectedFixture.status === 'LIVE'" 
+              <div v-if="isFixtureLiveStatus(selectedFixture.status)"
                    class="mc-match-time mc-match-time--live"
                    :class="{ 'mc-match-time--live-paused': isTimerPaused }"
               >
@@ -1851,7 +1897,7 @@ const downloadGraphic = async () => {
           </div>
 
           <!-- ── Score Controls ─────────────────────────────── -->
-          <div v-if="['LIVE', 'COMPLETED'].includes(selectedFixture.status)" class="mc-controls">
+          <div v-if="['LIVE', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status)" class="mc-controls">
             <!-- Home side -->
             <div class="mc-ctrl-side">
               <button class="mc-btn mc-btn--goal" :disabled="loadingPlayers || updatingMatch" @click="openGoalModal('home')">
@@ -1990,7 +2036,7 @@ const downloadGraphic = async () => {
           <div class="mc-sections">
 
             <!-- Schedule -->
-            <div v-if="['SCHEDULED', 'LIVE', 'COMPLETED'].includes(selectedFixture.status)" class="mc-section">
+            <div v-if="['SCHEDULED', 'LIVE', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status)" class="mc-section">
               <button class="mc-section__toggle" @click="showScheduleCollapsible = !showScheduleCollapsible">
                 <div class="flex items-center gap-2">
                   <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 text-emerald-500" />
@@ -2043,8 +2089,8 @@ const downloadGraphic = async () => {
                   Update Schedule
                 </UButton>
 
-                <!-- Adjust Live Timer (Only visible when LIVE) -->
-                <div v-if="selectedFixture.status === 'LIVE'" class="mt-3 flex flex-col gap-1.5 p-3 rounded-lg bg-amber-500/5 dark:bg-amber-500/[0.02] border border-amber-500/10">
+                <!-- Adjust Live Timer (Only visible when LIVE or EXTRATIME) -->
+                <div v-if="['LIVE', 'EXTRATIME'].includes(selectedFixture.status)" class="mt-3 flex flex-col gap-1.5 p-3 rounded-lg bg-amber-500/5 dark:bg-amber-500/[0.02] border border-amber-500/10">
                   <div class="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
                     <span class="flex items-center gap-1">
                       <UIcon name="i-heroicons-clock" class="w-3.5 h-3.5 text-amber-500" />
@@ -2295,7 +2341,7 @@ const downloadGraphic = async () => {
 
             <!-- Penalty shootout -->
             <div
-              v-if="['LIVE', 'COMPLETED'].includes(selectedFixture.status) && (isScoreTiedOrAggregateTied || hasPenalties || showPenaltyOverride)"
+              v-if="['LIVE', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status) && (isScoreTiedOrAggregateTied || hasPenalties || showPenaltyOverride)"
               class="mc-section"
             >
               <button class="mc-section__toggle" @click="showPenaltyCollapsible = !showPenaltyCollapsible">
@@ -2491,7 +2537,7 @@ const downloadGraphic = async () => {
               </template>
 
               <!-- Live Match Timer Control Buttons -->
-              <template v-if="selectedFixture.status === 'LIVE'">
+              <template v-if="['LIVE', 'EXTRATIME'].includes(selectedFixture.status)">
                 <div class="mc-action-group">
                   <!-- Pause / Resume Clock -->
                   <button
@@ -2517,7 +2563,7 @@ const downloadGraphic = async () => {
 
                   <!-- Halftime / Start 2nd Half -->
                   <button
-                    v-if="!isHalftime"
+                    v-if="!isHalftime && selectedFixture.status !== FixtureStatus.EXTRATIME"
                     class="mc-primary-btn mc-primary-btn--halftime"
                     :disabled="updatingMatch"
                     @click="setHalftime"
@@ -2535,6 +2581,18 @@ const downloadGraphic = async () => {
                     <UIcon name="i-heroicons-forward" class="w-4 h-4" />
                     <span class="hidden sm:inline">Start 2nd Half</span>
                     <span class="sm:hidden">2nd Half</span>
+                  </button>
+
+                  <!-- Start Extra Time -->
+                  <button
+                    v-if="canStartExtraTime"
+                    class="mc-primary-btn mc-primary-btn--halftime"
+                    :disabled="updatingMatch"
+                    @click="startExtraTime"
+                  >
+                    <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+                    <span class="hidden sm:inline">Start Extra Time</span>
+                    <span class="sm:hidden">ET</span>
                   </button>
                 </div>
 

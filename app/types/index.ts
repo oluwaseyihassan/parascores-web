@@ -47,6 +47,7 @@ export enum PlayerStatus {
 export enum FixtureStatus {
   SCHEDULED = 'SCHEDULED',
   LIVE = 'LIVE',
+  EXTRATIME = 'EXTRATIME',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED'
 }
