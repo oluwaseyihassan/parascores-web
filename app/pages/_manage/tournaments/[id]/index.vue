@@ -1023,6 +1023,7 @@ const handleStartManualWizard = () => {
 const fixtureStatusColors: Record<FixtureStatus, 'info' | 'success' | 'warning' | 'neutral'> = {
   [FixtureStatus.SCHEDULED]: 'info',
   [FixtureStatus.LIVE]: 'warning',
+  [FixtureStatus.EXTRATIME]: 'warning',
   [FixtureStatus.COMPLETED]: 'success',
   [FixtureStatus.CANCELLED]: 'neutral'
 }
@@ -1847,7 +1848,7 @@ const isFixturesOutdated = computed(() => {
 const getFixtureStats = (roundFixtures: Fixture[]) => {
   const total = roundFixtures.length
   const completed = roundFixtures.filter(f => f.status === FixtureStatus.COMPLETED).length
-  const live = roundFixtures.filter(f => f.status === FixtureStatus.LIVE).length
+  const live = roundFixtures.filter(f => f.status === FixtureStatus.LIVE || f.status === FixtureStatus.EXTRATIME).length
   const parts: string[] = []
 
   if (live > 0) parts.push(`${live} Live`)

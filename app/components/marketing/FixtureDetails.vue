@@ -127,7 +127,7 @@ const homeEvents = computed(() => events.value.filter(e => (e.participant_id ===
 const awayEvents = computed(() => events.value.filter(e => (e.participant_id === fixture.value?.awayTeamId || (e as any).participantId === fixture.value?.awayTeamId)))
 
 const isCompleted = computed(() => fixture.value?.status === FixtureStatus.COMPLETED)
-const isLive = computed(() => fixture.value?.status === FixtureStatus.LIVE)
+const isLive = computed(() => fixture.value?.status === FixtureStatus.LIVE || fixture.value?.status === FixtureStatus.EXTRATIME)
 const hasPenalties = computed(() => fixture.value?.homePenaltyScore != null || fixture.value?.awayPenaltyScore != null)
 const matchTimer = useMatchTimer()
 const liveMinuteLabel = computed(() => fixture.value ? matchTimer.formatMinuteLabel(fixture.value) : '')

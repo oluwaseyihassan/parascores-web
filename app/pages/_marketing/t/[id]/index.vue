@@ -217,7 +217,7 @@ useHead({
 })
 
 // Computed
-const hasLiveFixtures = computed(() => fixtures.value.some(f => f.status === FixtureStatus.LIVE))
+const hasLiveFixtures = computed(() => fixtures.value.some(f => f.status === FixtureStatus.LIVE || f.status === FixtureStatus.EXTRATIME))
 const matchTimer = useMatchTimer(30000)
 
 const isTeams = computed(() => tournament.value?.participantType === ParticipantType.TEAM)
@@ -446,7 +446,7 @@ function toggleRound(round: string) {
 // Winner Indication
 const winnerId = computed(() => {
   if (!fixtures.value.length) return null
-  if (fixtures.value.some(f => f.status === FixtureStatus.LIVE)) return null
+  if (fixtures.value.some(f => f.status === FixtureStatus.LIVE || f.status === FixtureStatus.EXTRATIME)) return null
   
   if (tournament.value?.type === TournamentType.KNOCKOUT || tournament.value?.type === TournamentType.HYBRID) {
     const koFixtures = fixtures.value.filter(f => f.stage === FixtureStage.KNOCKOUT)
@@ -548,7 +548,8 @@ function getRoundName(fixture: Fixture) {
 }
 
 function getMatchAggregate(match: Fixture) {
-  if (match.status !== FixtureStatus.COMPLETED && match.status !== FixtureStatus.LIVE) return null
+  const isLive = match.status === FixtureStatus.LIVE || match.status === FixtureStatus.EXTRATIME
+  if (match.status !== FixtureStatus.COMPLETED && !isLive) return null
   if (!match.roundName || !/leg\s*2/i.test(match.roundName)) return null
 
   // Find Leg 1
@@ -561,7 +562,8 @@ function getMatchAggregate(match: Fixture) {
      (f.homeTeamId === match.awayTeamId && f.awayTeamId === match.homeTeamId))
   )
 
-  if (leg1 && (leg1.status === FixtureStatus.COMPLETED || leg1.status === FixtureStatus.LIVE)) {
+  const leg1IsLive = leg1 && (leg1.status === FixtureStatus.LIVE || leg1.status === FixtureStatus.EXTRATIME)
+  if (leg1 && (leg1.status === FixtureStatus.COMPLETED || leg1IsLive)) {
     const leg1HomeScore = leg1.homeTeamId === match.homeTeamId ? (leg1.homeScore ?? 0) : (leg1.awayScore ?? 0)
     const leg1AwayScore = leg1.awayTeamId === match.awayTeamId ? (leg1.awayScore ?? 0) : (leg1.homeScore ?? 0)
     
@@ -955,7 +957,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                         <div v-else-if="fixture.status === FixtureStatus.CANCELLED" class="flex items-center gap-2">
                           <span class="text-red-400">CANC</span>
                         </div>
-                        <span v-else-if="fixture.status === FixtureStatus.LIVE" class="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
+                        <span v-else-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME" class="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
                           <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
                           {{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}
                         </span>
@@ -1012,7 +1014,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
                       <!-- Score/Time -->
                       <div class="flex flex-col items-center justify-center pl-4 border-l min-w-[3.5rem] border-gray-100 dark:border-white/[0.06]">
-                        <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED">
+                        <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME || fixture.status === FixtureStatus.COMPLETED">
                           <div class="flex flex-col items-center gap-1">
                             <div class="flex items-baseline gap-1">
                                <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true)">{{ fixture.homeScore ?? 0 }}</span>
@@ -1089,7 +1091,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                           <div v-else-if="fixture.status === FixtureStatus.CANCELLED" class="flex items-center gap-2">
                             <span class="text-red-400">CANC</span>
                           </div>
-                          <span v-else-if="fixture.status === FixtureStatus.LIVE" class="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
+                          <span v-else-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME" class="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
                             <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
                             {{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}
                           </span>
@@ -1134,7 +1136,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
                         <!-- Score/Time -->
                         <div class="flex flex-col items-center justify-center pl-4 border-l min-w-[3.5rem] border-gray-100 dark:border-white/[0.06]">
-                          <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.COMPLETED">
+                        <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME || fixture.status === FixtureStatus.COMPLETED">
                             <div class="flex flex-col items-center gap-1">
                               <div class="flex items-baseline gap-1">
                                  <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true)">{{ fixture.homeScore ?? 0 }}</span>

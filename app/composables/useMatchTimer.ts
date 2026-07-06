@@ -2,6 +2,10 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import type { Fixture } from '~/types'
 import { FixtureStatus } from '~/types'
 
+export function isFixtureLiveStatus(status?: FixtureStatus | string | null) {
+  return status === FixtureStatus.LIVE || status === FixtureStatus.EXTRATIME
+}
+
 type TimerFixture = Pick<Fixture, 'status' | 'startTime'> & {
   timerStartedAt?: string | null
   timerElapsedSeconds?: number | null
@@ -24,7 +28,7 @@ type TimerFixture = Pick<Fixture, 'status' | 'startTime'> & {
  *  - Fallback (legacy): derive from startTime if no timer fields present
  */
 export function getMatchElapsedSeconds(fixture?: TimerFixture | null, nowMs = Date.now()) {
-  if (!fixture || fixture.status !== FixtureStatus.LIVE) return null
+  if (!fixture || !isFixtureLiveStatus(fixture.status)) return null
 
   const savedElapsed = fixture.timerElapsedSeconds ?? 0
 
@@ -58,7 +62,7 @@ export function getHalftimeSeconds(fixture?: TimerFixture | null) {
 }
 
 export function isFixtureHalftime(fixture?: TimerFixture | null) {
-  if (!fixture || fixture.status !== FixtureStatus.LIVE) return false
+  if (!fixture || !isFixtureLiveStatus(fixture.status)) return false
   const htSeconds = getHalftimeSeconds(fixture)
   return fixture.timerIsRunning === false && fixture.timerElapsedSeconds === htSeconds
 }
@@ -86,12 +90,13 @@ export function getMatchMinute(fixture?: TimerFixture | null, nowMs = Date.now()
 }
 
 export function getTimerDisplayInfo(fixture?: TimerFixture | null, nowMs = Date.now()) {
-  if (!fixture || fixture.status !== FixtureStatus.LIVE) {
+  const isExtraTime = fixture?.status === FixtureStatus.EXTRATIME
+  if (!fixture || !isFixtureLiveStatus(fixture.status)) {
     return { isLive: false, displayClock: '', displayLabel: '' }
   }
 
   if (isFixtureHalftime(fixture)) {
-    return { isLive: true, displayClock: 'HT', displayLabel: 'HT' }
+    return { isLive: true, displayClock: isExtraTime ? 'ET HT' : 'HT', displayLabel: isExtraTime ? 'ET HT' : 'HT' }
   }
 
   const elapsedSeconds = getMatchElapsedSeconds(fixture, nowMs)
@@ -112,8 +117,8 @@ export function getTimerDisplayInfo(fixture?: TimerFixture | null, nowMs = Date.
       // First half stoppage time
       return {
         isLive: true,
-        displayClock: `${htMinutes}+`,
-        displayLabel: `${htMinutes}+'`
+        displayClock: `${isExtraTime ? 'ET ' : ''}${htMinutes}+`,
+        displayLabel: `${isExtraTime ? 'ET ' : ''}${htMinutes}+'`
       }
     }
   } else {
@@ -121,8 +126,8 @@ export function getTimerDisplayInfo(fixture?: TimerFixture | null, nowMs = Date.
       // Second half stoppage time
       return {
         isLive: true,
-        displayClock: `${ftMinutes}+`,
-        displayLabel: `${ftMinutes}+'`
+        displayClock: `${isExtraTime ? 'ET ' : ''}${ftMinutes}+`,
+        displayLabel: `${isExtraTime ? 'ET ' : ''}${ftMinutes}+'`
       }
     }
   }
@@ -130,9 +135,9 @@ export function getTimerDisplayInfo(fixture?: TimerFixture | null, nowMs = Date.
   // Regular time
   const minutes = Math.floor(elapsedSeconds / 60)
   const seconds = elapsedSeconds % 60
-  const displayClock = `${minutes}:${String(seconds).padStart(2, '0')}`
+  const displayClock = `${isExtraTime ? 'ET ' : ''}${minutes}:${String(seconds).padStart(2, '0')}`
   const minuteLabelVal = Math.max(1, minutes + 1)
-  const displayLabel = `${minuteLabelVal}'`
+  const displayLabel = `${isExtraTime ? 'ET ' : ''}${minuteLabelVal}'`
 
   return {
     isLive: true,
