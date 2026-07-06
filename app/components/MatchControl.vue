@@ -568,12 +568,11 @@ const startExtraTime = async () => {
   updatingMatch.value = true
   try {
     const now = new Date().toISOString()
-    const currentElapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0
     const updatePayload = {
       status: FixtureStatus.EXTRATIME,
       timerIsRunning: true,
       timerStartedAt: now,
-      timerElapsedSeconds: currentElapsed,
+      timerElapsedSeconds: 90 * 60,
       matchDuration: 120
     }
     await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
@@ -2561,27 +2560,29 @@ const downloadGraphic = async () => {
                     <span class="sm:hidden">Resume</span>
                   </button>
 
-                  <!-- Halftime / Start 2nd Half -->
-                  <button
-                    v-if="!isHalftime && selectedFixture.status !== FixtureStatus.EXTRATIME"
-                    class="mc-primary-btn mc-primary-btn--halftime"
-                    :disabled="updatingMatch"
-                    @click="setHalftime"
-                  >
-                    <UIcon name="i-heroicons-clock" class="w-4 h-4" />
-                    <span class="hidden sm:inline">Halftime</span>
-                    <span class="sm:hidden">HT</span>
-                  </button>
-                  <button
-                    v-else
-                    class="mc-primary-btn mc-primary-btn--secondhalf"
-                    :disabled="updatingMatch"
-                    @click="startSecondHalf"
-                  >
-                    <UIcon name="i-heroicons-forward" class="w-4 h-4" />
-                    <span class="hidden sm:inline">Start 2nd Half</span>
-                    <span class="sm:hidden">2nd Half</span>
-                  </button>
+                  <!-- Halftime / Start 2nd Half (hidden in extra time) -->
+                  <template v-if="selectedFixture.status !== FixtureStatus.EXTRATIME">
+                    <button
+                      v-if="!isHalftime"
+                      class="mc-primary-btn mc-primary-btn--halftime"
+                      :disabled="updatingMatch"
+                      @click="setHalftime"
+                    >
+                      <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+                      <span class="hidden sm:inline">Halftime</span>
+                      <span class="sm:hidden">HT</span>
+                    </button>
+                    <button
+                      v-else
+                      class="mc-primary-btn mc-primary-btn--secondhalf"
+                      :disabled="updatingMatch"
+                      @click="startSecondHalf"
+                    >
+                      <UIcon name="i-heroicons-forward" class="w-4 h-4" />
+                      <span class="hidden sm:inline">Start 2nd Half</span>
+                      <span class="sm:hidden">2nd Half</span>
+                    </button>
+                  </template>
 
                   <!-- Start Extra Time -->
                   <button
