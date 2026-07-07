@@ -4,7 +4,7 @@ import { useHost } from '~/composables/useHost'
 import { FixtureStatus } from '~/types'
 
 function isLiveStreamStatus(status: string) {
-  return status === FixtureStatus.LIVE || status === FixtureStatus.EXTRATIME
+  return status === FixtureStatus.LIVE || status === FixtureStatus.EXTRATIME || status === FixtureStatus.NORMAL_TIME_ENDED
 }
 
 // Singleton state

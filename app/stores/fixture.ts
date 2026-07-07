@@ -68,7 +68,7 @@ export const useFixtureStore = defineStore('fixture', () => {
         const fixtureIdx = fixtures.value.findIndex(f => f.id === data.id)
         if (fixtureIdx !== -1) fixtures.value[fixtureIdx] = { ...fixtures.value[fixtureIdx], ...data }
         
-        const isLiveStatus = data.status === FixtureStatus.LIVE || data.status === FixtureStatus.EXTRATIME
+        const isLiveStatus = data.status === FixtureStatus.LIVE || data.status === FixtureStatus.EXTRATIME || data.status === FixtureStatus.NORMAL_TIME_ENDED
         const liveIdx = liveFixtures.value.findIndex(f => f.id === data.id)
         if (liveIdx !== -1) {
           liveFixtures.value[liveIdx] = { ...liveFixtures.value[liveIdx], ...data }

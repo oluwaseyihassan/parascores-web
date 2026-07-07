@@ -705,9 +705,9 @@ onUnmounted(() => {
           <div v-if="(graphicType === 'match' || graphicType === 'lineup') && selectedFixture" class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm space-y-2 mb-4 mt-4">
              <div class="flex justify-between">
                 <span class="text-gray-500">Status</span>
-                 <UBadge :color="selectedFixture.status === 'LIVE' || selectedFixture.status === 'EXTRATIME' ? 'warning' : selectedFixture.status === 'COMPLETED' ? 'success' : 'neutral'" size="xs" variant="subtle">
-                     {{ selectedFixture.status === 'EXTRATIME' ? 'Extra Time' : selectedFixture.status }}
-                 </UBadge>
+                  <UBadge :color="selectedFixture.status === 'LIVE' || selectedFixture.status === 'NORMAL_TIME_ENDED' || selectedFixture.status === 'EXTRATIME' ? 'warning' : selectedFixture.status === 'COMPLETED' ? 'success' : 'neutral'" size="xs" variant="subtle">
+                      {{ selectedFixture.status === 'EXTRATIME' ? 'Extra Time' : selectedFixture.status === 'NORMAL_TIME_ENDED' ? 'Normal Time Ended' : selectedFixture.status }}
+                  </UBadge>
              </div>
              <div class="flex justify-between">
                 <span class="text-gray-500">Score</span>

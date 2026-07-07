@@ -3,7 +3,7 @@ import type { Fixture } from '~/types'
 import { FixtureStatus } from '~/types'
 
 export function isFixtureLiveStatus(status?: FixtureStatus | string | null) {
-  return status === FixtureStatus.LIVE || status === FixtureStatus.EXTRATIME
+  return status === FixtureStatus.LIVE || status === FixtureStatus.EXTRATIME || status === FixtureStatus.NORMAL_TIME_ENDED
 }
 
 type TimerFixture = Pick<Fixture, 'status' | 'startTime'> & {
@@ -91,8 +91,13 @@ export function getMatchMinute(fixture?: TimerFixture | null, nowMs = Date.now()
 
 export function getTimerDisplayInfo(fixture?: TimerFixture | null, nowMs = Date.now()) {
   const isExtraTime = fixture?.status === FixtureStatus.EXTRATIME
+  const isNormalTimeEnded = fixture?.status === FixtureStatus.NORMAL_TIME_ENDED
   if (!fixture || !isFixtureLiveStatus(fixture.status)) {
     return { isLive: false, displayClock: '', displayLabel: '' }
+  }
+
+  if (isNormalTimeEnded) {
+    return { isLive: true, displayClock: 'FT', displayLabel: 'FT' }
   }
 
   if (isFixtureHalftime(fixture)) {
