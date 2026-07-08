@@ -81,6 +81,13 @@ const isHalftime = computed(() => {
   if (!selectedFixture.value) return false
   return selectedFixture.value.timerIsRunning === false && selectedFixture.value.timerElapsedSeconds === halftimeSeconds.value
 })
+
+const isSecondHalf = computed(() => {
+  if (!selectedFixture.value) return false
+  const elapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0
+  return elapsed >= halftimeSeconds.value
+})
+
 const updatingTime = ref(false)
 const homePlayers = ref<Player[]>([])
 const awayPlayers = ref<Player[]>([])
@@ -2710,10 +2717,10 @@ const downloadGraphic = async () => {
                     <span class="sm:hidden">Resume</span>
                   </button>
 
-                  <!-- Halftime / Start 2nd Half (only in normal time) -->
+                  <!-- Halftime / Start 2nd Half / End Normal Time (only in normal time) -->
                   <template v-if="selectedFixture.status === FixtureStatus.LIVE">
                     <button
-                      v-if="!isHalftime"
+                      v-if="!isSecondHalf && !isHalftime"
                       class="mc-primary-btn mc-primary-btn--halftime"
                       :disabled="updatingMatch"
                       @click="setHalftime"
@@ -2723,7 +2730,7 @@ const downloadGraphic = async () => {
                       <span class="sm:hidden">HT</span>
                     </button>
                     <button
-                      v-else
+                      v-else-if="!isSecondHalf && isHalftime"
                       class="mc-primary-btn mc-primary-btn--secondhalf"
                       :disabled="updatingMatch"
                       @click="startSecondHalf"
@@ -2732,20 +2739,17 @@ const downloadGraphic = async () => {
                       <span class="hidden sm:inline">Start 2nd Half</span>
                       <span class="sm:hidden">2nd Half</span>
                     </button>
+                    <button
+                      v-else-if="isSecondHalf && isKnockoutMatch && isScoreTiedOrAggregateTied"
+                      class="mc-primary-btn mc-primary-btn--halftime"
+                      :disabled="updatingMatch || !canEndNormalTime"
+                      @click="endNormalTime"
+                    >
+                      <UIcon name="i-heroicons-flag" class="w-4 h-4" />
+                      <span class="hidden sm:inline">End Normal Time</span>
+                      <span class="sm:hidden">End FT</span>
+                    </button>
                   </template>
-                </div>
-
-                <!-- End Normal Time (only in normal time when tied knockout past 90) -->
-                <div v-if="selectedFixture.status === FixtureStatus.LIVE && canEndNormalTime" class="mc-action-group">
-                  <button
-                    class="mc-primary-btn mc-primary-btn--halftime"
-                    :disabled="updatingMatch"
-                    @click="endNormalTime"
-                  >
-                    <UIcon name="i-heroicons-flag" class="w-4 h-4" />
-                    <span class="hidden sm:inline">End Normal Time</span>
-                    <span class="sm:hidden">End FT</span>
-                  </button>
                 </div>
 
                 <div class="mc-action-divider" role="separator" aria-hidden="true" />
