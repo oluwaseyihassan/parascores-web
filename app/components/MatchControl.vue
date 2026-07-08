@@ -111,6 +111,8 @@ const showEventsCollapsible = ref(true)
 const showScheduleCollapsible = ref(false)
 const showPenaltyCollapsible = ref(true)
 const showPenaltyOverride = ref(false)
+const homePenaltyPlayerId = ref<string | null>(null)
+const awayPenaltyPlayerId = ref<string | null>(null)
 const errorMessage = ref<string | null>(null)
 const swappingTeams = ref(false)
 const colorMode = useColorMode()
@@ -1445,7 +1447,7 @@ const reopenMatch = async () => {
   }
 }
 
-const recordPenaltyShot = async (team: 'home' | 'away', outcome: 'scored' | 'missed' | 'saved') => {
+const recordPenaltyShot = async (team: 'home' | 'away', outcome: 'scored' | 'missed' | 'saved', playerId?: string | null) => {
   if (!selectedFixture.value) return
 
   const participantId = team === 'home'
@@ -1476,6 +1478,7 @@ const recordPenaltyShot = async (team: 'home' | 'away', outcome: 'scored' | 'mis
       await fixtureStore.createMatchEvent({
         fixtureId: selectedFixture.value.id,
         participantId: participantId,
+        playerId: playerId || null,
         type: eventType,
         minute: 120,
         description: 'Penalty shootout',
@@ -1602,6 +1605,20 @@ const clearManOfTheMatch = async () => {
 // Player selection items for dropdowns
 const scorerOptions = computed(() => {
   return scoringTeamPlayers.value.map(p => ({
+    label: `${p.number ? `#${p.number} ` : ''}${p.name}`,
+    value: p.id
+  }))
+})
+
+const homePenaltyPlayerOptions = computed(() => {
+  return homePlayers.value.map(p => ({
+    label: `${p.number ? `#${p.number} ` : ''}${p.name}`,
+    value: p.id
+  }))
+})
+
+const awayPenaltyPlayerOptions = computed(() => {
+  return awayPlayers.value.map(p => ({
     label: `${p.number ? `#${p.number} ` : ''}${p.name}`,
     value: p.id
   }))
@@ -2493,28 +2510,46 @@ const downloadGraphic = async () => {
                 <div class="grid grid-cols-2 gap-4">
                   <div class="flex flex-col gap-2">
                     <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 text-center">Home</span>
+                    <USelect
+                      v-if="homePenaltyPlayerOptions.length > 0"
+                      v-model="homePenaltyPlayerId"
+                      :items="homePenaltyPlayerOptions"
+                      placeholder="Select shooter…"
+                      value-key="value"
+                      size="xs"
+                      class="w-full"
+                    />
                     <div class="flex gap-2 justify-center">
-                      <button class="mc-pen-btn mc-pen-btn--scored" :disabled="updatingMatch" @click="recordPenaltyShot('home', 'scored')">
+                      <button class="mc-pen-btn mc-pen-btn--scored" :disabled="updatingMatch" @click="recordPenaltyShot('home', 'scored', homePenaltyPlayerId)">
                         Scored
                       </button>
-                      <button class="mc-pen-btn mc-pen-btn--missed" :disabled="updatingMatch" @click="recordPenaltyShot('home', 'missed')">
+                      <button class="mc-pen-btn mc-pen-btn--missed" :disabled="updatingMatch" @click="recordPenaltyShot('home', 'missed', homePenaltyPlayerId)">
                         Missed
                       </button>
-                      <button class="mc-pen-btn mc-pen-btn--saved" :disabled="updatingMatch" @click="recordPenaltyShot('home', 'saved')">
+                      <button class="mc-pen-btn mc-pen-btn--saved" :disabled="updatingMatch" @click="recordPenaltyShot('home', 'saved', homePenaltyPlayerId)">
                         Saved
                       </button>
                     </div>
                   </div>
                   <div class="flex flex-col gap-2">
                     <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 text-center">Away</span>
+                    <USelect
+                      v-if="awayPenaltyPlayerOptions.length > 0"
+                      v-model="awayPenaltyPlayerId"
+                      :items="awayPenaltyPlayerOptions"
+                      placeholder="Select shooter…"
+                      value-key="value"
+                      size="xs"
+                      class="w-full"
+                    />
                     <div class="flex gap-2 justify-center">
-                      <button class="mc-pen-btn mc-pen-btn--scored" :disabled="updatingMatch" @click="recordPenaltyShot('away', 'scored')">
+                      <button class="mc-pen-btn mc-pen-btn--scored" :disabled="updatingMatch" @click="recordPenaltyShot('away', 'scored', awayPenaltyPlayerId)">
                         Scored
                       </button>
-                      <button class="mc-pen-btn mc-pen-btn--missed" :disabled="updatingMatch" @click="recordPenaltyShot('away', 'missed')">
+                      <button class="mc-pen-btn mc-pen-btn--missed" :disabled="updatingMatch" @click="recordPenaltyShot('away', 'missed', awayPenaltyPlayerId)">
                         Missed
                       </button>
-                      <button class="mc-pen-btn mc-pen-btn--saved" :disabled="updatingMatch" @click="recordPenaltyShot('away', 'saved')">
+                      <button class="mc-pen-btn mc-pen-btn--saved" :disabled="updatingMatch" @click="recordPenaltyShot('away', 'saved', awayPenaltyPlayerId)">
                         Saved
                       </button>
                     </div>
@@ -2530,6 +2565,7 @@ const downloadGraphic = async () => {
                   >
                     <span class="font-medium text-gray-700 dark:text-gray-300">
                       {{ event.participant_id === selectedFixture.homeTeamId ? 'Home' : 'Away' }}
+                      <span v-if="event.playerId" class="text-gray-500 dark:text-gray-400">- {{ getPlayerName(event.playerId) }}</span>
                     </span>
                     <span class="font-bold" :class="event.type === 'PENALTY' ? 'text-emerald-500' : 'text-red-500'">
                       {{ event.type === 'PENALTY' ? 'Scored' : event.type === 'MISSED_PENALTY' ? 'Missed' : 'Saved' }}
