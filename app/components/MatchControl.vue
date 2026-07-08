@@ -2464,7 +2464,7 @@ const downloadGraphic = async () => {
 
             <!-- Penalty shootout -->
             <div
-              v-if="['LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status) && ((isKnockoutMatch && isScoreTiedOrAggregateTied) || hasPenalties || showPenaltyOverride)"
+              v-if="['LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status) && (isScoreTiedOrAggregateTied || hasPenalties || showPenaltyOverride)"
               class="mc-section"
             >
               <button class="mc-section__toggle" @click="showPenaltyCollapsible = !showPenaltyCollapsible">
@@ -2552,7 +2552,7 @@ const downloadGraphic = async () => {
             </div>
 
             <!-- Edit penalties toggle -->
-            <div v-if="selectedFixture.status === 'COMPLETED' && isKnockoutMatch && !isScoreTiedOrAggregateTied && !hasPenalties && !showPenaltyOverride" class="flex justify-center">
+            <div v-if="selectedFixture.status === 'COMPLETED' && !isScoreTiedOrAggregateTied && !hasPenalties && !showPenaltyOverride" class="flex justify-center">
               <UButton size="xs" variant="link" color="neutral" icon="i-heroicons-bolt" label="Edit Penalties" @click="showPenaltyOverride = true;" />
             </div>
 
