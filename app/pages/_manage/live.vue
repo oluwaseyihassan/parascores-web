@@ -215,7 +215,7 @@ const handleMatchEnded = async () => {
               <UBadge color="warning" variant="soft" class="animate-pulse">
                 <span class="flex items-center gap-1">
                   <span class="w-2 h-2 bg-red-500 rounded-full"></span>
-                  {{ fixture.status === FixtureStatus.EXTRATIME ? 'ET' : 'LIVE' }}
+                  {{ fixture.status === FixtureStatus.EXTRATIME ? 'ET' : fixture.status === FixtureStatus.NORMAL_TIME_ENDED ? 'FT' : 'LIVE' }}
                 </span>
               </UBadge>
               <UButton 

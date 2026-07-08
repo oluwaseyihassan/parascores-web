@@ -121,9 +121,9 @@
                 class="group flex flex-col px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-100 dark:border-white/[0.05] last:border-b-0 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors"
               >
                 <!-- Status label above names -->
-                <div v-if="match.status === 'LIVE' || match.status === 'EXTRATIME' || match.status === 'COMPLETED'" class="text-center mb-0.5 sm:mb-1">
+                <div v-if="match.status === 'LIVE' || match.status === 'NORMAL_TIME_ENDED' || match.status === 'EXTRATIME' || match.status === 'COMPLETED'" class="text-center mb-0.5 sm:mb-1">
                   <span
-                    v-if="match.status === 'LIVE' || match.status === 'EXTRATIME'"
+                    v-if="match.status === 'LIVE' || match.status === 'NORMAL_TIME_ENDED' || match.status === 'EXTRATIME'"
                     class="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-red-500"
                   >
                     <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
@@ -156,7 +156,7 @@
 
                   <!-- Center Score / Time -->
                   <div class="w-16 sm:w-20 shrink-0 text-center">
-                    <div v-if="match.status === 'LIVE' || match.status === 'EXTRATIME' || match.status === 'COMPLETED'" class="text-xs sm:text-sm font-black text-gray-900 dark:text-white tabular-nums">
+                    <div v-if="match.status === 'LIVE' || match.status === 'NORMAL_TIME_ENDED' || match.status === 'EXTRATIME' || match.status === 'COMPLETED'" class="text-xs sm:text-sm font-black text-gray-900 dark:text-white tabular-nums">
                       {{ match.homeScore ?? 0 }} - {{ match.awayScore ?? 0 }}
                     </div>
                     <div v-else class="text-xs sm:text-sm font-black text-gray-900 dark:text-white tabular-nums">

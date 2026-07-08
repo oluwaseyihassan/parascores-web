@@ -129,7 +129,7 @@ const sortedKnockoutRounds = computed(() => {
   })
 })
 
-const hasLiveFixtures = computed(() => fixtures.value.some(f => f.status === FixtureStatus.LIVE || f.status === FixtureStatus.EXTRATIME))
+const hasLiveFixtures = computed(() => fixtures.value.some(f => f.status === FixtureStatus.LIVE || f.status === FixtureStatus.NORMAL_TIME_ENDED || f.status === FixtureStatus.EXTRATIME))
 const matchTimer = useMatchTimer(30000)
 
 // Collapsible rounds
@@ -229,7 +229,7 @@ function formatDate(dateStr?: string | null) {
                   {{ fixture.venue || 'No venue' }}
                 </span>
                 <span>
-                  <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME">
+                  <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME">
                       <span class="text-red-500 flex items-center gap-1 font-extrabold tracking-widest text-[9px]">
                         <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
                       {{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}
@@ -281,10 +281,10 @@ function formatDate(dateStr?: string | null) {
                 <!-- Score / Time Box -->
                 <div class="flex items-center pl-4 border-l" :class="isDark ? 'border-white/5' : 'border-black/5'">
                   <div class="flex flex-col items-center justify-center min-w-[36px] text-center font-bold text-xs select-none">
-                    <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME || fixture.status === FixtureStatus.COMPLETED">
-                      <span :class="[fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME ? 'text-emerald-500' : isDark ? 'text-white' : 'text-gray-900']" class="font-black tabular-nums">{{ fixture.homeScore ?? 0 }}</span>
+                    <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME || fixture.status === FixtureStatus.COMPLETED">
+                      <span :class="[fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME ? 'text-emerald-500' : isDark ? 'text-white' : 'text-gray-900']" class="font-black tabular-nums">{{ fixture.homeScore ?? 0 }}</span>
                       <span class="text-[9px] text-zinc-500 leading-none py-0.5">-</span>
-                      <span :class="[fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME ? 'text-emerald-500' : isDark ? 'text-white' : 'text-gray-900']" class="font-black tabular-nums">{{ fixture.awayScore ?? 0 }}</span>
+                      <span :class="[fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME ? 'text-emerald-500' : isDark ? 'text-white' : 'text-gray-900']" class="font-black tabular-nums">{{ fixture.awayScore ?? 0 }}</span>
                     </template>
                     <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
                       <span class="text-[9px] text-red-500 font-bold">CANC</span>
@@ -343,7 +343,7 @@ function formatDate(dateStr?: string | null) {
                     {{ fixture.venue || 'No venue' }}
                   </span>
                   <span>
-                    <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME">
+                    <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME">
                       <span class="text-red-500 flex items-center gap-1 font-extrabold tracking-widest text-[9px]">
                         <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
                         {{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}
@@ -395,10 +395,10 @@ function formatDate(dateStr?: string | null) {
                   <!-- Score / Time Box -->
                   <div class="flex items-center pl-4 border-l" :class="isDark ? 'border-white/5' : 'border-black/5'">
                     <div class="flex flex-col items-center justify-center min-w-[36px] text-center font-bold text-xs select-none">
-                      <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME || fixture.status === FixtureStatus.COMPLETED">
-                        <span :class="[fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME ? 'text-emerald-500' : isDark ? 'text-white' : 'text-gray-900']" class="font-black tabular-nums">{{ fixture.homeScore ?? 0 }}</span>
+                      <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME || fixture.status === FixtureStatus.COMPLETED">
+                        <span :class="[fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME ? 'text-emerald-500' : isDark ? 'text-white' : 'text-gray-900']" class="font-black tabular-nums">{{ fixture.homeScore ?? 0 }}</span>
                         <span class="text-[9px] text-zinc-500 leading-none py-0.5">-</span>
-                        <span :class="[fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME ? 'text-emerald-500' : isDark ? 'text-white' : 'text-gray-900']" class="font-black tabular-nums">{{ fixture.awayScore ?? 0 }}</span>
+                        <span :class="[fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME ? 'text-emerald-500' : isDark ? 'text-white' : 'text-gray-900']" class="font-black tabular-nums">{{ fixture.awayScore ?? 0 }}</span>
                       </template>
                       <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
                         <span class="text-[9px] text-red-500 font-bold">CANC</span>

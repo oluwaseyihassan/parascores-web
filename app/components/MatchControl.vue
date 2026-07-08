@@ -66,11 +66,11 @@ const liveMinuteLabel = computed(() => {
 })
 
 const isTimerRunning = computed(() => {
-  return isFixtureLiveStatus(selectedFixture.value?.status) && !!selectedFixture.value?.timerIsRunning
+  return (selectedFixture.value?.status === FixtureStatus.LIVE || selectedFixture.value?.status === FixtureStatus.EXTRATIME) && !!selectedFixture.value?.timerIsRunning
 })
 
 const isTimerPaused = computed(() => {
-  return isFixtureLiveStatus(selectedFixture.value?.status) && !selectedFixture.value?.timerIsRunning
+  return (selectedFixture.value?.status === FixtureStatus.LIVE || selectedFixture.value?.status === FixtureStatus.EXTRATIME) && !selectedFixture.value?.timerIsRunning
 })
 
 const halftimeSeconds = computed(() => {
@@ -208,6 +208,7 @@ watch(() => subData.playerInId, (newId) => {
 const fixtureStatusColors: Record<FixtureStatus, 'info' | 'success' | 'warning' | 'neutral'> = {
   [FixtureStatus.SCHEDULED]: 'info',
   [FixtureStatus.LIVE]: 'warning',
+  [FixtureStatus.NORMAL_TIME_ENDED]: 'warning',
   [FixtureStatus.EXTRATIME]: 'warning',
   [FixtureStatus.COMPLETED]: 'success',
   [FixtureStatus.CANCELLED]: 'neutral'
@@ -562,6 +563,43 @@ const startSecondHalf = async () => {
   }
 }
 
+const endNormalTime = async () => {
+  if (!selectedFixture.value) return
+
+  updatingMatch.value = true
+  try {
+    const now = new Date().toISOString()
+    const currentElapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 90 * 60
+    const updatePayload = {
+      status: FixtureStatus.NORMAL_TIME_ENDED,
+      timerIsRunning: false,
+      timerStartedAt: now,
+      timerElapsedSeconds: currentElapsed,
+      matchDuration: 90
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
+
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    matchDuration.value = 90
+
+    emit('fixture-updated', selectedFixture.value!)
+
+    useToast().add({
+      title: 'Normal Time Ended',
+      description: 'The match is tied after 90 minutes. Start extra time when ready.',
+      icon: 'i-heroicons-flag',
+      color: 'warning'
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to end normal time' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
 const startExtraTime = async () => {
   if (!selectedFixture.value) return
 
@@ -598,9 +636,19 @@ const startExtraTime = async () => {
   }
 }
 
-const canStartExtraTime = computed(() => {
+const canEndNormalTime = computed(() => {
   if (!selectedFixture.value) return false
   if (selectedFixture.value.status !== FixtureStatus.LIVE) return false
+  // Only offer end-of-normal-time for knockout stage matches
+  if (selectedFixture.value.stage !== FixtureStage.KNOCKOUT && selectedFixture.value.stage != null) return false
+  if (!isScoreTiedOrAggregateTied.value) return false
+  const elapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0
+  return elapsed >= 90 * 60
+})
+
+const canStartExtraTime = computed(() => {
+  if (!selectedFixture.value) return false
+  if (selectedFixture.value.status !== FixtureStatus.NORMAL_TIME_ENDED) return false
   // Only offer extra time for knockout stage matches
   if (selectedFixture.value.stage !== FixtureStage.KNOCKOUT && selectedFixture.value.stage != null) return false
   return isScoreTiedOrAggregateTied.value
@@ -1952,7 +2000,7 @@ const downloadGraphic = async () => {
           </div>
 
           <!-- ── Score Controls ─────────────────────────────── -->
-          <div v-if="['LIVE', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status)" class="mc-controls">
+          <div v-if="['LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status)" class="mc-controls">
             <!-- Home side -->
             <div class="mc-ctrl-side">
               <button class="mc-btn mc-btn--goal" :disabled="loadingPlayers || updatingMatch" @click="openGoalModal('home')">
@@ -2091,7 +2139,7 @@ const downloadGraphic = async () => {
           <div class="mc-sections">
 
             <!-- Schedule -->
-            <div v-if="['SCHEDULED', 'LIVE', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status)" class="mc-section">
+            <div v-if="['SCHEDULED', 'LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status)" class="mc-section">
               <button class="mc-section__toggle" @click="showScheduleCollapsible = !showScheduleCollapsible">
                 <div class="flex items-center gap-2">
                   <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 text-emerald-500" />
@@ -2144,8 +2192,8 @@ const downloadGraphic = async () => {
                   Update Schedule
                 </UButton>
 
-                <!-- Adjust Live Timer (Only visible when LIVE or EXTRATIME) -->
-                <div v-if="['LIVE', 'EXTRATIME'].includes(selectedFixture.status)" class="mt-3 flex flex-col gap-1.5 p-3 rounded-lg bg-amber-500/5 dark:bg-amber-500/[0.02] border border-amber-500/10">
+                <!-- Adjust Live Timer (Only visible when LIVE, NORMAL_TIME_ENDED or EXTRATIME) -->
+                <div v-if="['LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME'].includes(selectedFixture.status)" class="mt-3 flex flex-col gap-1.5 p-3 rounded-lg bg-amber-500/5 dark:bg-amber-500/[0.02] border border-amber-500/10">
                   <div class="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
                     <span class="flex items-center gap-1">
                       <UIcon name="i-heroicons-clock" class="w-3.5 h-3.5 text-amber-500" />
@@ -2396,7 +2444,7 @@ const downloadGraphic = async () => {
 
             <!-- Penalty shootout -->
             <div
-              v-if="['LIVE', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status) && ((isKnockoutMatch && isScoreTiedOrAggregateTied) || hasPenalties || showPenaltyOverride)"
+              v-if="['LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status) && ((isKnockoutMatch && isScoreTiedOrAggregateTied) || hasPenalties || showPenaltyOverride)"
               class="mc-section"
             >
               <button class="mc-section__toggle" @click="showPenaltyCollapsible = !showPenaltyCollapsible">
@@ -2662,8 +2710,8 @@ const downloadGraphic = async () => {
                     <span class="sm:hidden">Resume</span>
                   </button>
 
-                  <!-- Halftime / Start 2nd Half (hidden in extra time) -->
-                  <template v-if="selectedFixture.status !== FixtureStatus.EXTRATIME">
+                  <!-- Halftime / Start 2nd Half (only in normal time) -->
+                  <template v-if="selectedFixture.status === FixtureStatus.LIVE">
                     <button
                       v-if="!isHalftime"
                       class="mc-primary-btn mc-primary-btn--halftime"
@@ -2685,8 +2733,48 @@ const downloadGraphic = async () => {
                       <span class="sm:hidden">2nd Half</span>
                     </button>
                   </template>
+                </div>
 
-                  <!-- Start Extra Time -->
+                <!-- End Normal Time (only in normal time when tied knockout past 90) -->
+                <div v-if="selectedFixture.status === FixtureStatus.LIVE && canEndNormalTime" class="mc-action-group">
+                  <button
+                    class="mc-primary-btn mc-primary-btn--halftime"
+                    :disabled="updatingMatch"
+                    @click="endNormalTime"
+                  >
+                    <UIcon name="i-heroicons-flag" class="w-4 h-4" />
+                    <span class="hidden sm:inline">End Normal Time</span>
+                    <span class="sm:hidden">End FT</span>
+                  </button>
+                </div>
+
+                <div class="mc-action-divider" role="separator" aria-hidden="true" />
+
+                <div class="mc-action-group">
+                  <button
+                    class="mc-primary-btn mc-primary-btn--undo"
+                    :disabled="updatingMatch"
+                    @click="undoStartMatch"
+                  >
+                    <UIcon name="i-heroicons-arrow-uturn-left" class="w-4 h-4" />
+                    <span class="hidden sm:inline">Undo Start</span>
+                    <span class="sm:hidden">Undo</span>
+                  </button>
+                  <button
+                    class="mc-primary-btn mc-primary-btn--end"
+                    :disabled="updatingMatch"
+                    @click="endMatch"
+                  >
+                    <UIcon name="i-heroicons-flag" class="w-4 h-4" />
+                    <span class="hidden sm:inline">{{ updatingMatch ? 'Ending…' : 'End Match' }}</span>
+                    <span class="sm:hidden">{{ updatingMatch ? 'Ending…' : 'End' }}</span>
+                  </button>
+                </div>
+              </template>
+
+              <!-- Normal Time Ended Controls -->
+              <template v-if="selectedFixture.status === FixtureStatus.NORMAL_TIME_ENDED">
+                <div class="mc-action-group">
                   <button
                     v-if="canStartExtraTime"
                     class="mc-primary-btn mc-primary-btn--halftime"
