@@ -352,6 +352,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     type: string
     minute?: number | null
     description?: string | null
+    metadata?: Record<string, any> | null
   }) {
     loading.value = true
     error.value = null
@@ -365,7 +366,8 @@ export const useFixtureStore = defineStore('fixture', () => {
           relatedParticipantId: data.relatedParticipantId || null,
           type: data.type,
           minute: data.minute,
-          description: data.description
+          description: data.description,
+          metadata: data.metadata || null
         },
       })
       return response
