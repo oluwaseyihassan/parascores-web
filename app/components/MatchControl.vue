@@ -43,6 +43,18 @@ const matchDuration = ref(90)
 const matchTimer = useMatchTimer()
 const adjustedMinute = ref(1)
 
+// Local reactive clock for second-half detection
+const localNow = ref(Date.now())
+let localNowInterval: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  localNowInterval = setInterval(() => {
+    localNow.value = Date.now()
+  }, 1000)
+})
+onUnmounted(() => {
+  if (localNowInterval) clearInterval(localNowInterval)
+})
+
 const adjustTimerMaxMinutes = computed(() => {
   if (!selectedFixture.value) return 90
   const duration = selectedFixture.value.matchDuration ?? 90
@@ -84,7 +96,8 @@ const isHalftime = computed(() => {
 
 const isSecondHalf = computed(() => {
   if (!selectedFixture.value) return false
-  const elapsed = getMatchElapsedSeconds(selectedFixture.value, matchTimer.now.value) ?? 0
+  localNow.value // trigger re-evaluation every second
+  const elapsed = getMatchElapsedSeconds(selectedFixture.value) ?? 0
   return elapsed >= halftimeSeconds.value
 })
 
@@ -2740,7 +2753,7 @@ const downloadGraphic = async () => {
                       <span class="sm:hidden">2nd Half</span>
                     </button>
                     <button
-                      v-else-if="isSecondHalf && isScoreTiedOrAggregateTied"
+                      v-else-if="isSecondHalf"
                       class="mc-primary-btn mc-primary-btn--halftime"
                       :disabled="updatingMatch"
                       @click="endNormalTime"
