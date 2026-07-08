@@ -2740,7 +2740,7 @@ const downloadGraphic = async () => {
                       <span class="sm:hidden">2nd Half</span>
                     </button>
                     <button
-                      v-else-if="isSecondHalf && isKnockoutMatch && isScoreTiedOrAggregateTied"
+                      v-else-if="isSecondHalf && isScoreTiedOrAggregateTied"
                       class="mc-primary-btn mc-primary-btn--halftime"
                       :disabled="updatingMatch"
                       @click="endNormalTime"
