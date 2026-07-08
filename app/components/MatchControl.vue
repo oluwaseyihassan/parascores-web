@@ -2,7 +2,7 @@
 import { FixtureStatus, MatchEventType, ParticipantType, FixtureStage } from '~/types'
 import type { Fixture, Player, MatchEvent } from '~/types'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
-import { useMatchTimer, isFixtureLiveStatus } from '~/composables/useMatchTimer'
+import { useMatchTimer, isFixtureLiveStatus, getMatchElapsedSeconds } from '~/composables/useMatchTimer'
 
 const props = withDefaults(defineProps<{
   fixture: Fixture | null
@@ -84,7 +84,7 @@ const isHalftime = computed(() => {
 
 const isSecondHalf = computed(() => {
   if (!selectedFixture.value) return false
-  const elapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0
+  const elapsed = getMatchElapsedSeconds(selectedFixture.value, matchTimer.now.value) ?? 0
   return elapsed >= halftimeSeconds.value
 })
 
@@ -2742,7 +2742,7 @@ const downloadGraphic = async () => {
                     <button
                       v-else-if="isSecondHalf && isKnockoutMatch && isScoreTiedOrAggregateTied"
                       class="mc-primary-btn mc-primary-btn--halftime"
-                      :disabled="updatingMatch || !canEndNormalTime"
+                      :disabled="updatingMatch"
                       @click="endNormalTime"
                     >
                       <UIcon name="i-heroicons-flag" class="w-4 h-4" />
