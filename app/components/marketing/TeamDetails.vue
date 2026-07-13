@@ -122,7 +122,7 @@ function formatFullDate(dateStr?: string | null) {
   return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 function getScoreBadgeClass(match: Fixture) {
-  if (match.status !== 'COMPLETED') return 'bg-white/5 text-white'
+  if (match.status !== 'COMPLETED' && match.status !== 'LIVE' && match.status !== 'EXTRATIME') return 'bg-white/5 text-white'
   
   const isHome = match.homeTeamId === props.participantId
   const isAway = match.awayTeamId === props.participantId
@@ -148,7 +148,8 @@ function getRoundName(match: Fixture) {
 }
 
 function getMatchAggregate(match: Fixture) {
-  if (match.status !== 'COMPLETED' && match.status !== 'LIVE') return null
+  const isLive = match.status === 'LIVE' || match.status === 'NORMAL_TIME_ENDED' || match.status === 'EXTRATIME'
+  if (match.status !== 'COMPLETED' && !isLive) return null
   if (!match.roundName || !/leg\s*2/i.test(match.roundName)) return null
 
   // Find Leg 1
@@ -160,7 +161,8 @@ function getMatchAggregate(match: Fixture) {
      (f.homeTeamId === match.awayTeamId && f.awayTeamId === match.homeTeamId))
   )
 
-  if (leg1 && (leg1.status === 'COMPLETED' || leg1.status === 'LIVE')) {
+  const leg1IsLive = leg1 && (leg1.status === 'LIVE' || leg1.status === 'NORMAL_TIME_ENDED' || leg1.status === 'EXTRATIME')
+  if (leg1 && (leg1.status === 'COMPLETED' || leg1IsLive)) {
     const leg1HomeScore = leg1.homeTeamId === match.homeTeamId ? (leg1.homeScore ?? 0) : (leg1.awayScore ?? 0)
     const leg1AwayScore = leg1.awayTeamId === match.awayTeamId ? (leg1.awayScore ?? 0) : (leg1.homeScore ?? 0)
     
@@ -340,7 +342,7 @@ function getMatchAggregate(match: Fixture) {
                   <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400">{{ formatTime(match.startTime) }}</span>
                   <span class="text-[11px] text-gray-300 dark:text-gray-600">·</span>
                   <span class="text-[10px] font-bold text-gray-500 uppercase">{{ getRoundName(match) }}</span>
-                  <span v-if="match.status === 'LIVE'" class="ml-auto text-[10px] font-bold text-emerald-500 uppercase tracking-widest animate-pulse">Live</span>
+                  <span v-if="match.status === 'LIVE' || match.status === 'NORMAL_TIME_ENDED' || match.status === 'EXTRATIME'" class="ml-auto text-[10px] font-bold text-emerald-500 uppercase tracking-widest animate-pulse">Live</span>
                 </div>
 
                 <div class="flex items-center gap-2 sm:gap-4">
@@ -349,6 +351,7 @@ function getMatchAggregate(match: Fixture) {
                      <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-500/80">{{ formatFullDate(match.startTime) }}</span>
                      <span class="text-[13px] font-medium text-gray-500 dark:text-gray-400">{{ formatTime(match.startTime) }}</span>
                      <span class="text-[10px] font-bold text-gray-500 uppercase tracking-tight mt-0.5">{{ getRoundName(match) }}</span>
+                     <span v-if="match.status === 'LIVE' || match.status === 'NORMAL_TIME_ENDED' || match.status === 'EXTRATIME'" class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest animate-pulse">Live</span>
                   </div>
                   
                   <!-- Home -->
@@ -364,7 +367,7 @@ function getMatchAggregate(match: Fixture) {
                   
                   <!-- Score -->
                   <div class="flex-shrink-0 w-14 sm:w-20 text-center flex flex-col items-center justify-center">
-                    <template v-if="match.status === 'COMPLETED' || match.status === 'LIVE'">
+                    <template v-if="match.status === 'COMPLETED' || match.status === 'LIVE' || match.status === 'NORMAL_TIME_ENDED' || match.status === 'EXTRATIME'">
                       <div class="inline-flex px-1.5 sm:px-2 py-1 rounded min-w-[42px] sm:min-w-[50px] justify-center text-xs sm:text-sm font-bold tracking-wider whitespace-nowrap" :class="getScoreBadgeClass(match)">
                          {{ match.homeScore ?? 0 }} - {{ match.awayScore ?? 0 }}
                       </div>

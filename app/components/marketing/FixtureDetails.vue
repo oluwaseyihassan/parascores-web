@@ -4,6 +4,7 @@ import type { Tournament, Fixture, MatchEvent } from '~/types'
 import { FixtureStatus, MatchEventType } from '~/types'
 
 const { toMain, isManage } = useHost()
+const toast = useToast()
 
 const props = defineProps<{
   tournamentId: string
@@ -127,7 +128,7 @@ const homeEvents = computed(() => events.value.filter(e => (e.participant_id ===
 const awayEvents = computed(() => events.value.filter(e => (e.participant_id === fixture.value?.awayTeamId || (e as any).participantId === fixture.value?.awayTeamId)))
 
 const isCompleted = computed(() => fixture.value?.status === FixtureStatus.COMPLETED)
-const isLive = computed(() => fixture.value?.status === FixtureStatus.LIVE)
+const isLive = computed(() => fixture.value?.status === FixtureStatus.LIVE || fixture.value?.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.value?.status === FixtureStatus.EXTRATIME)
 const hasPenalties = computed(() => fixture.value?.homePenaltyScore != null || fixture.value?.awayPenaltyScore != null)
 const matchTimer = useMatchTimer()
 const liveMinuteLabel = computed(() => fixture.value ? matchTimer.formatMinuteLabel(fixture.value) : '')
@@ -147,6 +148,58 @@ const teamName = computed(() => {
   if (!participant) return ''
   return participant.customName || participant.team?.name || participant.user?.name || ''
 })
+
+const shareUrl = computed(() => {
+  if (!fixture.value || !tournament.value) return ''
+  const slug = tournament.value.customName || tournament.value.id
+  return toMain(`/t/${slug}/fixture/${fixture.value.id}`, { absolute: true })
+})
+
+const shareData = computed(() => {
+  const home = fixture.value?.homeTeam?.customName || 'TBD'
+  const away = fixture.value?.awayTeam?.customName || 'TBD'
+  const tournamentName = tournament.value?.name || ''
+  return {
+    title: `${home} vs ${away} — ${tournamentName}`,
+    text: `${home} vs ${away} in ${tournamentName}. Follow live scores and match events.`,
+    url: shareUrl.value
+  }
+})
+
+async function shareFixture() {
+  if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare?.(shareData.value)) {
+    try {
+      await navigator.share(shareData.value)
+      return
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        console.error('Share failed:', e)
+      }
+    }
+  }
+  await copyLink()
+}
+
+async function copyLink() {
+  if (!shareUrl.value) return
+  try {
+    await navigator.clipboard.writeText(shareUrl.value)
+    toast.add({
+      title: 'Link copied!',
+      description: 'Fixture link copied to clipboard.',
+      icon: 'i-heroicons-link',
+      color: 'success'
+    })
+  } catch (e) {
+    console.error('Copy failed:', e)
+    toast.add({
+      title: 'Failed to copy',
+      description: 'Could not copy the link to your clipboard.',
+      icon: 'i-heroicons-exclamation-triangle',
+      color: 'error'
+    })
+  }
+}
 
 // Helpers
 function formatTime(dateStr?: string | null) {
@@ -324,14 +377,36 @@ const awaySubs = computed(() => {
               Back
             </button>
 
-            <!-- Full Page Link -->
-            <NuxtLink v-if="!isFullPage" :to="toMain(`/t/${tournament.customName || tournament.id}/fixture/${fixture.id}`)" :external="isManage" class="inline-flex items-center gap-1.5 text-[10px] sm:text-xs text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-emerald-500/20">
-              <span class="hidden sm:inline">View Full Match Page</span>
-              <span class="sm:hidden">Full Page</span>
-              <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </NuxtLink>
+            <div class="flex items-center gap-1.5 sm:gap-2">
+              <!-- Full Page Link -->
+              <NuxtLink v-if="!isFullPage" :to="toMain(`/t/${tournament.customName || tournament.id}/fixture/${fixture.id}`)" :external="isManage" class="inline-flex items-center gap-1.5 text-[10px] sm:text-xs text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-emerald-500/20">
+                <span class="hidden sm:inline">View Full Match Page</span>
+                <span class="sm:hidden">Full Page</span>
+                <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </NuxtLink>
+
+              <!-- Share Button -->
+              <button
+                @click="shareFixture"
+                class="inline-flex items-center justify-center gap-1.5 text-[10px] sm:text-xs text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-emerald-500/20 cursor-pointer"
+                aria-label="Share match"
+              >
+                <UIcon name="i-heroicons-share" class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span class="hidden sm:inline">Share</span>
+              </button>
+
+              <!-- Copy Link Button -->
+              <button
+                @click="copyLink"
+                class="inline-flex items-center justify-center gap-1.5 text-[10px] sm:text-xs text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-emerald-500/20 cursor-pointer"
+                aria-label="Copy link"
+              >
+                <UIcon name="i-heroicons-link" class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span class="hidden sm:inline">Copy Link</span>
+              </button>
+            </div>
           </div>
 
           <!-- Match Header (FotMob Style) -->

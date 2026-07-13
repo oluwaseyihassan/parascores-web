@@ -64,17 +64,18 @@ export const useFixtureStore = defineStore('fixture', () => {
       const customEvent = e as CustomEvent
       const { type, data } = customEvent.detail
 
-      if (type === 'fixture_updated') {
+        if (type === 'fixture_updated') {
         const fixtureIdx = fixtures.value.findIndex(f => f.id === data.id)
         if (fixtureIdx !== -1) fixtures.value[fixtureIdx] = { ...fixtures.value[fixtureIdx], ...data }
         
+        const isLiveStatus = data.status === FixtureStatus.LIVE || data.status === FixtureStatus.EXTRATIME || data.status === FixtureStatus.NORMAL_TIME_ENDED
         const liveIdx = liveFixtures.value.findIndex(f => f.id === data.id)
         if (liveIdx !== -1) {
           liveFixtures.value[liveIdx] = { ...liveFixtures.value[liveIdx], ...data }
-          if (data.status !== FixtureStatus.LIVE) {
+          if (!isLiveStatus) {
             liveFixtures.value.splice(liveIdx, 1) // Remove if no longer live
           }
-        } else if (data.status === FixtureStatus.LIVE) {
+        } else if (isLiveStatus) {
           liveFixtures.value.push(data) // Add if newly live
         }
       }
@@ -351,6 +352,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     type: string
     minute?: number | null
     description?: string | null
+    metadata?: Record<string, any> | null
   }) {
     loading.value = true
     error.value = null
@@ -364,7 +366,8 @@ export const useFixtureStore = defineStore('fixture', () => {
           relatedParticipantId: data.relatedParticipantId || null,
           type: data.type,
           minute: data.minute,
-          description: data.description
+          description: data.description,
+          metadata: data.metadata || null
         },
       })
       return response

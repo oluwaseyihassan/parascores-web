@@ -2,7 +2,7 @@
 import { FixtureStatus, MatchEventType, ParticipantType, FixtureStage } from '~/types'
 import type { Fixture, Player, MatchEvent } from '~/types'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
-import { useMatchTimer } from '~/composables/useMatchTimer'
+import { useMatchTimer, isFixtureLiveStatus, getMatchElapsedSeconds } from '~/composables/useMatchTimer'
 
 const props = withDefaults(defineProps<{
   fixture: Fixture | null
@@ -43,6 +43,18 @@ const matchDuration = ref(90)
 const matchTimer = useMatchTimer()
 const adjustedMinute = ref(1)
 
+// Local reactive clock for second-half detection
+const localNow = ref(Date.now())
+let localNowInterval: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  localNowInterval = setInterval(() => {
+    localNow.value = Date.now()
+  }, 1000)
+})
+onUnmounted(() => {
+  if (localNowInterval) clearInterval(localNowInterval)
+})
+
 const adjustTimerMaxMinutes = computed(() => {
   if (!selectedFixture.value) return 90
   const duration = selectedFixture.value.matchDuration ?? 90
@@ -66,11 +78,11 @@ const liveMinuteLabel = computed(() => {
 })
 
 const isTimerRunning = computed(() => {
-  return selectedFixture.value?.status === FixtureStatus.LIVE && !!selectedFixture.value?.timerIsRunning
+  return (selectedFixture.value?.status === FixtureStatus.LIVE || selectedFixture.value?.status === FixtureStatus.EXTRATIME) && !!selectedFixture.value?.timerIsRunning
 })
 
 const isTimerPaused = computed(() => {
-  return selectedFixture.value?.status === FixtureStatus.LIVE && !selectedFixture.value?.timerIsRunning
+  return (selectedFixture.value?.status === FixtureStatus.LIVE || selectedFixture.value?.status === FixtureStatus.EXTRATIME) && !selectedFixture.value?.timerIsRunning
 })
 
 const halftimeSeconds = computed(() => {
@@ -81,6 +93,14 @@ const isHalftime = computed(() => {
   if (!selectedFixture.value) return false
   return selectedFixture.value.timerIsRunning === false && selectedFixture.value.timerElapsedSeconds === halftimeSeconds.value
 })
+
+const isSecondHalf = computed(() => {
+  if (!selectedFixture.value) return false
+  localNow.value // trigger re-evaluation every second
+  const elapsed = getMatchElapsedSeconds(selectedFixture.value) ?? 0
+  return elapsed >= halftimeSeconds.value
+})
+
 const updatingTime = ref(false)
 const homePlayers = ref<Player[]>([])
 const awayPlayers = ref<Player[]>([])
@@ -91,6 +111,8 @@ const showEventsCollapsible = ref(true)
 const showScheduleCollapsible = ref(false)
 const showPenaltyCollapsible = ref(true)
 const showPenaltyOverride = ref(false)
+const homePenaltyPlayerId = ref<string | undefined>(undefined)
+const awayPenaltyPlayerId = ref<string | undefined>(undefined)
 const errorMessage = ref<string | null>(null)
 const swappingTeams = ref(false)
 const colorMode = useColorMode()
@@ -208,6 +230,8 @@ watch(() => subData.playerInId, (newId) => {
 const fixtureStatusColors: Record<FixtureStatus, 'info' | 'success' | 'warning' | 'neutral'> = {
   [FixtureStatus.SCHEDULED]: 'info',
   [FixtureStatus.LIVE]: 'warning',
+  [FixtureStatus.NORMAL_TIME_ENDED]: 'warning',
+  [FixtureStatus.EXTRATIME]: 'warning',
   [FixtureStatus.COMPLETED]: 'success',
   [FixtureStatus.CANCELLED]: 'neutral'
 }
@@ -284,7 +308,7 @@ watch(() => props.open, async (isOpen) => {
 })
 
 watch(showScheduleCollapsible, (isOpen) => {
-  if (isOpen && selectedFixture.value?.status === FixtureStatus.LIVE) {
+  if (isOpen && isFixtureLiveStatus(selectedFixture.value?.status)) {
     const currentElapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0
     const rawMinute = Math.floor(currentElapsed / 60)
     adjustedMinute.value = Math.min(rawMinute, adjustTimerMaxMinutes.value)
@@ -561,6 +585,97 @@ const startSecondHalf = async () => {
   }
 }
 
+const endNormalTime = async () => {
+  if (!selectedFixture.value) return
+
+  updatingMatch.value = true
+  try {
+    const now = new Date().toISOString()
+    const currentElapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 90 * 60
+    const updatePayload = {
+      status: FixtureStatus.NORMAL_TIME_ENDED,
+      timerIsRunning: false,
+      timerStartedAt: now,
+      timerElapsedSeconds: currentElapsed,
+      matchDuration: 90
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
+
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    matchDuration.value = 90
+
+    emit('fixture-updated', selectedFixture.value!)
+
+    useToast().add({
+      title: 'Normal Time Ended',
+      description: 'The match is tied after 90 minutes. Start extra time when ready.',
+      icon: 'i-heroicons-flag',
+      color: 'warning'
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to end normal time' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const startExtraTime = async () => {
+  if (!selectedFixture.value) return
+
+  updatingMatch.value = true
+  try {
+    const now = new Date().toISOString()
+    const updatePayload = {
+      status: FixtureStatus.EXTRATIME,
+      timerIsRunning: true,
+      timerStartedAt: now,
+      timerElapsedSeconds: 90 * 60,
+      matchDuration: 120
+    }
+    await fixtureStore.updateFixture(selectedFixture.value.id, updatePayload)
+
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...updatePayload
+    }
+    matchDuration.value = 120
+
+    emit('fixture-updated', selectedFixture.value!)
+
+    useToast().add({
+      title: 'Extra Time Started',
+      description: 'The match is now in extra time.',
+      icon: 'i-heroicons-clock',
+      color: 'warning'
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to start extra time' })
+  } finally {
+    updatingMatch.value = false
+  }
+}
+
+const canEndNormalTime = computed(() => {
+  if (!selectedFixture.value) return false
+  if (selectedFixture.value.status !== FixtureStatus.LIVE) return false
+  // Only offer end-of-normal-time for knockout stage matches
+  if (selectedFixture.value.stage !== FixtureStage.KNOCKOUT && selectedFixture.value.stage != null) return false
+  if (!isScoreTiedOrAggregateTied.value) return false
+  const elapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0
+  return elapsed >= 90 * 60
+})
+
+const canStartExtraTime = computed(() => {
+  if (!selectedFixture.value) return false
+  if (selectedFixture.value.status !== FixtureStatus.NORMAL_TIME_ENDED) return false
+  // Only offer extra time for knockout stage matches
+  if (selectedFixture.value.stage !== FixtureStage.KNOCKOUT && selectedFixture.value.stage != null) return false
+  return isScoreTiedOrAggregateTied.value
+})
+
 const adjustMatchTimer = async () => {
   if (!selectedFixture.value) return
   
@@ -692,6 +807,14 @@ const isScoreTiedOrAggregateTied = computed(() => {
 const hasPenalties = computed(() => {
   if (!selectedFixture.value) return false
   return selectedFixture.value.homePenaltyScore != null || selectedFixture.value.awayPenaltyScore != null
+})
+
+const isKnockoutMatch = computed(() => {
+  return selectedFixture.value?.stage === FixtureStage.KNOCKOUT
+})
+
+const penaltyShootoutEvents = computed(() => {
+  return matchEvents.value.filter(e => e.metadata?.isPenaltyShootout === true)
 })
 
 // Warning: completed knockout match with tied aggregate and no decisive penalties
@@ -959,7 +1082,7 @@ const openGoalModal = (team: 'home' | 'away', type: MatchEventType = MatchEventT
   goalData.scorerId = undefined
   goalData.assisterId = undefined
   
-  const currentMin = selectedFixture.value?.status === FixtureStatus.LIVE 
+  const currentMin = isFixtureLiveStatus(selectedFixture.value?.status)
     ? (matchTimer.getMinute(selectedFixture.value) ?? null)
     : null
   goalData.minute = currentMin
@@ -978,7 +1101,7 @@ const openCardModal = (team: 'home' | 'away') => {
   cardData.type = MatchEventType.YELLOW_CARD
   cardData.playerId = undefined
   
-  const currentMin = selectedFixture.value?.status === FixtureStatus.LIVE 
+  const currentMin = isFixtureLiveStatus(selectedFixture.value?.status)
     ? (matchTimer.getMinute(selectedFixture.value) ?? null)
     : null
   cardData.minute = currentMin
@@ -1025,7 +1148,7 @@ const openSubstitutionModal = (team: 'home' | 'away') => {
   subData.playerOutId = undefined
   subData.playerInId = undefined
   
-  const currentMin = selectedFixture.value?.status === FixtureStatus.LIVE 
+  const currentMin = isFixtureLiveStatus(selectedFixture.value?.status)
     ? (matchTimer.getMinute(selectedFixture.value) ?? null)
     : null
   subData.minute = currentMin
@@ -1324,26 +1447,64 @@ const reopenMatch = async () => {
   }
 }
 
-const savePenalties = async () => {
+const recordPenaltyShot = async (team: 'home' | 'away', outcome: 'scored' | 'missed' | 'saved', playerId?: string | null) => {
   if (!selectedFixture.value) return
+
+  const participantId = team === 'home'
+    ? selectedFixture.value.homeTeamId
+    : selectedFixture.value.awayTeamId
+  if (!participantId) return
+
+  const isIndividual = props.tournament?.participantType === ParticipantType.INDIVIDUAL
+  const eventType = outcome === 'scored'
+    ? MatchEventType.PENALTY
+    : outcome === 'missed'
+      ? MatchEventType.MISSED_PENALTY
+      : MatchEventType.PENALTY_SAVE
+
+  const currentHomePen = selectedFixture.value.homePenaltyScore ?? 0
+  const currentAwayPen = selectedFixture.value.awayPenaltyScore ?? 0
+  const newHomePen = team === 'home' && outcome === 'scored' ? currentHomePen + 1 : currentHomePen
+  const newAwayPen = team === 'away' && outcome === 'scored' ? currentAwayPen + 1 : currentAwayPen
 
   updatingMatch.value = true
   try {
     await fixtureStore.updateFixture(selectedFixture.value.id, {
-      homePenaltyScore: selectedFixture.value.homePenaltyScore ?? null,
-      awayPenaltyScore: selectedFixture.value.awayPenaltyScore ?? null
+      homePenaltyScore: newHomePen,
+      awayPenaltyScore: newAwayPen
     })
+
+    if (!isIndividual) {
+      await fixtureStore.createMatchEvent({
+        fixtureId: selectedFixture.value.id,
+        participantId: participantId,
+        playerId: playerId || null,
+        type: eventType,
+        minute: 120,
+        description: 'Penalty shootout',
+        metadata: { isPenaltyShootout: true }
+      })
+    }
+
+    selectedFixture.value.homePenaltyScore = newHomePen
+    selectedFixture.value.awayPenaltyScore = newAwayPen
 
     emit('fixture-updated', selectedFixture.value!)
 
+    if (!isIndividual) {
+      await refreshMatchEvents()
+    }
+
     useToast().add({
-      title: 'Penalties Saved',
-      description: 'Penalty shootout scores have been updated.',
+      title: outcome === 'scored' ? 'Penalty Scored' : outcome === 'missed' ? 'Penalty Missed' : 'Penalty Saved',
+      description: `${team === 'home' ? 'Home' : 'Away'} penalty recorded.`,
       icon: 'i-heroicons-bolt',
-      color: 'success'
+      color: outcome === 'scored' ? 'success' : 'warning'
     })
   } catch (error: any) {
-    handleError(error, { title: 'Failed to save penalties' })
+    selectedFixture.value.homePenaltyScore = currentHomePen
+    selectedFixture.value.awayPenaltyScore = currentAwayPen
+    handleError(error, { title: 'Failed to record penalty' })
   } finally {
     updatingMatch.value = false
   }
@@ -1354,6 +1515,14 @@ const removePenalties = async () => {
 
   updatingMatch.value = true
   try {
+    const shootoutEvents = matchEvents.value.filter(
+      e => e.metadata?.isPenaltyShootout === true
+    )
+
+    await Promise.all(
+      shootoutEvents.map(event => fixtureStore.deleteMatchEvent(event.id))
+    )
+
     await fixtureStore.updateFixture(selectedFixture.value.id, {
       homePenaltyScore: null,
       awayPenaltyScore: null
@@ -1363,6 +1532,7 @@ const removePenalties = async () => {
     selectedFixture.value.awayPenaltyScore = null
     showPenaltyOverride.value = false
 
+    await refreshMatchEvents()
     emit('fixture-updated', selectedFixture.value!)
 
     useToast().add({
@@ -1440,6 +1610,20 @@ const scorerOptions = computed(() => {
   }))
 })
 
+const homePenaltyPlayerOptions = computed(() => {
+  return homePlayers.value.map(p => ({
+    label: `${p.number ? `#${p.number} ` : ''}${p.name}`,
+    value: p.id
+  }))
+})
+
+const awayPenaltyPlayerOptions = computed(() => {
+  return awayPlayers.value.map(p => ({
+    label: `${p.number ? `#${p.number} ` : ''}${p.name}`,
+    value: p.id
+  }))
+})
+
 const assisterOptions = computed(() => {
   return scoringTeamPlayers.value.map(p => ({
     label: `${p.number ? `#${p.number} ` : ''}${p.name}`,
@@ -1455,6 +1639,7 @@ const getEventIcon = (type: MatchEventType) => {
     case MatchEventType.OWN_GOAL: return 'i-heroicons-exclamation-triangle'
     case MatchEventType.PENALTY: return 'i-heroicons-stop'
     case MatchEventType.MISSED_PENALTY: return 'i-heroicons-x-circle'
+    case MatchEventType.PENALTY_SAVE: return 'i-heroicons-hand'
     case MatchEventType.YELLOW_CARD: return 'i-heroicons-exclamation-circle'
     case MatchEventType.RED_CARD: return 'i-heroicons-x-circle'
     case MatchEventType.SUBSTITUTION: return 'i-heroicons-arrows-right-left'
@@ -1469,6 +1654,7 @@ const getEventColor = (type: MatchEventType) => {
     case MatchEventType.OWN_GOAL: return 'text-orange-500'
     case MatchEventType.PENALTY: return 'text-blue-500'
     case MatchEventType.MISSED_PENALTY: return 'text-red-500'
+    case MatchEventType.PENALTY_SAVE: return 'text-amber-500'
     case MatchEventType.YELLOW_CARD: return 'text-yellow-500'
     case MatchEventType.RED_CARD: return 'text-red-500'
     case MatchEventType.SUBSTITUTION: return 'text-purple-500'
@@ -1754,7 +1940,7 @@ const downloadGraphic = async () => {
             
             <!-- Live Clock Badge -->
             <span
-              v-if="selectedFixture && selectedFixture.status === 'LIVE'"
+              v-if="selectedFixture && isFixtureLiveStatus(selectedFixture.status)"
               class="mc-timer-badge ml-2"
               :class="{ 'mc-timer-badge--paused': isTimerPaused }"
             >
@@ -1826,7 +2012,7 @@ const downloadGraphic = async () => {
                 <UIcon :name="swappingTeams ? 'i-heroicons-arrow-path' : 'i-heroicons-arrows-right-left'" :class="['w-3 h-3', swappingTeams && 'animate-spin']" />
                 <span>Swap</span>
               </button>
-              <div v-if="selectedFixture.status === 'LIVE'" 
+              <div v-if="isFixtureLiveStatus(selectedFixture.status)"
                    class="mc-match-time mc-match-time--live"
                    :class="{ 'mc-match-time--live-paused': isTimerPaused }"
               >
@@ -1851,7 +2037,7 @@ const downloadGraphic = async () => {
           </div>
 
           <!-- ── Score Controls ─────────────────────────────── -->
-          <div v-if="['LIVE', 'COMPLETED'].includes(selectedFixture.status)" class="mc-controls">
+          <div v-if="['LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status)" class="mc-controls">
             <!-- Home side -->
             <div class="mc-ctrl-side">
               <button class="mc-btn mc-btn--goal" :disabled="loadingPlayers || updatingMatch" @click="openGoalModal('home')">
@@ -1990,7 +2176,7 @@ const downloadGraphic = async () => {
           <div class="mc-sections">
 
             <!-- Schedule -->
-            <div v-if="['SCHEDULED', 'LIVE', 'COMPLETED'].includes(selectedFixture.status)" class="mc-section">
+            <div v-if="['SCHEDULED', 'LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status)" class="mc-section">
               <button class="mc-section__toggle" @click="showScheduleCollapsible = !showScheduleCollapsible">
                 <div class="flex items-center gap-2">
                   <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 text-emerald-500" />
@@ -2043,8 +2229,8 @@ const downloadGraphic = async () => {
                   Update Schedule
                 </UButton>
 
-                <!-- Adjust Live Timer (Only visible when LIVE) -->
-                <div v-if="selectedFixture.status === 'LIVE'" class="mt-3 flex flex-col gap-1.5 p-3 rounded-lg bg-amber-500/5 dark:bg-amber-500/[0.02] border border-amber-500/10">
+                <!-- Adjust Live Timer (Only visible when LIVE, NORMAL_TIME_ENDED or EXTRATIME) -->
+                <div v-if="['LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME'].includes(selectedFixture.status)" class="mt-3 flex flex-col gap-1.5 p-3 rounded-lg bg-amber-500/5 dark:bg-amber-500/[0.02] border border-amber-500/10">
                   <div class="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
                     <span class="flex items-center gap-1">
                       <UIcon name="i-heroicons-clock" class="w-3.5 h-3.5 text-amber-500" />
@@ -2295,7 +2481,7 @@ const downloadGraphic = async () => {
 
             <!-- Penalty shootout -->
             <div
-              v-if="['LIVE', 'COMPLETED'].includes(selectedFixture.status) && (isScoreTiedOrAggregateTied || hasPenalties || showPenaltyOverride)"
+              v-if="['LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME', 'COMPLETED'].includes(selectedFixture.status) && (isScoreTiedOrAggregateTied || hasPenalties || showPenaltyOverride)"
               class="mc-section"
             >
               <button class="mc-section__toggle" @click="showPenaltyCollapsible = !showPenaltyCollapsible">
@@ -2307,32 +2493,97 @@ const downloadGraphic = async () => {
                 <UIcon :name="showPenaltyCollapsible ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" class="w-4 h-4 text-gray-400" />
               </button>
               <div v-if="showPenaltyCollapsible" class="mc-section__body">
-                <div class="flex items-end justify-center gap-8">
-                  <div class="flex flex-col items-center gap-1.5">
+                <!-- Scores -->
+                <div class="flex items-center justify-center gap-6 mb-4">
+                  <div class="flex flex-col items-center gap-2">
                     <span class="mc-pen-label">{{ selectedFixture.homeTeam?.customShortName || selectedFixture.homeTeam?.customName || 'Home' }}</span>
-                    <UInput v-model.number="selectedFixture.homePenaltyScore" type="number" :min="0" placeholder="0"
-                      class="w-20 text-center" :ui="{ base: 'text-center text-xl font-bold' }" />
+                    <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ selectedFixture.homePenaltyScore ?? 0 }}</span>
                   </div>
-                  <span class="text-gray-400 font-medium pb-2">–</span>
-                  <div class="flex flex-col items-center gap-1.5">
+                  <span class="text-gray-400 font-medium">–</span>
+                  <div class="flex flex-col items-center gap-2">
                     <span class="mc-pen-label">{{ selectedFixture.awayTeam?.customShortName || selectedFixture.awayTeam?.customName || 'Away' }}</span>
-                    <UInput v-model.number="selectedFixture.awayPenaltyScore" type="number" :min="0" placeholder="0"
-                      class="w-20 text-center" :ui="{ base: 'text-center text-xl font-bold' }" />
+                    <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ selectedFixture.awayPenaltyScore ?? 0 }}</span>
                   </div>
                 </div>
-                <div class="flex items-center justify-center gap-2 mt-3">
-                  <UButton
-                    v-if="selectedFixture.homePenaltyScore != null && selectedFixture.awayPenaltyScore != null"
-                    size="xs" color="success" variant="soft" icon="i-heroicons-check" label="Save Penalties"
-                    :loading="updatingMatch" @click="savePenalties"
-                  />
+
+                <!-- Per-shot buttons -->
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="flex flex-col gap-2">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 text-center">Home</span>
+                    <USelect
+                      v-if="homePenaltyPlayerOptions.length > 0"
+                      v-model="homePenaltyPlayerId"
+                      :items="homePenaltyPlayerOptions"
+                      placeholder="Select shooter…"
+                      value-key="value"
+                      size="xs"
+                      class="w-full"
+                    />
+                    <div class="flex gap-2 justify-center">
+                      <button class="mc-pen-btn mc-pen-btn--scored" :disabled="updatingMatch" @click="recordPenaltyShot('home', 'scored', homePenaltyPlayerId)">
+                        Scored
+                      </button>
+                      <button class="mc-pen-btn mc-pen-btn--missed" :disabled="updatingMatch" @click="recordPenaltyShot('home', 'missed', homePenaltyPlayerId)">
+                        Missed
+                      </button>
+                      <button class="mc-pen-btn mc-pen-btn--saved" :disabled="updatingMatch" @click="recordPenaltyShot('home', 'saved', homePenaltyPlayerId)">
+                        Saved
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 text-center">Away</span>
+                    <USelect
+                      v-if="awayPenaltyPlayerOptions.length > 0"
+                      v-model="awayPenaltyPlayerId"
+                      :items="awayPenaltyPlayerOptions"
+                      placeholder="Select shooter…"
+                      value-key="value"
+                      size="xs"
+                      class="w-full"
+                    />
+                    <div class="flex gap-2 justify-center">
+                      <button class="mc-pen-btn mc-pen-btn--scored" :disabled="updatingMatch" @click="recordPenaltyShot('away', 'scored', awayPenaltyPlayerId)">
+                        Scored
+                      </button>
+                      <button class="mc-pen-btn mc-pen-btn--missed" :disabled="updatingMatch" @click="recordPenaltyShot('away', 'missed', awayPenaltyPlayerId)">
+                        Missed
+                      </button>
+                      <button class="mc-pen-btn mc-pen-btn--saved" :disabled="updatingMatch" @click="recordPenaltyShot('away', 'saved', awayPenaltyPlayerId)">
+                        Saved
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Recent shootout events -->
+                <div v-if="penaltyShootoutEvents.length > 0" class="mt-4 space-y-1.5">
+                  <div
+                    v-for="event in penaltyShootoutEvents"
+                    :key="event.id"
+                    class="flex items-center justify-between text-xs py-1.5 px-2 rounded bg-gray-50 dark:bg-white/[0.03]"
+                  >
+                    <span class="font-medium text-gray-700 dark:text-gray-300">
+                      {{ event.participant_id === selectedFixture.homeTeamId ? 'Home' : 'Away' }}
+                      <span v-if="event.playerId" class="text-gray-500 dark:text-gray-400">- {{ getPlayerName(event.playerId) }}</span>
+                    </span>
+                    <span class="font-bold" :class="event.type === 'PENALTY' ? 'text-emerald-500' : 'text-red-500'">
+                      {{ event.type === 'PENALTY' ? 'Scored' : event.type === 'MISSED_PENALTY' ? 'Missed' : 'Saved' }}
+                    </span>
+                    <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'end' }">
+                      <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" />
+                    </UDropdownMenu>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-center gap-2 mt-4">
                   <UButton
                     v-if="hasPenalties"
                     size="xs" color="warning" variant="soft" icon="i-heroicons-trash" label="Remove Penalties"
                     :loading="updatingMatch" @click="removePenalties"
                   />
                 </div>
-                <p class="text-xs text-center text-gray-400 dark:text-gray-500 mt-2">Penalty shootout scores to determine the winner.</p>
+                <p class="text-xs text-center text-gray-400 dark:text-gray-500 mt-2">Record each penalty shootout shot. End the match when the shootout is decided.</p>
               </div>
             </div>
 
@@ -2491,7 +2742,7 @@ const downloadGraphic = async () => {
               </template>
 
               <!-- Live Match Timer Control Buttons -->
-              <template v-if="selectedFixture.status === 'LIVE'">
+              <template v-if="['LIVE', 'EXTRATIME'].includes(selectedFixture.status)">
                 <div class="mc-action-group">
                   <!-- Pause / Resume Clock -->
                   <button
@@ -2515,26 +2766,77 @@ const downloadGraphic = async () => {
                     <span class="sm:hidden">Resume</span>
                   </button>
 
-                  <!-- Halftime / Start 2nd Half -->
+                  <!-- Halftime / Start 2nd Half / End Normal Time (only in normal time) -->
+                  <template v-if="selectedFixture.status === FixtureStatus.LIVE">
+                    <button
+                      v-if="!isSecondHalf && !isHalftime"
+                      class="mc-primary-btn mc-primary-btn--halftime"
+                      :disabled="updatingMatch"
+                      @click="setHalftime"
+                    >
+                      <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+                      <span class="hidden sm:inline">Halftime</span>
+                      <span class="sm:hidden">HT</span>
+                    </button>
+                    <button
+                      v-else-if="!isSecondHalf && isHalftime"
+                      class="mc-primary-btn mc-primary-btn--secondhalf"
+                      :disabled="updatingMatch"
+                      @click="startSecondHalf"
+                    >
+                      <UIcon name="i-heroicons-forward" class="w-4 h-4" />
+                      <span class="hidden sm:inline">Start 2nd Half</span>
+                      <span class="sm:hidden">2nd Half</span>
+                    </button>
+                    <button
+                      v-else-if="isSecondHalf"
+                      class="mc-primary-btn mc-primary-btn--halftime"
+                      :disabled="updatingMatch"
+                      @click="endNormalTime"
+                    >
+                      <UIcon name="i-heroicons-flag" class="w-4 h-4" />
+                      <span class="hidden sm:inline">End Normal Time</span>
+                      <span class="sm:hidden">End FT</span>
+                    </button>
+                  </template>
+                </div>
+
+                <div class="mc-action-divider" role="separator" aria-hidden="true" />
+
+                <div class="mc-action-group">
                   <button
-                    v-if="!isHalftime"
-                    class="mc-primary-btn mc-primary-btn--halftime"
+                    class="mc-primary-btn mc-primary-btn--undo"
                     :disabled="updatingMatch"
-                    @click="setHalftime"
+                    @click="undoStartMatch"
                   >
-                    <UIcon name="i-heroicons-clock" class="w-4 h-4" />
-                    <span class="hidden sm:inline">Halftime</span>
-                    <span class="sm:hidden">HT</span>
+                    <UIcon name="i-heroicons-arrow-uturn-left" class="w-4 h-4" />
+                    <span class="hidden sm:inline">Undo Start</span>
+                    <span class="sm:hidden">Undo</span>
                   </button>
                   <button
-                    v-else
-                    class="mc-primary-btn mc-primary-btn--secondhalf"
+                    class="mc-primary-btn mc-primary-btn--end"
                     :disabled="updatingMatch"
-                    @click="startSecondHalf"
+                    @click="endMatch"
                   >
-                    <UIcon name="i-heroicons-forward" class="w-4 h-4" />
-                    <span class="hidden sm:inline">Start 2nd Half</span>
-                    <span class="sm:hidden">2nd Half</span>
+                    <UIcon name="i-heroicons-flag" class="w-4 h-4" />
+                    <span class="hidden sm:inline">{{ updatingMatch ? 'Ending…' : 'End Match' }}</span>
+                    <span class="sm:hidden">{{ updatingMatch ? 'Ending…' : 'End' }}</span>
+                  </button>
+                </div>
+              </template>
+
+              <!-- Normal Time Ended Controls -->
+              <template v-if="selectedFixture.status === FixtureStatus.NORMAL_TIME_ENDED">
+                <div class="mc-action-group">
+                  <button
+                    v-if="canStartExtraTime"
+                    class="mc-primary-btn mc-primary-btn--halftime"
+                    :disabled="updatingMatch"
+                    @click="startExtraTime"
+                  >
+                    <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+                    <span class="hidden sm:inline">Start Extra Time</span>
+                    <span class="sm:hidden">ET</span>
                   </button>
                 </div>
 
@@ -3620,6 +3922,58 @@ const downloadGraphic = async () => {
   text-align: center;
 }
 
+/* Penalty shootout buttons */
+.mc-pen-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.mc-pen-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.mc-pen-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.mc-pen-btn--scored {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.22);
+}
+
+:root.dark .mc-pen-btn--scored {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.24);
+}
+
+.mc-pen-btn--missed,
+.mc-pen-btn--saved {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.22);
+}
+
+:root.dark .mc-pen-btn--missed,
+:root.dark .mc-pen-btn--saved {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.24);
+}
+
 /* ── Events ────────────────────────────────────────────────── */
 .mc-events-body {
   border-top: 1px solid #f3f4f6;
@@ -4157,6 +4511,12 @@ const downloadGraphic = async () => {
 
   .mc-pen-label {
     font-size: 0.55rem;
+  }
+
+  .mc-pen-btn {
+    padding: 0 6px;
+    min-height: 24px;
+    font-size: 0.6rem;
   }
 
   .mc-tag {
