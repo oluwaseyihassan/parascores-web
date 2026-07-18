@@ -170,6 +170,34 @@ const walkoverScore = ref(3)
 // Swap confirmation modal
 const showSwapConfirmModal = ref(false)
 
+// Generic confirmation modal
+const showConfirmModal = ref(false)
+const confirmModalTitle = ref('')
+const confirmModalMessage = ref('')
+const confirmModalConfirmLabel = ref('')
+const confirmModalConfirmColor = ref('error')
+const confirmModalOnConfirm = ref<() => Promise<void>>(async () => {})
+
+const openConfirmModal = (options: {
+  title: string
+  message: string
+  confirmLabel: string
+  confirmColor?: string
+  onConfirm: () => Promise<void>
+}) => {
+  confirmModalTitle.value = options.title
+  confirmModalMessage.value = options.message
+  confirmModalConfirmLabel.value = options.confirmLabel
+  confirmModalConfirmColor.value = options.confirmColor || 'error'
+  confirmModalOnConfirm.value = options.onConfirm
+  showConfirmModal.value = true
+}
+
+const handleConfirmModal = async () => {
+  await confirmModalOnConfirm.value()
+  showConfirmModal.value = false
+}
+
 // Substitution modal
 const showSubstitutionModal = ref(false)
 const subTeam = ref<'home' | 'away'>('home')
@@ -2818,7 +2846,13 @@ const downloadGraphic = async () => {
                     v-if="selectedFixture.timerIsRunning"
                     class="mc-primary-btn mc-primary-btn--pause"
                     :disabled="updatingMatch"
-                    @click="pauseMatch"
+                    @click="openConfirmModal({
+                      title: 'Pause Clock',
+                      message: 'Are you sure you want to pause the match clock?',
+                      confirmLabel: 'Pause Clock',
+                      confirmColor: 'warning',
+                      onConfirm: pauseMatch
+                    })"
                   >
                     <UIcon name="i-heroicons-pause" class="w-4 h-4" />
                     <span class="hidden sm:inline">Pause Clock</span>
@@ -2828,7 +2862,13 @@ const downloadGraphic = async () => {
                     v-else
                     class="mc-primary-btn mc-primary-btn--resume"
                     :disabled="updatingMatch"
-                    @click="resumeMatch"
+                    @click="openConfirmModal({
+                      title: 'Resume Clock',
+                      message: 'Are you sure you want to resume the match clock?',
+                      confirmLabel: 'Resume Clock',
+                      confirmColor: 'success',
+                      onConfirm: resumeMatch
+                    })"
                   >
                     <UIcon name="i-heroicons-play" class="w-4 h-4" />
                     <span class="hidden sm:inline">Resume Clock</span>
@@ -2841,7 +2881,13 @@ const downloadGraphic = async () => {
                       v-if="!isSecondHalf && !isHalftime"
                       class="mc-primary-btn mc-primary-btn--halftime"
                       :disabled="updatingMatch"
-                      @click="setHalftime"
+                      @click="openConfirmModal({
+                        title: 'Halftime',
+                        message: 'Are you sure you want to set the match to halftime?',
+                        confirmLabel: 'Halftime',
+                        confirmColor: 'warning',
+                        onConfirm: setHalftime
+                      })"
                     >
                       <UIcon name="i-heroicons-clock" class="w-4 h-4" />
                       <span class="hidden sm:inline">Halftime</span>
@@ -2851,7 +2897,13 @@ const downloadGraphic = async () => {
                       v-else-if="!isSecondHalf && isHalftime"
                       class="mc-primary-btn mc-primary-btn--secondhalf"
                       :disabled="updatingMatch"
-                      @click="startSecondHalf"
+                      @click="openConfirmModal({
+                        title: 'Start 2nd Half',
+                        message: 'Are you sure you want to start the second half?',
+                        confirmLabel: 'Start 2nd Half',
+                        confirmColor: 'success',
+                        onConfirm: startSecondHalf
+                      })"
                     >
                       <UIcon name="i-heroicons-forward" class="w-4 h-4" />
                       <span class="hidden sm:inline">Start 2nd Half</span>
@@ -2861,7 +2913,13 @@ const downloadGraphic = async () => {
                       v-else-if="isSecondHalf"
                       class="mc-primary-btn mc-primary-btn--halftime"
                       :disabled="updatingMatch"
-                      @click="endNormalTime"
+                      @click="openConfirmModal({
+                        title: 'End Normal Time',
+                        message: 'Are you sure you want to end normal time?',
+                        confirmLabel: 'End Normal Time',
+                        confirmColor: 'warning',
+                        onConfirm: endNormalTime
+                      })"
                     >
                       <UIcon name="i-heroicons-flag" class="w-4 h-4" />
                       <span class="hidden sm:inline">End Normal Time</span>
@@ -2876,7 +2934,13 @@ const downloadGraphic = async () => {
                   <button
                     class="mc-primary-btn mc-primary-btn--undo"
                     :disabled="updatingMatch"
-                    @click="undoStartMatch"
+                    @click="openConfirmModal({
+                      title: 'Undo Start',
+                      message: 'Are you sure you want to undo the match start? This will revert the fixture to scheduled.',
+                      confirmLabel: 'Undo Start',
+                      confirmColor: 'warning',
+                      onConfirm: undoStartMatch
+                    })"
                   >
                     <UIcon name="i-heroicons-arrow-uturn-left" class="w-4 h-4" />
                     <span class="hidden sm:inline">Undo Start</span>
@@ -2885,7 +2949,13 @@ const downloadGraphic = async () => {
                   <button
                     class="mc-primary-btn mc-primary-btn--end"
                     :disabled="updatingMatch"
-                    @click="endMatch"
+                    @click="openConfirmModal({
+                      title: 'End Match',
+                      message: 'Are you sure you want to end this match? This action cannot be undone.',
+                      confirmLabel: 'End Match',
+                      confirmColor: 'error',
+                      onConfirm: endMatch
+                    })"
                   >
                     <UIcon name="i-heroicons-flag" class="w-4 h-4" />
                     <span class="hidden sm:inline">{{ updatingMatch ? 'Ending…' : 'End Match' }}</span>
@@ -2901,7 +2971,13 @@ const downloadGraphic = async () => {
                     v-if="canStartExtraTime"
                     class="mc-primary-btn mc-primary-btn--halftime"
                     :disabled="updatingMatch"
-                    @click="startExtraTime"
+                    @click="openConfirmModal({
+                      title: 'Start Extra Time',
+                      message: 'Are you sure you want to start extra time?',
+                      confirmLabel: 'Start Extra Time',
+                      confirmColor: 'success',
+                      onConfirm: startExtraTime
+                    })"
                   >
                     <UIcon name="i-heroicons-clock" class="w-4 h-4" />
                     <span class="hidden sm:inline">Start Extra Time</span>
@@ -2915,7 +2991,13 @@ const downloadGraphic = async () => {
                   <button
                     class="mc-primary-btn mc-primary-btn--undo"
                     :disabled="updatingMatch"
-                    @click="undoStartMatch"
+                    @click="openConfirmModal({
+                      title: 'Undo Start',
+                      message: 'Are you sure you want to undo the match start? This will revert the fixture to scheduled.',
+                      confirmLabel: 'Undo Start',
+                      confirmColor: 'warning',
+                      onConfirm: undoStartMatch
+                    })"
                   >
                     <UIcon name="i-heroicons-arrow-uturn-left" class="w-4 h-4" />
                     <span class="hidden sm:inline">Undo Start</span>
@@ -2924,7 +3006,13 @@ const downloadGraphic = async () => {
                   <button
                     class="mc-primary-btn mc-primary-btn--end"
                     :disabled="updatingMatch"
-                    @click="endMatch"
+                    @click="openConfirmModal({
+                      title: 'End Match',
+                      message: 'Are you sure you want to end this match? This action cannot be undone.',
+                      confirmLabel: 'End Match',
+                      confirmColor: 'error',
+                      onConfirm: endMatch
+                    })"
                   >
                     <UIcon name="i-heroicons-flag" class="w-4 h-4" />
                     <span class="hidden sm:inline">{{ updatingMatch ? 'Ending…' : 'End Match' }}</span>
@@ -2937,7 +3025,13 @@ const downloadGraphic = async () => {
                 v-if="selectedFixture.status === 'COMPLETED'"
                 class="mc-primary-btn mc-primary-btn--reopen"
                 :disabled="updatingMatch"
-                @click="reopenMatch"
+                @click="openConfirmModal({
+                  title: 'Reopen Match',
+                  message: 'Are you sure you want to reopen this match? This will set it back to LIVE.',
+                  confirmLabel: 'Reopen Match',
+                  confirmColor: 'warning',
+                  onConfirm: reopenMatch
+                })"
               >
                 <UIcon name="i-heroicons-arrow-path" class="w-4 h-4" />
                 <span>{{ updatingMatch ? 'Reopening…' : 'Reopen Match' }}</span>
@@ -3503,6 +3597,53 @@ const downloadGraphic = async () => {
               color="warning"
               :loading="swappingTeams"
               @click="confirmSwapTeams"
+            />
+          </div>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Generic Confirmation Modal -->
+  <UModal v-model:open="showConfirmModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-error-500" />
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ confirmModalTitle }}
+              </h3>
+            </div>
+            <UButton
+              icon="i-heroicons-x-mark"
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              @click="showConfirmModal = false;"
+            />
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <p class="text-gray-600 dark:text-gray-300">
+            {{ confirmModalMessage }}
+          </p>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
+            <UButton
+              label="Cancel"
+              variant="ghost"
+              color="neutral"
+              @click="showConfirmModal = false;"
+            />
+            <UButton
+              :label="confirmModalConfirmLabel"
+              icon="i-heroicons-exclamation-triangle"
+              :color="confirmModalConfirmColor"
+              :loading="updatingMatch"
+              @click="handleConfirmModal"
             />
           </div>
         </div>
