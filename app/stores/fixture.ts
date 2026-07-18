@@ -350,6 +350,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     relatedPlayerId?: string | null
     relatedParticipantId?: string | null
     type: string
+    half?: string | null
     minute?: number | null
     description?: string | null
     metadata?: Record<string, any> | null
@@ -365,6 +366,7 @@ export const useFixtureStore = defineStore('fixture', () => {
           relatedPlayerId: data.relatedPlayerId || null,
           relatedParticipantId: data.relatedParticipantId || null,
           type: data.type,
+          half: data.half || null,
           minute: data.minute,
           description: data.description,
           metadata: data.metadata || null
@@ -386,6 +388,7 @@ export const useFixtureStore = defineStore('fixture', () => {
     playerId?: string | null
     relatedPlayerId?: string | null
     type?: string
+    half?: string | null
     minute?: number | null
     description?: string | null
   }) {
@@ -398,6 +401,7 @@ export const useFixtureStore = defineStore('fixture', () => {
           ...data,
           playerId: data.playerId === undefined ? undefined : (data.playerId || null),
           relatedPlayerId: data.relatedPlayerId === undefined ? undefined : (data.relatedPlayerId || null),
+          half: data.half === undefined ? undefined : (data.half || null),
         },
       })
       return response

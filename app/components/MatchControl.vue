@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FixtureStatus, MatchEventType, ParticipantType, FixtureStage } from '~/types'
+import { FixtureStatus, MatchEventType, ParticipantType, FixtureStage, MatchHalf } from '~/types'
 import type { Fixture, Player, MatchEvent } from '~/types'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
 import { useMatchTimer, isFixtureLiveStatus, getMatchElapsedSeconds } from '~/composables/useMatchTimer'
@@ -1043,6 +1043,7 @@ const confirmGoal = async () => {
         playerId: goalData.scorerId,
         relatedPlayerId: goalData.assisterId,
         type: goalData.type,
+        half: getMatchHalf(goalData.minute),
         minute: goalData.minute
       })
     }
@@ -1124,6 +1125,7 @@ const confirmCard = async () => {
       participantId: participantId,
       playerId: cardData.playerId,
       type: cardData.type,
+      half: getMatchHalf(cardData.minute),
       minute: cardData.minute
     })
     
@@ -1172,6 +1174,7 @@ const confirmSubstitution = async () => {
       playerId: subData.playerInId, // Player In
       relatedPlayerId: subData.playerOutId, // Player Out
       type: MatchEventType.SUBSTITUTION,
+      half: getMatchHalf(subData.minute),
       minute: subData.minute
     })
     
@@ -1208,6 +1211,7 @@ const confirmEditEvent = async () => {
   try {
     await fixtureStore.updateMatchEvent(eventBeingEdited.value.id, {
       minute: editEventData.minute,
+      half: getMatchHalf(editEventData.minute, eventBeingEdited.value.metadata),
       playerId: editEventData.playerId,
       relatedPlayerId: editEventData.relatedPlayerId
     })
@@ -1480,6 +1484,7 @@ const recordPenaltyShot = async (team: 'home' | 'away', outcome: 'scored' | 'mis
         participantId: participantId,
         playerId: playerId || null,
         type: eventType,
+        half: getMatchHalf(120, { isPenaltyShootout: true }),
         minute: 120,
         description: 'Penalty shootout',
         metadata: { isPenaltyShootout: true }
@@ -1679,6 +1684,57 @@ const getTeamName = (participantId: string | null | undefined) => {
   }
   return null
 }
+
+const getMatchHalf = (minute?: number | null, metadata?: Record<string, any> | null): MatchHalf => {
+  if (metadata?.isPenaltyShootout) return MatchHalf.PENALTY_SHOOTOUT
+  if (!selectedFixture.value) return MatchHalf.FIRST_HALF
+
+  const normalDuration = 90
+  const duration = selectedFixture.value.matchDuration ?? normalDuration
+  const halfTime = duration / 2
+
+  if (selectedFixture.value.status === FixtureStatus.EXTRATIME) {
+    return MatchHalf.EXTRA_TIME
+  }
+
+  const min = minute ?? 0
+  if (min > normalDuration) return MatchHalf.EXTRA_TIME
+  if (min > halfTime) return MatchHalf.SECOND_HALF
+  return MatchHalf.FIRST_HALF
+}
+
+const getMatchHalfLabel = (half?: MatchHalf | null) => {
+  switch (half) {
+    case MatchHalf.FIRST_HALF: return 'First Half'
+    case MatchHalf.SECOND_HALF: return 'Second Half'
+    case MatchHalf.EXTRA_TIME: return 'Extra Time'
+    case MatchHalf.PENALTY_SHOOTOUT: return 'Penalty Shootout'
+    default: return 'Other'
+  }
+}
+
+const groupedMatchEvents = computed(() => {
+  const grouped: Record<MatchHalf, MatchEvent[]> = {
+    [MatchHalf.FIRST_HALF]: [],
+    [MatchHalf.SECOND_HALF]: [],
+    [MatchHalf.EXTRA_TIME]: [],
+    [MatchHalf.PENALTY_SHOOTOUT]: []
+  }
+
+  for (const event of matchEvents.value) {
+    const half = event.half ?? getMatchHalf(event.minute, event.metadata)
+    grouped[half].push(event)
+  }
+
+  const sectionOrder = [MatchHalf.FIRST_HALF, MatchHalf.SECOND_HALF, MatchHalf.EXTRA_TIME, MatchHalf.PENALTY_SHOOTOUT]
+  return sectionOrder
+    .map(half => ({
+      half,
+      label: getMatchHalfLabel(half),
+      events: grouped[half].sort((a, b) => (a.minute || 0) - (b.minute || 0))
+    }))
+    .filter(group => group.events.length > 0)
+})
 
 const refreshMatchEvents = async () => {
   if (!selectedFixture.value) return
@@ -2611,9 +2667,15 @@ const downloadGraphic = async () => {
                 </div>
                 <div v-else class="mc-events-list">
                   <div
-                    v-for="event in [...matchEvents].sort((a, b) => (a.minute || 0) - (b.minute || 0))"
-                    :key="event.id"
+                    v-for="group in groupedMatchEvents"
+                    :key="group.half"
+                    class="mc-events-group"
                   >
+                    <div class="mc-events-group__header">{{ group.label }}</div>
+                    <div
+                      v-for="event in group.events"
+                      :key="event.id"
+                    >
                     <!-- Home event -->
                     <div v-if="event.participant_id === selectedFixture?.homeTeamId" class="mc-event mc-event--home">
                       <div class="mc-event__min">{{ event.minute || '–' }}'</div>
@@ -2660,6 +2722,7 @@ const downloadGraphic = async () => {
                       </div>
                       <div class="mc-event__min">{{ event.minute || '–' }}'</div>
                     </div>
+                      </div>
                   </div>
                 </div>
               </div>
@@ -3984,10 +4047,36 @@ const downloadGraphic = async () => {
 .mc-events-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   max-height: 260px;
   overflow-y: auto;
   padding: 8px;
+}
+
+.mc-events-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mc-events-group__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  background: rgba(249, 250, 251, 0.95);
+  padding: 4px 6px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+}
+
+:root.dark .mc-events-group__header {
+  color: #9ca3af;
+  background: rgba(20, 20, 20, 0.95);
 }
 
 .mc-event {
