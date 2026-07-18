@@ -1508,15 +1508,16 @@ const recordPenaltyShot = async (team: 'home' | 'away', outcome: 'scored' | 'mis
     })
 
     if (!isIndividual) {
+      const shootoutOrder = penaltyShootoutEvents.value.length + 1
       await fixtureStore.createMatchEvent({
         fixtureId: selectedFixture.value.id,
         participantId: participantId,
         playerId: playerId || null,
         type: eventType,
         half: getMatchHalf(120, { isPenaltyShootout: true }),
-        minute: 120,
-        description: 'Penalty shootout',
-        metadata: { isPenaltyShootout: true }
+        minute: 120 + shootoutOrder,
+        description: `Penalty shootout ${shootoutOrder}`,
+        metadata: { isPenaltyShootout: true, shootoutOrder }
       })
     }
 
@@ -1745,6 +1746,13 @@ const getMatchHalfLabel = (half?: MatchHalf | null) => {
     case MatchHalf.PENALTY_SHOOTOUT: return 'Penalty Shootout'
     default: return 'Other'
   }
+}
+
+const getEventMinuteDisplay = (event: MatchEvent) => {
+  if (event.metadata?.isPenaltyShootout && event.metadata?.shootoutOrder) {
+    return `P${event.metadata.shootoutOrder}`
+  }
+  return event.minute != null ? `${event.minute}'` : '–'
 }
 
 const groupedMatchEvents = computed(() => {
@@ -2712,7 +2720,7 @@ const downloadGraphic = async () => {
                     >
                     <!-- Home event -->
                     <div v-if="event.participant_id === selectedFixture?.homeTeamId" class="mc-event mc-event--home">
-                      <div class="mc-event__min">{{ event.minute || '–' }}'</div>
+                      <div class="mc-event__min">{{ getEventMinuteDisplay(event) }}</div>
                       <div class="mc-event__info">
                         <div class="flex items-center gap-1.5">
                           <IconsSoccerBallIcon v-if="['GOAL','PENALTY','OWN_GOAL'].includes(event.type)" class="w-4 h-4 flex-shrink-0" :class="getEventColor(event.type)" />
@@ -2754,7 +2762,7 @@ const downloadGraphic = async () => {
                           <UIcon name="i-heroicons-arrow-down-circle" class="w-3 h-3 text-red-500 flex-shrink-0" />
                         </div>
                       </div>
-                      <div class="mc-event__min">{{ event.minute || '–' }}'</div>
+                      <div class="mc-event__min">{{ getEventMinuteDisplay(event) }}</div>
                     </div>
                       </div>
                   </div>
