@@ -1290,12 +1290,16 @@ const confirmEditEvent = async () => {
   if (!eventBeingEdited.value) return
   updatingMatch.value = true
   try {
-    await fixtureStore.updateMatchEvent(eventBeingEdited.value.id, {
-      minute: editEventData.minute,
-      half: getMatchHalf(editEventData.minute, eventBeingEdited.value.metadata),
+    const isPenaltyShootout = eventBeingEdited.value.metadata?.isPenaltyShootout === true
+    const updateData: any = {
       playerId: editEventData.playerId,
       relatedPlayerId: editEventData.relatedPlayerId
-    })
+    }
+    if (!isPenaltyShootout) {
+      updateData.minute = editEventData.minute
+      updateData.half = getMatchHalf(editEventData.minute, eventBeingEdited.value.metadata)
+    }
+    await fixtureStore.updateMatchEvent(eventBeingEdited.value.id, updateData)
     showEditEventModal.value = false
     await refreshMatchEvents()
     useToast().add({ title: 'Event Updated', color: 'success' })
@@ -3460,8 +3464,8 @@ const downloadGraphic = async () => {
         </template>
 
         <div class="space-y-4">
-          <!-- Minute -->
-          <UFormField label="Minute (optional)">
+          <!-- Minute (hidden for penalty shootout events) -->
+          <UFormField v-if="!eventBeingEdited?.metadata?.isPenaltyShootout" label="Minute (optional)">
             <UInput 
               v-model.number="editEventData.minute" 
               type="number" 
@@ -3483,8 +3487,8 @@ const downloadGraphic = async () => {
             />
           </UFormField>
 
-          <!-- Assister/Related -->
-          <UFormField :label="eventBeingEdited?.type === 'SUBSTITUTION' ? 'Player Out (Leaving)' : 'Related Player / Assist (optional)'">
+          <!-- Assister/Related (hidden for penalty shootout events) -->
+          <UFormField v-if="!eventBeingEdited?.metadata?.isPenaltyShootout" :label="eventBeingEdited?.type === 'SUBSTITUTION' ? 'Player Out (Leaving)' : 'Related Player / Assist (optional)'">
             <USelect
               v-model="editEventData.relatedPlayerId"
               :items="editEventRelatedPlayerOptions"
