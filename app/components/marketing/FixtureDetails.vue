@@ -337,9 +337,24 @@ const getMatchHalfLabel = (half: MatchHalf) => {
   }
 }
 
+const penaltyShootoutEvents = computed(() => {
+  return events.value.filter(e => e.metadata?.isPenaltyShootout === true)
+})
+
+const penaltyShootoutOrderMap = computed(() => {
+  const sorted = [...penaltyShootoutEvents.value].sort((a, b) => {
+    if (a.minute !== b.minute) return (a.minute || 0) - (b.minute || 0)
+    return a.id.localeCompare(b.id)
+  })
+  const map = new Map<string, number>()
+  sorted.forEach((event, index) => map.set(event.id, index + 1))
+  return map
+})
+
 const getEventMinuteDisplay = (event: any) => {
-  if (event.metadata?.isPenaltyShootout && event.metadata?.shootoutOrder) {
-    return `P${event.metadata.shootoutOrder}`
+  if (event.metadata?.isPenaltyShootout) {
+    const order = event.metadata?.shootoutOrder || penaltyShootoutOrderMap.value.get(event.id)
+    return order ? `P${order}` : 'P'
   }
   return event.minute != null ? `${event.minute}'` : null
 }
