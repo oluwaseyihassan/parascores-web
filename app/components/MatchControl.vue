@@ -894,7 +894,7 @@ const chronologicalPenaltyEvents = computed(() => {
 })
 
 const maxPenaltyRounds = computed(() => {
-  return Math.max(5, homePenaltyShootoutEvents.value.length, awayPenaltyShootoutEvents.value.length)
+  return Math.max(homePenaltyShootoutEvents.value.length, awayPenaltyShootoutEvents.value.length)
 })
 
 // Warning: completed knockout match with tied aggregate and no decisive penalties
