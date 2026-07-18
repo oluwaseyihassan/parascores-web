@@ -2754,10 +2754,15 @@ const downloadGraphic = async () => {
                       class="flex items-center text-sm"
                       :class="event.isHome ? 'flex-row' : 'flex-row-reverse'"
                     >
-                      <div class="flex-1 min-w-0" :class="event.isHome ? 'text-right pr-3 md:pr-4' : 'text-left pl-3 md:pl-4'">
-                        <span class="font-semibold text-gray-900 dark:text-white truncate">
-                          {{ getPlayerName(event.playerId) || (event.isHome ? 'Home' : 'Away') }}
-                        </span>
+                      <div class="flex-1 min-w-0" :class="event.isHome ? 'pr-3 md:pr-4' : 'pl-3 md:pl-4'">
+                        <div class="flex items-center gap-1.5" :class="event.isHome ? 'justify-end' : 'justify-start'">
+                          <span class="font-semibold text-gray-900 dark:text-white truncate">
+                            {{ getPlayerName(event.playerId) || (event.isHome ? 'Home' : 'Away') }}
+                          </span>
+                          <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: event.isHome ? 'end' : 'start' }">
+                            <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" />
+                          </UDropdownMenu>
+                        </div>
                       </div>
                       <div
                         class="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center flex-shrink-0"
