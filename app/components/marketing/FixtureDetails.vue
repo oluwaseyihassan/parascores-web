@@ -395,7 +395,7 @@ const awayPenaltyShootoutEvents = computed(() => {
 })
 
 const maxPenaltyRounds = computed(() => {
-  return Math.max(5, homePenaltyShootoutEvents.value.length, awayPenaltyShootoutEvents.value.length)
+  return Math.max(homePenaltyShootoutEvents.value.length, awayPenaltyShootoutEvents.value.length)
 })
 
 const homeLineup = computed(() => {
