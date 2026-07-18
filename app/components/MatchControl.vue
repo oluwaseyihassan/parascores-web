@@ -847,6 +847,42 @@ const penaltyShootoutEvents = computed(() => {
   return matchEvents.value.filter(e => e.metadata?.isPenaltyShootout === true)
 })
 
+const homePenaltyShootoutEvents = computed(() => {
+  return penaltyShootoutEvents.value
+    .filter(e => e.participant_id === selectedFixture.value?.homeTeamId)
+    .sort((a, b) => (a.metadata?.shootoutOrder || 0) - (b.metadata?.shootoutOrder || 0))
+})
+
+const awayPenaltyShootoutEvents = computed(() => {
+  return penaltyShootoutEvents.value
+    .filter(e => e.participant_id === selectedFixture.value?.awayTeamId)
+    .sort((a, b) => (a.metadata?.shootoutOrder || 0) - (b.metadata?.shootoutOrder || 0))
+})
+
+const chronologicalPenaltyEvents = computed(() => {
+  const sorted = [...penaltyShootoutEvents.value].sort((a, b) => (a.metadata?.shootoutOrder || 0) - (b.metadata?.shootoutOrder || 0))
+  let homeScore = 0
+  let awayScore = 0
+  return sorted.map(event => {
+    const isHome = event.participant_id === selectedFixture.value?.homeTeamId
+    if (event.type === MatchEventType.PENALTY) {
+      if (isHome) homeScore++
+      else awayScore++
+    }
+    return {
+      ...event,
+      homeScore,
+      awayScore,
+      isHome,
+      isScored: event.type === MatchEventType.PENALTY
+    }
+  })
+})
+
+const maxPenaltyRounds = computed(() => {
+  return Math.max(5, homePenaltyShootoutEvents.value.length, awayPenaltyShootoutEvents.value.length)
+})
+
 // Warning: completed knockout match with tied aggregate and no decisive penalties
 const needsPenaltyWarning = computed(() => {
   if (!selectedFixture.value) return false
@@ -2657,23 +2693,67 @@ const downloadGraphic = async () => {
                 </div>
 
                 <!-- Recent shootout events -->
-                <div v-if="penaltyShootoutEvents.length > 0" class="mt-4 space-y-1.5">
-                  <div
-                    v-for="event in penaltyShootoutEvents"
-                    :key="event.id"
-                    class="flex items-center justify-between text-xs py-1.5 px-2 rounded bg-gray-50 dark:bg-white/[0.03]"
-                  >
-                    <span class="font-medium text-gray-700 dark:text-gray-300">
-                      {{ event.participant_id === selectedFixture.homeTeamId ? 'Home' : 'Away' }}
-                      <span v-if="event.playerId" class="text-gray-500 dark:text-gray-400">- {{ getPlayerName(event.playerId) }}</span>
-                    </span>
-                    <span class="font-bold" :class="event.type === 'PENALTY' ? 'text-emerald-500' : 'text-red-500'">
-                      {{ event.type === 'PENALTY' ? 'Scored' : event.type === 'MISSED_PENALTY' ? 'Missed' : 'Saved' }}
-                    </span>
-                    <UDropdownMenu :items="getEventActionItems(event)" :content="{ align: 'end' }">
-                      <UButton color="neutral" variant="ghost" icon="i-heroicons-ellipsis-vertical" size="xs" />
-                    </UDropdownMenu>
+                <div v-if="penaltyShootoutEvents.length > 0" class="mt-6 space-y-6">
+                  <!-- Team round indicators -->
+                  <div class="flex items-center justify-center gap-4 md:gap-8">
+                    <div class="flex items-center gap-1.5 md:gap-2">
+                      <div
+                        v-for="n in maxPenaltyRounds"
+                        :key="`home-${n}`"
+                        class="w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold"
+                        :class="homePenaltyShootoutEvents[n - 1]?.type === MatchEventType.PENALTY
+                          ? 'bg-emerald-500 text-white'
+                          : homePenaltyShootoutEvents[n - 1]
+                            ? 'bg-red-500 text-white'
+                            : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'"
+                      >
+                        {{ n }}
+                      </div>
+                    </div>
+                    <div class="w-px h-6 bg-gray-300 dark:bg-white/10" />
+                    <div class="flex items-center gap-1.5 md:gap-2">
+                      <div
+                        v-for="n in maxPenaltyRounds"
+                        :key="`away-${n}`"
+                        class="w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold"
+                        :class="awayPenaltyShootoutEvents[n - 1]?.type === MatchEventType.PENALTY
+                          ? 'bg-emerald-500 text-white'
+                          : awayPenaltyShootoutEvents[n - 1]
+                            ? 'bg-red-500 text-white'
+                            : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'"
+                      >
+                        {{ n }}
+                      </div>
+                    </div>
                   </div>
+
+                  <!-- Chronological shootout list -->
+                  <div class="space-y-3">
+                    <div
+                      v-for="event in chronologicalPenaltyEvents"
+                      :key="event.id"
+                      class="flex items-center text-sm"
+                      :class="event.isHome ? 'flex-row' : 'flex-row-reverse'"
+                    >
+                      <div class="flex-1 min-w-0" :class="event.isHome ? 'text-right pr-3 md:pr-4' : 'text-left pl-3 md:pl-4'">
+                        <span class="font-semibold text-gray-900 dark:text-white truncate">
+                          {{ getPlayerName(event.playerId) || (event.isHome ? 'Home' : 'Away') }}
+                        </span>
+                      </div>
+                      <div
+                        class="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                        :class="event.isScored ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'"
+                      >
+                        <UIcon :name="event.isScored ? 'i-heroicons-check' : 'i-heroicons-x-mark'" class="w-4 h-4 md:w-5 md:h-5" />
+                      </div>
+                      <div class="flex-1 min-w-0" :class="event.isHome ? 'text-left pl-3 md:pl-4' : 'text-right pr-3 md:pr-4'">
+                        <span class="font-semibold text-gray-900 dark:text-white">
+                          ({{ event.homeScore }} - {{ event.awayScore }})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
 
                 <div class="flex items-center justify-center gap-2 mt-4">
