@@ -337,6 +337,13 @@ const getMatchHalfLabel = (half: MatchHalf) => {
   }
 }
 
+const getEventMinuteDisplay = (event: any) => {
+  if (event.metadata?.isPenaltyShootout && event.metadata?.shootoutOrder) {
+    return `P${event.metadata.shootoutOrder}`
+  }
+  return event.minute != null ? `${event.minute}'` : null
+}
+
 const groupedTimelineEvents = computed(() => {
   const groups: Record<MatchHalf, any[]> = {
     [MatchHalf.FIRST_HALF]: [],
@@ -697,7 +704,7 @@ const awaySubs = computed(() => {
                       class="flex items-center justify-center text-[11px] md:text-[11px] font-bold z-10 transition-colors md:rounded-full md:w-8 md:h-8 md:shadow-sm"
                       :class="isDark ? 'text-gray-400 md:bg-white/10 md:text-gray-300 md:ring-1 md:ring-white/20' : 'text-gray-500 md:bg-gray-100 md:text-gray-600 md:ring-1 md:ring-gray-200'"
                     >
-                      <span v-if="event.minute != null">{{ event.minute }}'</span>
+                      <span v-if="getEventMinuteDisplay(event)">{{ getEventMinuteDisplay(event) }}</span>
                       <span v-else class="text-[10px] md:text-xs">
                         <UIcon name="i-heroicons-clock" class="w-3 h-3 md:w-3.5 md:h-3.5" />
                       </span>
