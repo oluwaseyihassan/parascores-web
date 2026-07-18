@@ -170,19 +170,21 @@ const walkoverScore = ref(3)
 // Swap confirmation modal
 const showSwapConfirmModal = ref(false)
 
+type ButtonColor = 'info' | 'error' | 'success' | 'primary' | 'secondary' | 'warning' | 'neutral'
+
 // Generic confirmation modal
 const showConfirmModal = ref(false)
 const confirmModalTitle = ref('')
 const confirmModalMessage = ref('')
 const confirmModalConfirmLabel = ref('')
-const confirmModalConfirmColor = ref('error')
+const confirmModalConfirmColor = ref<ButtonColor>('error')
 const confirmModalOnConfirm = ref<() => Promise<void>>(async () => {})
 
 const openConfirmModal = (options: {
   title: string
   message: string
   confirmLabel: string
-  confirmColor?: string
+  confirmColor?: ButtonColor
   onConfirm: () => Promise<void>
 }) => {
   confirmModalTitle.value = options.title
