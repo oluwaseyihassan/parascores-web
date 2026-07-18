@@ -675,36 +675,36 @@ const awaySubs = computed(() => {
                     v-if="group.half === MatchHalf.PENALTY_SHOOTOUT"
                     class="flex items-center justify-center gap-4 md:gap-8 py-3 mb-2"
                   >
-                    <div class="flex items-center gap-1.5 md:gap-2">
+                    <div class="flex flex-wrap items-center justify-center gap-1.5 md:gap-2 max-w-[45%]">
                       <div
                         v-for="n in maxPenaltyRounds"
                         :key="`home-${n}`"
-                        class="w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold"
+                        class="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold"
                         :class="homePenaltyShootoutEvents[n - 1]?.type === 'PENALTY'
                           ? 'bg-emerald-500 text-white'
                           : homePenaltyShootoutEvents[n - 1]
                             ? 'bg-red-500 text-white'
                             : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'"
                       >
-                        <UIcon v-if="homePenaltyShootoutEvents[n - 1]?.type === 'PENALTY'" name="i-heroicons-check" class="w-3.5 h-3.5" />
-                        <UIcon v-else-if="homePenaltyShootoutEvents[n - 1]" name="i-heroicons-x-mark" class="w-3.5 h-3.5" />
+                        <UIcon v-if="homePenaltyShootoutEvents[n - 1]?.type === 'PENALTY'" name="i-heroicons-check" class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        <UIcon v-else-if="homePenaltyShootoutEvents[n - 1]" name="i-heroicons-x-mark" class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                         <span v-else>{{ n }}</span>
                       </div>
                     </div>
                     <div class="w-px h-6 bg-gray-300 dark:bg-white/10" />
-                    <div class="flex items-center gap-1.5 md:gap-2">
+                    <div class="flex flex-wrap items-center justify-center gap-1.5 md:gap-2 max-w-[45%]">
                       <div
                         v-for="n in maxPenaltyRounds"
                         :key="`away-${n}`"
-                        class="w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold"
+                        class="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold"
                         :class="awayPenaltyShootoutEvents[n - 1]?.type === 'PENALTY'
                           ? 'bg-emerald-500 text-white'
                           : awayPenaltyShootoutEvents[n - 1]
                             ? 'bg-red-500 text-white'
                             : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'"
                       >
-                        <UIcon v-if="awayPenaltyShootoutEvents[n - 1]?.type === 'PENALTY'" name="i-heroicons-check" class="w-3.5 h-3.5" />
-                        <UIcon v-else-if="awayPenaltyShootoutEvents[n - 1]" name="i-heroicons-x-mark" class="w-3.5 h-3.5" />
+                        <UIcon v-if="awayPenaltyShootoutEvents[n - 1]?.type === 'PENALTY'" name="i-heroicons-check" class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        <UIcon v-else-if="awayPenaltyShootoutEvents[n - 1]" name="i-heroicons-x-mark" class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                         <span v-else>{{ n }}</span>
                       </div>
                     </div>
