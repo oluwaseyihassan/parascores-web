@@ -382,6 +382,22 @@ const groupedTimelineEvents = computed(() => {
     .filter(group => group.events.length > 0)
 })
 
+const homePenaltyShootoutEvents = computed(() => {
+  return events.value
+    .filter(e => e.metadata?.isPenaltyShootout === true && e.participant_id === fixture.value?.homeTeamId)
+    .sort((a, b) => (penaltyShootoutOrderMap.value.get(a.id) || 0) - (penaltyShootoutOrderMap.value.get(b.id) || 0))
+})
+
+const awayPenaltyShootoutEvents = computed(() => {
+  return events.value
+    .filter(e => e.metadata?.isPenaltyShootout === true && e.participant_id === fixture.value?.awayTeamId)
+    .sort((a, b) => (penaltyShootoutOrderMap.value.get(a.id) || 0) - (penaltyShootoutOrderMap.value.get(b.id) || 0))
+})
+
+const maxPenaltyRounds = computed(() => {
+  return Math.max(5, homePenaltyShootoutEvents.value.length, awayPenaltyShootoutEvents.value.length)
+})
+
 const homeLineup = computed(() => {
   if (!fixture.value?.lineupPlayers || fixture.value.lineupPlayers.length === 0) {
     return []
@@ -654,6 +670,40 @@ const awaySubs = computed(() => {
                     :class="isDark ? 'text-gray-400 bg-[#1a1a1a]/95' : 'text-gray-500 bg-white/95'"
                   >
                     {{ group.label }}
+                  </div>
+                  <div
+                    v-if="group.half === MatchHalf.PENALTY_SHOOTOUT"
+                    class="flex items-center justify-center gap-4 md:gap-8 py-3 mb-2"
+                  >
+                    <div class="flex items-center gap-1.5 md:gap-2">
+                      <div
+                        v-for="n in maxPenaltyRounds"
+                        :key="`home-${n}`"
+                        class="w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold"
+                        :class="homePenaltyShootoutEvents[n - 1]?.type === 'PENALTY'
+                          ? 'bg-emerald-500 text-white'
+                          : homePenaltyShootoutEvents[n - 1]
+                            ? 'bg-red-500 text-white'
+                            : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'"
+                      >
+                        {{ n }}
+                      </div>
+                    </div>
+                    <div class="w-px h-6 bg-gray-300 dark:bg-white/10" />
+                    <div class="flex items-center gap-1.5 md:gap-2">
+                      <div
+                        v-for="n in maxPenaltyRounds"
+                        :key="`away-${n}`"
+                        class="w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold"
+                        :class="awayPenaltyShootoutEvents[n - 1]?.type === 'PENALTY'
+                          ? 'bg-emerald-500 text-white'
+                          : awayPenaltyShootoutEvents[n - 1]
+                            ? 'bg-red-500 text-white'
+                            : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'"
+                      >
+                        {{ n }}
+                      </div>
+                    </div>
                   </div>
                   <div
                     v-for="(event, index) in group.events"
