@@ -296,6 +296,39 @@
 
     <section class="bg-white py-18 dark:bg-[#070b10]">
       <div class="mx-auto max-w-7xl px-6">
+        <div class="max-w-2xl">
+          <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Organizer voices</p>
+          <h2 class="mt-3 text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white sm:text-4xl">
+            Loved by people who run the game.
+          </h2>
+        </div>
+
+        <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <article
+            v-for="testimonial in testimonials"
+            :key="testimonial.name"
+            class="rounded-lg border border-gray-200 bg-gray-50 p-6 dark:border-white/10 dark:bg-white/[0.03]"
+          >
+            <UIcon name="i-lucide-quote" class="h-6 w-6 text-emerald-500/60" />
+            <p class="mt-4 text-sm leading-6 text-gray-600 dark:text-gray-300">
+              {{ testimonial.quote }}
+            </p>
+            <div class="mt-6 flex items-center gap-3">
+              <div class="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-300 font-semibold text-sm">
+                {{ testimonial.name.split(' ').map(n => n[0]).join('').slice(0, 2) }}
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-950 dark:text-white">{{ testimonial.name }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ testimonial.role }}</p>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white py-18 dark:bg-[#070b10]">
+      <div class="mx-auto max-w-7xl px-6">
         <div class="grid gap-8 rounded-lg border border-gray-200 bg-gray-50 p-6 dark:border-white/10 dark:bg-white/[0.03] sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <h2 class="text-3xl font-semibold leading-tight tracking-normal text-gray-950 dark:text-white">
@@ -467,6 +500,24 @@ const showcase = [
     description: 'Give fans an up-to-date table with points, goal difference, and positions.',
     image: '/images/landing/standings-table.png',
     alt: 'ParaScores standings table'
+  }
+]
+
+const testimonials = [
+  {
+    name: 'Daniel Okafor',
+    role: 'Tournament Director, Lagos University Cup',
+    quote: 'ParaScores cut our matchday admin time in half. Fans get live updates and we finally stopped updating spreadsheets at midnight.'
+  },
+  {
+    name: 'Amara Nwosu',
+    role: 'Organizer, Eastern Youth League',
+    quote: 'The graphics feature alone is worth it. We share standings and results on Instagram without touching a design tool.'
+  },
+  {
+    name: 'Tunde Balogun',
+    role: 'League Secretary, Ibadan FA',
+    quote: 'From fixtures to final standings, everything is in one place. My referees and team managers love the public pages.'
   }
 ]
 
