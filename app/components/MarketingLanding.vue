@@ -505,18 +505,18 @@ const showcase = [
 
 const testimonials = [
   {
-    name: 'Daniel Okafor',
-    role: 'Tournament Director, Lagos University Cup',
+    name: 'HABS THE GREAT',
+    role: 'Faculty of Technology Director of Sports, OAU',
     quote: 'ParaScores cut our matchday admin time in half. Fans get live updates and we finally stopped updating spreadsheets at midnight.'
   },
   {
-    name: 'Amara Nwosu',
-    role: 'Organizer, Eastern Youth League',
+    name: 'FALEX',
+    role: 'Obafemi Awolowo Hall of Resident Director of Sport',
     quote: 'The graphics feature alone is worth it. We share standings and results on Instagram without touching a design tool.'
   },
   {
-    name: 'Tunde Balogun',
-    role: 'League Secretary, Ibadan FA',
+    name: 'Xtereo',
+    role: 'Faculty of Agric Director of Sport, OAU',
     quote: 'From fixtures to final standings, everything is in one place. My referees and team managers love the public pages.'
   }
 ]
