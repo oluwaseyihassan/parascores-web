@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRoute } from '#imports'
 import type { Tournament, Fixture, MatchEvent } from '~/types'
-import { FixtureStatus, MatchEventType } from '~/types'
+import { FixtureStatus, MatchEventType, MatchHalf } from '~/types'
 
 const { toMain, isManage } = useHost()
 const toast = useToast()
@@ -309,6 +309,57 @@ const isHomeEvent = (event: any) => {
   return event.participant_id === fixture.value?.homeTeamId || event.participantId === fixture.value?.homeTeamId
 }
 
+const getMatchHalf = (event: any): MatchHalf => {
+  if (event.metadata?.isPenaltyShootout) return MatchHalf.PENALTY_SHOOTOUT
+  if (event.half) return event.half as MatchHalf
+
+  const normalDuration = 90
+  const duration = fixture.value?.matchDuration ?? normalDuration
+  const halfTime = duration / 2
+  const minute = event.minute ?? 0
+
+  if (fixture.value?.status === FixtureStatus.EXTRATIME) {
+    return MatchHalf.EXTRA_TIME
+  }
+
+  if (minute > normalDuration) return MatchHalf.EXTRA_TIME
+  if (minute > halfTime) return MatchHalf.SECOND_HALF
+  return MatchHalf.FIRST_HALF
+}
+
+const getMatchHalfLabel = (half: MatchHalf) => {
+  switch (half) {
+    case MatchHalf.FIRST_HALF: return 'First Half'
+    case MatchHalf.SECOND_HALF: return 'Second Half'
+    case MatchHalf.EXTRA_TIME: return 'Extra Time'
+    case MatchHalf.PENALTY_SHOOTOUT: return 'Penalty Shootout'
+    default: return 'Other'
+  }
+}
+
+const groupedTimelineEvents = computed(() => {
+  const groups: Record<MatchHalf, any[]> = {
+    [MatchHalf.FIRST_HALF]: [],
+    [MatchHalf.SECOND_HALF]: [],
+    [MatchHalf.EXTRA_TIME]: [],
+    [MatchHalf.PENALTY_SHOOTOUT]: []
+  }
+
+  for (const event of timelineEvents.value) {
+    const half = getMatchHalf(event)
+    groups[half].push(event)
+  }
+
+  const sectionOrder = [MatchHalf.FIRST_HALF, MatchHalf.SECOND_HALF, MatchHalf.EXTRA_TIME, MatchHalf.PENALTY_SHOOTOUT]
+  return sectionOrder
+    .map(half => ({
+      half,
+      label: getMatchHalfLabel(half),
+      events: groups[half]
+    }))
+    .filter(group => group.events.length > 0)
+})
+
 const homeLineup = computed(() => {
   if (!fixture.value?.lineupPlayers || fixture.value.lineupPlayers.length === 0) {
     return []
@@ -568,19 +619,26 @@ const awaySubs = computed(() => {
               </div>
             </div>
           </div>
-          <div v-if="timelineEvents.length > 0" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl  overflow-hidden relative pb-8 md:pb-10">
+          <div v-if="groupedTimelineEvents.length > 0" :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl  overflow-hidden relative pb-8 md:pb-10">
             <div class="px-2 md:px-5 py-3 md:py-6 flex flex-col items-center">
               <h3 class="text-[13px] md:text-[14px] font-bold mb-4 md:mb-8 relative z-10 z-[1]" :class="isDark ? 'text-white' : 'text-gray-900'">Events</h3>
               
               <!-- Center Line (Removed) -->
 
               <div class="w-full flex flex-col relative z-10">
-                <div
-                  v-for="(event, index) in timelineEvents"
-                  :key="event.id"
-                  class="flex w-full items-center group transition-opacity duration-300 py-3 md:py-4 border-b last:border-b-0"
-                  :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'"
-                >
+                <div v-for="group in groupedTimelineEvents" :key="group.half" class="w-full">
+                  <div
+                    class="sticky top-0 z-20 text-center py-2 my-1 text-[11px] font-bold uppercase tracking-wider"
+                    :class="isDark ? 'text-gray-400 bg-[#1a1a1a]/95' : 'text-gray-500 bg-white/95'"
+                  >
+                    {{ group.label }}
+                  </div>
+                  <div
+                    v-for="(event, index) in group.events"
+                    :key="event.id"
+                    class="flex w-full items-center group transition-opacity duration-300 py-3 md:py-4 border-b last:border-b-0"
+                    :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'"
+                  >
                   <!-- Left Side (Home) -->
                   <div class="flex-1 flex justify-start md:justify-end text-right md:w-1/2 min-w-0" :class="isHomeEvent(event) ? 'order-2 md:order-1' : 'hidden md:flex order-1'">
                     <div v-if="isHomeEvent(event)" class="flex items-center gap-2 md:gap-3 min-w-0">
@@ -696,6 +754,7 @@ const awaySubs = computed(() => {
                       </div>
                     </div>
                   </div>
+                </div>
                 </div>
               </div>
             </div>
