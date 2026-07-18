@@ -2054,10 +2054,14 @@ const openMatchControl = (fixture: Fixture) => {
 const startMatch = async (fixture: Fixture) => {
   updatingMatch.value = true
   try {
+    const now = new Date().toISOString()
     await fixtureStore.updateFixture(fixture.id, {
       status: FixtureStatus.LIVE,
       homeScore: fixture.homeScore ?? 0,
-      awayScore: fixture.awayScore ?? 0
+      awayScore: fixture.awayScore ?? 0,
+      timerStartedAt: now,
+      timerElapsedSeconds: 0,
+      timerIsRunning: true
     })
     
     useToast().add({ 
