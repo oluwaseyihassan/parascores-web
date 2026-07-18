@@ -1204,6 +1204,7 @@ const openEditEventModal = (event: MatchEvent) => {
 
 const showDeleteEventModal = ref(false)
 const eventBeingDeleted = ref<MatchEvent | null>(null)
+const showRemovePenaltiesModal = ref(false)
 
 const confirmEditEvent = async () => {
   if (!eventBeingEdited.value) return
@@ -1515,6 +1516,10 @@ const recordPenaltyShot = async (team: 'home' | 'away', outcome: 'scored' | 'mis
   }
 }
 
+const openRemovePenaltiesModal = () => {
+  showRemovePenaltiesModal.value = true
+}
+
 const removePenalties = async () => {
   if (!selectedFixture.value) return
 
@@ -1536,6 +1541,7 @@ const removePenalties = async () => {
     selectedFixture.value.homePenaltyScore = null
     selectedFixture.value.awayPenaltyScore = null
     showPenaltyOverride.value = false
+    showRemovePenaltiesModal.value = false
 
     await refreshMatchEvents()
     emit('fixture-updated', selectedFixture.value!)
@@ -2636,7 +2642,7 @@ const downloadGraphic = async () => {
                   <UButton
                     v-if="hasPenalties"
                     size="xs" color="warning" variant="soft" icon="i-heroicons-trash" label="Remove Penalties"
-                    :loading="updatingMatch" @click="removePenalties"
+                    :loading="updatingMatch" @click="openRemovePenaltiesModal"
                   />
                 </div>
                 <p class="text-xs text-center text-gray-400 dark:text-gray-500 mt-2">Record each penalty shootout shot. End the match when the shootout is decided.</p>
@@ -3344,6 +3350,54 @@ const downloadGraphic = async () => {
               color="error"
               :loading="loadingEvents"
               @click="confirmDeleteEvent"
+            />
+          </div>
+        </div>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Remove Penalties Confirmation Modal -->
+  <UModal v-model:open="showRemovePenaltiesModal">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-error-500" />
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                Remove Penalties
+              </h3>
+            </div>
+            <UButton 
+              icon="i-heroicons-x-mark" 
+              variant="ghost" 
+              color="neutral" 
+              size="sm"
+              @click="showRemovePenaltiesModal = false;"
+            />
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <p class="text-gray-600 dark:text-gray-300">
+            Are you sure you want to remove all penalty shootout scores? This action cannot be undone.
+          </p>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
+            <UButton 
+              label="Cancel" 
+              variant="ghost" 
+              color="neutral"
+              @click="showRemovePenaltiesModal = false;"
+            />
+            <UButton 
+              label="Remove Penalties" 
+              icon="i-heroicons-trash"
+              color="error"
+              :loading="updatingMatch"
+              @click="removePenalties"
             />
           </div>
         </div>
