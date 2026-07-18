@@ -850,17 +850,31 @@ const penaltyShootoutEvents = computed(() => {
 const homePenaltyShootoutEvents = computed(() => {
   return penaltyShootoutEvents.value
     .filter(e => e.participant_id === selectedFixture.value?.homeTeamId)
-    .sort((a, b) => (a.metadata?.shootoutOrder || 0) - (b.metadata?.shootoutOrder || 0))
+    .sort((a, b) => getShootoutOrder(a) - getShootoutOrder(b))
 })
 
 const awayPenaltyShootoutEvents = computed(() => {
   return penaltyShootoutEvents.value
     .filter(e => e.participant_id === selectedFixture.value?.awayTeamId)
-    .sort((a, b) => (a.metadata?.shootoutOrder || 0) - (b.metadata?.shootoutOrder || 0))
+    .sort((a, b) => getShootoutOrder(a) - getShootoutOrder(b))
+})
+
+const getShootoutOrder = (event: MatchEvent) => {
+  return event.metadata?.shootoutOrder || penaltyShootoutOrderMap.value.get(event.id) || 0
+}
+
+const penaltyShootoutOrderMap = computed(() => {
+  const sorted = [...penaltyShootoutEvents.value].sort((a, b) => {
+    if (a.minute !== b.minute) return (a.minute || 0) - (b.minute || 0)
+    return a.id.localeCompare(b.id)
+  })
+  const map = new Map<string, number>()
+  sorted.forEach((event, index) => map.set(event.id, index + 1))
+  return map
 })
 
 const chronologicalPenaltyEvents = computed(() => {
-  const sorted = [...penaltyShootoutEvents.value].sort((a, b) => (a.metadata?.shootoutOrder || 0) - (b.metadata?.shootoutOrder || 0))
+  const sorted = [...penaltyShootoutEvents.value].sort((a, b) => getShootoutOrder(a) - getShootoutOrder(b))
   let homeScore = 0
   let awayScore = 0
   return sorted.map(event => {
@@ -1787,8 +1801,9 @@ const getMatchHalfLabel = (half?: MatchHalf | null) => {
 }
 
 const getEventMinuteDisplay = (event: MatchEvent) => {
-  if (event.metadata?.isPenaltyShootout && event.metadata?.shootoutOrder) {
-    return `P${event.metadata.shootoutOrder}`
+  if (event.metadata?.isPenaltyShootout) {
+    const order = getShootoutOrder(event)
+    return order ? `P${order}` : 'P'
   }
   return event.minute != null ? `${event.minute}'` : '–'
 }
