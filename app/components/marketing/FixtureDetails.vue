@@ -686,7 +686,9 @@ const awaySubs = computed(() => {
                             ? 'bg-red-500 text-white'
                             : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'"
                       >
-                        {{ n }}
+                        <UIcon v-if="homePenaltyShootoutEvents[n - 1]?.type === 'PENALTY'" name="i-heroicons-check" class="w-3.5 h-3.5" />
+                        <UIcon v-else-if="homePenaltyShootoutEvents[n - 1]" name="i-heroicons-x-mark" class="w-3.5 h-3.5" />
+                        <span v-else>{{ n }}</span>
                       </div>
                     </div>
                     <div class="w-px h-6 bg-gray-300 dark:bg-white/10" />
@@ -701,7 +703,9 @@ const awaySubs = computed(() => {
                             ? 'bg-red-500 text-white'
                             : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'"
                       >
-                        {{ n }}
+                        <UIcon v-if="awayPenaltyShootoutEvents[n - 1]?.type === 'PENALTY'" name="i-heroicons-check" class="w-3.5 h-3.5" />
+                        <UIcon v-else-if="awayPenaltyShootoutEvents[n - 1]" name="i-heroicons-x-mark" class="w-3.5 h-3.5" />
+                        <span v-else>{{ n }}</span>
                       </div>
                     </div>
                   </div>
