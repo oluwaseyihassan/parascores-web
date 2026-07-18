@@ -70,6 +70,13 @@ export enum MatchEventType {
   PENALTY_SAVE = 'PENALTY_SAVE'
 }
 
+export enum MatchHalf {
+  FIRST_HALF = 'FIRST_HALF',
+  SECOND_HALF = 'SECOND_HALF',
+  EXTRA_TIME = 'EXTRA_TIME',
+  PENALTY_SHOOTOUT = 'PENALTY_SHOOTOUT'
+}
+
 // Models
 export interface User {
   id: string
@@ -302,6 +309,7 @@ export interface MatchEvent {
   relatedPlayerId?: string | null
   
   type: MatchEventType
+  half?: MatchHalf | null
   minute?: number | null
   description?: string | null
   metadata?: Record<string, any> | null
