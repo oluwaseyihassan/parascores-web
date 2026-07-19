@@ -77,6 +77,18 @@ export enum MatchHalf {
   PENALTY_SHOOTOUT = 'PENALTY_SHOOTOUT'
 }
 
+export enum LivestreamPlatform {
+  YOUTUBE = 'YOUTUBE',
+  TWITCH = 'TWITCH',
+  FACEBOOK = 'FACEBOOK',
+  VIMEO = 'VIMEO',
+  TIKTOK = 'TIKTOK',
+  INSTAGRAM = 'INSTAGRAM',
+  X = 'X',
+  KICK = 'KICK',
+  CUSTOM = 'CUSTOM'
+}
+
 // Models
 export interface User {
   id: string
@@ -284,6 +296,9 @@ export interface Fixture {
 
   manOfTheMatchPlayerId?: string | null
   manOfTheMatchPlayer?: Player | null
+
+  livestreamUrl?: string | null
+  livestreamPlatform?: LivestreamPlatform | string | null
 }
 
 export interface Group {

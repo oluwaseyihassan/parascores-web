@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import { Visibility, TournamentType, ParticipantType, ParticipantStatus, FixtureStatus, FixtureStage } from '~/types'
+import { Visibility, TournamentType, ParticipantType, ParticipantStatus, FixtureStatus, FixtureStage, LivestreamPlatform } from '~/types'
 import type { Participant, Fixture, Sponsor, Social, Tournament, Venue } from '~/types'
+import { LIVESTREAM_PLATFORMS, detectLivestreamPlatform, getLivestreamPlatformInfo, normalizeLivestreamUrl } from '~/utils/livestream'
 import GroupSetupWizard from '~/components/GroupSetupWizard.vue'
 import KnockoutWizard from '~/components/KnockoutWizard.vue'
 import TournamentInviteModal from '~/components/TournamentInviteModal.vue'
@@ -542,7 +543,9 @@ const addFixtureState = reactive({
   venue: '' as string,
   groupId: '' as string,
   stage: undefined as FixtureStage | undefined,
-  matchDuration: 90
+  matchDuration: 90,
+  livestreamUrl: '' as string,
+  livestreamPlatform: undefined as LivestreamPlatform | undefined
 })
 
 const openAddFixtureModal = (round?: number, roundName?: string) => {
@@ -563,6 +566,8 @@ const openAddFixtureModal = (round?: number, roundName?: string) => {
   addFixtureState.venue = ''
   addFixtureState.groupId = groupStore.groups[0]?.id || ''
   addFixtureState.matchDuration = 90
+  addFixtureState.livestreamUrl = ''
+  addFixtureState.livestreamPlatform = undefined
   
   // Set default stage based on tournament type and round name
   const name = (addFixtureState.roundName || '').toLowerCase()
@@ -814,6 +819,22 @@ const venueOptions = computed(() => {
   return venues.value.map(v => ({ label: v.name, value: v.name }))
 })
 
+const livestreamPlatformOptions = computed(() => {
+  return LIVESTREAM_PLATFORMS.map(p => ({ label: p.label, value: p.value, icon: p.icon }))
+})
+
+const selectedLivestreamPlatformInfo = computed(() => {
+  return getLivestreamPlatformInfo(addFixtureState.livestreamPlatform)
+})
+
+watch(() => addFixtureState.livestreamUrl, (url) => {
+  if (!url) return
+  const detected = detectLivestreamPlatform(url)
+  if (detected && !addFixtureState.livestreamPlatform) {
+    addFixtureState.livestreamPlatform = detected
+  }
+})
+
 const handleAddFixture = async () => {
   if (!addFixtureState.homeTeamId || !addFixtureState.awayTeamId) {
     useToast().add({ title: 'Please select both Home and Away teams', color: 'error' })
@@ -852,7 +873,9 @@ const handleAddFixture = async () => {
       venue: addFixtureState.venue || undefined,
       groupId: addFixtureState.groupId || undefined,
       stage: addFixtureState.stage || undefined,
-      matchDuration: addFixtureState.matchDuration
+      matchDuration: addFixtureState.matchDuration,
+      livestreamUrl: addFixtureState.livestreamUrl || undefined,
+      livestreamPlatform: addFixtureState.livestreamPlatform || undefined
     })
     
     // Re-fetch fixtures to get fully populated data (with team relations)
@@ -867,6 +890,8 @@ const handleAddFixture = async () => {
       addFixtureState.startTime = ''
       addFixtureState.venue = ''
       addFixtureState.matchDuration = 90
+      addFixtureState.livestreamUrl = ''
+      addFixtureState.livestreamPlatform = undefined
     } else {
       showAddFixtureModal.value = false
     }
@@ -5386,6 +5411,29 @@ const copyTournamentLink = async () => {
             </div>
           </UFormField>
 
+          <!-- Livestream -->
+          <UFormField label="Livestream" name="livestream">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <USelectMenu
+                v-model="addFixtureState.livestreamPlatform"
+                :items="livestreamPlatformOptions"
+                value-key="value"
+                placeholder="Select platform"
+              >
+                <template #leading="{ modelValue }">
+                  <UIcon v-if="getLivestreamPlatformInfo(modelValue)?.icon" :name="getLivestreamPlatformInfo(modelValue)!.icon" class="w-4 h-4" :class="getLivestreamPlatformInfo(modelValue)!.color" />
+                </template>
+              </USelectMenu>
+              <UInput
+                v-model="addFixtureState.livestreamUrl"
+                type="text"
+                :placeholder="selectedLivestreamPlatformInfo?.placeholder || 'https://...'"
+              />
+            </div>
+            <p class="mt-1.5 text-xs text-gray-500">
+              Paste the public watch URL for your stream. YouTube, Twitch, and Vimeo can be embedded directly.
+            </p>
+          </UFormField>
 
           <!-- Add Another toggle -->
           <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">

@@ -2,6 +2,7 @@
 import { useRoute } from '#imports'
 import type { Tournament, Fixture, MatchEvent } from '~/types'
 import { FixtureStatus, MatchEventType, MatchHalf } from '~/types'
+import LivestreamEmbed from '~/components/marketing/LivestreamEmbed.vue'
 
 const { toMain, isManage } = useHost()
 const toast = useToast()
@@ -619,6 +620,11 @@ const awaySubs = computed(() => {
             </button>
           </nav>
         </div>
+      </section>
+
+      <!-- Livestream -->
+      <section v-if="fixture.livestreamUrl" class="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 -mt-2 sm:mt-0 mb-4 sm:mb-6">
+        <LivestreamEmbed :fixture="fixture" />
       </section>
 
       <!-- Match Details Content -->

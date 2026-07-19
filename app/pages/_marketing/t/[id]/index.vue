@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tournament, Fixture, Standing, Participant, Sponsor, Social, Venue } from '~/types'
 import { TournamentType, FixtureStatus, FixtureStage, ParticipantType } from '~/types'
+import { getLivestreamPlatformInfo, detectLivestreamPlatform } from '~/utils/livestream'
 
 definePageMeta({
   layout: 'feed'
@@ -575,6 +576,12 @@ function getMatchAggregate(match: Fixture) {
   return null
 }
 
+function getLivestreamInfo(fixture: Fixture) {
+  if (!fixture.livestreamUrl) return null
+  const platform = fixture.livestreamPlatform || detectLivestreamPlatform(fixture.livestreamUrl)
+  return getLivestreamPlatformInfo(platform)
+}
+
 function getTeamClass(matchup: any, isHome: boolean) {
   if (matchup.status !== FixtureStatus.COMPLETED) return 'text-gray-800 group-hover:text-gray-900 dark:text-gray-200 dark:group-hover:text-white'
   const hs = matchup.homeScore ?? 0
@@ -588,10 +595,10 @@ function getTeamClass(matchup: any, isHome: boolean) {
     const ap = matchup.awayPenaltyScore ?? 0
     if (hp === ap) return 'font-medium text-gray-500' // True draw
     isWinner = isHome ? hp > ap : ap > hp
-    isLoser = isHome ? hp < ap : ap < hp
+    isLoser = isHome ? hp < ap : ap > hp
   } else {
     isWinner = isHome ? hs > as : as > hs
-    isLoser = isHome ? hs < as : as < hs
+    isLoser = isHome ? hs < as : as > hs
   }
   
   if (isWinner) return 'font-bold text-gray-900 dark:text-white'
@@ -951,6 +958,10 @@ function getTeamCards(fixture: any, isHome: boolean) {
                         {{ fixture.venue ? `${fixture.group?.name || getRoundName(fixture)} · ${fixture.venue}` : (fixture.group?.name || getRoundName(fixture)) }}
                       </span>
                       <div class="flex items-center gap-2">
+                        <span v-if="getLivestreamInfo(fixture)" class="flex items-center gap-1 text-[10px] font-bold text-rose-500 uppercase">
+                          <UIcon :name="getLivestreamInfo(fixture)!.icon" class="w-3 h-3" :class="getLivestreamInfo(fixture)!.color" />
+                          <span>Live</span>
+                        </span>
                         <span v-if="fixture.status === FixtureStatus.SCHEDULED" class="font-medium text-gray-400">
                           {{ fixture.startTime ? formatDateTimeShort(fixture.startTime) : 'TBD' }}
                         </span>
@@ -1085,6 +1096,10 @@ function getTeamCards(fixture: any, isHome: boolean) {
                           {{ fixture.venue ? `${fixture.group?.name || getRoundName(fixture)} · ${fixture.venue}` : (fixture.group?.name || getRoundName(fixture)) }}
                         </span>
                         <div class="flex items-center gap-2">
+                          <span v-if="getLivestreamInfo(fixture)" class="flex items-center gap-1 text-[10px] font-bold text-rose-500 uppercase">
+                            <UIcon :name="getLivestreamInfo(fixture)!.icon" class="w-3 h-3" :class="getLivestreamInfo(fixture)!.color" />
+                            <span>Live</span>
+                          </span>
                           <span v-if="fixture.status === FixtureStatus.SCHEDULED" class="font-medium text-gray-400">
                             {{ fixture.startTime ? formatDateTimeShort(fixture.startTime) : 'TBD' }}
                           </span>

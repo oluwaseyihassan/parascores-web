@@ -3,6 +3,8 @@ import { FixtureStatus, MatchEventType, ParticipantType, FixtureStage, MatchHalf
 import type { Fixture, Player, MatchEvent } from '~/types'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
 import { useMatchTimer, isFixtureLiveStatus, getMatchElapsedSeconds } from '~/composables/useMatchTimer'
+import { LIVESTREAM_PLATFORMS, detectLivestreamPlatform, getLivestreamPlatformInfo, normalizeLivestreamUrl } from '~/utils/livestream'
+import type { LivestreamPlatform } from '~/types'
 
 const props = withDefaults(defineProps<{
   fixture: Fixture | null
@@ -109,8 +111,12 @@ const matchEvents = ref<MatchEvent[]>([])
 const loadingEvents = ref(false)
 const showEventsCollapsible = ref(true)
 const showScheduleCollapsible = ref(false)
+const showLivestreamCollapsible = ref(false)
 const showPenaltyCollapsible = ref(true)
 const showPenaltyOverride = ref(false)
+const livestreamUrl = ref<string>('')
+const livestreamPlatform = ref<LivestreamPlatform | undefined>(undefined)
+const updatingLivestream = ref(false)
 const homePenaltyPlayerId = ref<string | undefined>(undefined)
 const awayPenaltyPlayerId = ref<string | undefined>(undefined)
 const errorMessage = ref<string | null>(null)
@@ -298,6 +304,9 @@ watch(() => props.open, async (isOpen) => {
     selectedManOfTheMatchPlayerId.value = props.fixture.manOfTheMatchPlayerId || null
     matchVenue.value = props.fixture.venue || ''
     showScheduleCollapsible.value = props.fixture.status === 'SCHEDULED'
+    livestreamUrl.value = props.fixture.livestreamUrl || ''
+    livestreamPlatform.value = props.fixture.livestreamPlatform as LivestreamPlatform | undefined
+    showLivestreamCollapsible.value = !!props.fixture.livestreamUrl
     if (props.fixture.startTime) {
       // Format correctly for native comparison
       const date = new Date(props.fixture.startTime)
@@ -328,6 +337,9 @@ watch(() => props.open, async (isOpen) => {
     homePlayers.value = []
     awayPlayers.value = []
     matchVenue.value = ''
+    livestreamUrl.value = ''
+    livestreamPlatform.value = undefined
+    showLivestreamCollapsible.value = false
     selectedLineupIds.value = []
     homeFormation.value = ''
     awayFormation.value = ''
@@ -342,6 +354,14 @@ watch(showScheduleCollapsible, (isOpen) => {
     const currentElapsed = matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0
     const rawMinute = Math.floor(currentElapsed / 60)
     adjustedMinute.value = Math.min(rawMinute, adjustTimerMaxMinutes.value)
+  }
+})
+
+watch(() => livestreamUrl.value, (url) => {
+  if (!url) return
+  const detected = detectLivestreamPlatform(url)
+  if (detected && !livestreamPlatform.value) {
+    livestreamPlatform.value = detected as LivestreamPlatform
   }
 })
 
@@ -783,6 +803,18 @@ const venueOptions = computed(() => {
   return venueStore.venues.map(v => ({ label: v.name, value: v.name }))
 })
 
+const livestreamPlatformOptions = computed(() => {
+  return LIVESTREAM_PLATFORMS.map(p => ({
+    label: p.label,
+    value: p.value,
+    icon: p.icon
+  }))
+})
+
+const selectedLivestreamPlatformInfo = computed(() => {
+  return getLivestreamPlatformInfo(livestreamPlatform.value)
+})
+
 const isLeg2 = computed(() => {
   if (!props.tournament?.twoLegsKnockout) return false
   if (!selectedFixture.value) return false
@@ -989,6 +1021,59 @@ const updateMatchTime = async () => {
     handleError(error, { title: 'Failed to update time' })
   } finally {
     updatingTime.value = false
+  }
+}
+
+const isLivestreamDisabled = computed(() => {
+  if (!selectedFixture.value) return true
+  
+  const normalized = normalizeLivestreamUrl(livestreamUrl.value)
+  const urlChanged = (selectedFixture.value.livestreamUrl || '') !== normalized
+  const platformChanged = (selectedFixture.value.livestreamPlatform || '') !== (livestreamPlatform.value || '')
+  
+  return !urlChanged && !platformChanged
+})
+
+const updateLivestream = async () => {
+  if (!selectedFixture.value) return
+  
+  const normalized = normalizeLivestreamUrl(livestreamUrl.value)
+  if (livestreamUrl.value && !normalized) {
+    useToast().add({
+      title: 'Invalid stream URL',
+      description: 'Please enter a valid URL or YouTube video ID.',
+      color: 'error'
+    })
+    return
+  }
+  
+  updatingLivestream.value = true
+  try {
+    const detectedPlatform = livestreamPlatform.value || (normalized ? detectLivestreamPlatform(normalized) : null)
+    const payload = {
+      livestreamUrl: normalized || null,
+      livestreamPlatform: detectedPlatform || null
+    }
+    
+    await fixtureStore.updateFixture(selectedFixture.value.id, payload)
+    
+    selectedFixture.value = {
+      ...selectedFixture.value,
+      ...payload
+    }
+    
+    emit('fixture-updated', selectedFixture.value!)
+    
+    useToast().add({
+      title: normalized ? 'Livestream Updated' : 'Livestream Removed',
+      description: normalized ? 'The match livestream has been updated.' : 'The match livestream has been removed.',
+      icon: 'i-heroicons-video-camera',
+      color: 'success'
+    })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to update livestream' })
+  } finally {
+    updatingLivestream.value = false
   }
 }
 
@@ -2414,6 +2499,51 @@ const downloadGraphic = async () => {
                     </UButton>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- Livestream -->
+            <div class="mc-section">
+              <button class="mc-section__toggle" @click="showLivestreamCollapsible = !showLivestreamCollapsible">
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-heroicons-video-camera" class="w-3.5 h-3.5 text-rose-500" />
+                  <span>Livestream</span>
+                  <span v-if="selectedFixture.livestreamUrl" class="mc-tag mc-tag--success">configured</span>
+                </div>
+                <UIcon :name="showLivestreamCollapsible ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" class="w-4 h-4 text-gray-400" />
+              </button>
+              <div v-if="showLivestreamCollapsible" class="mc-section__body">
+                <div class="flex flex-col gap-2">
+                  <USelect
+                    v-model="livestreamPlatform"
+                    :items="livestreamPlatformOptions"
+                    value-key="value"
+                    placeholder="Select platform…"
+                    class="w-full"
+                    size="md"
+                    :disabled="updatingLivestream"
+                  >
+                    <template #leading="{ modelValue }">
+                      <UIcon v-if="getLivestreamPlatformInfo(modelValue)?.icon" :name="getLivestreamPlatformInfo(modelValue)!.icon" class="w-4 h-4" :class="getLivestreamPlatformInfo(modelValue)!.color" />
+                    </template>
+                  </USelect>
+                  <UInput
+                    v-model="livestreamUrl"
+                    type="text"
+                    :placeholder="selectedLivestreamPlatformInfo?.placeholder || 'https://...'"
+                    class="w-full"
+                    size="md"
+                    :disabled="updatingLivestream"
+                  />
+                </div>
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Paste the public watch URL for your stream. YouTube, Twitch, and Vimeo can be embedded directly.
+                </p>
+                <UButton color="primary" variant="solid" size="sm"
+                  :loading="updatingLivestream" :disabled="isLivestreamDisabled"
+                  @click="updateLivestream" class="mt-3 w-full sm:w-auto">
+                  {{ livestreamUrl ? 'Update Livestream' : 'Remove Livestream' }}
+                </UButton>
               </div>
             </div>
 
@@ -4282,6 +4412,16 @@ const downloadGraphic = async () => {
 :root.dark .mc-tag {
   background: rgba(255,255,255,0.08);
   color: #9ca3af;
+}
+
+.mc-tag--success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+:root.dark .mc-tag--success {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
 }
 
 /* Penalty labels */
