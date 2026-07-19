@@ -65,6 +65,31 @@ const formatDate = (dateStr: string) => {
     year: 'numeric'
   })
 }
+
+const copiedField = ref<string | null>(null)
+
+const copyToClipboard = async (value: string, field: string) => {
+  if (!value) return
+  try {
+    await navigator.clipboard.writeText(value)
+    copiedField.value = field
+    setTimeout(() => {
+      if (copiedField.value === field) copiedField.value = null
+    }, 1500)
+    useToast().add({
+      title: 'Copied',
+      description: `${field} copied to clipboard.`,
+      color: 'success',
+      icon: 'i-heroicons-clipboard-document-check'
+    })
+  } catch (err) {
+    useToast().add({
+      title: 'Copy Failed',
+      description: 'Could not copy to clipboard.',
+      color: 'error'
+    })
+  }
+}
 </script>
 
 <template>
@@ -121,7 +146,16 @@ const formatDate = (dateStr: string) => {
               <td class="px-6 py-4">
                 <div class="flex flex-col text-xs font-semibold">
                   <span class="text-white">{{ p.user?.name || 'Anonymous User' }}</span>
-                  <span class="text-slate-500 mt-0.5">{{ p.user?.email }}</span>
+                  <div class="flex items-center gap-1 mt-0.5">
+                    <span class="text-slate-500">{{ p.user?.email }}</span>
+                    <button
+                      class="text-slate-500 hover:text-emerald-400 transition"
+                      :class="copiedField === `Email ${p.id}` ? 'text-emerald-400' : ''"
+                      @click="copyToClipboard(p.user?.email, `Email ${p.id}`)"
+                    >
+                      <UIcon :name="copiedField === `Email ${p.id}` ? 'i-heroicons-clipboard-document-check' : 'i-heroicons-clipboard-document'" class="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               </td>
               <td class="px-6 py-4 text-xs font-semibold text-slate-400">
