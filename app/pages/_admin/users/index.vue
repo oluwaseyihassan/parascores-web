@@ -78,6 +78,31 @@ const performDelete = async () => {
   }
 }
 
+const copiedField = ref<string | null>(null)
+
+const copyToClipboard = async (value: string, field: string) => {
+  if (!value) return
+  try {
+    await navigator.clipboard.writeText(value)
+    copiedField.value = field
+    setTimeout(() => {
+      if (copiedField.value === field) copiedField.value = null
+    }, 1500)
+    useToast().add({
+      title: 'Copied',
+      description: `${field} copied to clipboard.`,
+      color: 'success',
+      icon: 'i-heroicons-clipboard-document-check'
+    })
+  } catch (err) {
+    useToast().add({
+      title: 'Copy Failed',
+      description: 'Could not copy to clipboard.',
+      color: 'error'
+    })
+  }
+}
+
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleDateString('en-US', {
@@ -175,7 +200,16 @@ const formatDate = (dateStr: string) => {
                   />
                   <div class="flex flex-col min-w-0">
                     <span class="text-sm font-extrabold text-white truncate leading-none mb-1">{{ user.name || 'Anonymous User' }}</span>
-                    <span class="text-xs text-slate-400 truncate leading-none">{{ user.email }}</span>
+                    <div class="flex items-center gap-1">
+                      <span class="text-xs text-slate-400 truncate leading-none">{{ user.email }}</span>
+                      <button
+                        class="text-slate-500 hover:text-emerald-400 transition"
+                        :class="copiedField === `Email ${user.id}` ? 'text-emerald-400' : ''"
+                        @click="copyToClipboard(user.email, `Email ${user.id}`)"
+                      >
+                        <UIcon :name="copiedField === `Email ${user.id}` ? 'i-heroicons-clipboard-document-check' : 'i-heroicons-clipboard-document'" class="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </td>
