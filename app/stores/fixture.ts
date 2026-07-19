@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { Fixture } from '../types'
 import { FixtureStage, FixtureStatus } from '../types'
+import type { LivestreamPlatform } from '~/types'
 import type { ApiResponse } from './auth'
 
 export interface UpdateFixtureData {
@@ -24,6 +25,8 @@ export interface UpdateFixtureData {
   timerIsRunning?: boolean | null
   matchDuration?: number
   manOfTheMatchPlayerId?: string | null
+  livestreamUrl?: string | null
+  livestreamPlatform?: LivestreamPlatform | string | null
 }
 
 export interface CreateFixtureData {
@@ -38,6 +41,8 @@ export interface CreateFixtureData {
   groupId?: string | null
   stage?: string | null
   matchDuration?: number
+  livestreamUrl?: string | null
+  livestreamPlatform?: LivestreamPlatform | string | null
 }
 
 export interface GenerateFixturesOptions {
