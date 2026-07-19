@@ -44,6 +44,31 @@ const formatCurrency = (val: number) => {
     currency: 'NGN'
   }).format(val)
 }
+
+const copiedField = ref<string | null>(null)
+
+const copyToClipboard = async (value: string, field: string) => {
+  if (!value) return
+  try {
+    await navigator.clipboard.writeText(value)
+    copiedField.value = field
+    setTimeout(() => {
+      if (copiedField.value === field) copiedField.value = null
+    }, 1500)
+    useToast().add({
+      title: 'Copied',
+      description: `${field} copied to clipboard.`,
+      color: 'success',
+      icon: 'i-heroicons-clipboard-document-check'
+    })
+  } catch (err) {
+    useToast().add({
+      title: 'Copy Failed',
+      description: 'Could not copy to clipboard.',
+      color: 'error'
+    })
+  }
+}
 </script>
 
 <template>
@@ -82,7 +107,16 @@ const formatCurrency = (val: number) => {
           </div>
 
           <h2 class="text-lg font-bold text-white mt-4">{{ org.name }}</h2>
-          <span class="text-sm text-slate-500 font-mono">/orgs/{{ org.slug }}</span>
+          <div class="flex items-center justify-center gap-2 mt-1">
+            <span class="text-sm text-slate-500 font-mono">/orgs/{{ org.slug }}</span>
+            <button
+              class="text-slate-500 hover:text-emerald-400 transition"
+              :class="copiedField === 'Org slug' ? 'text-emerald-400' : ''"
+              @click="copyToClipboard(org.slug, 'Org slug')"
+            >
+              <UIcon :name="copiedField === 'Org slug' ? 'i-heroicons-clipboard-document-check' : 'i-heroicons-clipboard-document'" class="w-4 h-4" />
+            </button>
+          </div>
 
           <div class="mt-4 flex items-center gap-2">
             <span 
@@ -100,9 +134,18 @@ const formatCurrency = (val: number) => {
           </div>
 
           <div class="w-full border-t border-slate-900 mt-6 pt-6 text-left space-y-4 text-xs font-semibold">
-            <div class="flex justify-between">
+            <div class="flex justify-between items-center">
               <span class="text-slate-500">Org ID</span>
-              <span class="text-slate-300 font-mono text-[10px] select-all">{{ org.id }}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-300 font-mono text-[10px] select-all">{{ org.id }}</span>
+                <button
+                  class="text-slate-500 hover:text-emerald-400 transition"
+                  :class="copiedField === 'Org ID' ? 'text-emerald-400' : ''"
+                  @click="copyToClipboard(org.id, 'Org ID')"
+                >
+                  <UIcon :name="copiedField === 'Org ID' ? 'i-heroicons-clipboard-document-check' : 'i-heroicons-clipboard-document'" class="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <div class="flex justify-between">
               <span class="text-slate-500">Created</span>
@@ -128,9 +171,18 @@ const formatCurrency = (val: number) => {
                 {{ org.subscription?.status || 'INACTIVE' }}
               </span>
             </div>
-            <div v-if="org.subscription?.stripeSubscriptionId" class="flex justify-between">
+            <div v-if="org.subscription?.stripeSubscriptionId" class="flex justify-between items-center">
               <span class="text-slate-500">Stripe ID</span>
-              <span class="text-slate-300 font-mono select-all">{{ org.subscription?.stripeSubscriptionId }}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-300 font-mono select-all">{{ org.subscription?.stripeSubscriptionId }}</span>
+                <button
+                  class="text-slate-500 hover:text-emerald-400 transition"
+                  :class="copiedField === 'Stripe ID' ? 'text-emerald-400' : ''"
+                  @click="copyToClipboard(org.subscription?.stripeSubscriptionId, 'Stripe ID')"
+                >
+                  <UIcon :name="copiedField === 'Stripe ID' ? 'i-heroicons-clipboard-document-check' : 'i-heroicons-clipboard-document'" class="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
