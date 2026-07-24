@@ -1,117 +1,129 @@
 <script setup lang="ts">
-import type { Player, MatchEvent } from '~/types'
+import type { Player, MatchEvent } from "~/types";
 
-const props = withDefaults(defineProps<{
-  players: Player[]
-  formation: string
-  teamName?: string
-  teamLogoUrl?: string | null
-  isDark?: boolean
-  inverted?: boolean  // away team plays bottom to top
-  matchEvents?: MatchEvent[]
-  lineupPositions?: Record<string, string> | null
-}>(), {
-  teamName: '',
-  teamLogoUrl: null,
-  isDark: false,
-  inverted: false,
-  matchEvents: () => [],
-  lineupPositions: null
-})
+const props = withDefaults(
+  defineProps<{
+    players: Player[];
+    formation: string;
+    teamName?: string;
+    teamLogoUrl?: string | null;
+    isDark?: boolean;
+    inverted?: boolean; // away team plays bottom to top
+    matchEvents?: MatchEvent[];
+    lineupPositions?: Record<string, string> | null;
+  }>(),
+  {
+    teamName: "",
+    teamLogoUrl: null,
+    isDark: false,
+    inverted: false,
+    matchEvents: () => [],
+    lineupPositions: null,
+  },
+);
 
 // Parse formation string like "4-2-3-1" into an array of row counts
 // Result: [1, 3, 2, 4] for GK=1, then reversed (bottom to top on pitch)
 const formationRows = computed(() => {
-  const parts = props.formation.split('-').map(Number).filter(n => !isNaN(n) && n > 0)
+  const parts = props.formation
+    .split("-")
+    .map(Number)
+    .filter((n) => !isNaN(n) && n > 0);
   // Formation is typically written from defense to attack: "4-3-3" = 4 DEF, 3 MID, 3 FWD
   // On the pitch, GK is at bottom, then defense, then midfield, then attack at top
   // Add GK row (always 1) at the bottom
-  return [1, ...parts] // [GK, DEF, MID, ..., FWD]
-})
+  return [1, ...parts]; // [GK, DEF, MID, ..., FWD]
+});
 
 // Helper to map row index to category name
 const getRowPositionCategory = (rowIdx: number, totalRows: number): string => {
-  if (rowIdx === 0) return 'GK'
-  if (rowIdx === 1) return 'DEF'
-  if (rowIdx === totalRows - 1) return 'FWD'
-  return 'MID'
-}
+  if (rowIdx === 0) return "GK";
+  if (rowIdx === 1) return "DEF";
+  if (rowIdx === totalRows - 1) return "FWD";
+  return "MID";
+};
 
 // Calculate vertical position for each row (percentage from top)
-const getRowY = (slotRowIdx: number, totalRows: number, inverted: boolean): number => {
-  if (totalRows <= 1) return 50
-  
-  let finalRowIdx = totalRows - 1 - slotRowIdx
+const getRowY = (
+  slotRowIdx: number,
+  totalRows: number,
+  inverted: boolean,
+): number => {
+  if (totalRows <= 1) return 50;
+
+  let finalRowIdx = totalRows - 1 - slotRowIdx;
   if (inverted) {
-    finalRowIdx = slotRowIdx
+    finalRowIdx = slotRowIdx;
   }
 
-  const padding = 10 // % from top and bottom
-  const range = 100 - 2 * padding
-  let y = padding + (finalRowIdx / (totalRows - 1)) * range
+  const padding = 10; // % from top and bottom
+  const range = 100 - 2 * padding;
+  let y = padding + (finalRowIdx / (totalRows - 1)) * range;
 
   // Tweak goalkeeper row (slotRowIdx === 0)
   if (slotRowIdx === 0) {
-    y = inverted ? 7 : 93
+    y = inverted ? 7 : 93;
   }
   // Tweak striker/top row (slotRowIdx === totalRows - 1)
   else if (slotRowIdx === totalRows - 1) {
-    y = inverted ? 85 : 15
+    y = inverted ? 85 : 15;
   }
 
-  return y
-}
+  return y;
+};
 
 // Calculate horizontal position for each player in a row
 const getPlayerX = (playerIndex: number, totalInRow: number): number => {
-  if (totalInRow <= 1) return 50
-  const padding = totalInRow === 2 ? 28 : 12 // % from left and right edges
-  const range = 100 - 2 * padding
-  return padding + (playerIndex / (totalInRow - 1)) * range
-}
+  if (totalInRow <= 1) return 50;
+  const padding = totalInRow === 2 ? 28 : 12; // % from left and right edges
+  const range = 100 - 2 * padding;
+  return padding + (playerIndex / (totalInRow - 1)) * range;
+};
 
 // Positions starting players on the pitch based on coordinate mappings
 const positionedPlayers = computed(() => {
-  const rows = formationRows.value
-  const totalRows = rows.length
-  
+  const rows = formationRows.value;
+  const totalRows = rows.length;
+
   // Initialize slots
   const slots: Array<{
-    rowIdx: number
-    slotIdx: number
-    category: string
-    player: Player | null
-  }> = []
+    rowIdx: number;
+    slotIdx: number;
+    category: string;
+    player: Player | null;
+  }> = [];
 
   for (let r = 0; r < totalRows; r++) {
-    const count = rows[r] ?? 0
-    const category = getRowPositionCategory(r, totalRows)
+    const count = rows[r] ?? 0;
+    const category = getRowPositionCategory(r, totalRows);
     for (let s = 0; s < count; s++) {
       slots.push({
         rowIdx: r,
         slotIdx: s,
         category,
-        player: null
-      })
+        player: null,
+      });
     }
   }
 
-  const availableStarters = [...props.players]
+  const availableStarters = [...props.players];
 
   // Pass 1: Match players to exact coordinates (CATEGORY-ROW-SLOT, e.g. "DEF-1-3")
   for (let i = availableStarters.length - 1; i >= 0; i--) {
-    const player = availableStarters[i]
+    const player = availableStarters[i];
     if (player) {
-      const position = (props.lineupPositions && props.lineupPositions[player.id]) || player.position
-      if (position && position.includes('-')) {
-        const parts = position.split('-')
-        const r = parseInt(parts[1] ?? '', 10)
-        const s = parseInt(parts[2] ?? '', 10)
+      const position =
+        (props.lineupPositions && props.lineupPositions[player.id]) ||
+        player.position;
+      if (position && position.includes("-")) {
+        const parts = position.split("-");
+        const r = parseInt(parts[1] ?? "", 10);
+        const s = parseInt(parts[2] ?? "", 10);
         if (!isNaN(r) && !isNaN(s)) {
-          const slot = slots.find(sl => sl.rowIdx === r && sl.slotIdx === s)
+          const slot = slots.find((sl) => sl.rowIdx === r && sl.slotIdx === s);
           if (slot && !slot.player) {
-            slot.player = player
-            availableStarters.splice(i, 1)
+            slot.player = player;
+            availableStarters.splice(i, 1);
           }
         }
       }
@@ -121,15 +133,24 @@ const positionedPlayers = computed(() => {
   // Pass 2: Match players with legacy categories ("GK", "DEF", "MID", "FWD")
   // to empty slots matching that category
   for (let i = availableStarters.length - 1; i >= 0; i--) {
-    const player = availableStarters[i]
+    const player = availableStarters[i];
     if (player) {
-      const position = (props.lineupPositions && props.lineupPositions[player.id]) || player.position
-      const baseCategory = position ? position.split('-')[0] : ''
-      if (baseCategory === 'GK' || baseCategory === 'DEF' || baseCategory === 'MID' || baseCategory === 'FWD') {
-        const slot = slots.find(sl => !sl.player && sl.category === baseCategory)
+      const position =
+        (props.lineupPositions && props.lineupPositions[player.id]) ||
+        player.position;
+      const baseCategory = position ? position.split("-")[0] : "";
+      if (
+        baseCategory === "GK" ||
+        baseCategory === "DEF" ||
+        baseCategory === "MID" ||
+        baseCategory === "FWD"
+      ) {
+        const slot = slots.find(
+          (sl) => !sl.player && sl.category === baseCategory,
+        );
         if (slot) {
-          slot.player = player
-          availableStarters.splice(i, 1)
+          slot.player = player;
+          availableStarters.splice(i, 1);
         }
       }
     }
@@ -138,75 +159,122 @@ const positionedPlayers = computed(() => {
   // Pass 3: Distribute leftover starters into any remaining empty slots
   for (const slot of slots) {
     if (!slot.player && availableStarters.length > 0) {
-      slot.player = availableStarters.shift() ?? null
+      slot.player = availableStarters.shift() ?? null;
     }
   }
 
   // Calculate coordinates and apply 180 degree rotation if inverted
   const result: Array<{
-    player: Player
-    x: number
-    y: number
-  }> = []
+    player: Player;
+    x: number;
+    y: number;
+  }> = [];
 
   for (const slot of slots) {
     if (slot.player) {
-      const countInRow = rows[slot.rowIdx] ?? 0
-      
-      let finalRowIdx = totalRows - 1 - slot.rowIdx
-      let finalSlotIdx = slot.slotIdx
+      const countInRow = rows[slot.rowIdx] ?? 0;
+
+      let finalRowIdx = totalRows - 1 - slot.rowIdx;
+      let finalSlotIdx = slot.slotIdx;
 
       if (props.inverted) {
-        finalRowIdx = slot.rowIdx
-        finalSlotIdx = countInRow - 1 - slot.slotIdx
+        finalRowIdx = slot.rowIdx;
+        finalSlotIdx = countInRow - 1 - slot.slotIdx;
       }
 
       result.push({
         player: slot.player,
         x: getPlayerX(finalSlotIdx, countInRow),
-        y: getRowY(slot.rowIdx, totalRows, props.inverted)
-      })
+        y: getRowY(slot.rowIdx, totalRows, props.inverted),
+      });
     }
   }
 
-  return result
-})
+  return result;
+});
 
 // Player match event helpers
+function isPenaltyShootoutEvent(e: any): boolean {
+  return e.half === "PENALTY_SHOOTOUT";
+}
+
 function getPlayerGoals(playerId: string): number {
-  return props.matchEvents.filter(e => ['GOAL', 'PENALTY'].includes(e.type) && (e.playerId === playerId || e.player?.id === playerId)).length
+  return props.matchEvents.filter(
+    (e) =>
+      !isPenaltyShootoutEvent(e) &&
+      ["GOAL", "PENALTY"].includes(e.type) &&
+      (e.playerId === playerId || e.player?.id === playerId),
+  ).length;
 }
 
 function getPlayerAssists(playerId: string): number {
-  return props.matchEvents.filter(e => ['GOAL', 'PENALTY'].includes(e.type) && (e.relatedPlayerId === playerId || e.relatedPlayer?.id === playerId)).length
+  return props.matchEvents.filter(
+    (e) =>
+      !isPenaltyShootoutEvent(e) &&
+      ["GOAL", "PENALTY"].includes(e.type) &&
+      (e.relatedPlayerId === playerId || e.relatedPlayer?.id === playerId),
+  ).length;
 }
 
 function getPlayerYellowCards(playerId: string): number {
-  return props.matchEvents.filter(e => e.type === 'YELLOW_CARD' && (e.playerId === playerId || e.player?.id === playerId)).length
+  return props.matchEvents.filter(
+    (e) =>
+      e.type === "YELLOW_CARD" &&
+      (e.playerId === playerId || e.player?.id === playerId),
+  ).length;
 }
 
 function getPlayerRedCards(playerId: string): number {
-  return props.matchEvents.filter(e => e.type === 'RED_CARD' && (e.playerId === playerId || e.player?.id === playerId)).length
+  return props.matchEvents.filter(
+    (e) =>
+      e.type === "RED_CARD" &&
+      (e.playerId === playerId || e.player?.id === playerId),
+  ).length;
 }
 
-const gradientId = computed(() => props.inverted ? 'pitchGradient-away' : 'pitchGradient-home')
-const stripesId = computed(() => props.inverted ? 'grassStripes-away' : 'grassStripes-home')
+const gradientId = computed(() =>
+  props.inverted ? "pitchGradient-away" : "pitchGradient-home",
+);
+const stripesId = computed(() =>
+  props.inverted ? "grassStripes-away" : "grassStripes-home",
+);
 </script>
 
 <template>
-  <div class="formation-pitch" :class="{ 'formation-pitch--dark': isDark, 'formation-pitch--inverted': inverted }">
+  <div
+    class="formation-pitch"
+    :class="{
+      'formation-pitch--dark': isDark,
+      'formation-pitch--inverted': inverted,
+    }"
+  >
     <!-- Team name header -->
     <div v-if="teamName" class="formation-pitch__header">
-      <img v-if="teamLogoUrl" :src="teamLogoUrl" class="formation-pitch__team-logo" />
+      <img
+        v-if="teamLogoUrl"
+        :src="teamLogoUrl"
+        class="formation-pitch__team-logo"
+      />
       <span class="formation-pitch__team-name">{{ teamName }}</span>
       <span class="formation-pitch__formation-label">{{ formation }}</span>
     </div>
 
     <!-- Pitch SVG -->
     <div class="formation-pitch__field">
-      <svg viewBox="0 0 400 560" class="formation-pitch__svg" preserveAspectRatio="xMidYMid meet">
+      <svg
+        viewBox="0 0 400 560"
+        class="formation-pitch__svg"
+        preserveAspectRatio="xMidYMid meet"
+      >
         <!-- Pitch background -->
-        <rect x="0" y="0" width="400" height="560" rx="12" :fill="`url(#${gradientId})`" />
+        <rect
+          x="0"
+          y="0"
+          width="400"
+          height="560"
+          rx="12"
+          :fill="`url(#${gradientId})`"
+        />
 
         <!-- Gradient definitions -->
         <defs>
@@ -216,52 +284,181 @@ const stripesId = computed(() => props.inverted ? 'grassStripes-away' : 'grassSt
             <stop offset="100%" stop-color="#2d8a4e" />
           </linearGradient>
           <!-- Grass stripe pattern -->
-          <pattern :id="stripesId" x="0" y="0" width="400" height="80" patternUnits="userSpaceOnUse">
-            <rect x="0" y="0" width="400" height="40" fill="rgba(255,255,255,0.02)" />
-            <rect x="0" y="40" width="400" height="40" fill="rgba(0,0,0,0.02)" />
+          <pattern
+            :id="stripesId"
+            x="0"
+            y="0"
+            width="400"
+            height="80"
+            patternUnits="userSpaceOnUse"
+          >
+            <rect
+              x="0"
+              y="0"
+              width="400"
+              height="40"
+              fill="rgba(255,255,255,0.02)"
+            />
+            <rect
+              x="0"
+              y="40"
+              width="400"
+              height="40"
+              fill="rgba(0,0,0,0.02)"
+            />
           </pattern>
         </defs>
 
         <!-- Grass stripe overlay -->
-        <rect x="0" y="0" width="400" height="560" rx="12" :fill="`url(#${stripesId})`" />
+        <rect
+          x="0"
+          y="0"
+          width="400"
+          height="560"
+          rx="12"
+          :fill="`url(#${stripesId})`"
+        />
 
         <!-- Pitch outline -->
-        <rect x="20" y="20" width="360" height="520" rx="4" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+        <rect
+          x="20"
+          y="20"
+          width="360"
+          height="520"
+          rx="4"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
 
         <!-- Halfway line -->
-        <line x1="20" y1="280" x2="380" y2="280" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+        <line
+          x1="20"
+          y1="280"
+          x2="380"
+          y2="280"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
 
         <!-- Center circle -->
-        <circle cx="200" cy="280" r="50" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+        <circle
+          cx="200"
+          cy="280"
+          r="50"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
         <circle cx="200" cy="280" r="3" fill="rgba(255,255,255,0.35)" />
 
         <!-- Top penalty box -->
-        <rect x="100" y="20" width="200" height="80" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+        <rect
+          x="100"
+          y="20"
+          width="200"
+          height="80"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
         <!-- Top goal area (6-yard box) -->
-        <rect x="150" y="20" width="100" height="35" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+        <rect
+          x="150"
+          y="20"
+          width="100"
+          height="35"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
         <!-- Top penalty arc -->
-        <path d="M 150 100 Q 200 120 250 100" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+        <path
+          d="M 150 100 Q 200 120 250 100"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
         <!-- Top penalty spot -->
         <circle cx="200" cy="65" r="2.5" fill="rgba(255,255,255,0.35)" />
         <!-- Top goal -->
-        <rect x="165" y="10" width="70" height="12" rx="3" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1" />
+        <rect
+          x="165"
+          y="10"
+          width="70"
+          height="12"
+          rx="3"
+          fill="none"
+          stroke="rgba(255,255,255,0.2)"
+          stroke-width="1"
+        />
 
         <!-- Bottom penalty box -->
-        <rect x="100" y="460" width="200" height="80" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+        <rect
+          x="100"
+          y="460"
+          width="200"
+          height="80"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
         <!-- Bottom goal area (6-yard box) -->
-        <rect x="150" y="505" width="100" height="35" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+        <rect
+          x="150"
+          y="505"
+          width="100"
+          height="35"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
         <!-- Bottom penalty arc -->
-        <path d="M 150 460 Q 200 440 250 460" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+        <path
+          d="M 150 460 Q 200 440 250 460"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
         <!-- Bottom penalty spot -->
         <circle cx="200" cy="495" r="2.5" fill="rgba(255,255,255,0.35)" />
         <!-- Bottom goal -->
-        <rect x="165" y="538" width="70" height="12" rx="3" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1" />
+        <rect
+          x="165"
+          y="538"
+          width="70"
+          height="12"
+          rx="3"
+          fill="none"
+          stroke="rgba(255,255,255,0.2)"
+          stroke-width="1"
+        />
 
         <!-- Corner arcs -->
-        <path d="M 20 28 Q 28 28 28 20" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
-        <path d="M 372 20 Q 372 28 380 28" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
-        <path d="M 20 532 Q 28 532 28 540" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
-        <path d="M 372 540 Q 372 532 380 532" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+        <path
+          d="M 20 28 Q 28 28 28 20"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
+        <path
+          d="M 372 20 Q 372 28 380 28"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
+        <path
+          d="M 20 532 Q 28 532 28 540"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
+        <path
+          d="M 372 540 Q 372 532 380 532"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.5"
+        />
       </svg>
 
       <!-- Player nodes (overlaid on the pitch) -->
@@ -272,44 +469,86 @@ const stripesId = computed(() => props.inverted ? 'grassStripes-away' : 'grassSt
           class="formation-pitch__player"
           :style="{
             top: item.y + '%',
-            left: item.x + '%'
+            left: item.x + '%',
           }"
         >
           <!-- Player avatar circle -->
           <div class="formation-pitch__avatar-wrapper">
             <div class="formation-pitch__avatar">
-              <img v-if="item.player.avatarUrl" :src="item.player.avatarUrl" class="formation-pitch__avatar-img" />
-              <span v-else class="formation-pitch__avatar-initial">{{ item.player.name.charAt(0) }}</span>
+              <img
+                v-if="item.player.avatarUrl"
+                :src="item.player.avatarUrl"
+                class="formation-pitch__avatar-img"
+              />
+              <span v-else class="formation-pitch__avatar-initial">{{
+                item.player.name.charAt(0)
+              }}</span>
             </div>
             <!-- Goal badges (bottom-right, stacked with offset) -->
-            <div v-if="getPlayerGoals(item.player.id) > 0" class="formation-pitch__badges formation-pitch__badges--bottom-right">
-              <div class="formation-pitch__badge formation-pitch__badge--goal" :style="{ right: '0px', zIndex: 1 }">
+            <div
+              v-if="getPlayerGoals(item.player.id) > 0"
+              class="formation-pitch__badges formation-pitch__badges--bottom-right"
+            >
+              <div
+                class="formation-pitch__badge formation-pitch__badge--goal"
+                :style="{ right: '0px', zIndex: 1 }"
+              >
                 <IconsSoccerBallIcon class="formation-pitch__badge-icon" />
               </div>
-              <span v-if="getPlayerGoals(item.player.id) > 1" class="formation-pitch__badge-overflow formation-pitch__badge-overflow--right" :style="{ right: '-8px', zIndex: 2 }">
+              <span
+                v-if="getPlayerGoals(item.player.id) > 1"
+                class="formation-pitch__badge-overflow formation-pitch__badge-overflow--right"
+                :style="{ right: '-8px', zIndex: 2 }"
+              >
                 x{{ getPlayerGoals(item.player.id) }}
               </span>
             </div>
             <!-- Assist badges (bottom-left, stacked with offset) -->
-            <div v-if="getPlayerAssists(item.player.id) > 0" class="formation-pitch__badges formation-pitch__badges--bottom-left">
-              <div class="formation-pitch__badge formation-pitch__badge--assist" :style="{ left: '0px', zIndex: 1 }">
+            <div
+              v-if="getPlayerAssists(item.player.id) > 0"
+              class="formation-pitch__badges formation-pitch__badges--bottom-left"
+            >
+              <div
+                class="formation-pitch__badge formation-pitch__badge--assist"
+                :style="{ left: '0px', zIndex: 1 }"
+              >
                 <IconsAssistIcon class="formation-pitch__badge-icon" />
               </div>
-              <span v-if="getPlayerAssists(item.player.id) > 1" class="formation-pitch__badge-overflow formation-pitch__badge-overflow--left" :style="{ left: '-8px', zIndex: 2 }">
+              <span
+                v-if="getPlayerAssists(item.player.id) > 1"
+                class="formation-pitch__badge-overflow formation-pitch__badge-overflow--left"
+                :style="{ left: '-8px', zIndex: 2 }"
+              >
                 x{{ getPlayerAssists(item.player.id) }}
               </span>
             </div>
             <!-- Yellow card badges (top-left) -->
-            <div v-if="getPlayerYellowCards(item.player.id) > 0" class="formation-pitch__badges formation-pitch__badges--top-left">
-              <div v-for="i in getPlayerYellowCards(item.player.id)" :key="'yc-'+i" class="formation-pitch__badge formation-pitch__badge--yellow"></div>
+            <div
+              v-if="getPlayerYellowCards(item.player.id) > 0"
+              class="formation-pitch__badges formation-pitch__badges--top-left"
+            >
+              <div
+                v-for="i in getPlayerYellowCards(item.player.id)"
+                :key="'yc-' + i"
+                class="formation-pitch__badge formation-pitch__badge--yellow"
+              ></div>
             </div>
             <!-- Red card badges (top-right) -->
-            <div v-if="getPlayerRedCards(item.player.id) > 0" class="formation-pitch__badges formation-pitch__badges--top-right">
-              <div v-for="i in getPlayerRedCards(item.player.id)" :key="'rc-'+i" class="formation-pitch__badge formation-pitch__badge--red"></div>
+            <div
+              v-if="getPlayerRedCards(item.player.id) > 0"
+              class="formation-pitch__badges formation-pitch__badges--top-right"
+            >
+              <div
+                v-for="i in getPlayerRedCards(item.player.id)"
+                :key="'rc-' + i"
+                class="formation-pitch__badge formation-pitch__badge--red"
+              ></div>
             </div>
           </div>
           <!-- Player name -->
-          <span class="formation-pitch__player-name">{{ item.player.name.split(' ').pop() }}</span>
+          <span class="formation-pitch__player-name">{{
+            item.player.name.split(" ").pop()
+          }}</span>
         </div>
       </div>
     </div>
@@ -426,17 +665,23 @@ const stripesId = computed(() => props.inverted ? 'grassStripes-away' : 'grassSt
   overflow: hidden;
   background: rgba(255, 255, 255, 0.95);
   border: 2.5px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .formation-pitch__player:hover .formation-pitch__avatar {
   transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.35),
+    0 0 0 2px rgba(255, 255, 255, 0.6);
 }
 
 .formation-pitch__avatar-img {
@@ -577,7 +822,6 @@ const stripesId = computed(() => props.inverted ? 'grassStripes-away' : 'grassSt
 .formation-pitch__badge-overflow--left {
   background: #065f46;
 }
-
 
 .formation-pitch__player-name {
   font-size: 10px;
