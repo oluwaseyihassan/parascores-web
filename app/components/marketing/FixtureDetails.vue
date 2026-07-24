@@ -733,9 +733,7 @@ const awaySubs = computed(() => {
                     /^Group\s+Stage\s*-\s*/i,
                     "",
                   )
-                }}<template v-if="fixture.matchNumber">
-                  · Match {{ fixture.matchNumber }}</template
-                >
+                }}
               </span>
 
               <!-- Tournament link -->
@@ -2534,14 +2532,6 @@ const awaySubs = computed(() => {
                       "",
                     )
                   }}</span
-                >
-              </div>
-              <div class="flex items-center justify-between px-5 py-3">
-                <span class="text-sm text-gray-500">Match</span>
-                <span
-                  class="text-sm transition-colors"
-                  :class="isDark ? 'text-gray-200' : 'text-gray-800'"
-                  >#{{ fixture.matchNumber }}</span
                 >
               </div>
               <div
