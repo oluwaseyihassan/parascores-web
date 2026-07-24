@@ -1,12 +1,18 @@
 <template>
-  <div class="min-h-screen transition-colors" :class="isDark ? 'bg-[#0A0A0A]' : 'bg-white'">
-    <!-- Cover Header -->
-    <div 
-      class="h-48 md:h-64 w-full bg-cover bg-center relative transition-colors"
+  <div class="min-h-screen transition-colors relative" :class="isDark ? 'bg-[#0A0A0A]' : 'bg-white'">
+    <!-- Cover Header with blurred logo background -->
+    <div
+      class="h-48 md:h-64 w-full bg-cover bg-center relative transition-colors overflow-hidden"
       :class="isDark ? 'bg-[#111111]' : 'bg-gray-100'"
-      :style="organization?.bannerUrl ? { backgroundImage: `url(${organization.bannerUrl})` } : {}"
     >
-      <!-- Gradient overlay to blend and fade the bottom of the banner into the page background -->
+      <!-- Blurred logo background -->
+      <div
+        v-if="organization?.logoUrl"
+        class="absolute inset-0 bg-cover bg-center blur-[80px] scale-150"
+        :style="{ backgroundImage: `url(${organization.logoUrl})` }"
+      ></div>
+
+      <!-- Gradient overlay to fade the header into the page background -->
       <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white dark:from-[#0A0A0A] to-transparent pointer-events-none"></div>
 
       <!-- Back link -->
