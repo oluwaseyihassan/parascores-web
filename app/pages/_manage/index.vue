@@ -23,13 +23,22 @@ const communityBannerDismissed = useCookie<boolean>('community-banner-dismissed'
 
 // Filter state
 const filterStatus = ref<'all' | 'ongoing' | 'completed' | 'public'>('ongoing')
+
+const isTodayOrAfter = (date: string | Date) => {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return d.getTime() >= today.getTime()
+}
+
 const filteredTournaments = computed(() => {
   if (!tournaments.value) return []
   let filtered = tournaments.value
   if (filterStatus.value === 'ongoing') {
-    filtered = tournaments.value.filter(t => new Date(t.end_date) >= new Date())
+    filtered = tournaments.value.filter(t => isTodayOrAfter(t.end_date))
   } else if (filterStatus.value === 'completed') {
-    filtered = tournaments.value.filter(t => new Date(t.end_date) < new Date())
+    filtered = tournaments.value.filter(t => !isTodayOrAfter(t.end_date))
   } else if (filterStatus.value === 'public') {
     filtered = tournaments.value.filter(t => t.visibility === 'PUBLIC')
   }
@@ -272,7 +281,7 @@ watch(loadMoreTrigger, (el) => {
         <div class="relative z-10 pr-10 sm:pr-12">
           <p class="text-[9px] sm:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Active</p>
           <p class="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">
-            {{ tournaments.filter(t => new Date(t.end_date) >= new Date()).length }}
+            {{ tournaments.filter(t => isTodayOrAfter(t.end_date)).length }}
           </p>
         </div>
         <div class="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg sm:rounded-xl flex items-center justify-center border border-emerald-100/50 dark:border-emerald-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
@@ -293,7 +302,7 @@ watch(loadMoreTrigger, (el) => {
         <div class="relative z-10 pr-10 sm:pr-12">
           <p class="text-[9px] sm:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Completed</p>
           <p class="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">
-            {{ tournaments.filter(t => new Date(t.end_date) < new Date()).length }}
+            {{ tournaments.filter(t => !isTodayOrAfter(t.end_date)).length }}
           </p>
         </div>
         <div class="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-violet-50 dark:bg-violet-950/40 rounded-lg sm:rounded-xl flex items-center justify-center border border-violet-100/50 dark:border-violet-900/30 group-hover:scale-105 transition-transform duration-300 z-10">
