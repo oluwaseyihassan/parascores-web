@@ -1,350 +1,487 @@
 <script setup lang="ts">
-import { storeToRefs } from 'pinia'
-import type { Player } from '~/types'
-import type { ApiResponse } from '~/stores/auth'
+import { storeToRefs } from "pinia";
+import type { Player } from "~/types";
+import type { ApiResponse } from "~/stores/auth";
 
 definePageMeta({
-  layout: 'feed'
-})
+  layout: "feed",
+});
 
-const { toMain } = useHost()
-const route = useRoute()
-const playerId = route.params.id as string
+const { toMain } = useHost();
+const route = useRoute();
+const playerId = route.params.id as string;
 
-const player = ref<any | null>(null)
-const loading = ref(true)
-const error = ref<string | null>(null)
+const player = ref<any | null>(null);
+const loading = ref(true);
+const error = ref<string | null>(null);
 
 // Auth
-const authStore = useAuthStore()
-const { user, isAuthenticated } = storeToRefs(authStore)
-const playerStore = usePlayerStore()
-const paymentStore = usePaymentStore()
-const config = useRuntimeConfig()
-const toast = useToast()
-const { handleError } = useErrors()
+const authStore = useAuthStore();
+const { user, isAuthenticated } = storeToRefs(authStore);
+const playerStore = usePlayerStore();
+const paymentStore = usePaymentStore();
+const config = useRuntimeConfig();
+const toast = useToast();
+const { handleError } = useErrors();
 
 // Claim state
-const claiming = ref(false)
-const showClaimModal = ref(false)
-const verifyingPayment = ref(false)
+const claiming = ref(false);
+const showClaimModal = ref(false);
+const verifyingPayment = ref(false);
 
 const handleClaimProfile = async () => {
-  if (!player.value) return
+  if (!player.value) return;
   if (!isAuthenticated.value) {
-    navigateTo(`/login?redirect=${route.fullPath}`)
-    return
+    navigateTo(`/login?redirect=${route.fullPath}`);
+    return;
   }
 
   // Check if player user already has a linked profile in this tournament
   const hasProfileInTournament = user.value?.player_profiles?.some(
-    (p: any) => p.participant?.tournament_id === player.value.participant?.tournament_id
-  )
+    (p: any) =>
+      p.participant?.tournament_id === player.value.participant?.tournament_id,
+  );
   if (hasProfileInTournament) {
     toast.add({
-      title: 'Already Registered',
-      description: 'You already have a linked player profile in this tournament.',
-      color: 'error'
-    })
-    return
+      title: "Already Registered",
+      description:
+        "You already have a linked player profile in this tournament.",
+      color: "error",
+    });
+    return;
   }
 
-  showClaimModal.value = true
-}
+  showClaimModal.value = true;
+};
 
 const handleConfirmClaimPayment = async () => {
-  claiming.value = true
+  claiming.value = true;
   try {
-    const callbackUrl = `${window.location.origin}/player/${playerId}`
+    const callbackUrl = `${window.location.origin}/player/${playerId}`;
     const res = await paymentStore.initializePlayerClaim({
       playerId,
       callbackUrl,
-    })
+    });
 
     if (res.data?.authorization_url) {
-      window.location.href = res.data.authorization_url
+      window.location.href = res.data.authorization_url;
     } else {
-      throw new Error('Failed to generate checkout URL')
+      throw new Error("Failed to generate checkout URL");
     }
   } catch (err: any) {
-    handleError(err, { title: 'Checkout Failed' })
+    handleError(err, { title: "Checkout Failed" });
   } finally {
-    claiming.value = false
+    claiming.value = false;
   }
-}
+};
 
 // Check if current user is owner of this player profile
 const isOwner = computed(() => {
-  return isAuthenticated.value && player.value && player.value.userId === user.value?.id
-})
+  return (
+    isAuthenticated.value &&
+    player.value &&
+    player.value.userId === user.value?.id
+  );
+});
 
 // Owner can only edit after organizer has approved the claim
 const canEditProfile = computed(() => {
-  return isOwner.value && player.value?.status !== 'PENDING'
-})
+  return isOwner.value && player.value?.status !== "PENDING";
+});
 
 const isClaimedAndApproved = computed(() => {
-  return !!player.value?.userId && player.value?.status === 'APPROVED'
-})
+  return !!player.value?.userId && player.value?.status === "APPROVED";
+});
 
 // Edit State
-const isEditing = ref(false)
-const editName = ref('')
-const editNumber = ref<number | null>(null)
-const editPosition = ref<string>('')
-const updating = ref(false)
+const isEditing = ref(false);
+const editName = ref("");
+const editNumber = ref<number | null>(null);
+const editPosition = ref<string>("");
+const updating = ref(false);
 
 const positionOptions = [
-  { label: 'Goalkeeper (GK)', value: 'GK' },
-  { label: 'Defender (DEF)', value: 'DEF' },
-  { label: 'Midfielder (MID)', value: 'MID' },
-  { label: 'Forward (FWD)', value: 'FWD' }
-]
+  { label: "Goalkeeper (GK)", value: "GK" },
+  { label: "Defender (DEF)", value: "DEF" },
+  { label: "Midfielder (MID)", value: "MID" },
+  { label: "Forward (FWD)", value: "FWD" },
+];
 
 // Avatar upload
-const fileInput = ref<HTMLInputElement | null>(null)
-const uploading = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null);
+const uploading = ref(false);
 
-const triggerUpload = () => fileInput.value?.click()
+const triggerUpload = () => fileInput.value?.click();
 
 const handleAvatarChange = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
 
-  if (!file.type.startsWith('image/')) {
-    toast.add({ title: 'Please select an image file', color: 'error' })
-    return
+  if (!file.type.startsWith("image/")) {
+    toast.add({ title: "Please select an image file", color: "error" });
+    return;
   }
   if (file.size > 5 * 1024 * 1024) {
-    toast.add({ title: 'Image must be less than 5MB', color: 'error' })
-    return
+    toast.add({ title: "Image must be less than 5MB", color: "error" });
+    return;
   }
 
-  uploading.value = true
+  uploading.value = true;
   try {
-    const formData = new FormData()
-    formData.append('file', file)
+    const formData = new FormData();
+    formData.append("file", file);
 
-    const response = await $api<{success: boolean, data: { url: string }}>('/upload/image?folder=players', {
-      method: 'POST',
-      body: formData
-    })
+    const response = await $api<{ success: boolean; data: { url: string } }>(
+      "/upload/image?folder=players",
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
 
     if (response.data?.url) {
-      const updateRes = await playerStore.updateProfile(playerId, { avatarUrl: response.data.url })
+      const updateRes = await playerStore.updateProfile(playerId, {
+        avatarUrl: response.data.url,
+      });
       if (updateRes.success && updateRes.data) {
-        player.value.avatarUrl = updateRes.data.avatarUrl
-        toast.add({ title: 'Profile picture updated', color: 'success' })
+        player.value.avatarUrl = updateRes.data.avatarUrl;
+        toast.add({ title: "Profile picture updated", color: "success" });
       }
     }
   } catch (err) {
-    handleError(err, { title: 'Upload failed' })
+    handleError(err, { title: "Upload failed" });
   } finally {
-    uploading.value = false
+    uploading.value = false;
   }
-}
+};
 
 const startEditing = () => {
-  editName.value = player.value?.name || ''
-  editNumber.value = player.value?.number ?? null
-  editPosition.value = player.value?.position || ''
-  isEditing.value = true
-}
+  editName.value = player.value?.name || "";
+  editNumber.value = player.value?.number ?? null;
+  editPosition.value = player.value?.position || "";
+  isEditing.value = true;
+};
 
 const handleUpdatePlayer = async () => {
-  if (!player.value) return
+  if (!player.value) return;
   if (!editName.value.trim()) {
-    toast.add({ title: 'Name cannot be empty', color: 'error' })
-    return
+    toast.add({ title: "Name cannot be empty", color: "error" });
+    return;
   }
-  updating.value = true
+  updating.value = true;
   try {
     const payload: any = {
       name: editName.value,
-      position: editPosition.value || null
-    }
-    if (editNumber.value !== null && editNumber.value !== undefined && String(editNumber.value).trim() !== '') {
-      payload.number = parseInt(String(editNumber.value), 10)
+      position: editPosition.value || null,
+    };
+    if (
+      editNumber.value !== null &&
+      editNumber.value !== undefined &&
+      String(editNumber.value).trim() !== ""
+    ) {
+      payload.number = parseInt(String(editNumber.value), 10);
       if (isNaN(payload.number)) {
-        payload.number = null
+        payload.number = null;
       }
     } else {
-      payload.number = null
+      payload.number = null;
     }
 
-    const res = await playerStore.updateProfile(playerId, payload)
+    const res = await playerStore.updateProfile(playerId, payload);
     if (res.success && res.data) {
-      player.value.name = res.data.name
-      player.value.number = res.data.number
-      player.value.position = res.data.position
-      toast.add({ title: 'Player profile updated', color: 'success' })
-      isEditing.value = false
+      player.value.name = res.data.name;
+      player.value.number = res.data.number;
+      player.value.position = res.data.position;
+      toast.add({ title: "Player profile updated", color: "success" });
+      isEditing.value = false;
     }
   } catch (error: any) {
-    handleError(error, { title: 'Update failed' })
+    handleError(error, { title: "Update failed" });
   } finally {
-    updating.value = false
+    updating.value = false;
   }
-}
+};
 
 // Theme
-const colorMode = useColorMode()
+const colorMode = useColorMode();
 
 onMounted(async () => {
   try {
-    const response = await $publicApi<{success: boolean, data: any}>(`/players/${playerId}`)
+    const response = await $publicApi<{ success: boolean; data: any }>(
+      `/players/${playerId}`,
+    );
     if (response.data) {
-      player.value = response.data
+      player.value = response.data;
     }
   } catch (err: any) {
-    error.value = err?.data?.message || err?.message || 'Player not found'
+    error.value = err?.data?.message || err?.message || "Player not found";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 
   // Check if there is a payment reference query param to verify
-  const reference = route.query.reference as string
+  const reference = route.query.reference as string;
   if (reference) {
-    verifyingPayment.value = true
+    verifyingPayment.value = true;
     try {
-      await paymentStore.verifyPayment(reference)
+      await paymentStore.verifyPayment(reference);
       toast.add({
-        title: 'Claim Request Submitted 🎉',
-        description: 'Your payment was successful. The claim is now pending approval from the tournament organizer.',
-        color: 'success',
-      })
+        title: "Claim Request Submitted 🎉",
+        description:
+          "Your payment was successful. The claim is now pending approval from the tournament organizer.",
+        color: "success",
+      });
       // Clear query params
-      await navigateTo(`/player/${playerId}`, { replace: true })
+      await navigateTo(`/player/${playerId}`, { replace: true });
       // Re-fetch player details to show pending status
-      const response = await $publicApi<{success: boolean, data: any}>(`/players/${playerId}`)
+      const response = await $publicApi<{ success: boolean; data: any }>(
+        `/players/${playerId}`,
+      );
       if (response.data) {
-        player.value = response.data
+        player.value = response.data;
       }
     } catch (err: any) {
-      handleError(err, { title: 'Payment Verification Failed' })
+      handleError(err, { title: "Payment Verification Failed" });
     } finally {
-      verifyingPayment.value = false
+      verifyingPayment.value = false;
     }
   }
-})
+});
 
 const getPositionLabel = (pos: string | null | undefined) => {
   const map: Record<string, string> = {
-    GK: 'Goalkeeper',
-    DEF: 'Defender',
-    MID: 'Midfielder',
-    FWD: 'Forward',
-  }
-  const cat = pos ? pos.split('-')[0] : ''
-  return cat ? map[cat] || cat : 'Unknown'
-}
+    GK: "Goalkeeper",
+    DEF: "Defender",
+    MID: "Midfielder",
+    FWD: "Forward",
+  };
+  const cat = pos ? pos.split("-")[0] : "";
+  return cat ? map[cat] || cat : "Unknown";
+};
 
 const getPositionColor = (pos: string | null | undefined): string => {
   const map: Record<string, string> = {
-    GK: 'warning',
-    DEF: 'info',
-    MID: 'success',
-    FWD: 'error',
-  }
-  const cat = pos ? pos.split('-')[0] : ''
-  return cat ? map[cat] || 'neutral' : 'neutral'
+    GK: "warning",
+    DEF: "info",
+    MID: "success",
+    FWD: "error",
+  };
+  const cat = pos ? pos.split("-")[0] : "";
+  return cat ? map[cat] || "neutral" : "neutral";
+};
+
+function isPenaltyShootoutEvent(event: any) {
+  return event.half === "PENALTY_SHOOTOUT";
 }
 
 // Count stats from match events
 const statsFromEvents = computed(() => {
-  if (!player.value?.matchEvents) return { goals: 0, penalties: 0, ownGoals: 0, missedPenalties: 0, assists: 0, yellowCards: 0, redCards: 0, substitutions: 0, cleanSheets: 0, penaltySaves: 0 }
+  if (!player.value?.matchEvents)
+    return {
+      goals: 0,
+      penalties: 0,
+      ownGoals: 0,
+      missedPenalties: 0,
+      assists: 0,
+      yellowCards: 0,
+      redCards: 0,
+      substitutions: 0,
+      cleanSheets: 0,
+      penaltySaves: 0,
+      penaltyShootoutGoals: 0,
+    };
 
-  let goals = 0, penalties = 0, ownGoals = 0, missedPenalties = 0, assists = 0, yellowCards = 0, redCards = 0, substitutions = 0, penaltySaves = 0
-  
+  let goals = 0,
+    penalties = 0,
+    ownGoals = 0,
+    missedPenalties = 0,
+    assists = 0,
+    yellowCards = 0,
+    redCards = 0,
+    substitutions = 0,
+    penaltySaves = 0,
+    penaltyShootoutGoals = 0;
+
   // Count stats where player is the main actor
   for (const event of player.value.matchEvents) {
-    if (event.type === 'GOAL') goals++
-    if (event.type === 'PENALTY') penalties++
-    if (event.type === 'OWN_GOAL') ownGoals++
-    if (event.type === 'MISSED_PENALTY') missedPenalties++
-    if (event.type === 'PENALTY_SAVE') penaltySaves++
-    if (event.type === 'ASSIST') assists++
-    if (event.type === 'YELLOW_CARD') yellowCards++
-    if (event.type === 'RED_CARD') redCards++
-    if (event.type === 'SUBSTITUTION') substitutions++
+    const isShootout = isPenaltyShootoutEvent(event);
+
+    if (event.type === "GOAL") {
+      if (isShootout) {
+        penaltyShootoutGoals++;
+      } else {
+        goals++;
+      }
+    }
+    if (event.type === "PENALTY") {
+      if (isShootout) {
+        penaltyShootoutGoals++;
+      } else {
+        penalties++;
+      }
+    }
+    if (event.type === "OWN_GOAL") ownGoals++;
+    if (event.type === "MISSED_PENALTY") missedPenalties++;
+    if (event.type === "PENALTY_SAVE") penaltySaves++;
+    if (event.type === "ASSIST" && !isShootout) assists++;
+    if (event.type === "YELLOW_CARD") yellowCards++;
+    if (event.type === "RED_CARD") redCards++;
+    if (event.type === "SUBSTITUTION") substitutions++;
   }
 
   // Count assists from relatedMatchEvents where player is the related/assisting player
   if (player.value.relatedMatchEvents) {
     for (const event of player.value.relatedMatchEvents) {
-      if (['GOAL', 'PENALTY'].includes(event.type)) {
-        assists++
+      if (isPenaltyShootoutEvent(event)) continue;
+      if (["GOAL", "PENALTY"].includes(event.type)) {
+        assists++;
       }
     }
   }
-  
-  return { goals: goals + penalties, penalties, ownGoals, missedPenalties, assists, yellowCards, redCards, substitutions, cleanSheets: 0, penaltySaves }
-})
+
+  return {
+    goals: goals + penalties,
+    penalties,
+    ownGoals,
+    missedPenalties,
+    assists,
+    yellowCards,
+    redCards,
+    substitutions,
+    cleanSheets: 0,
+    penaltySaves,
+    penaltyShootoutGoals,
+  };
+});
 
 // Position-based stat cards
 interface StatCard {
-  label: string
-  value: number
-  icon?: string
-  iconBgClass: string
-  iconClass: string
-  isCard?: boolean   // renders as a colored card rectangle instead of icon
-  cardClass?: string
+  label: string;
+  value: number;
+  icon?: string;
+  iconBgClass: string;
+  iconClass: string;
+  isCard?: boolean; // renders as a colored card rectangle instead of icon
+  cardClass?: string;
 }
 
 const positionStats = computed((): StatCard[] => {
-  const s = statsFromEvents.value
-  const pos = (player.value?.position || '').split('-')[0]
+  const s = statsFromEvents.value;
+  const pos = (player.value?.position || "").split("-")[0];
 
-  const goalsStat: StatCard = { label: 'Goals', value: s.goals, icon: 'i-mdi-soccer', iconBgClass: 'bg-emerald-500/10', iconClass: 'text-emerald-500 dark:text-emerald-400' }
-  const assistsStat: StatCard = { label: 'Assists', value: s.assists, icon: 'i-mdi-shoe-cleat', iconBgClass: 'bg-cyan-500/10', iconClass: 'text-cyan-500 dark:text-cyan-400 -rotate-45 transform' }
-  const yellowsStat: StatCard = { label: 'Yellows', value: s.yellowCards, isCard: true, cardClass: 'bg-yellow-400 ring-yellow-400/20', iconBgClass: '', iconClass: '' }
-  const redsStat: StatCard = { label: 'Reds', value: s.redCards, isCard: true, cardClass: 'bg-rose-500 dark:bg-rose-600 ring-rose-500/20', iconBgClass: '', iconClass: '' }
-  const ownGoalsStat: StatCard = { label: 'Own Goals', value: s.ownGoals, icon: 'i-mdi-soccer', iconBgClass: 'bg-orange-500/10', iconClass: 'text-orange-500 dark:text-orange-400' }
-  const penaltiesStat: StatCard = { label: 'Penalties', value: s.penalties, icon: 'i-heroicons-stop', iconBgClass: 'bg-blue-500/10', iconClass: 'text-blue-500 dark:text-blue-400' }
-  const missedPensStat: StatCard = { label: 'Missed Pens', value: s.missedPenalties, icon: 'i-heroicons-x-circle', iconBgClass: 'bg-red-500/10', iconClass: 'text-red-500 dark:text-red-400' }
-  const cleanSheetsStat: StatCard = { label: 'Clean Sheets', value: s.cleanSheets, icon: 'i-heroicons-shield-check', iconBgClass: 'bg-violet-500/10', iconClass: 'text-violet-500 dark:text-violet-400' }
-  const savesStat: StatCard = { label: 'Pen. Saves', value: s.penaltySaves, icon: 'i-heroicons-hand-raised', iconBgClass: 'bg-amber-500/10', iconClass: 'text-amber-500 dark:text-amber-400' }
+  const goalsStat: StatCard = {
+    label: "Goals",
+    value: s.goals,
+    icon: "i-mdi-soccer",
+    iconBgClass: "bg-emerald-500/10",
+    iconClass: "text-emerald-500 dark:text-emerald-400",
+  };
+  const assistsStat: StatCard = {
+    label: "Assists",
+    value: s.assists,
+    icon: "i-mdi-shoe-cleat",
+    iconBgClass: "bg-cyan-500/10",
+    iconClass: "text-cyan-500 dark:text-cyan-400 -rotate-45 transform",
+  };
+  const yellowsStat: StatCard = {
+    label: "Yellows",
+    value: s.yellowCards,
+    isCard: true,
+    cardClass: "bg-yellow-400 ring-yellow-400/20",
+    iconBgClass: "",
+    iconClass: "",
+  };
+  const redsStat: StatCard = {
+    label: "Reds",
+    value: s.redCards,
+    isCard: true,
+    cardClass: "bg-rose-500 dark:bg-rose-600 ring-rose-500/20",
+    iconBgClass: "",
+    iconClass: "",
+  };
+  const ownGoalsStat: StatCard = {
+    label: "Own Goals",
+    value: s.ownGoals,
+    icon: "i-mdi-soccer",
+    iconBgClass: "bg-orange-500/10",
+    iconClass: "text-orange-500 dark:text-orange-400",
+  };
+  const penaltiesStat: StatCard = {
+    label: "Penalties",
+    value: s.penalties,
+    icon: "i-heroicons-stop",
+    iconBgClass: "bg-blue-500/10",
+    iconClass: "text-blue-500 dark:text-blue-400",
+  };
+  const missedPensStat: StatCard = {
+    label: "Missed Pens",
+    value: s.missedPenalties,
+    icon: "i-heroicons-x-circle",
+    iconBgClass: "bg-red-500/10",
+    iconClass: "text-red-500 dark:text-red-400",
+  };
+  const cleanSheetsStat: StatCard = {
+    label: "Clean Sheets",
+    value: s.cleanSheets,
+    icon: "i-heroicons-shield-check",
+    iconBgClass: "bg-violet-500/10",
+    iconClass: "text-violet-500 dark:text-violet-400",
+  };
+  const savesStat: StatCard = {
+    label: "Pen. Saves",
+    value: s.penaltySaves,
+    icon: "i-heroicons-hand-raised",
+    iconBgClass: "bg-amber-500/10",
+    iconClass: "text-amber-500 dark:text-amber-400",
+  };
+  const shootoutGoalsStat: StatCard = {
+    label: "Shootout Goals",
+    value: s.penaltyShootoutGoals,
+    icon: "i-heroicons-fire",
+    iconBgClass: "bg-rose-500/10",
+    iconClass: "text-rose-500 dark:text-rose-400",
+  };
 
-  let statsList: StatCard[] = []
+  let statsList: StatCard[] = [];
   switch (pos) {
-    case 'GK':
-      statsList = [cleanSheetsStat, savesStat, yellowsStat, redsStat]
-      break
-    case 'DEF':
-      statsList = [goalsStat, ownGoalsStat, yellowsStat, redsStat]
-      break
-    case 'MID':
-      statsList = [goalsStat, assistsStat, yellowsStat, redsStat]
-      break
-    case 'FWD':
-      statsList = [goalsStat, assistsStat, penaltiesStat, missedPensStat]
-      break
+    case "GK":
+      statsList = [cleanSheetsStat, savesStat, yellowsStat, redsStat];
+      break;
+    case "DEF":
+      statsList = [goalsStat, ownGoalsStat, yellowsStat, redsStat];
+      break;
+    case "MID":
+      statsList = [goalsStat, assistsStat, yellowsStat, redsStat];
+      break;
+    case "FWD":
+      statsList = [goalsStat, assistsStat, penaltiesStat, missedPensStat];
+      break;
     default:
-      statsList = [goalsStat, assistsStat, yellowsStat, redsStat]
-      break
+      statsList = [goalsStat, assistsStat, yellowsStat, redsStat];
+      break;
   }
 
   // Dynamically add other cards if the value is > 0 and not already in the list
   const addIfNonZero = (stat: StatCard) => {
-    if (stat.value > 0 && !statsList.some(s => s.label === stat.label)) {
-      statsList.push(stat)
+    if (stat.value > 0 && !statsList.some((s) => s.label === stat.label)) {
+      statsList.push(stat);
     }
-  }
+  };
 
-  addIfNonZero(goalsStat)
-  addIfNonZero(assistsStat)
-  addIfNonZero(ownGoalsStat)
-  addIfNonZero(penaltiesStat)
-  addIfNonZero(missedPensStat)
-  addIfNonZero(cleanSheetsStat)
-  addIfNonZero(savesStat)
-  addIfNonZero(yellowsStat)
-  addIfNonZero(redsStat)
+  addIfNonZero(goalsStat);
+  addIfNonZero(assistsStat);
+  addIfNonZero(ownGoalsStat);
+  addIfNonZero(penaltiesStat);
+  addIfNonZero(missedPensStat);
+  addIfNonZero(cleanSheetsStat);
+  addIfNonZero(savesStat);
+  addIfNonZero(shootoutGoalsStat);
+  addIfNonZero(yellowsStat);
+  addIfNonZero(redsStat);
 
-  return statsList
-})
+  return statsList;
+});
 </script>
 
 <template>
@@ -362,80 +499,160 @@ const positionStats = computed((): StatCard[] => {
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="flex flex-col items-center justify-center py-24 bg-white dark:bg-white/[0.02] rounded-3xl border border-gray-100 dark:border-white/[0.05]">
-      <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-emerald-500 mb-3" />
+    <div
+      v-if="loading"
+      class="flex flex-col items-center justify-center py-24 bg-white dark:bg-white/[0.02] rounded-3xl border border-gray-100 dark:border-white/[0.05]"
+    >
+      <UIcon
+        name="i-heroicons-arrow-path"
+        class="w-8 h-8 animate-spin text-emerald-500 mb-3"
+      />
       <p class="text-sm text-gray-400">Loading player profile...</p>
     </div>
 
     <!-- Verifying Payment Loading -->
-    <div v-else-if="verifyingPayment" class="flex flex-col items-center justify-center py-24 bg-white dark:bg-white/[0.02] rounded-3xl border border-gray-100 dark:border-white/[0.05]">
-      <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-emerald-500 mb-3" />
-      <h2 class="text-lg font-bold text-gray-900 dark:text-white">Verifying Profile Claim...</h2>
-      <p class="text-sm text-gray-400 mt-1">Please wait while we confirm your payment transaction.</p>
+    <div
+      v-else-if="verifyingPayment"
+      class="flex flex-col items-center justify-center py-24 bg-white dark:bg-white/[0.02] rounded-3xl border border-gray-100 dark:border-white/[0.05]"
+    >
+      <UIcon
+        name="i-heroicons-arrow-path"
+        class="w-8 h-8 animate-spin text-emerald-500 mb-3"
+      />
+      <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+        Verifying Profile Claim...
+      </h2>
+      <p class="text-sm text-gray-400 mt-1">
+        Please wait while we confirm your payment transaction.
+      </p>
     </div>
 
     <!-- Error -->
-    <div v-else-if="error" class="text-center py-24 bg-white dark:bg-white/[0.02] rounded-3xl border border-gray-100 dark:border-white/[0.05] px-6">
-      <div class="w-14 h-14 bg-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-        <UIcon name="i-heroicons-exclamation-triangle" class="w-7 h-7 text-rose-500" />
+    <div
+      v-else-if="error"
+      class="text-center py-24 bg-white dark:bg-white/[0.02] rounded-3xl border border-gray-100 dark:border-white/[0.05] px-6"
+    >
+      <div
+        class="w-14 h-14 bg-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4"
+      >
+        <UIcon
+          name="i-heroicons-exclamation-triangle"
+          class="w-7 h-7 text-rose-500"
+        />
       </div>
-      <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-1">{{ error }}</h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">The player profile could not be loaded.</p>
-      <UButton :to="toMain('/explore')" variant="soft" color="neutral" size="sm" class="rounded-lg">Explore Tournaments</UButton>
+      <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-1">
+        {{ error }}
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+        The player profile could not be loaded.
+      </p>
+      <UButton
+        :to="toMain('/explore')"
+        variant="soft"
+        color="neutral"
+        size="sm"
+        class="rounded-lg"
+        >Explore Tournaments</UButton
+      >
     </div>
 
     <!-- Player Profile -->
     <div v-else-if="player" class="space-y-8">
-      
       <!-- Pending Verification Banner -->
-      <div v-if="player.userId === user?.id && player.status === 'PENDING'" class="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3">
-        <UIcon name="i-heroicons-information-circle-solid" class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+      <div
+        v-if="player.userId === user?.id && player.status === 'PENDING'"
+        class="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3"
+      >
+        <UIcon
+          name="i-heroicons-information-circle-solid"
+          class="w-5 h-5 text-amber-500 shrink-0 mt-0.5"
+        />
         <div>
-          <h4 class="text-sm font-bold text-amber-950 dark:text-amber-400">Profile Claim Pending Verification</h4>
-          <p class="text-xs text-amber-700 dark:text-amber-500/80 mt-0.5 leading-relaxed">
-            You have claimed this profile and paid the verification fee. It is currently awaiting approval from the tournament organizer.
+          <h4 class="text-sm font-bold text-amber-950 dark:text-amber-400">
+            Profile Claim Pending Verification
+          </h4>
+          <p
+            class="text-xs text-amber-700 dark:text-amber-500/80 mt-0.5 leading-relaxed"
+          >
+            You have claimed this profile and paid the verification fee. It is
+            currently awaiting approval from the tournament organizer.
           </p>
         </div>
       </div>
 
       <!-- Hero Card -->
-      <div class="relative bg-white dark:bg-white/[0.02] rounded-2xl border border-gray-200 dark:border-white/[0.05] p-6 sm:p-8 overflow-hidden transition-all shadow-sm">
+      <div
+        class="relative bg-white dark:bg-white/[0.02] rounded-2xl border border-gray-200 dark:border-white/[0.05] p-6 sm:p-8 overflow-hidden transition-all shadow-sm"
+      >
         <!-- Accent top line -->
         <div class="absolute inset-x-0 top-0 h-1.5 bg-emerald-500"></div>
-        
+
         <div class="flex flex-col sm:flex-row items-center gap-6 relative z-10">
-          
           <!-- Avatar section -->
           <div class="relative group">
-            <input v-if="canEditProfile" ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleAvatarChange" />
-            
+            <input
+              v-if="canEditProfile"
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              @change="handleAvatarChange"
+            />
+
             <button
               :disabled="!canEditProfile || uploading"
               @click="canEditProfile ? triggerUpload() : null"
               class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-gray-50 dark:bg-white/[0.04] border-4 border-white dark:border-[#1A1A1A] ring-1 ring-gray-200 dark:ring-white/[0.08] shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              :class="{ 'cursor-pointer hover:ring-emerald-500/50 hover:scale-102': canEditProfile }"
+              :class="{
+                'cursor-pointer hover:ring-emerald-500/50 hover:scale-102':
+                  canEditProfile,
+              }"
             >
-              <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
-              <div v-else class="w-full h-full flex items-center justify-center text-4xl font-black text-gray-300 dark:text-gray-600 uppercase">
+              <img
+                v-if="player.avatarUrl"
+                :src="player.avatarUrl"
+                class="w-full h-full object-cover"
+              />
+              <div
+                v-else
+                class="w-full h-full flex items-center justify-center text-4xl font-black text-gray-300 dark:text-gray-600 uppercase"
+              >
                 {{ player.name.charAt(0) }}
               </div>
 
               <!-- Overlay for Owner -->
-              <div v-if="canEditProfile" class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <UIcon v-if="!uploading" name="i-heroicons-camera" class="w-6 h-6 text-white mb-1" />
-                <UIcon v-else name="i-heroicons-arrow-path" class="w-6 h-6 text-white animate-spin" />
-                <span class="text-[8px] font-black uppercase text-white tracking-widest">Change</span>
+              <div
+                v-if="canEditProfile"
+                class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <UIcon
+                  v-if="!uploading"
+                  name="i-heroicons-camera"
+                  class="w-6 h-6 text-white mb-1"
+                />
+                <UIcon
+                  v-else
+                  name="i-heroicons-arrow-path"
+                  class="w-6 h-6 text-white animate-spin"
+                />
+                <span
+                  class="text-[8px] font-black uppercase text-white tracking-widest"
+                  >Change</span
+                >
               </div>
             </button>
           </div>
 
           <!-- Info / Title -->
           <div class="flex-1 text-center sm:text-left min-w-0 w-full">
-            
             <!-- Non-editing view -->
             <div v-if="!isEditing" class="space-y-2">
-              <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                <h1 class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+              <div
+                class="flex flex-wrap items-center justify-center sm:justify-start gap-2.5"
+              >
+                <h1
+                  class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white tracking-tight"
+                >
                   {{ player.name }}
                 </h1>
                 <UIcon
@@ -444,30 +661,50 @@ const positionStats = computed((): StatCard[] => {
                   class="w-6 h-6 text-blue-500 shrink-0 self-center"
                   title="Claimed & Verified Player"
                 />
-                <span v-if="player.number" class="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-xs border border-emerald-500/20">
+                <span
+                  v-if="player.number"
+                  class="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-xs border border-emerald-500/20"
+                >
                   #{{ player.number }}
                 </span>
-                
+
                 <!-- Position Badge -->
-                <span 
+                <span
                   class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border"
-                  :class="player.position?.split('-')[0] === 'GK' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' :
-                          player.position?.split('-')[0] === 'DEF' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' :
-                          player.position?.split('-')[0] === 'MID' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
-                          player.position?.split('-')[0] === 'FWD' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' :
-                          'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20'"
+                  :class="
+                    player.position?.split('-')[0] === 'GK'
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                      : player.position?.split('-')[0] === 'DEF'
+                        ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                        : player.position?.split('-')[0] === 'MID'
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                          : player.position?.split('-')[0] === 'FWD'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                            : 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20'
+                  "
                 >
                   {{ getPositionLabel(player.position) }}
                 </span>
               </div>
 
               <!-- Owner Click Info -->
-              <p v-if="canEditProfile" class="text-[10px] text-gray-400 dark:text-gray-500 tracking-wider">
-                <span class="hover:text-emerald-500 dark:hover:text-emerald-400 cursor-pointer" @click="triggerUpload">Change photo</span>
+              <p
+                v-if="canEditProfile"
+                class="text-[10px] text-gray-400 dark:text-gray-500 tracking-wider"
+              >
+                <span
+                  class="hover:text-emerald-500 dark:hover:text-emerald-400 cursor-pointer"
+                  @click="triggerUpload"
+                  >Change photo</span
+                >
                 <span class="mx-1.5">•</span>
-                <span class="hover:text-emerald-500 dark:hover:text-emerald-400 cursor-pointer" @click="startEditing">Edit details</span>
+                <span
+                  class="hover:text-emerald-500 dark:hover:text-emerald-400 cursor-pointer"
+                  @click="startEditing"
+                  >Edit details</span
+                >
               </p>
-              
+
               <div v-if="canEditProfile" class="pt-2">
                 <UButton
                   variant="soft"
@@ -497,7 +734,9 @@ const positionStats = computed((): StatCard[] => {
 
               <!-- Pending Claim Badge -->
               <div v-else-if="player.status === 'PENDING'" class="pt-2">
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold text-xs uppercase tracking-wider">
+                <span
+                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold text-xs uppercase tracking-wider"
+                >
                   <UIcon name="i-heroicons-clock" class="w-4 h-4" />
                   Claim Pending Approval
                 </span>
@@ -508,7 +747,10 @@ const positionStats = computed((): StatCard[] => {
             <div v-else class="w-full max-w-sm mx-auto sm:mx-0 space-y-4">
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div class="sm:col-span-2">
-                  <span class="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Player Name</span>
+                  <span
+                    class="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1"
+                    >Player Name</span
+                  >
                   <UInput
                     v-model="editName"
                     placeholder="Player Name"
@@ -518,7 +760,10 @@ const positionStats = computed((): StatCard[] => {
                   />
                 </div>
                 <div>
-                  <span class="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Shirt Number</span>
+                  <span
+                    class="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1"
+                    >Shirt Number</span
+                  >
                   <UInput
                     v-model="editNumber"
                     type="number"
@@ -531,7 +776,10 @@ const positionStats = computed((): StatCard[] => {
               </div>
 
               <div>
-                <span class="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Position</span>
+                <span
+                  class="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1"
+                  >Position</span
+                >
                 <USelect
                   v-model="editPosition"
                   :items="positionOptions"
@@ -555,38 +803,54 @@ const positionStats = computed((): StatCard[] => {
                   variant="ghost"
                   color="neutral"
                   size="xs"
-                  @click="isEditing = false;"
+                  @click="isEditing = false"
                   class="rounded-xl font-black uppercase tracking-widest text-[9px] px-4 py-2"
                 >
                   Cancel
                 </UButton>
               </div>
             </div>
-
           </div>
         </div>
       </div>
 
       <!-- Stats Section -->
       <div>
-        <h3 class="text-xs font-bold text-gray-400 dark:text-gray-500 mb-4 px-1 uppercase tracking-wider">Tournament Stats</h3>
-        
+        <h3
+          class="text-xs font-bold text-gray-400 dark:text-gray-500 mb-4 px-1 uppercase tracking-wider"
+        >
+          Tournament Stats
+        </h3>
+
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div 
-            v-for="(stat, idx) in positionStats" 
+          <div
+            v-for="(stat, idx) in positionStats"
             :key="idx"
             class="group relative bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] p-5 rounded-2xl hover:-translate-y-1 hover:shadow-md transition-all duration-300 overflow-hidden"
           >
             <div class="flex items-center justify-between mb-3">
-              <span class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{{ stat.label }}</span>
+              <span
+                class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider"
+                >{{ stat.label }}</span
+              >
               <!-- Card-style icon (yellow/red cards) -->
-              <div v-if="stat.isCard" class="w-4 h-5 rounded-[2px] shadow-sm ring-1 shrink-0" :class="stat.cardClass"></div>
+              <div
+                v-if="stat.isCard"
+                class="w-4 h-5 rounded-[2px] shadow-sm ring-1 shrink-0"
+                :class="stat.cardClass"
+              ></div>
               <!-- Regular icon -->
               <div v-else class="p-1.5 rounded-lg" :class="stat.iconBgClass">
-                <UIcon :name="stat.icon!" class="w-4 h-4" :class="stat.iconClass" />
+                <UIcon
+                  :name="stat.icon!"
+                  class="w-4 h-4"
+                  :class="stat.iconClass"
+                />
               </div>
             </div>
-            <div class="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+            <div
+              class="text-3xl font-black text-gray-900 dark:text-white tracking-tight"
+            >
               {{ stat.value }}
             </div>
           </div>
@@ -596,7 +860,11 @@ const positionStats = computed((): StatCard[] => {
       <!-- Active Tournament Section -->
       <div v-if="player.participant?.tournament">
         <div class="flex items-center justify-between mb-4 px-1">
-          <h3 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Active Tournament</h3>
+          <h3
+            class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider"
+          >
+            Active Tournament
+          </h3>
         </div>
 
         <NuxtLink
@@ -604,71 +872,139 @@ const positionStats = computed((): StatCard[] => {
           class="group flex items-center gap-4 p-5 bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] hover:border-emerald-300 dark:hover:border-emerald-500/30 hover:shadow-sm rounded-2xl transition-all"
         >
           <!-- Tournament Logo -->
-          <div class="w-12 h-12 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08] p-1.5 shrink-0 overflow-hidden flex items-center justify-center shadow-sm">
-            <img v-if="player.participant.tournament.logoUrl" :src="player.participant.tournament.logoUrl" class="w-full h-full object-contain" />
+          <div
+            class="w-12 h-12 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08] p-1.5 shrink-0 overflow-hidden flex items-center justify-center shadow-sm"
+          >
+            <img
+              v-if="player.participant.tournament.logoUrl"
+              :src="player.participant.tournament.logoUrl"
+              class="w-full h-full object-contain"
+            />
             <div v-else class="text-sm font-bold text-gray-400">
               {{ player.participant.tournament.name.charAt(0) }}
             </div>
           </div>
-          
+
           <div class="flex-1 min-w-0">
-            <h4 class="text-sm font-bold text-gray-900 dark:text-white truncate group-hover:text-emerald-500 transition-colors">
+            <h4
+              class="text-sm font-bold text-gray-900 dark:text-white truncate group-hover:text-emerald-500 transition-colors"
+            >
               {{ player.participant.tournament.name }}
             </h4>
             <div class="flex items-center gap-2 mt-1">
-              <span class="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold uppercase tracking-wider">
-                {{ player.participant.customShortName || player.participant.customName || 'Individual' }}
+              <span
+                class="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold uppercase tracking-wider"
+              >
+                {{
+                  player.participant.customShortName ||
+                  player.participant.customName ||
+                  "Individual"
+                }}
               </span>
-              <span v-if="player.number" class="text-xs text-gray-400 font-bold">• #{{ player.number }}</span>
+              <span v-if="player.number" class="text-xs text-gray-400 font-bold"
+                >• #{{ player.number }}</span
+              >
             </div>
           </div>
-          <UIcon name="i-heroicons-chevron-right" class="w-5 h-5 text-gray-300 dark:text-gray-700 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
+          <UIcon
+            name="i-heroicons-chevron-right"
+            class="w-5 h-5 text-gray-300 dark:text-gray-700 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all"
+          />
         </NuxtLink>
       </div>
 
       <!-- Career History -->
-      <div v-if="player.user?.player_profiles?.length && player.user.player_profiles.length > 1">
+      <div
+        v-if="
+          player.user?.player_profiles?.length &&
+          player.user.player_profiles.length > 1
+        "
+      >
         <div class="flex items-center justify-between mb-4 px-1">
-          <h3 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Career Records</h3>
-          <span class="text-xs text-gray-400">{{ player.user.player_profiles.length - 1 }} other profile(s)</span>
+          <h3
+            class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider"
+          >
+            Career Records
+          </h3>
+          <span class="text-xs text-gray-400"
+            >{{ player.user.player_profiles.length - 1 }} other profile(s)</span
+          >
         </div>
 
         <div class="grid gap-3">
-          <template v-for="profile in player.user.player_profiles" :key="profile.id">
+          <template
+            v-for="profile in player.user.player_profiles"
+            :key="profile.id"
+          >
             <NuxtLink
               v-if="profile.id !== player.id"
               :to="`/player/${profile.id}`"
               class="group flex items-center gap-4 p-4 bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] hover:border-emerald-300 dark:hover:border-emerald-500/30 hover:shadow-sm rounded-xl transition-all"
             >
-              <div class="w-10 h-10 rounded-lg bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08] flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-sm">
-                <img v-if="profile.participant?.tournament?.logoUrl" :src="profile.participant.tournament.logoUrl" class="w-full h-full object-contain" />
-                <UIcon v-else name="i-heroicons-archive-box" class="w-4 h-4 text-gray-400 dark:text-gray-600" />
+              <div
+                class="w-10 h-10 rounded-lg bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08] flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-sm"
+              >
+                <img
+                  v-if="profile.participant?.tournament?.logoUrl"
+                  :src="profile.participant.tournament.logoUrl"
+                  class="w-full h-full object-contain"
+                />
+                <UIcon
+                  v-else
+                  name="i-heroicons-archive-box"
+                  class="w-4 h-4 text-gray-400 dark:text-gray-600"
+                />
               </div>
-              
+
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate group-hover:text-emerald-500 transition-colors">
-                  {{ profile.participant?.tournament?.name || 'Tournament Profile' }}
+                <p
+                  class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate group-hover:text-emerald-500 transition-colors"
+                >
+                  {{
+                    profile.participant?.tournament?.name ||
+                    "Tournament Profile"
+                  }}
                 </p>
-                <div class="flex items-center gap-2 mt-0.5 text-xs text-gray-400">
-                  <span>{{ profile.participant?.customShortName || profile.participant?.customName }}</span>
+                <div
+                  class="flex items-center gap-2 mt-0.5 text-xs text-gray-400"
+                >
+                  <span>{{
+                    profile.participant?.customShortName ||
+                    profile.participant?.customName
+                  }}</span>
                   <span v-if="profile.number">• #{{ profile.number }}</span>
-                  <span v-if="profile.position">• {{ getPositionLabel(profile.position) }}</span>
+                  <span v-if="profile.position"
+                    >• {{ getPositionLabel(profile.position) }}</span
+                  >
                 </div>
               </div>
-              <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-gray-300 dark:text-gray-700 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
+              <UIcon
+                name="i-heroicons-chevron-right"
+                class="w-4 h-4 text-gray-300 dark:text-gray-700 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all"
+              />
             </NuxtLink>
           </template>
         </div>
       </div>
 
       <!-- Watermark Footer -->
-      <div class="pt-6 border-t border-gray-100 dark:border-white/[0.05] flex items-center justify-between">
-        <div class="flex items-center gap-2 grayscale opacity-40 hover:opacity-60 transition-opacity">
-          <div class="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center text-[10px] font-black text-white">P</div>
-          <span class="text-[10px] font-black uppercase tracking-widest text-gray-500 leading-none">ParaScores</span>
+      <div
+        class="pt-6 border-t border-gray-100 dark:border-white/[0.05] flex items-center justify-between"
+      >
+        <div
+          class="flex items-center gap-2 grayscale opacity-40 hover:opacity-60 transition-opacity"
+        >
+          <div
+            class="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center text-[10px] font-black text-white"
+          >
+            P
+          </div>
+          <span
+            class="text-[10px] font-black uppercase tracking-widest text-gray-500 leading-none"
+            >ParaScores</span
+          >
         </div>
       </div>
-
     </div>
   </div>
 
@@ -680,9 +1016,14 @@ const positionStats = computed((): StatCard[] => {
         class="fixed inset-0 z-50 flex items-center justify-center px-4"
         @click.self="showClaimModal = false"
       >
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showClaimModal = false" />
+        <div
+          class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          @click="showClaimModal = false"
+        />
 
-        <div class="relative w-full max-w-md rounded-3xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10">
+        <div
+          class="relative w-full max-w-md rounded-3xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10"
+        >
           <button
             @click="showClaimModal = false"
             class="absolute top-4 right-4 p-1.5 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 dark:text-gray-600"
@@ -691,16 +1032,29 @@ const positionStats = computed((): StatCard[] => {
           </button>
 
           <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-              <UIcon name="i-heroicons-user-plus" class="w-5 h-5 text-emerald-500" />
+            <div
+              class="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center"
+            >
+              <UIcon
+                name="i-heroicons-user-plus"
+                class="w-5 h-5 text-emerald-500"
+              />
             </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Claim Player Profile</h3>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+              Claim Player Profile
+            </h3>
           </div>
 
-          <p class="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-            Are you sure you want to claim the player profile for <strong>{{ player?.name }}</strong> in <strong>{{ player?.participant?.tournament?.name }}</strong>?
-            <br /><br />
-            Claiming this profile requires a one-time verification fee of <strong>₦500</strong>. After payment, the tournament organizer will verify your identity to approve the claim.
+          <p
+            class="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed"
+          >
+            Are you sure you want to claim the player profile for
+            <strong>{{ player?.name }}</strong> in
+            <strong>{{ player?.participant?.tournament?.name }}</strong
+            >? <br /><br />
+            Claiming this profile requires a one-time verification fee of
+            <strong>₦500</strong>. After payment, the tournament organizer will
+            verify your identity to approve the claim.
           </p>
 
           <div class="flex gap-3">
@@ -709,7 +1063,7 @@ const positionStats = computed((): StatCard[] => {
               color="neutral"
               variant="soft"
               class="flex-1 font-bold rounded-xl"
-              @click="showClaimModal = false;"
+              @click="showClaimModal = false"
             />
             <UButton
               label="Pay ₦500 & Claim"
@@ -753,7 +1107,9 @@ const positionStats = computed((): StatCard[] => {
 }
 .modal-enter-active > div:last-child,
 .modal-leave-active > div:last-child {
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 .modal-enter-from,
 .modal-leave-to {

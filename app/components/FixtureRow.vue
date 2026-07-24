@@ -3,6 +3,7 @@ import type { Fixture } from '~/types'
 import { FixtureStatus } from '~/types'
 import { computed } from 'vue'
 import { getParticipantName } from '~/utils/participant'
+import { getLivestreamPlatformInfo, detectLivestreamPlatform } from '~/utils/livestream'
 
 const props = defineProps<{
   fixture: Fixture
@@ -31,6 +32,12 @@ const isStarted = computed(() => {
 
 const hasPenalties = computed(() => {
   return props.fixture.homePenaltyScore != null || props.fixture.awayPenaltyScore != null
+})
+
+const livestreamInfo = computed(() => {
+  if (!props.fixture.livestreamUrl) return null
+  const platform = props.fixture.livestreamPlatform || detectLivestreamPlatform(props.fixture.livestreamUrl)
+  return getLivestreamPlatformInfo(platform)
 })
 
 const normalizedStatus = computed(() => props.fixture.status.toLowerCase())
@@ -100,6 +107,11 @@ const getInitial = (name: string) => {
           <span v-if="fixture.venue" class="fixture-venue">
             <UIcon name="i-heroicons-map-pin" class="fixture-meta__icon" />
             {{ fixture.venue }}
+          </span>
+
+          <span v-if="livestreamInfo" class="fixture-livestream">
+            <UIcon :name="livestreamInfo.icon" class="fixture-meta__icon" :class="livestreamInfo.color" />
+            <span>Live</span>
           </span>
         </div>
 
@@ -321,6 +333,25 @@ const getInitial = (name: string) => {
 :root.dark .fixture-venue {
   color: #9ca3af;
   background: rgba(255, 255, 255, 0.045);
+}
+
+.fixture-livestream {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  min-height: 24px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #be123c;
+  background: rgba(244, 63, 94, 0.08);
+}
+
+:root.dark .fixture-livestream {
+  color: #fb7185;
+  background: rgba(244, 63, 94, 0.12);
 }
 
 .fixture-meta__icon {
