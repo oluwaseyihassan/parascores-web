@@ -481,6 +481,60 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  // ─── Audit Logs ────────────────────────────────────────────
+  async function fetchAuditLogs(params: {
+    page?: number
+    limit?: number
+    action?: string
+    entityType?: string
+    entityId?: string
+    actorId?: string
+  } = {}) {
+    loading.value = true
+    error.value = null
+    try {
+      const query = new URLSearchParams()
+      if (params.page) query.append('page', params.page.toString())
+      if (params.limit) query.append('limit', params.limit.toString())
+      if (params.action) query.append('action', params.action)
+      if (params.entityType) query.append('entityType', params.entityType)
+      if (params.entityId) query.append('entityId', params.entityId)
+      if (params.actorId) query.append('actorId', params.actorId)
+
+      const res = await $api<any>(
+        `/admin/audit-logs?${query.toString()}`,
+        { method: 'GET' }
+      )
+      return {
+        items: res.data || [],
+        total: res.pagination?.total || 0,
+        pages: res.pagination?.totalPages || 0
+      }
+    } catch (err: any) {
+      error.value = err.message || 'Failed to fetch audit logs'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchRecentAuditLogs(limit: number = 10) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<any>(
+        `/admin/audit-logs/recent?limit=${limit}`,
+        { method: 'GET' }
+      )
+      return res.data || []
+    } catch (err: any) {
+      error.value = err.message || 'Failed to fetch recent audit logs'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     loading,
     error,
@@ -501,5 +555,7 @@ export const useAdminStore = defineStore('admin', () => {
     fetchPendingPlayers,
     updatePlayerStatus,
     fetchHealth,
+    fetchAuditLogs,
+    fetchRecentAuditLogs,
   }
 })

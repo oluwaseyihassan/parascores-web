@@ -22,6 +22,7 @@ const navLinks = [
   { label: 'Organizations', icon: 'i-heroicons-building-office-2', to: '/organizations' },
   { label: 'Payments', icon: 'i-heroicons-credit-card', to: '/payments' },
   { label: 'Pending Players', icon: 'i-heroicons-user-group', to: '/players' },
+  { label: 'Audit Logs', icon: 'i-heroicons-clipboard-document-list', to: '/audit-logs' },
   { label: 'System Health', icon: 'i-heroicons-cpu-chip', to: '/health' },
 ]
 
