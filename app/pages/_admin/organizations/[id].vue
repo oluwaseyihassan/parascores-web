@@ -45,6 +45,85 @@ const formatCurrency = (val: number) => {
   }).format(val)
 }
 
+const formatDateTimeLocal = (dateStr?: string) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return ''
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const isUpdatingVerification = ref(false)
+const isUpdatingSubscription = ref(false)
+const isSubscriptionModalOpen = ref(false)
+const subscriptionForm = reactive({
+  plan: 'FREE',
+  status: 'ACTIVE',
+  currentPeriodEnd: ''
+})
+
+const openSubscriptionModal = () => {
+  subscriptionForm.plan = org.value?.subscription?.plan || 'FREE'
+  subscriptionForm.status = org.value?.subscription?.status || 'ACTIVE'
+  subscriptionForm.currentPeriodEnd = formatDateTimeLocal(org.value?.subscription?.currentPeriodEnd)
+  isSubscriptionModalOpen.value = true
+}
+
+const handleVerificationToggle = async () => {
+  if (!org.value) return
+  isUpdatingVerification.value = true
+  try {
+    const updated = await adminStore.updateOrganizationVerification(
+      org.value.id,
+      !org.value.isVerified
+    )
+    org.value.isVerified = updated.isVerified
+    useToast().add({
+      title: updated.isVerified ? 'Organization Verified' : 'Organization Unverified',
+      description: `${org.value.name} has been ${updated.isVerified ? 'verified' : 'unverified'}.`,
+      color: 'success'
+    })
+  } catch (err: any) {
+    useToast().add({
+      title: 'Action Failed',
+      description: err.message || 'Failed to update verification status.',
+      color: 'error'
+    })
+  } finally {
+    isUpdatingVerification.value = false
+  }
+}
+
+const saveSubscription = async () => {
+  if (!org.value) return
+  isUpdatingSubscription.value = true
+  try {
+    const payload: any = {
+      plan: subscriptionForm.plan,
+      status: subscriptionForm.status
+    }
+    if (subscriptionForm.currentPeriodEnd) {
+      payload.currentPeriodEnd = new Date(subscriptionForm.currentPeriodEnd).toISOString()
+    }
+    const updated = await adminStore.updateOrganizationSubscription(org.value.id, payload)
+    org.value.subscription = updated
+    useToast().add({
+      title: 'Subscription Updated',
+      description: `Plan set to ${updated.plan} with status ${updated.status}.`,
+      color: 'success'
+    })
+    isSubscriptionModalOpen.value = false
+  } catch (err: any) {
+    useToast().add({
+      title: 'Update Failed',
+      description: err.message || 'Failed to update subscription.',
+      color: 'error'
+    })
+  } finally {
+    isUpdatingSubscription.value = false
+  }
+}
+
 const copiedField = ref<string | null>(null)
 
 const copyToClipboard = async (value: string, field: string) => {
@@ -131,6 +210,32 @@ const copyToClipboard = async (value: string, field: string) => {
             >
               {{ org.subscription?.plan || 'FREE PLAN' }}
             </span>
+          </div>
+
+          <div class="w-full border-t border-slate-900 mt-6 pt-6 text-left space-y-4 text-xs font-semibold">
+            <div class="flex flex-col gap-3">
+              <UButton
+                block
+                size="sm"
+                :color="org.isVerified ? 'error' : 'success'"
+                variant="soft"
+                :icon="org.isVerified ? 'i-heroicons-x-circle' : 'i-heroicons-check-badge'"
+                :loading="isUpdatingVerification"
+                @click="handleVerificationToggle"
+              >
+                {{ org.isVerified ? 'Revoke Verification' : 'Verify Organization' }}
+              </UButton>
+              <UButton
+                block
+                size="sm"
+                color="primary"
+                variant="outline"
+                icon="i-heroicons-credit-card"
+                @click="openSubscriptionModal"
+              >
+                Manage Subscription
+              </UButton>
+            </div>
           </div>
 
           <div class="w-full border-t border-slate-900 mt-6 pt-6 text-left space-y-4 text-xs font-semibold">
@@ -311,5 +416,77 @@ const copyToClipboard = async (value: string, field: string) => {
         </div>
       </div>
     </div>
+
+    <!-- Subscription Management Modal -->
+    <UModal v-model:open="isSubscriptionModalOpen" title="Manage Organization Subscription">
+      <template #body>
+        <div class="space-y-5">
+          <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-800">
+            <p class="text-sm font-bold text-white">{{ org.name }}</p>
+            <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
+              Current: {{ org.subscription?.plan || 'FREE' }} · {{ org.subscription?.status || 'INACTIVE' }}
+            </p>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Subscription Plan</label>
+            <select
+              v-model="subscriptionForm.plan"
+              class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-sm font-semibold rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 focus:outline-none"
+            >
+              <option value="FREE">Free</option>
+              <option value="PER_TOURNAMENT">Per Tournament</option>
+              <option value="PRO">Pro</option>
+              <option value="ENTERPRISE">Enterprise</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Subscription Status</label>
+            <select
+              v-model="subscriptionForm.status"
+              class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-sm font-semibold rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 focus:outline-none"
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="TRIALING">Trialing</option>
+              <option value="PAST_DUE">Past Due</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Current Period End
+              <span class="text-slate-500 font-normal normal-case ml-1">(optional)</span>
+            </label>
+            <input
+              v-model="subscriptionForm.currentPeriodEnd"
+              type="datetime-local"
+              class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-sm font-semibold rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 focus:outline-none"
+            />
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            @click="isSubscriptionModalOpen = false"
+          >
+            Cancel
+          </UButton>
+          <UButton
+            color="primary"
+            variant="solid"
+            icon="i-heroicons-check"
+            :loading="isUpdatingSubscription"
+            @click="saveSubscription"
+          >
+            Save Subscription
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

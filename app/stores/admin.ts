@@ -326,6 +326,43 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  async function updateOrganizationVerification(id: string, isVerified: boolean) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<ApiResponse<any>>(`/admin/organizations/${id}/verify`, {
+        method: 'PATCH',
+        body: { isVerified }
+      })
+      return res.data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update organization verification'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateOrganizationSubscription(
+    id: string,
+    data: { plan?: string; status?: string; currentPeriodEnd?: string }
+  ) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<ApiResponse<any>>(`/admin/organizations/${id}/subscription`, {
+        method: 'PATCH',
+        body: data
+      })
+      return res.data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update organization subscription'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // ─── Payments ──────────────────────────────────────────────
   async function fetchPayments(params: { page?: number; limit?: number; status?: string; type?: string } = {}) {
     loading.value = true
@@ -457,6 +494,8 @@ export const useAdminStore = defineStore('admin', () => {
     updateTournamentPricing,
     fetchOrganizations,
     fetchOrganization,
+    updateOrganizationVerification,
+    updateOrganizationSubscription,
     fetchPayments,
     fetchPaymentsSummary,
     fetchPendingPlayers,
