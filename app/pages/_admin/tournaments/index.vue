@@ -236,7 +236,7 @@ const getStatus = (startStr: string, endStr: string) => {
                 No tournaments registered matching your search criteria.
               </td>
             </tr>
-            <tr v-else v-for="t in tournaments" :key="t.id" class="hover:bg-slate-900/25 transition-colors group">
+            <tr v-else v-for="t in tournaments" :key="t.id" class="hover:bg-slate-900/25 transition-colors group cursor-pointer" @click="navigateTo(`/tournaments/${t.id}`)">
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
                   <UAvatar
@@ -248,7 +248,7 @@ const getStatus = (startStr: string, endStr: string) => {
                     {{ t.name.charAt(0).toUpperCase() }}
                   </div>
                   <div class="flex flex-col min-w-0">
-                    <span class="text-sm font-extrabold text-white truncate leading-none mb-1">{{ t.name }}</span>
+                    <span class="text-sm font-extrabold text-white truncate leading-none mb-1 group-hover:text-rose-400 transition-colors">{{ t.name }}</span>
                     <span class="text-xs text-slate-400 truncate leading-none">slug: {{ t.customName || t.id }}</span>
                   </div>
                 </div>
@@ -301,14 +301,14 @@ const getStatus = (startStr: string, endStr: string) => {
                     color="neutral"
                     variant="ghost"
                     icon="i-heroicons-currency-dollar"
-                    @click="openPricingModal(t)"
+                    @click.stop="openPricingModal(t)"
                   />
                   <UButton
                     size="sm"
                     color="error"
                     variant="ghost"
                     icon="i-heroicons-trash"
-                    @click="openDeleteConfirm(t)"
+                    @click.stop="openDeleteConfirm(t)"
                   />
                 </div>
               </td>
