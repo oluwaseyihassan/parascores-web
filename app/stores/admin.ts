@@ -236,6 +236,34 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  async function fetchTournament(id: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<ApiResponse<any>>(`/admin/tournaments/${id}`, {
+        method: 'GET',
+      })
+      const data = res.data
+      if (data && data.payments) {
+        data.payments = data.payments.map((p: any) => ({
+          ...p,
+          amount: p.amount / 100
+        }))
+      }
+      if (data) {
+        data.tournamentPrice = data.tournamentPrice ? data.tournamentPrice / 100 : 0
+        data.paymentPerTeam = data.paymentPerTeam ? data.paymentPerTeam / 100 : 0
+        data.registrationFee = data.registrationFee ? data.registrationFee / 100 : 0
+      }
+      return data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to fetch tournament'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function deleteTournament(id: string) {
     loading.value = true
     error.value = null
@@ -246,6 +274,58 @@ export const useAdminStore = defineStore('admin', () => {
       return res
     } catch (err: any) {
       error.value = err.message || 'Failed to delete tournament'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateTournament(
+    id: string,
+    data: {
+      name?: string
+      customName?: string | null
+      description?: string | null
+      visibility?: 'PUBLIC' | 'PRIVATE' | 'UNLISTED'
+      isPremium?: boolean
+      isPinned?: boolean
+      isPaidRegistration?: boolean
+      registrationFee?: number
+      tournamentPrice?: number
+      paymentPerTeam?: number
+      startDate?: string
+      endDate?: string
+      location?: string | null
+      timezone?: string
+      maxParticipants?: number | null
+      sport?: string
+      type?: 'LEAGUE' | 'KNOCKOUT' | 'ROUND_ROBIN' | 'GROUP' | 'HYBRID' | 'FRIENDLY'
+      autoApprove?: boolean
+      thirdPlaceMatch?: boolean
+      twoLegsKnockout?: boolean
+      doubleRoundRobin?: boolean
+    }
+  ) {
+    loading.value = true
+    error.value = null
+    try {
+      const payload: any = { ...data }
+      if (payload.registrationFee !== undefined) {
+        payload.registrationFee = Math.round(payload.registrationFee * 100)
+      }
+      if (payload.tournamentPrice !== undefined) {
+        payload.tournamentPrice = Math.round(payload.tournamentPrice * 100)
+      }
+      if (payload.paymentPerTeam !== undefined) {
+        payload.paymentPerTeam = Math.round(payload.paymentPerTeam * 100)
+      }
+      const res = await $api<ApiResponse<any>>(`/admin/tournaments/${id}`, {
+        method: 'PATCH',
+        body: payload,
+      })
+      return res.data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update tournament'
       throw err
     } finally {
       loading.value = false
@@ -544,7 +624,9 @@ export const useAdminStore = defineStore('admin', () => {
     deleteUser,
     updateUserRole,
     fetchTournaments,
+    fetchTournament,
     deleteTournament,
+    updateTournament,
     updateTournamentPricing,
     fetchOrganizations,
     fetchOrganization,
