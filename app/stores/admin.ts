@@ -326,6 +326,43 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  async function updateOrganizationVerification(id: string, isVerified: boolean) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<ApiResponse<any>>(`/admin/organizations/${id}/verify`, {
+        method: 'PATCH',
+        body: { isVerified }
+      })
+      return res.data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update organization verification'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateOrganizationSubscription(
+    id: string,
+    data: { plan?: string; status?: string; currentPeriodEnd?: string }
+  ) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<ApiResponse<any>>(`/admin/organizations/${id}/subscription`, {
+        method: 'PATCH',
+        body: data
+      })
+      return res.data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update organization subscription'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // ─── Payments ──────────────────────────────────────────────
   async function fetchPayments(params: { page?: number; limit?: number; status?: string; type?: string } = {}) {
     loading.value = true
@@ -444,6 +481,60 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  // ─── Audit Logs ────────────────────────────────────────────
+  async function fetchAuditLogs(params: {
+    page?: number
+    limit?: number
+    action?: string
+    entityType?: string
+    entityId?: string
+    actorId?: string
+  } = {}) {
+    loading.value = true
+    error.value = null
+    try {
+      const query = new URLSearchParams()
+      if (params.page) query.append('page', params.page.toString())
+      if (params.limit) query.append('limit', params.limit.toString())
+      if (params.action) query.append('action', params.action)
+      if (params.entityType) query.append('entityType', params.entityType)
+      if (params.entityId) query.append('entityId', params.entityId)
+      if (params.actorId) query.append('actorId', params.actorId)
+
+      const res = await $api<any>(
+        `/admin/audit-logs?${query.toString()}`,
+        { method: 'GET' }
+      )
+      return {
+        items: res.data || [],
+        total: res.pagination?.total || 0,
+        pages: res.pagination?.totalPages || 0
+      }
+    } catch (err: any) {
+      error.value = err.message || 'Failed to fetch audit logs'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchRecentAuditLogs(limit: number = 10) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<any>(
+        `/admin/audit-logs/recent?limit=${limit}`,
+        { method: 'GET' }
+      )
+      return res.data || []
+    } catch (err: any) {
+      error.value = err.message || 'Failed to fetch recent audit logs'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     loading,
     error,
@@ -457,10 +548,14 @@ export const useAdminStore = defineStore('admin', () => {
     updateTournamentPricing,
     fetchOrganizations,
     fetchOrganization,
+    updateOrganizationVerification,
+    updateOrganizationSubscription,
     fetchPayments,
     fetchPaymentsSummary,
     fetchPendingPlayers,
     updatePlayerStatus,
     fetchHealth,
+    fetchAuditLogs,
+    fetchRecentAuditLogs,
   }
 })
