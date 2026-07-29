@@ -819,7 +819,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                     color="warning"
                     icon="i-heroicons-banknotes"
                     label="Set Up Payout Account"
-                    @click="showPayoutModal = true"
+                    @click="showPayoutModal = true;"
                   />
                 </div>
               </div>
@@ -870,7 +870,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 variant="ghost"
                 color="neutral"
                 size="sm"
-                @click="showPayoutModal = false"
+                @click="showPayoutModal = false;"
               />
             </div>
           </template>
