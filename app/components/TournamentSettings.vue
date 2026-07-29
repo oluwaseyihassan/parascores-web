@@ -3,16 +3,36 @@ import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { TournamentType, ParticipantType, Visibility, type Tournament } from '~/types'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
+import type { PayoutAccountStatus } from '~/stores/payment'
 
 const props = defineProps<{
   tournament: Tournament
 }>()
 
 const tournamentStore = useTournamentStore()
+const paymentStore = usePaymentStore()
 const { handleError } = useErrors()
 
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+const payoutAccount = ref<PayoutAccountStatus | null>(null)
+const showPayoutModal = ref(false)
+
+function onPayoutSaved(status: PayoutAccountStatus | null) {
+  payoutAccount.value = status
+  showPayoutModal.value = false
+}
+
+onMounted(async () => {
+  const orgId = props.tournament.organization_id
+  if (!orgId) return
+  try {
+    payoutAccount.value = await paymentStore.fetchPayoutAccount(orgId)
+  } catch {
+    // Silent fail — warning banner stays hidden
+  }
+})
 
 // Logo upload state
 const logoFileInput = ref<HTMLInputElement | null>(null)
@@ -785,6 +805,25 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </div>
 
           <div v-if="state.isPaidRegistration" class="p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-3 sm:space-y-4 animate-in fade-in duration-200">
+            <div
+              v-if="payoutAccount && !payoutAccount.hasPayoutAccount"
+              class="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-500/30"
+            >
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-4.5 h-4.5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div class="flex-1 text-xs sm:text-sm text-amber-700 dark:text-amber-400">
+                <span class="font-semibold">Payout account required.</span>
+                Connect a bank account to receive registration fees directly before teams can pay.
+                <div class="mt-2">
+                  <UButton
+                    size="xs"
+                    color="warning"
+                    icon="i-heroicons-banknotes"
+                    label="Set Up Payout Account"
+                    @click="showPayoutModal = true"
+                  />
+                </div>
+              </div>
+            </div>
             <UFormField label="Registration Fee (₦)" name="registrationFee" required>
               <UInput
                 v-model.number="state.registrationFee"
@@ -813,5 +852,42 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         />
       </div>
     </UForm>
+
+    <!-- Payout Account Setup Modal -->
+    <UModal v-model:open="showPayoutModal">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <UIcon name="i-heroicons-banknotes" class="w-5 h-5 text-emerald-500" />
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                  Set Up Payout Account
+                </h3>
+              </div>
+              <UButton
+                icon="i-heroicons-x-mark"
+                variant="ghost"
+                color="neutral"
+                size="sm"
+                @click="showPayoutModal = false"
+              />
+            </div>
+          </template>
+
+          <div class="space-y-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Registration fees are settled directly to this bank account by
+              Paystack the next business day.
+            </p>
+            <PayoutAccountForm
+              v-if="tournament.organization_id"
+              :org-id="tournament.organization_id"
+              @saved="onPayoutSaved"
+            />
+          </div>
+        </UCard>
+      </template>
+    </UModal>
   </div>
 </template>
