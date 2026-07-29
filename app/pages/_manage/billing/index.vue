@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
+import type { PayoutAccountStatus } from '~/stores/payment'
 
 definePageMeta({
   middleware: ['require-organizer'],
@@ -32,6 +33,21 @@ const tournamentStore = useTournamentStore()
 const { tournaments } = storeToRefs(tournamentStore)
 const selectedTournamentId = ref('')
 const upgradingTournament = ref(false)
+
+// Payout account
+const payoutAccount = ref<PayoutAccountStatus | null>(null)
+
+async function loadPayoutAccount(orgId: string) {
+  try {
+    payoutAccount.value = await paymentStore.fetchPayoutAccount(orgId)
+  } catch {
+    // Silent fail — section shows as not set up
+  }
+}
+
+function onPayoutSaved(status: PayoutAccountStatus | null) {
+  payoutAccount.value = status
+}
 
 
 // Plan definitions
@@ -114,6 +130,7 @@ onMounted(async () => {
       // Silent fail — will show FREE tier
     }
     paymentStore.fetchPaymentHistory(authStore.currentOrganization.id).catch(() => {})
+    loadPayoutAccount(authStore.currentOrganization.id)
   }
   await tournamentStore.fetchTournaments({ limit: 50 })
 })
@@ -434,6 +451,43 @@ const statusColor = computed(() => {
             </li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- Payout Account -->
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm mb-12">
+      <div class="px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <UIcon name="i-heroicons-banknotes" class="w-4.5 h-4.5 text-emerald-500" />
+          <h3 class="text-sm font-bold text-gray-500">Payout Account</h3>
+        </div>
+        <UBadge
+          :color="payoutAccount?.hasPayoutAccount ? 'success' : 'neutral'"
+          variant="subtle"
+          size="sm"
+        >
+          {{ payoutAccount?.hasPayoutAccount ? 'Active' : 'Not set up' }}
+        </UBadge>
+      </div>
+
+      <div class="p-6 space-y-5">
+        <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+          Connect a bank account to receive paid registration fees directly. Paystack settles funds to your account the next business day — ParaScores keeps only a {{ isPro ? 3 : 5 }}% platform commission{{ isPro ? ' (Pro rate)' : '' }}.
+        </p>
+
+        <div v-if="payoutAccount?.hasPayoutAccount" class="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-500/20">
+          <UIcon name="i-heroicons-building-library" class="w-5 h-5 text-emerald-500 flex-shrink-0" />
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ payoutAccount.accountName }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ payoutAccount.accountNumberMasked }}</p>
+          </div>
+        </div>
+
+        <PayoutAccountForm
+          v-if="authStore.currentOrganization?.id"
+          :org-id="authStore.currentOrganization.id"
+          @saved="onPayoutSaved"
+        />
       </div>
     </div>
 

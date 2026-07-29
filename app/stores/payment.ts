@@ -44,6 +44,21 @@ export interface PaymentRecord {
   tournament?: { id: string; name: string } | null
 }
 
+export interface PaystackBank {
+  id: number
+  name: string
+  code: string
+  active: boolean
+}
+
+export interface PayoutAccountStatus {
+  hasPayoutAccount: boolean
+  bankCode?: string | null
+  accountNumberMasked?: string | null
+  accountName?: string | null
+  createdAt?: string | null
+}
+
 export const usePaymentStore = defineStore('payment', () => {
   const { extractErrorMessage } = useErrors()
   const subscription = ref<Subscription | null>(null)
@@ -246,6 +261,79 @@ export const usePaymentStore = defineStore('payment', () => {
   }
 
   /**
+   * List banks supported for payout settlements
+   */
+  async function fetchPayoutBanks() {
+    try {
+      const response = await $api<ApiResponse<PaystackBank[]>>('/payments/payout/banks', {
+        method: 'GET',
+      })
+      return response.data || []
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Fetch banks failed:', error.value)
+      throw err
+    }
+  }
+
+  /**
+   * Resolve an account number to the account holder name
+   */
+  async function resolvePayoutAccount(accountNumber: string, bankCode: string) {
+    try {
+      const response = await $api<ApiResponse<{ account_number: string; account_name: string }>>(
+        '/payments/payout/resolve-account',
+        {
+          method: 'GET',
+          query: { accountNumber, bankCode },
+        },
+      )
+      return response.data
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Resolve account failed:', error.value)
+      throw err
+    }
+  }
+
+  /**
+   * Get the payout account status for an organization
+   */
+  async function fetchPayoutAccount(orgId: string) {
+    try {
+      const response = await $api<ApiResponse<PayoutAccountStatus>>(`/payments/payout-account/${orgId}`, {
+        method: 'GET',
+      })
+      return response.data || null
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Fetch payout account failed:', error.value)
+      throw err
+    }
+  }
+
+  /**
+   * Create or update the payout account for an organization
+   */
+  async function setupPayoutAccount(orgId: string, data: { bankCode: string; accountNumber: string; businessName?: string }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<PayoutAccountStatus & { commissionPercent?: number }>>(`/payments/payout-account/${orgId}`, {
+        method: 'POST',
+        body: data,
+      })
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Setup payout account failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Fetch payment history for an organization
    */
   async function fetchPaymentHistory(orgId: string) {
@@ -287,5 +375,9 @@ export const usePaymentStore = defineStore('payment', () => {
     cancelSubscription,
     clearSubscription,
     fetchPaymentHistory,
+    fetchPayoutBanks,
+    resolvePayoutAccount,
+    fetchPayoutAccount,
+    setupPayoutAccount,
   }
 })
