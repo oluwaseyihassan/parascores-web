@@ -188,6 +188,20 @@ onMounted(async () => {
 
       if (response.data) {
         tournamentStore.setCurrentTournament(response.data.tournament);
+
+        // Sync the org switcher to the tournament's organization
+        const tournamentOrgId = response.data.tournament.organization_id;
+        if (
+          tournamentOrgId &&
+          tournamentOrgId !== authStore.currentOrganization?.id &&
+          authStore.organizations.some(
+            (org) => org.organizationId === tournamentOrgId,
+          )
+        ) {
+          authStore.syncActiveOrganization(tournamentOrgId);
+          paymentStore.fetchSubscription(tournamentOrgId).catch(() => {});
+        }
+
         participants.value = response.data.participants;
         fixtures.value = response.data.fixtures;
         standings.value = response.data.standings;
