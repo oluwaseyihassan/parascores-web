@@ -67,6 +67,24 @@
             {{ filter.label }}
           </button>
         </div>
+
+        <!-- Radius Filters (nearby mode) -->
+        <div v-if="nearbyMode" class="flex flex-wrap items-center gap-2 mt-3">
+          <span class="text-xs text-gray-500 dark:text-gray-400">Radius:</span>
+          <button
+            v-for="r in radiusOptions"
+            :key="r"
+            :class="[
+              'px-3 py-1.5 text-xs font-medium rounded-lg border transition-all duration-200',
+              nearbyRadiusKm === r
+                ? 'bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                : 'bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-emerald-500/30 hover:text-emerald-600 dark:hover:text-white shadow-sm'
+            ]"
+            @click="nearbyRadiusKm = r"
+          >
+            {{ r }} km
+          </button>
+        </div>
       </div>
     </section>
 
@@ -237,8 +255,28 @@ const filteredTournaments = computed(() => tournaments.value)
 
 // Nearby (tournaments near me)
 const nearbyMode = ref(false)
-const nearbyRadiusKm = 50
+const nearbyRadiusKm = ref(50)
+const radiusOptions = [50, 100, 250]
 const locating = ref(false)
+const userCoords = ref<{ lat: number; lon: number } | null>(null)
+
+async function fetchNearbyTournaments() {
+  if (!userCoords.value) return
+  const params = new URLSearchParams({
+    lat: String(userCoords.value.lat),
+    lon: String(userCoords.value.lon),
+    radius: String(nearbyRadiusKm.value),
+    limit: '50',
+  })
+  const response = await $publicApi<PaginatedResponse<Tournament>>(
+    `/tournaments/nearby?${params}`,
+    { method: 'GET' }
+  )
+  tournaments.value = response.data || []
+  totalCount.value = response.pagination?.total || 0
+  currentPage.value = 1
+  totalPages.value = 1
+}
 
 async function toggleNearby() {
   if (nearbyMode.value) {
@@ -252,22 +290,8 @@ async function toggleNearby() {
     const position = await new Promise<GeolocationPosition>((resolve, reject) =>
       navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
     )
-
-    const params = new URLSearchParams({
-      lat: String(position.coords.latitude),
-      lon: String(position.coords.longitude),
-      radius: String(nearbyRadiusKm),
-      limit: '50',
-    })
-    const response = await $publicApi<PaginatedResponse<Tournament>>(
-      `/tournaments/nearby?${params}`,
-      { method: 'GET' }
-    )
-
-    tournaments.value = response.data || []
-    totalCount.value = response.pagination?.total || 0
-    currentPage.value = 1
-    totalPages.value = 1
+    userCoords.value = { lat: position.coords.latitude, lon: position.coords.longitude }
+    await fetchNearbyTournaments()
     nearbyMode.value = true
   } catch (err: any) {
     useToast().add({
@@ -279,6 +303,10 @@ async function toggleNearby() {
     locating.value = false
   }
 }
+
+watch(nearbyRadiusKm, () => {
+  if (nearbyMode.value) fetchNearbyTournaments()
+})
 
 // Fetch public tournaments — search & type are sent to the API
 async function fetchPublicTournaments(page = 1, append = false) {
