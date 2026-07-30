@@ -275,6 +275,14 @@ async function signup(email: string, password: string, name: string) {
     navigateTo('/')
   }
 
+  // Switch the active org context without refetching or navigating
+  const syncActiveOrganization = (id: string) => {
+    if (activeOrganizationId.value === id) return
+    activeOrganizationId.value = id
+    const cookie = useCookie('active_org_id')
+    cookie.value = id
+  }
+
   return {
     user,
     loading,
@@ -297,6 +305,7 @@ async function signup(email: string, password: string, name: string) {
     updateUser,
     upgradeToOrganizer,
     activeOrganizationId,
-    setActiveOrganization
+    setActiveOrganization,
+    syncActiveOrganization
   }
 })
