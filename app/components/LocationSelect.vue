@@ -23,6 +23,7 @@ const emit = defineEmits<{
 
 const searchTerm = ref('')
 const remoteItems = ref<LocationItem[] | null>(null)
+const lastSuggestions = ref<LocationItem[]>([])
 const searching = ref(false)
 
 const staticItems: LocationItem[] = NIGERIAN_LOCATIONS.map((l) => ({
@@ -54,9 +55,18 @@ watch(searchTerm, (term) => {
           query: { query: trimmed },
         },
       )
-      remoteItems.value = response.data?.length
-        ? response.data.map((s) => ({ label: s.label, value: s.label, lat: s.lat, lon: s.lon }))
-        : null
+      if (response.data?.length) {
+        const mapped = response.data.map((s) => ({
+          label: s.label,
+          value: s.label,
+          lat: s.lat,
+          lon: s.lon,
+        }))
+        remoteItems.value = mapped
+        lastSuggestions.value = mapped
+      } else {
+        remoteItems.value = null
+      }
     } catch {
       remoteItems.value = null
     } finally {
@@ -70,7 +80,9 @@ watch(model, (value) => {
     emit('coordinates', null)
     return
   }
-  const match = items.value.find((item) => item.value === value)
+  const match =
+    lastSuggestions.value.find((item) => item.value === value) ||
+    staticItems.find((item) => item.value === value)
   emit(
     'coordinates',
     match?.lat != null && match?.lon != null
