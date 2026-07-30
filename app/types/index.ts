@@ -166,6 +166,8 @@ export interface Tournament {
 
   // Logistics
   location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   timezone: string;
   visibility: Visibility;
 

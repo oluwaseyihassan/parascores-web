@@ -169,6 +169,8 @@ const schema = z.object({
   participantType: z.nativeEnum(ParticipantType),
   visibility: z.nativeEnum(Visibility),
   location: z.string().optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
   timezone: z.string().min(1, 'Timezone is required'),
   start_date: z.string().min(1, 'Start date is required'),
   end_date: z.string().min(1, 'End date is required'),
@@ -193,6 +195,8 @@ const state = reactive<Partial<Schema>>({
   participantType: props.tournament.participantType,
   visibility: props.tournament.visibility,
   location: props.tournament.location || '',
+  latitude: props.tournament.latitude ?? null,
+  longitude: props.tournament.longitude ?? null,
   timezone: props.tournament.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
   start_date: props.tournament.start_date,
   end_date: props.tournament.end_date,
@@ -569,11 +573,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             </UFormField>
 
             <UFormField label="Location" name="location">
-              <UInput 
-                v-model="state.location" 
-                placeholder="e.g. Lagos, Nigeria"
-                icon="i-heroicons-map-pin"
-                class="w-full"
+              <LocationSelect
+                v-model="state.location"
+                @coordinates="(coords) => { state.latitude = coords?.lat ?? null; state.longitude = coords?.lon ?? null }"
               />
             </UFormField>
           </div>
@@ -854,40 +856,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     </UForm>
 
     <!-- Payout Account Setup Modal -->
-    <UModal v-model:open="showPayoutModal">
-      <template #content>
-        <UCard>
-          <template #header>
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <UIcon name="i-heroicons-banknotes" class="w-5 h-5 text-emerald-500" />
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                  Set Up Payout Account
-                </h3>
-              </div>
-              <UButton
-                icon="i-heroicons-x-mark"
-                variant="ghost"
-                color="neutral"
-                size="sm"
-                @click="showPayoutModal = false;"
-              />
-            </div>
-          </template>
-
-          <div class="space-y-4">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              Registration fees are settled directly to this bank account by
-              Paystack the next business day.
-            </p>
-            <PayoutAccountForm
-              v-if="tournament.organization_id"
-              :org-id="tournament.organization_id"
-              @saved="onPayoutSaved"
-            />
-          </div>
-        </UCard>
-      </template>
-    </UModal>
+    <PayoutSetupModal
+      v-model:open="showPayoutModal"
+      :org-id="tournament.organization_id"
+      @saved="onPayoutSaved"
+    />
   </div>
 </template>

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { TournamentType, ParticipantType, Visibility, type Tournament } from '~/types'
 import { CalendarDate, type DateValue } from '@internationalized/date'
+import type { PayoutAccountStatus } from '~/stores/payment'
 
 definePageMeta({
   middleware: ['require-organizer'],
@@ -11,8 +12,17 @@ definePageMeta({
 
 const tournamentStore = useTournamentStore()
 const authStore = useAuthStore()
+const paymentStore = usePaymentStore()
 const router = useRouter()
 const { handleError } = useErrors()
+
+const payoutAccount = ref<PayoutAccountStatus | null>(null)
+const showPayoutModal = ref(false)
+
+function onPayoutSaved(status: PayoutAccountStatus | null) {
+  payoutAccount.value = status
+  showPayoutModal.value = false
+}
 
 const STORAGE_KEY = 'parascores_tournament_draft'
 
@@ -293,6 +303,8 @@ const schema = z.object({
   participantType: z.nativeEnum(ParticipantType),
   visibility: z.nativeEnum(Visibility),
   location: z.string().optional(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
   timezone: z.string().min(1, 'Timezone is required'),
   start_date: z.string().min(1, 'Start date is required'),
   end_date: z.string().min(1, 'End date is required'),
@@ -320,6 +332,8 @@ const state = reactive<Partial<Schema>>({
   participantType: ParticipantType.TEAM,
   visibility: Visibility.PUBLIC,
   location: '',
+  latitude: null,
+  longitude: null,
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   start_date: '',
   end_date: '',
@@ -400,7 +414,16 @@ watch(() => state.customName, (val) => {
 })
 
 // Persistence logic
-onMounted(() => {
+onMounted(async () => {
+  const orgId = authStore.currentOrganization?.id
+  if (orgId) {
+    try {
+      payoutAccount.value = await paymentStore.fetchPayoutAccount(orgId)
+    } catch {
+      // Silent fail — warning banner stays hidden
+    }
+  }
+
   const saved = localStorage.getItem(STORAGE_KEY)
   if (saved) {
     try {
@@ -693,7 +716,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 <USelect v-model="state.sport" :items="popularSports" placeholder="Select sport" class="w-full" />
               </UFormField>
               <UFormField label="Location" name="location">
-                <UInput v-model="state.location" placeholder="e.g. London, UK" class="w-full" />
+                <LocationSelect
+                  v-model="state.location"
+                  @coordinates="(coords) => { state.latitude = coords?.lat ?? null; state.longitude = coords?.lon ?? null }"
+                />
               </UFormField>
             </div>
 
@@ -888,11 +914,30 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               </div>
 
               <div v-if="state.isPaidRegistration" class="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-4 animate-in fade-in duration-200">
+                <div
+                  v-if="payoutAccount && !payoutAccount.hasPayoutAccount"
+                  class="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-500/30"
+                >
+                  <UIcon name="i-heroicons-exclamation-triangle" class="w-4.5 h-4.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div class="flex-1 text-xs sm:text-sm text-amber-700 dark:text-amber-400">
+                    <span class="font-semibold">Payout account required.</span>
+                    Connect a bank account to receive registration fees directly before teams can pay.
+                    <div class="mt-2">
+                      <UButton
+                        size="xs"
+                        color="warning"
+                        icon="i-heroicons-banknotes"
+                        label="Set Up Payout Account"
+                        @click="showPayoutModal = true"
+                      />
+                    </div>
+                  </div>
+                </div>
                 <UFormField label="Registration Fee (₦)" name="registrationFee" required>
-                  <UInput 
-                    v-model.number="state.registrationFee" 
-                    type="number" 
-                    placeholder="e.g. 5000" 
+                  <UInput
+                    v-model.number="state.registrationFee"
+                    type="number"
+                    placeholder="e.g. 5000"
                     min="0"
                     class="w-full"
                     icon="i-heroicons-banknotes"
@@ -1004,5 +1049,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         </div>
       </div>
     </UForm>
+
+    <PayoutSetupModal
+      v-model:open="showPayoutModal"
+      :org-id="authStore.currentOrganization?.id"
+      @saved="onPayoutSaved"
+    />
   </div>
 </template>
