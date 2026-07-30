@@ -276,6 +276,17 @@ async function fetchNearbyTournaments() {
   totalCount.value = response.pagination?.total || 0
   currentPage.value = 1
   totalPages.value = 1
+
+  console.log('[Nearby] Your location:', userCoords.value)
+  console.table(
+    tournaments.value.map((t: any) => ({
+      name: t.name,
+      location: t.location,
+      lat: t.latitude,
+      lon: t.longitude,
+      distanceKm: t.distanceKm,
+    }))
+  )
 }
 
 async function toggleNearby() {
