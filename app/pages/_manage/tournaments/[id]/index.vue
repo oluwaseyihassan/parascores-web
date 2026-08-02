@@ -5233,7 +5233,15 @@ const copyTournamentLink = async () => {
                       />
                       <span class="font-medium">Standings</span>
                     </div>
-                    <!-- Optional: Add manual recalculate button if needed -->
+                    <UButton
+                      icon="i-heroicons-arrow-path"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      :loading="standingsLoading"
+                      title="Refresh standings"
+                      @click="standingStore.fetchStandings(tournamentId)"
+                    />
                   </div>
                 </template>
 
