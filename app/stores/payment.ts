@@ -40,6 +40,8 @@ export interface PaymentRecord {
   status: 'PENDING' | 'SUCCESS' | 'FAILED'
   paystackReference: string
   plan?: string | null
+  type?: string | null
+  teamName?: string | null
   created_at: string
   tournament?: { id: string; name: string } | null
 }
