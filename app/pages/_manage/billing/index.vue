@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import type { PayoutAccountStatus } from '~/stores/payment'
+import type { PaymentRecord, PayoutAccountStatus } from '~/stores/payment'
 
 definePageMeta({
   middleware: ['require-organizer'],
@@ -47,6 +47,13 @@ async function loadPayoutAccount(orgId: string) {
 
 function onPayoutSaved(status: PayoutAccountStatus | null) {
   payoutAccount.value = status
+}
+
+function paymentLabel(payment: PaymentRecord) {
+  if (payment.type === 'TOURNAMENT_REGISTRATION') {
+    return payment.teamName ? `Registration · ${payment.teamName}` : 'Registration'
+  }
+  return payment.plan === 'PER_TOURNAMENT' ? 'Tournament Upgrade' : payment.plan === 'PRO' ? 'Pro Plan' : payment.plan || 'Payment'
 }
 
 
@@ -524,7 +531,7 @@ const statusColor = computed(() => {
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between gap-2">
                 <span class="text-sm font-bold text-gray-900 dark:text-white truncate">
-                  {{ payment.plan === 'PER_TOURNAMENT' ? 'Tournament Upgrade' : payment.plan === 'PRO' ? 'Pro Plan' : payment.plan || 'Payment' }}
+                  {{ paymentLabel(payment) }}
                 </span>
                 <span class="text-sm font-bold text-gray-900 dark:text-white shrink-0">
                   ₦{{ (payment.amount / 100).toLocaleString() }}
@@ -558,7 +565,7 @@ const statusColor = computed(() => {
                 <td class="px-6 py-3.5">
                   <div class="flex items-center gap-2">
                     <span class="font-bold text-gray-900 dark:text-white">
-                      {{ payment.plan === 'PER_TOURNAMENT' ? 'Tournament Upgrade' : payment.plan === 'PRO' ? 'Pro Plan' : payment.plan || 'Payment' }}
+                      {{ paymentLabel(payment) }}
                     </span>
                     <span v-if="payment.tournament" class="text-xs text-gray-400">
                       · {{ payment.tournament.name }}
