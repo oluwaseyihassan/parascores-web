@@ -134,7 +134,7 @@ const handleLogout = async () => {
 
         <!-- Organization Switcher -->
         <div class="flex flex-col gap-4 py-2 w-full px-2 border-b border-gray-100 dark:border-white/10 mb-6 pb-6 flex-shrink-0">
-          <div class="flex flex-col gap-4 max-h-72 overflow-y-auto no-scrollbar">
+          <div class="flex flex-col gap-4 max-h-72 overflow-y-auto overflow-x-hidden no-scrollbar">
             <UTooltip 
               v-for="orgMember in authStore.organizations" 
               :key="orgMember.organizationId" 
