@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import type { PaymentRecord, PayoutAccountStatus } from '~/stores/payment'
+import type { PaymentRecord, PayoutAccountStatus, PayoutSummary } from '~/stores/payment'
 
 definePageMeta({
   middleware: ['require-organizer'],
@@ -36,6 +36,7 @@ const upgradingTournament = ref(false)
 
 // Payout account
 const payoutAccount = ref<PayoutAccountStatus | null>(null)
+const payoutSummary = ref<PayoutSummary | null>(null)
 
 async function loadPayoutAccount(orgId: string) {
   try {
@@ -43,10 +44,18 @@ async function loadPayoutAccount(orgId: string) {
   } catch {
     // Silent fail — section shows as not set up
   }
+  try {
+    payoutSummary.value = await paymentStore.fetchPayoutSummary(orgId)
+  } catch {
+    // Silent fail — summary stays hidden
+  }
 }
+
+const showPayoutForm = ref(false)
 
 function onPayoutSaved(status: PayoutAccountStatus | null) {
   payoutAccount.value = status
+  showPayoutForm.value = false
 }
 
 function paymentLabel(payment: PaymentRecord) {
@@ -486,13 +495,57 @@ const statusColor = computed(() => {
           <UIcon name="i-heroicons-building-library" class="w-5 h-5 text-emerald-500 flex-shrink-0" />
           <div class="min-w-0">
             <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ payoutAccount.accountName }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ payoutAccount.accountNumberMasked }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              <template v-if="payoutAccount.bankName">{{ payoutAccount.bankName }} · </template>{{ payoutAccount.accountNumberMasked }}
+            </p>
           </div>
         </div>
 
+        <!-- Earnings Summary -->
+        <div v-if="payoutSummary && payoutSummary.paymentCount > 0" class="rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+          <div class="px-4 py-3 bg-gray-50 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
+            <span class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Registration Earnings</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">{{ payoutSummary.paymentCount }} payment{{ payoutSummary.paymentCount === 1 ? '' : 's' }}</span>
+          </div>
+          <div class="divide-y divide-gray-50 dark:divide-white/[0.04]">
+            <div
+              v-for="t in payoutSummary.tournaments"
+              :key="t.id"
+              class="px-4 py-2.5 flex items-center justify-between gap-3 text-sm"
+            >
+              <span class="text-gray-700 dark:text-gray-300 truncate">{{ t.name }}</span>
+              <span class="text-gray-900 dark:text-white font-semibold shrink-0">
+                ₦{{ (t.net / 100).toLocaleString() }}
+                <span class="text-xs font-normal text-gray-400">net</span>
+              </span>
+            </div>
+          </div>
+          <div class="px-4 py-3 bg-gray-50 dark:bg-white/[0.02] border-t border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
+            <span class="text-sm font-bold text-gray-900 dark:text-white">Total</span>
+            <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+              ₦{{ (payoutSummary.totalNet / 100).toLocaleString() }}
+              <span class="text-xs font-normal text-gray-400">of ₦{{ (payoutSummary.totalGross / 100).toLocaleString() }}</span>
+            </span>
+          </div>
+          <p class="px-4 py-2 text-[10px] text-gray-400 border-t border-gray-100 dark:border-white/[0.06]">
+            Estimates after {{ payoutSummary.commissionPercent }}% commission, before Paystack fees. Settlements arrive the next business day.
+          </p>
+        </div>
+
+        <div v-if="payoutAccount?.hasPayoutAccount && !showPayoutForm" class="flex justify-end">
+          <UButton
+            variant="outline"
+            color="neutral"
+            icon="i-heroicons-pencil-square"
+            label="Change Payout Account"
+            @click="showPayoutForm = true"
+          />
+        </div>
         <PayoutAccountForm
-          v-if="authStore.currentOrganization?.id"
+          v-else-if="authStore.currentOrganization?.id"
           :org-id="authStore.currentOrganization.id"
+          :initial-bank-code="payoutAccount?.bankCode"
+          :is-update="!!payoutAccount?.hasPayoutAccount"
           @saved="onPayoutSaved"
         />
       </div>
@@ -519,13 +572,20 @@ const statusColor = computed(() => {
             :key="payment.id" 
             class="px-5 py-4 flex items-start gap-3"
           >
-            <div 
+            <div
+              v-if="payment.teamLogoUrl"
+              class="w-9 h-9 rounded-lg overflow-hidden shrink-0 mt-0.5 border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5"
+            >
+              <img :src="payment.teamLogoUrl" :alt="payment.teamName || 'Team logo'" class="w-full h-full object-cover" />
+            </div>
+            <div
+              v-else
               class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
               :class="payment.status === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-500' : payment.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'"
             >
-              <UIcon 
-                :name="payment.status === 'SUCCESS' ? 'i-heroicons-check-circle' : payment.status === 'PENDING' ? 'i-heroicons-clock' : 'i-heroicons-x-circle'" 
-                class="w-5 h-5" 
+              <UIcon
+                :name="payment.status === 'SUCCESS' ? 'i-heroicons-check-circle' : payment.status === 'PENDING' ? 'i-heroicons-clock' : 'i-heroicons-x-circle'"
+                class="w-5 h-5"
               />
             </div>
             <div class="flex-1 min-w-0">
@@ -540,6 +600,16 @@ const statusColor = computed(() => {
               <div class="flex items-center gap-2 mt-0.5">
                 <span class="text-xs text-gray-400">{{ formatDate(payment.created_at) }}</span>
                 <span v-if="payment.tournament" class="text-xs text-gray-400 truncate">· {{ payment.tournament.name }}</span>
+              </div>
+              <div class="flex items-center gap-2 mt-1.5">
+                <UBadge
+                  :color="payment.status === 'SUCCESS' ? 'success' : payment.status === 'PENDING' ? 'warning' : 'error'"
+                  variant="subtle"
+                  size="xs"
+                >
+                  {{ payment.status }}
+                </UBadge>
+                <span class="text-[10px] text-gray-500 truncate">{{ payment.paystackReference }}</span>
               </div>
             </div>
           </div>
@@ -562,8 +632,14 @@ const statusColor = computed(() => {
                 <td class="px-6 py-3.5 whitespace-nowrap text-gray-600 dark:text-gray-300">
                   {{ formatDate(payment.created_at) }}
                 </td>
-                <td class="px-6 py-3.5">
-                  <div class="flex items-center gap-2">
+                 <td class="px-6 py-3.5">
+                   <div class="flex items-center gap-2">
+                    <img
+                      v-if="payment.teamLogoUrl"
+                      :src="payment.teamLogoUrl"
+                      :alt="payment.teamName || 'Team logo'"
+                      class="w-6 h-6 rounded-md object-cover shrink-0 border border-gray-200 dark:border-white/10"
+                    />
                     <span class="font-bold text-gray-900 dark:text-white">
                       {{ paymentLabel(payment) }}
                     </span>

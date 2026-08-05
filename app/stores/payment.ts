@@ -42,6 +42,7 @@ export interface PaymentRecord {
   plan?: string | null
   type?: string | null
   teamName?: string | null
+  teamLogoUrl?: string | null
   created_at: string
   tournament?: { id: string; name: string } | null
 }
@@ -56,9 +57,24 @@ export interface PaystackBank {
 export interface PayoutAccountStatus {
   hasPayoutAccount: boolean
   bankCode?: string | null
+  bankName?: string | null
   accountNumberMasked?: string | null
   accountName?: string | null
   createdAt?: string | null
+}
+
+export interface PayoutSummary {
+  totalGross: number
+  totalNet: number
+  paymentCount: number
+  commissionPercent: number
+  tournaments: {
+    id: string
+    name: string
+    count: number
+    gross: number
+    net: number
+  }[]
 }
 
 export const usePaymentStore = defineStore('payment', () => {
@@ -315,6 +331,22 @@ export const usePaymentStore = defineStore('payment', () => {
   }
 
   /**
+   * Get registration earnings summary for an organization
+   */
+  async function fetchPayoutSummary(orgId: string) {
+    try {
+      const response = await $api<ApiResponse<PayoutSummary>>(`/payments/payout-summary/${orgId}`, {
+        method: 'GET',
+      })
+      return response.data || null
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Fetch payout summary failed:', error.value)
+      throw err
+    }
+  }
+
+  /**
    * Create or update the payout account for an organization
    */
   async function setupPayoutAccount(orgId: string, data: { bankCode: string; accountNumber: string; businessName?: string }) {
@@ -380,6 +412,7 @@ export const usePaymentStore = defineStore('payment', () => {
     fetchPayoutBanks,
     resolvePayoutAccount,
     fetchPayoutAccount,
+    fetchPayoutSummary,
     setupPayoutAccount,
   }
 })
