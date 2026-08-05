@@ -159,6 +159,9 @@ watch(() => authStore.currentOrganization?.id, async (newId) => {
     } catch (err) {
       // Silent fail
     }
+    payoutAccount.value = null
+    payoutSummary.value = null
+    loadPayoutAccount(newId)
   }
 })
 
@@ -308,6 +311,102 @@ const statusColor = computed(() => {
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Billing</h1>
       <p class="text-gray-500 mt-1">Manage your subscription and plan.</p>
+    </div>
+
+    <!-- Payout Account -->
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm mb-8">
+      <div class="px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <UIcon name="i-heroicons-banknotes" class="w-4.5 h-4.5 text-emerald-500" />
+          <h3 class="text-sm font-bold text-gray-500">Payout Account</h3>
+        </div>
+        <UBadge
+          :color="payoutAccount?.hasPayoutAccount ? 'success' : 'neutral'"
+          variant="subtle"
+          size="sm"
+        >
+          {{ payoutAccount?.hasPayoutAccount ? 'Active' : 'Not set up' }}
+        </UBadge>
+      </div>
+
+      <div class="px-6 py-2.5 border-b border-gray-100 dark:border-white/[0.06] bg-gray-50/50 dark:bg-white/[0.02] flex items-center gap-2.5">
+        <UAvatar
+          v-if="authStore.currentOrganization?.logoUrl"
+          :src="authStore.currentOrganization.logoUrl"
+          size="xs"
+        />
+        <div v-else class="w-5 h-5 rounded-md bg-gray-200 dark:bg-white/10 flex items-center justify-center text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase">
+          {{ authStore.currentOrganization?.name?.charAt(0) }}
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          For <span class="font-semibold text-gray-900 dark:text-white">{{ authStore.currentOrganization?.name }}</span>
+          — switch organizations from the sidebar to manage a different account.
+        </p>
+      </div>
+
+      <div class="p-6 space-y-5">
+        <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+          Connect a bank account to receive paid registration fees directly. Paystack settles funds to your account the next business day — ParaScores keeps only a {{ isPro ? 3 : 5 }}% platform commission{{ isPro ? ' (Pro rate)' : '' }}.
+        </p>
+
+        <div v-if="payoutAccount?.hasPayoutAccount" class="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-500/20">
+          <UIcon name="i-heroicons-building-library" class="w-5 h-5 text-emerald-500 flex-shrink-0" />
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ payoutAccount.accountName }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              <template v-if="payoutAccount.bankName">{{ payoutAccount.bankName }} · </template>{{ payoutAccount.accountNumberMasked }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Earnings Summary -->
+        <div v-if="payoutSummary && payoutSummary.paymentCount > 0" class="rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+          <div class="px-4 py-3 bg-gray-50 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
+            <span class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Registration Earnings</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">{{ payoutSummary.paymentCount }} payment{{ payoutSummary.paymentCount === 1 ? '' : 's' }}</span>
+          </div>
+          <div class="divide-y divide-gray-50 dark:divide-white/[0.04]">
+            <div
+              v-for="t in payoutSummary.tournaments"
+              :key="t.id"
+              class="px-4 py-2.5 flex items-center justify-between gap-3 text-sm"
+            >
+              <span class="text-gray-700 dark:text-gray-300 truncate">{{ t.name }}</span>
+              <span class="text-gray-900 dark:text-white font-semibold shrink-0">
+                ₦{{ (t.net / 100).toLocaleString() }}
+                <span class="text-xs font-normal text-gray-400">net</span>
+              </span>
+            </div>
+          </div>
+          <div class="px-4 py-3 bg-gray-50 dark:bg-white/[0.02] border-t border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
+            <span class="text-sm font-bold text-gray-900 dark:text-white">Total</span>
+            <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+              ₦{{ (payoutSummary.totalNet / 100).toLocaleString() }}
+              <span class="text-xs font-normal text-gray-400">of ₦{{ (payoutSummary.totalGross / 100).toLocaleString() }}</span>
+            </span>
+          </div>
+          <p class="px-4 py-2 text-[10px] text-gray-400 border-t border-gray-100 dark:border-white/[0.06]">
+            Estimates after {{ payoutSummary.commissionPercent }}% commission, before Paystack fees. Settlements arrive the next business day.
+          </p>
+        </div>
+
+        <div v-if="payoutAccount?.hasPayoutAccount && !showPayoutForm" class="flex justify-end">
+          <UButton
+            variant="outline"
+            color="neutral"
+            icon="i-heroicons-pencil-square"
+            label="Change Payout Account"
+            @click="showPayoutForm = true"
+          />
+        </div>
+        <PayoutAccountForm
+          v-else-if="authStore.currentOrganization?.id"
+          :org-id="authStore.currentOrganization.id"
+          :initial-bank-code="payoutAccount?.bankCode"
+          :is-update="!!payoutAccount?.hasPayoutAccount"
+          @saved="onPayoutSaved"
+        />
+      </div>
     </div>
 
     <!-- Current Plan Status Card -->
@@ -467,87 +566,6 @@ const statusColor = computed(() => {
             </li>
           </ul>
         </div>
-      </div>
-    </div>
-
-    <!-- Payout Account -->
-    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm mb-12">
-      <div class="px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
-          <UIcon name="i-heroicons-banknotes" class="w-4.5 h-4.5 text-emerald-500" />
-          <h3 class="text-sm font-bold text-gray-500">Payout Account</h3>
-        </div>
-        <UBadge
-          :color="payoutAccount?.hasPayoutAccount ? 'success' : 'neutral'"
-          variant="subtle"
-          size="sm"
-        >
-          {{ payoutAccount?.hasPayoutAccount ? 'Active' : 'Not set up' }}
-        </UBadge>
-      </div>
-
-      <div class="p-6 space-y-5">
-        <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-          Connect a bank account to receive paid registration fees directly. Paystack settles funds to your account the next business day — ParaScores keeps only a {{ isPro ? 3 : 5 }}% platform commission{{ isPro ? ' (Pro rate)' : '' }}.
-        </p>
-
-        <div v-if="payoutAccount?.hasPayoutAccount" class="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-500/20">
-          <UIcon name="i-heroicons-building-library" class="w-5 h-5 text-emerald-500 flex-shrink-0" />
-          <div class="min-w-0">
-            <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ payoutAccount.accountName }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              <template v-if="payoutAccount.bankName">{{ payoutAccount.bankName }} · </template>{{ payoutAccount.accountNumberMasked }}
-            </p>
-          </div>
-        </div>
-
-        <!-- Earnings Summary -->
-        <div v-if="payoutSummary && payoutSummary.paymentCount > 0" class="rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
-          <div class="px-4 py-3 bg-gray-50 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
-            <span class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Registration Earnings</span>
-            <span class="text-xs text-gray-500 dark:text-gray-400">{{ payoutSummary.paymentCount }} payment{{ payoutSummary.paymentCount === 1 ? '' : 's' }}</span>
-          </div>
-          <div class="divide-y divide-gray-50 dark:divide-white/[0.04]">
-            <div
-              v-for="t in payoutSummary.tournaments"
-              :key="t.id"
-              class="px-4 py-2.5 flex items-center justify-between gap-3 text-sm"
-            >
-              <span class="text-gray-700 dark:text-gray-300 truncate">{{ t.name }}</span>
-              <span class="text-gray-900 dark:text-white font-semibold shrink-0">
-                ₦{{ (t.net / 100).toLocaleString() }}
-                <span class="text-xs font-normal text-gray-400">net</span>
-              </span>
-            </div>
-          </div>
-          <div class="px-4 py-3 bg-gray-50 dark:bg-white/[0.02] border-t border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
-            <span class="text-sm font-bold text-gray-900 dark:text-white">Total</span>
-            <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
-              ₦{{ (payoutSummary.totalNet / 100).toLocaleString() }}
-              <span class="text-xs font-normal text-gray-400">of ₦{{ (payoutSummary.totalGross / 100).toLocaleString() }}</span>
-            </span>
-          </div>
-          <p class="px-4 py-2 text-[10px] text-gray-400 border-t border-gray-100 dark:border-white/[0.06]">
-            Estimates after {{ payoutSummary.commissionPercent }}% commission, before Paystack fees. Settlements arrive the next business day.
-          </p>
-        </div>
-
-        <div v-if="payoutAccount?.hasPayoutAccount && !showPayoutForm" class="flex justify-end">
-          <UButton
-            variant="outline"
-            color="neutral"
-            icon="i-heroicons-pencil-square"
-            label="Change Payout Account"
-            @click="showPayoutForm = true"
-          />
-        </div>
-        <PayoutAccountForm
-          v-else-if="authStore.currentOrganization?.id"
-          :org-id="authStore.currentOrganization.id"
-          :initial-bank-code="payoutAccount?.bankCode"
-          :is-update="!!payoutAccount?.hasPayoutAccount"
-          @saved="onPayoutSaved"
-        />
       </div>
     </div>
 
