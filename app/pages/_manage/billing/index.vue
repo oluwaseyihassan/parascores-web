@@ -53,6 +53,13 @@ async function loadPayoutAccount(orgId: string) {
 
 const showPayoutForm = ref(false)
 
+const orgOptions = computed(() =>
+  authStore.organizations.map((m) => ({
+    label: m.organization?.name || 'Organization',
+    value: m.organizationId,
+  }))
+)
+
 function onPayoutSaved(status: PayoutAccountStatus | null) {
   payoutAccount.value = status
   showPayoutForm.value = false
@@ -338,10 +345,18 @@ const statusColor = computed(() => {
         <div v-else class="w-5 h-5 rounded-md bg-gray-200 dark:bg-white/10 flex items-center justify-center text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase">
           {{ authStore.currentOrganization?.name?.charAt(0) }}
         </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          For <span class="font-semibold text-gray-900 dark:text-white">{{ authStore.currentOrganization?.name }}</span>
-          — switch organizations from the sidebar to manage a different account.
+        <p class="text-xs text-gray-500 dark:text-gray-400 min-w-0 truncate">
+          Payout account for <span class="font-semibold text-gray-900 dark:text-white">{{ authStore.currentOrganization?.name }}</span>
         </p>
+        <USelect
+          v-if="orgOptions.length > 1"
+          :model-value="authStore.activeOrganizationId ?? undefined"
+          :items="orgOptions"
+          value-key="value"
+          size="xs"
+          class="w-44 ml-auto shrink-0"
+          @update:model-value="(id) => authStore.syncActiveOrganization(id as string)"
+        />
       </div>
 
       <div class="p-6 space-y-5">
