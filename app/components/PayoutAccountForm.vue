@@ -3,6 +3,8 @@ import type { PaystackBank, PayoutAccountStatus } from '~/stores/payment'
 
 const props = defineProps<{
   orgId: string
+  initialBankCode?: string | null
+  isUpdate?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -14,7 +16,10 @@ const { handleError } = useErrors()
 
 const banks = ref<PaystackBank[]>([])
 const loadingBanks = ref(true)
-const form = reactive({ bankCode: '', accountNumber: '' })
+const form = reactive({
+  bankCode: props.initialBankCode || '',
+  accountNumber: '',
+})
 const resolvingAccount = ref(false)
 const resolvedAccountName = ref('')
 const saving = ref(false)
@@ -92,7 +97,7 @@ onMounted(() => {
           :loading="loadingBanks"
         />
       </UFormField>
-      <UFormField label="Account Number" required>
+      <UFormField label="Account Number" required hint="The account holder name must match your registered business — mismatches can delay settlement">
         <UInput
           v-model="form.accountNumber"
           placeholder="0123456789"
@@ -116,7 +121,7 @@ onMounted(() => {
       <UButton
         color="primary"
         icon="i-heroicons-check"
-        label="Save Payout Account"
+        :label="isUpdate ? 'Update Payout Account' : 'Save Payout Account'"
         :loading="saving"
         :disabled="!resolvedAccountName"
         @click="handleSave"
