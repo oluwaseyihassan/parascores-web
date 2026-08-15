@@ -170,6 +170,7 @@ export interface Tournament {
   longitude?: number | null;
   timezone: string;
   visibility: Visibility;
+  isPractice?: boolean;
 
   // Rules & Config
   sport: string;
