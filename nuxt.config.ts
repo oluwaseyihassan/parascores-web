@@ -92,7 +92,11 @@ export default defineNuxtConfig({
     }
   },
 
-  css: ["@/assets/css/main.css"],
+  css: ["@/assets/css/main.css", "@/assets/css/match-control.css"],
+
+  imports: {
+    dirs: ["composables/**"],
+  },
 
   vite: {
     plugins: [tailwindcss()],
