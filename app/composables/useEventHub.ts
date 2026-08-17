@@ -157,11 +157,22 @@ export const useEventHub = () => {
     }
   }
 
-  const meta = computed(() => ({
-    ...hubMeta,
-    name: org.value?.name ?? hubMeta.name,
-    logo: org.value?.logoUrl ?? hubMeta.logo,
-  }))
+  const meta = computed(() => {
+    const brand = (org.value?.brandConfig ?? {}) as Record<string, any>
+    return {
+      ...hubMeta,
+      name: org.value?.name ?? hubMeta.name,
+      logo: org.value?.logoUrl ?? hubMeta.logo,
+      location: brand.location ?? hubMeta.location,
+      venue: brand.venue ?? hubMeta.venue,
+      dates: brand.dates ?? hubMeta.dates,
+      tagline: brand.tagline ?? hubMeta.tagline,
+      countdownTarget: brand.countdownTarget ?? hubMeta.countdownTarget,
+      countdownLabel: brand.countdownLabel ?? hubMeta.countdownLabel,
+      mascot: brand.mascotUrl ?? hubMeta.mascot,
+      dayIndicator: brand.dayIndicator ?? hubMeta.dayIndicator,
+    }
+  })
 
   const sportList = computed<HubSport[]>(() => {
     if (isMock.value || !liveData.value) return mockSports
@@ -235,7 +246,27 @@ export const useEventHub = () => {
       b: r.bronze,
     }))
   })
-  const ticker = computed(() => mockTicker)
+  const ticker = computed(() => {
+    if (isMock.value || !liveData.value) return mockTicker
+
+    const items: string[] = []
+    for (const card of liveCards.value) {
+      items.push(
+        `🔴 LIVE · ${card.fixture.tournament.name}: ${card.home.name} ${card.hs}–${card.as} ${card.away.name}${card.clock ? ` (${card.clock})` : ''}`,
+      )
+    }
+    for (const f of liveData.value.results.slice(0, 8)) {
+      const home = teamDisplay(f.homeTeam, f.homeTeamPlaceholder)
+      const away = teamDisplay(f.awayTeam, f.awayTeamPlaceholder)
+      items.push(
+        `🏁 ${f.tournament.name}${f.roundName ? ` ${f.roundName}` : ''}: ${home.name} ${f.homeScore ?? 0}–${f.awayScore ?? 0} ${away.name}`,
+      )
+    }
+    if (!items.length) {
+      items.push(`Welcome to ${meta.value.name} — live results appear here when competition begins`)
+    }
+    return items
+  })
 
   return {
     org,

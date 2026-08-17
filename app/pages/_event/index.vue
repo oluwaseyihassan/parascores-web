@@ -60,7 +60,7 @@ const openFixtureFromTournament = (fixture: EventHubFixture) => {
       @update:active-tab="switchTab"
     />
 
-    <EventHubHero />
+    <EventHubHero :meta="meta" />
 
     <EventHubTicker :items="ticker" />
 
