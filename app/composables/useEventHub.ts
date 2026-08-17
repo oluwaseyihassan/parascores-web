@@ -1,0 +1,252 @@
+import { $fetch } from 'ofetch'
+import { getMatchMinute } from '~/composables/useMatchTimer'
+import {
+  hubMeta,
+  sports as mockSports,
+  medals as mockMedals,
+  schedule as mockSchedule,
+  tickerItems as mockTicker,
+  type HubSport,
+} from '~/components/event/mock'
+
+interface ApiResponse<T> {
+  success: boolean
+  message: string
+  data?: T
+}
+
+export interface EventHubOrg {
+  id: string
+  name: string
+  slug: string
+  subdomain: string
+  description: string | null
+  logoUrl: string | null
+  color: string | null
+  brandConfig: Record<string, any> | null
+  tournaments: {
+    id: string
+    name: string
+    customName: string | null
+    sport: string
+    type: string
+    start_date: string
+    end_date: string
+    logoUrl: string | null
+    location: string | null
+  }[]
+}
+
+export interface EventHubMatchEvent {
+  id: string
+  type: string
+  minute: number | null
+  description: string | null
+  metadata: Record<string, any> | null
+  created_at: string
+  participant: { customName: string | null; customShortName: string | null } | null
+  player: { name: string } | null
+}
+
+export interface EventHubFixture {
+  id: string
+  tournament_id: string
+  round: number
+  roundName: string | null
+  stage: string | null
+  status: string
+  startTime: string | null
+  venue: string | null
+  homeScore: number | null
+  awayScore: number | null
+  homeTeamPlaceholder: string | null
+  awayTeamPlaceholder: string | null
+  timerStartedAt: string | null
+  timerElapsedSeconds: number
+  timerIsRunning: boolean
+  matchDuration: number
+  half: string | null
+  updated_at: string
+  matchEvents?: EventHubMatchEvent[]
+  homeTeam: { customName: string | null; customShortName: string | null; logoUrl: string | null; team: { name: string } | null } | null
+  awayTeam: { customName: string | null; customShortName: string | null; logoUrl: string | null; team: { name: string } | null } | null
+  tournament: { id: string; name: string; customName: string | null; sport: string }
+}
+
+export interface LiveCard {
+  fixture: EventHubFixture
+  label: string
+  clock: string | null
+  home: { name: string; abbr: string; logoUrl: string | null }
+  away: { name: string; abbr: string; logoUrl: string | null }
+  hs: number
+  as: number
+  lastEvent: string | null
+}
+
+export interface EventHubSportStatus {
+  tournamentId: string
+  name: string
+  customName: string | null
+  sport: string
+  logoUrl: string | null
+  liveCount: number
+  nextStart: string | null
+  hasResults: boolean
+}
+
+export interface EventHubLive {
+  live: EventHubFixture[]
+  upcoming: EventHubFixture[]
+  results: EventHubFixture[]
+  sports: EventHubSportStatus[]
+}
+
+export interface MedalTableRow {
+  rosterEntryId: string
+  name: string
+  shortName: string | null
+  logoUrl: string | null
+  gold: number
+  silver: number
+  bronze: number
+  total: number
+}
+
+/**
+ * Resolves the event hub organization for the current subdomain.
+ * Falls back to bundled mock data when no org is configured for the slug,
+ * so the hub demo works before the backend is populated.
+ */
+export const useEventHub = () => {
+  const { eventSlug } = useHost()
+
+  const org = useState<EventHubOrg | null>('eventHub.org', () => null)
+  const liveData = useState<EventHubLive | null>('eventHub.live', () => null)
+  const medalTable = useState<MedalTableRow[] | null>('eventHub.medals', () => null)
+  const isMock = useState<boolean>('eventHub.isMock', () => true)
+
+  const fetchHub = async () => {
+    if (!eventSlug.value) return
+    const apiBase = useRuntimeConfig().public.API_BASE_URL as string
+    try {
+      const res = await $fetch<ApiResponse<EventHubOrg>>(
+        `${apiBase}/organizations/event-hub/${eventSlug.value}`,
+        { timeout: 5000 },
+      )
+      org.value = res.data ?? null
+      isMock.value = false
+    } catch {
+      org.value = null
+      isMock.value = true
+    }
+
+    if (!isMock.value) {
+      const [liveRes, medalsRes] = await Promise.allSettled([
+        $fetch<ApiResponse<EventHubLive>>(
+          `${apiBase}/organizations/event-hub/${eventSlug.value}/live`,
+          { timeout: 5000 },
+        ),
+        $fetch<ApiResponse<MedalTableRow[]>>(
+          `${apiBase}/organizations/event-hub/${eventSlug.value}/medals`,
+          { timeout: 5000 },
+        ),
+      ])
+      liveData.value = liveRes.status === 'fulfilled' ? (liveRes.value.data ?? null) : null
+      medalTable.value = medalsRes.status === 'fulfilled' ? (medalsRes.value.data ?? null) : null
+    }
+  }
+
+  const meta = computed(() => ({
+    ...hubMeta,
+    name: org.value?.name ?? hubMeta.name,
+    logo: org.value?.logoUrl ?? hubMeta.logo,
+  }))
+
+  const sportList = computed<HubSport[]>(() => {
+    if (isMock.value || !liveData.value) return mockSports
+    return liveData.value.sports.map((s) => ({
+      e: mockSports.find((m) => m.name.toLowerCase() === s.sport.toLowerCase())?.e ?? '🏅',
+      name: s.name,
+      status: s.liveCount > 0
+        ? 'LIVE'
+        : s.nextStart
+          ? new Date(s.nextStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : s.hasResults
+            ? 'RESULTS'
+            : 'SOON',
+      detail: 'tournament',
+      tournamentId: s.tournamentId,
+    }))
+  })
+
+  const scheduleItems = computed(() => {
+    if (isMock.value || !liveData.value) return mockSchedule
+    return liveData.value.upcoming.map((f) => ({
+      t: f.startTime ? new Date(f.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD',
+      e: mockSports.find((m) => m.name.toLowerCase() === f.tournament.sport.toLowerCase())?.e ?? '🏅',
+      title: `${f.tournament.name}${f.roundName ? ` — ${f.roundName}` : ''}`,
+      sub: [f.venue, f.tournament.sport].filter(Boolean).join(' · '),
+      status: 'SCHEDULED',
+      cls: 'text-sky-400',
+    }))
+  })
+
+  const teamDisplay = (
+    team: EventHubFixture['homeTeam'],
+    placeholder: string | null,
+  ) => {
+    const name = team?.customName ?? team?.team?.name ?? placeholder ?? 'TBD'
+    const abbr = (team?.customShortName ?? name.slice(0, 3)).toUpperCase()
+    return { name, abbr, logoUrl: team?.logoUrl ?? null }
+  }
+
+  const eventLabel = (e: EventHubMatchEvent): string => {
+    const who = e.player?.name ?? e.participant?.customShortName ?? e.participant?.customName ?? ''
+    const base = e.description ?? `${e.type.replace(/_/g, ' ')}${who ? ` — ${who}` : ''}`
+    return e.minute != null ? `${base} ${e.minute}'` : base
+  }
+
+  const liveCards = computed<LiveCard[]>(() => {
+    if (!liveData.value) return []
+    return liveData.value.live.map((f) => {
+      const minute = getMatchMinute(f as any)
+      const latest = f.matchEvents?.[0]
+      return {
+        fixture: f,
+        label: [f.tournament.name, f.roundName, f.venue].filter(Boolean).join(' · '),
+        clock: minute != null ? `${minute}'` : null,
+        home: teamDisplay(f.homeTeam, f.homeTeamPlaceholder),
+        away: teamDisplay(f.awayTeam, f.awayTeamPlaceholder),
+        hs: f.homeScore ?? 0,
+        as: f.awayScore ?? 0,
+        lastEvent: latest ? `Latest: ${eventLabel(latest)}` : null,
+      }
+    })
+  })
+
+  const medalRows = computed(() => {
+    if (isMock.value || !medalTable.value) return mockMedals
+    return medalTable.value.map((r) => ({
+      u: r.shortName ?? r.name,
+      logoUrl: r.logoUrl,
+      g: r.gold,
+      s: r.silver,
+      b: r.bronze,
+    }))
+  })
+  const ticker = computed(() => mockTicker)
+
+  return {
+    org,
+    isMock,
+    meta,
+    liveData,
+    liveCards,
+    sports: sportList,
+    schedule: scheduleItems,
+    medals: medalRows,
+    ticker,
+    fetchHub,
+  }
+}

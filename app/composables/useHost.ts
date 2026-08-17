@@ -1,12 +1,31 @@
+const RESERVED_SUBDOMAINS = ['manage', 'manage-dev', 'admin', 'admin-dev', 'dev', 'www', 'api']
+
 export const useHost = () => {
   const config = useRuntimeConfig()
   const route = useRoute()
-  
-  const host = process.server 
+
+  const host = process.server
     ? useRequestHeaders(['host']).host || ''
     : window.location.host
 
   const isManage = computed(() => host.startsWith('manage.') || host.startsWith('manage-dev.'))
+
+  const hostname = host.split(':')[0] || ''
+  const labels = hostname.split('.')
+
+  const subdomain = computed(() => labels.length > 2 ? labels[0]! : null)
+
+  const isKnownBaseDomain = hostname === 'lvh.me' || hostname.endsWith('.lvh.me')
+    || hostname === 'parascores.com' || hostname.endsWith('.parascores.com')
+
+  // Any non-reserved subdomain on a known base domain is an event hub slug
+  const eventSlug = computed(() => {
+    if (!isKnownBaseDomain) return null
+    const sub = subdomain.value
+    return sub && !RESERVED_SUBDOMAINS.includes(sub) ? sub : null
+  })
+
+  const isEventHub = computed(() => !!eventSlug.value)
   
   const resolvedDashboardUrl = computed(() => {
     if (!host) return config.public.DASHBOARD_URL
@@ -91,6 +110,8 @@ export const useHost = () => {
   return {
     host,
     isManage,
+    isEventHub,
+    eventSlug,
     toMain,
     toManage,
     toTournament,

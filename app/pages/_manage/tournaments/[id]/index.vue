@@ -1456,6 +1456,60 @@ const handleLogoChange = (event: Event) => {
   logoPreview.value = URL.createObjectURL(file);
 };
 
+// Roster picker (event orgs)
+interface RosterEntry {
+  id: string;
+  name: string;
+  shortName: string | null;
+  logoUrl: string | null;
+}
+const rosterEntries = ref<RosterEntry[]>([]);
+const loadingRoster = ref(false);
+const selectedRosterEntryId = ref<string | null>(null);
+
+const fetchOrgRoster = async () => {
+  const orgId = tournament.value?.organization_id;
+  if (!orgId) return;
+  loadingRoster.value = true;
+  try {
+    const res = await $api<{ success: boolean; data?: RosterEntry[] }>(
+      `/organizations/${orgId}/roster`,
+    );
+    rosterEntries.value = res.data ?? [];
+  } catch {
+    rosterEntries.value = [];
+  } finally {
+    loadingRoster.value = false;
+  }
+};
+
+const availableRosterEntries = computed(() => {
+  const takenNames = new Set(
+    participants.value.map((p) => p.customName?.toLowerCase()),
+  );
+  return rosterEntries.value.filter(
+    (r) => !takenNames.has(r.name.toLowerCase()),
+  );
+});
+
+const rosterSelectItems = computed(() =>
+  availableRosterEntries.value.map((r) => ({
+    label: r.shortName ? `${r.name} (${r.shortName})` : r.name,
+    value: r.id,
+  })),
+);
+
+const onRosterPick = (entryId: string | null) => {
+  selectedRosterEntryId.value = entryId;
+  if (!entryId) return;
+  const entry = rosterEntries.value.find((r) => r.id === entryId);
+  if (!entry) return;
+  addParticipantState.customName = entry.name;
+  addParticipantState.customShortName = entry.shortName || "";
+  addParticipantState.logoUrl = entry.logoUrl;
+  logoPreview.value = entry.logoUrl;
+};
+
 // Participant Management
 const newParticipantName = ref("");
 const selectedParticipant = ref<Participant | null>(null);
@@ -1874,6 +1928,7 @@ const resetAddForm = () => {
   addParticipantState.seed = null;
   addParticipantState.logoUrl = null;
   addParticipantState.teamId = null;
+  selectedRosterEntryId.value = null;
   removeLogo();
   addError.value = null;
 };
@@ -1881,6 +1936,7 @@ const resetAddForm = () => {
 const openAddModal = () => {
   resetAddForm();
   showAddModal.value = true;
+  fetchOrgRoster();
 };
 
 const handleAddParticipant = async (
@@ -1918,6 +1974,7 @@ const handleAddParticipant = async (
       seed: event.data.seed,
       logoUrl: logoUrl,
       teamId: addParticipantState.teamId,
+      rosterEntryId: selectedRosterEntryId.value ?? undefined,
     });
     showAddModal.value = false;
     resetAddForm();
@@ -6751,6 +6808,28 @@ const copyTournamentLink = async () => {
           @submit="handleAddParticipant"
           class="space-y-4"
         >
+          <!-- Roster picker (only when the org has roster entries) -->
+          <div
+            v-if="tournament?.organization_id && (rosterSelectItems.length > 0 || loadingRoster)"
+            class="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-2"
+          >
+            <label class="text-xs font-bold text-indigo-400 uppercase tracking-wider">
+              From organization roster
+            </label>
+            <USelectMenu
+              :model-value="selectedRosterEntryId ?? undefined"
+              :items="rosterSelectItems"
+              value-key="value"
+              :loading="loadingRoster"
+              placeholder="Pick an institution to autofill…"
+              class="w-full"
+              @update:model-value="onRosterPick($event as string | null)"
+            />
+            <p v-if="selectedRosterEntryId" class="text-[10px] text-indigo-300/70">
+              Linked to the roster — this institution's results aggregate across tournaments.
+            </p>
+          </div>
+
           <!-- Logo Upload -->
           <div class="flex items-center gap-4">
             <!-- Hidden file input -->

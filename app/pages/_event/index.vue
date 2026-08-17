@@ -1,0 +1,132 @@
+<script setup lang="ts">
+import { hubMeta, type HubSport } from '~/components/event/mock'
+import type { LiveCard, EventHubFixture } from '~/composables/useEventHub'
+import type { TournamentDetail } from '~/components/event/EventHubMatchModal.vue'
+
+definePageMeta({
+  layout: 'event',
+})
+
+const hub = useEventHub()
+await hub.fetchHub()
+
+const { meta, sports, schedule, medals, ticker, liveCards, isMock } = hub
+
+useSeoMeta({
+  title: () => `${meta.value.name} — Live Results Hub | Powered by ParaScores`,
+  description: () => `Live scores, results, schedules and medal table for ${meta.value.name}.`,
+})
+
+const activeTab = ref('overview')
+const activeSport = ref<HubSport | null>(null)
+const activeLiveCard = ref<LiveCard | null>(null)
+
+const switchTab = (tab: string) => {
+  activeTab.value = tab
+  if (import.meta.client) {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+const openSport = (sport: HubSport) => {
+  activeSport.value = sport
+}
+
+// Real tournament detail for the modal (derived from live hub data)
+const activeTournament = computed<TournamentDetail | null>(() => {
+  const tid = activeSport.value?.tournamentId
+  if (!tid || !hub.liveData.value) return null
+  return {
+    name: activeSport.value!.name,
+    live: hub.liveData.value.live.filter((f) => f.tournament_id === tid),
+    upcoming: hub.liveData.value.upcoming.filter((f) => f.tournament_id === tid),
+    results: hub.liveData.value.results.filter((f) => f.tournament_id === tid),
+  }
+})
+
+// Open a live fixture's match centre from within the tournament view
+const openFixtureFromTournament = (fixture: EventHubFixture) => {
+  const card = liveCards.value.find((c) => c.fixture.id === fixture.id)
+  activeSport.value = null
+  activeLiveCard.value = card ?? null
+}
+</script>
+
+<template>
+  <div>
+    <EventHubHeader
+      :active-tab="activeTab"
+      :meta="meta"
+      @update:active-tab="switchTab"
+    />
+
+    <EventHubHero />
+
+    <EventHubTicker :items="ticker" />
+
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-10">
+      <!-- Overview tab -->
+      <div v-if="activeTab === 'overview'" class="space-y-10">
+        <EventHubLiveNow
+          :cards="isMock ? null : liveCards"
+          @open="(key) => openSport(sports.find(s => s.detail === key)!)"
+          @open-fixture="(card) => (activeLiveCard = card)"
+        />
+
+        <EventHubMedalTable :medals="medals" mode="preview" @view-all="switchTab('medals')" />
+
+        <section>
+          <h2 class="text-xl font-black tracking-tight mb-3">All {{ sports.length }} Disciplines</h2>
+          <EventHubSportsGrid :sports="sports" @open="openSport" />
+        </section>
+
+        <EventHubSchedule :items="schedule" :limit="3" header @view-all="switchTab('schedule')" />
+      </div>
+
+      <!-- Medals tab -->
+      <div v-else-if="activeTab === 'medals'">
+        <EventHubMedalTable :medals="medals" mode="full" />
+      </div>
+
+      <!-- Sports tab -->
+      <div v-else-if="activeTab === 'sports'">
+        <h2 class="text-xl font-black tracking-tight mb-3">All {{ sports.length }} Disciplines — tap any sport</h2>
+        <EventHubSportsGrid :sports="sports" big @open="openSport" />
+      </div>
+
+      <!-- Schedule tab -->
+      <div v-else-if="activeTab === 'schedule'">
+        <h2 class="text-xl font-black tracking-tight mb-3">Today's Schedule</h2>
+        <EventHubSchedule :items="schedule" />
+      </div>
+    </main>
+
+    <footer class="border-t border-white/10 mt-12">
+      <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center gap-3 text-xs text-white/40">
+        <img :src="meta.logo" :alt="meta.name" class="h-8 w-auto">
+        <span>{{ meta.name }} · {{ meta.venue }}, {{ meta.location }} · {{ meta.dates }}</span>
+        <span class="sm:ml-auto flex items-center gap-1.5">
+          Powered by <img :src="meta.parascoresLogo" class="h-4 w-4 rounded" alt=""> <b class="text-emerald-400">ParaScores</b>
+        </span>
+      </div>
+    </footer>
+
+    <EventHubMatchModal
+      :sport="activeSport"
+      :live-card="activeLiveCard"
+      :tournament="activeTournament"
+      @close="activeSport = null; activeLiveCard = null"
+      @open-fixture="openFixtureFromTournament"
+    />
+  </div>
+</template>
+
+<style>
+.live-dot {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+</style>
