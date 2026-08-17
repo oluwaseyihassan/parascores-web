@@ -10,6 +10,13 @@ definePageMeta({
 const hub = useEventHub()
 await hub.fetchHub()
 
+// Connect the singleton SSE stream (registers its own lifecycle hooks in setup)
+if (!hub.isMock.value) {
+  useLiveStream()
+}
+onMounted(() => hub.startLiveUpdates())
+onUnmounted(() => hub.stopLiveUpdates())
+
 const { meta, sports, schedule, medals, ticker, liveCards, isMock } = hub
 
 useSeoMeta({

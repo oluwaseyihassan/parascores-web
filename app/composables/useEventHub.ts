@@ -268,6 +268,38 @@ export const useEventHub = () => {
     return items
   })
 
+  // ── Live updates via the global SSE stream ─────────────────────────────
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null
+  let listening = false
+
+  const handleLiveEvent = (event: Event) => {
+    const payload = (event as CustomEvent).detail
+    const fixture = payload?.data
+    // Refresh on updates touching one of the org's tournaments
+    // (or when we can't tell — cheap, debounced)
+    const tid = fixture?.tournament_id
+    const orgTournamentIds = liveData.value?.sports.map((s) => s.tournamentId) ?? []
+    if (tid && orgTournamentIds.length && !orgTournamentIds.includes(tid)) return
+
+    if (refreshTimer) clearTimeout(refreshTimer)
+    refreshTimer = setTimeout(() => {
+      fetchHub()
+    }, 400)
+  }
+
+  const startLiveUpdates = () => {
+    if (!import.meta.client || isMock.value || listening) return
+    listening = true
+    window.addEventListener('live-match-update', handleLiveEvent)
+  }
+
+  const stopLiveUpdates = () => {
+    if (!import.meta.client || !listening) return
+    listening = false
+    window.removeEventListener('live-match-update', handleLiveEvent)
+    if (refreshTimer) clearTimeout(refreshTimer)
+  }
+
   return {
     org,
     isMock,
@@ -279,5 +311,7 @@ export const useEventHub = () => {
     medals: medalRows,
     ticker,
     fetchHub,
+    startLiveUpdates,
+    stopLiveUpdates,
   }
 }
