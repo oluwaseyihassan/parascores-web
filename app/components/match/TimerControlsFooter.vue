@@ -3,6 +3,7 @@ import { FixtureStatus } from "~/types";
 import type { Fixture } from "~/types";
 import { MatchTimerControlsKey } from "~/composables/match/useMatchTimerControls";
 import { ConfirmModalKey } from "~/composables/match/useConfirmModal";
+import { SportEngineKey } from "~/engines/types";
 
 defineProps<{
   fixture: Fixture | null;
@@ -28,6 +29,12 @@ const {
 } = inject(MatchTimerControlsKey)!;
 
 const { openConfirmModal } = inject(ConfirmModalKey)!;
+
+const engine = inject(SportEngineKey);
+// Halves-only controls (halftime / second half / normal time / extra time)
+const isHalvesTimer = computed(
+  () => (engine?.value.capabilities.timer ?? "halves") === "halves",
+);
 </script>
 
 <template>
@@ -92,8 +99,8 @@ const { openConfirmModal } = inject(ConfirmModalKey)!;
             <span class="sm:hidden">Resume</span>
           </button>
 
-          <!-- Halftime / Start 2nd Half / End Normal Time (only in normal time) -->
-          <template v-if="fixture.status === FixtureStatus.LIVE">
+          <!-- Halftime / Start 2nd Half / End Normal Time (only in normal time, halves-timer sports) -->
+          <template v-if="fixture.status === FixtureStatus.LIVE && isHalvesTimer">
             <button
               v-if="!isSecondHalf && !isHalftime"
               class="mc-primary-btn mc-primary-btn--halftime"
@@ -196,8 +203,8 @@ const { openConfirmModal } = inject(ConfirmModalKey)!;
         </div>
       </template>
 
-      <!-- Normal Time Ended Controls -->
-      <template v-if="fixture.status === FixtureStatus.NORMAL_TIME_ENDED">
+      <!-- Normal Time Ended Controls (halves-timer sports only) -->
+      <template v-if="fixture.status === FixtureStatus.NORMAL_TIME_ENDED && isHalvesTimer">
         <div class="mc-action-group">
           <button
             v-if="canStartExtraTime"

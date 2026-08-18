@@ -11,6 +11,7 @@ import {
   isFixtureLiveStatus,
 } from "~/composables/useMatchTimer";
 import { resolveEngine } from "~/engines/registry";
+import { SportEngineKey } from "~/engines/types";
 
 const props = withDefaults(
   defineProps<{
@@ -43,6 +44,7 @@ const { handleError, extractErrorMessage } = useErrors();
 // Sport engine driving capability gating (football is the default)
 const engine = computed(() => resolveEngine(props.tournament?.sport));
 const caps = computed(() => engine.value.capabilities);
+provide(SportEngineKey, engine);
 
 // Local state
 const selectedFixture = ref<Fixture | null>(null);
@@ -784,44 +786,8 @@ const confirmSubstitution = async () => {
   }
 };
 
-const decrementScore = async (team: "home" | "away") => {
-  if (!selectedFixture.value) return;
-
-  const currentScore =
-    team === "home"
-      ? (selectedFixture.value.homeScore ?? 0)
-      : (selectedFixture.value.awayScore ?? 0);
-
-  if (currentScore <= 0) return;
-
-  const newScore = currentScore - 1;
-
-  // Update local state immediately
-  if (team === "home") {
-    selectedFixture.value.homeScore = newScore;
-  } else {
-    selectedFixture.value.awayScore = newScore;
-  }
-
-  updatingMatch.value = true;
-  try {
-    await fixtureStore.updateFixture(selectedFixture.value.id, {
-      homeScore: selectedFixture.value.homeScore,
-      awayScore: selectedFixture.value.awayScore,
-    });
-    emit("fixture-updated", selectedFixture.value!);
-  } catch (error: any) {
-    // Revert on error
-    if (team === "home") {
-      selectedFixture.value.homeScore = currentScore;
-    } else {
-      selectedFixture.value.awayScore = currentScore;
-    }
-    handleError(error, { title: "Failed to update score" });
-  } finally {
-    updatingMatch.value = false;
-  }
-};
+// Score mutations now live in ~/engines/_shared/useScoreUpdate, used by
+// the engine's scoring panel (football individual minus, basketball quick-score).
 
 const setWalkover = async (winner: "home" | "away") => {
   if (!selectedFixture.value) return;
@@ -1138,7 +1104,7 @@ const downloadGraphic = async () => {
 
           <!-- Live Tab -->
           <div v-show="activeTab === 'live'" class="mc-tab-pane">
-            <!-- Streamlined score controls -->
+            <!-- Scoring surface — provided by the resolved sport engine -->
             <div
               v-if="
                 [
@@ -1150,170 +1116,18 @@ const downloadGraphic = async () => {
               "
               class="mc-controls"
             >
-              <!-- Home side column -->
-              <div class="mc-ctrl-side">
-                <button
-                  class="mc-btn mc-btn--goal mc-btn--large"
-                  :disabled="loadingPlayers || updatingMatch"
-                  @click="openGoalModal('home')"
-                >
-                  <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5" />
-                  <span>Goal</span>
-                </button>
-                <button
-                  v-if="
-                    caps.cards &&
-                    props.tournament?.participantType !==
-                    ParticipantType.INDIVIDUAL
-                  "
-                  class="mc-btn mc-btn--card mc-btn--large"
-                  :disabled="loadingPlayers || updatingMatch"
-                  @click="openCardModal('home')"
-                >
-                  <span class="card-icons">
-                    <span class="card-icon card-icon--yellow" />
-                    <span class="card-icon card-icon--red" />
-                  </span>
-                  <span>Card</span>
-                </button>
-                <button
-                  v-if="
-                    caps.substitutions &&
-                    props.tournament?.participantType !==
-                    ParticipantType.INDIVIDUAL
-                  "
-                  class="mc-btn mc-btn--sub mc-btn--large"
-                  :disabled="loadingPlayers || updatingMatch"
-                  @click="openSubstitutionModal('home')"
-                >
-                  <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5" />
-                  <span>Sub</span>
-                </button>
-                <!-- More actions -->
-                <div v-if="caps.penalties" class="mc-actions-more">
-                  <button
-                    class="mc-btn mc-btn--penalty"
-                    :disabled="loadingPlayers || updatingMatch"
-                    @click="openGoalModal('home', MatchEventType.PENALTY)"
-                  >
-                    <IconsSoccerBallIcon class="w-3.5 h-3.5" />
-                    <span>Penalty</span>
-                  </button>
-                  <button
-                    class="mc-btn mc-btn--og"
-                    :disabled="loadingPlayers || updatingMatch"
-                    @click="openGoalModal('home', MatchEventType.OWN_GOAL)"
-                  >
-                    <IconsSoccerBallIcon class="w-3.5 h-3.5" />
-                    <span>OG</span>
-                  </button>
-                  <button
-                    class="mc-btn mc-btn--miss"
-                    :disabled="loadingPlayers || updatingMatch"
-                    @click="
-                      openGoalModal('home', MatchEventType.MISSED_PENALTY)
-                    "
-                  >
-                    <UIcon name="i-heroicons-x-circle" class="w-3.5 h-3.5" />
-                    <span>Missed Pen</span>
-                  </button>
-                </div>
-                <button
-                  v-if="
-                    props.tournament?.participantType ===
-                    ParticipantType.INDIVIDUAL
-                  "
-                  class="mc-btn mc-btn--minus"
-                  :disabled="
-                    (selectedFixture.homeScore ?? 0) <= 0 || updatingMatch
-                  "
-                  @click="decrementScore('home')"
-                >
-                  <UIcon name="i-heroicons-minus" class="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <!-- Away side column -->
-              <div class="mc-ctrl-side">
-                <button
-                  class="mc-btn mc-btn--goal mc-btn--large"
-                  :disabled="loadingPlayers || updatingMatch"
-                  @click="openGoalModal('away')"
-                >
-                  <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5" />
-                  <span>Goal</span>
-                </button>
-                <button
-                  v-if="
-                    caps.cards &&
-                    props.tournament?.participantType !==
-                    ParticipantType.INDIVIDUAL
-                  "
-                  class="mc-btn mc-btn--card mc-btn--large"
-                  :disabled="loadingPlayers || updatingMatch"
-                  @click="openCardModal('away')"
-                >
-                  <span class="card-icons">
-                    <span class="card-icon card-icon--yellow" />
-                    <span class="card-icon card-icon--red" />
-                  </span>
-                  <span>Card</span>
-                </button>
-                <button
-                  v-if="
-                    caps.substitutions &&
-                    props.tournament?.participantType !==
-                    ParticipantType.INDIVIDUAL
-                  "
-                  class="mc-btn mc-btn--sub mc-btn--large"
-                  :disabled="loadingPlayers || updatingMatch"
-                  @click="openSubstitutionModal('away')"
-                >
-                  <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5" />
-                  <span>Sub</span>
-                </button>
-                <div v-if="caps.penalties" class="mc-actions-more">
-                  <button
-                    class="mc-btn mc-btn--penalty"
-                    :disabled="loadingPlayers || updatingMatch"
-                    @click="openGoalModal('away', MatchEventType.PENALTY)"
-                  >
-                    <IconsSoccerBallIcon class="w-3.5 h-3.5" />
-                    <span>Penalty</span>
-                  </button>
-                  <button
-                    class="mc-btn mc-btn--og"
-                    :disabled="loadingPlayers || updatingMatch"
-                    @click="openGoalModal('away', MatchEventType.OWN_GOAL)"
-                  >
-                    <IconsSoccerBallIcon class="w-3.5 h-3.5" />
-                    <span>OG</span>
-                  </button>
-                  <button
-                    class="mc-btn mc-btn--miss"
-                    :disabled="loadingPlayers || updatingMatch"
-                    @click="
-                      openGoalModal('away', MatchEventType.MISSED_PENALTY)
-                    "
-                  >
-                    <UIcon name="i-heroicons-x-circle" class="w-3.5 h-3.5" />
-                    <span>Missed Pen</span>
-                  </button>
-                </div>
-                <button
-                  v-if="
-                    props.tournament?.participantType ===
-                    ParticipantType.INDIVIDUAL
-                  "
-                  class="mc-btn mc-btn--minus"
-                  :disabled="
-                    (selectedFixture.awayScore ?? 0) <= 0 || updatingMatch
-                  "
-                  @click="decrementScore('away')"
-                >
-                  <UIcon name="i-heroicons-minus" class="w-3.5 h-3.5" />
-                </button>
-              </div>
+              <component
+                :is="engine.panel"
+                :fixture="selectedFixture"
+                :tournament="props.tournament"
+                :updating-match="updatingMatch"
+                :loading-players="loadingPlayers"
+                :increments="engine.scoreIncrements"
+                @open-goal="openGoalModal"
+                @open-card="openCardModal"
+                @open-sub="openSubstitutionModal"
+                @fixture-updated="(f: Fixture) => emit('fixture-updated', f)"
+              />
             </div>
 
             <!-- Adjust Running Time (only LIVE/NORMAL_TIME_ENDED/EXTRATIME) -->

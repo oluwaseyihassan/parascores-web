@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { isFixtureLiveStatus } from "~/composables/useMatchTimer";
 import { MatchTimerControlsKey } from "~/composables/match/useMatchTimerControls";
+import { SportEngineKey } from "~/engines/types";
 import type { Fixture } from "~/types";
 
-defineProps<{
+const props = defineProps<{
   fixture: Fixture | null;
   swappingTeams: boolean;
   updatingMatch: boolean;
@@ -16,6 +17,17 @@ const emit = defineEmits<{
 const { liveClock, liveMinuteLabel, isTimerPaused } = inject(
   MatchTimerControlsKey,
 )!;
+
+const engine = inject(SportEngineKey);
+
+// Period sports use the engine's own clock label (e.g. "Q2"); halves sports
+// keep the football labels from the timer controls
+const periodLabel = computed(() => {
+  if (!props.fixture) return "";
+  const e = engine?.value;
+  if (e?.formatPeriodLabel) return e.formatPeriodLabel(props.fixture);
+  return liveMinuteLabel.value;
+});
 </script>
 
 <template>
@@ -79,7 +91,7 @@ const { liveClock, liveMinuteLabel, isTimerPaused } = inject(
       >
         <span class="mc-match-time__live-dot" />
         <span>{{ liveClock }}</span>
-        <span class="text-[10px] opacity-75">({{ liveMinuteLabel }})</span>
+        <span class="text-[10px] opacity-75">({{ periodLabel }})</span>
       </div>
       <div v-else-if="fixture.startTime" class="mc-match-time">
         {{
