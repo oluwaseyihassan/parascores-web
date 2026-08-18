@@ -71,7 +71,7 @@ export default defineNuxtConfig({
       ]
     },
     injectManifest: {
-      swSrc: 'sw.ts',
+      swSrc: resolve(__dirname, 'app', 'sw.ts'),
       globPatterns: ['**/*.{js,css,html,png,svg,ico}']
     },
     client: {
