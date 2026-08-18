@@ -10,6 +10,7 @@ import {
   useMatchTimer,
   isFixtureLiveStatus,
 } from "~/composables/useMatchTimer";
+import { resolveEngine } from "~/engines/registry";
 
 const props = withDefaults(
   defineProps<{
@@ -38,6 +39,10 @@ const internalOpen = computed({
 const fixtureStore = useFixtureStore();
 const participantStore = useParticipantStore();
 const { handleError, extractErrorMessage } = useErrors();
+
+// Sport engine driving capability gating (football is the default)
+const engine = computed(() => resolveEngine(props.tournament?.sport));
+const caps = computed(() => engine.value.capabilities);
 
 // Local state
 const selectedFixture = ref<Fixture | null>(null);
@@ -1157,6 +1162,7 @@ const downloadGraphic = async () => {
                 </button>
                 <button
                   v-if="
+                    caps.cards &&
                     props.tournament?.participantType !==
                     ParticipantType.INDIVIDUAL
                   "
@@ -1172,6 +1178,7 @@ const downloadGraphic = async () => {
                 </button>
                 <button
                   v-if="
+                    caps.substitutions &&
                     props.tournament?.participantType !==
                     ParticipantType.INDIVIDUAL
                   "
@@ -1183,7 +1190,7 @@ const downloadGraphic = async () => {
                   <span>Sub</span>
                 </button>
                 <!-- More actions -->
-                <div class="mc-actions-more">
+                <div v-if="caps.penalties" class="mc-actions-more">
                   <button
                     class="mc-btn mc-btn--penalty"
                     :disabled="loadingPlayers || updatingMatch"
@@ -1238,6 +1245,7 @@ const downloadGraphic = async () => {
                 </button>
                 <button
                   v-if="
+                    caps.cards &&
                     props.tournament?.participantType !==
                     ParticipantType.INDIVIDUAL
                   "
@@ -1253,6 +1261,7 @@ const downloadGraphic = async () => {
                 </button>
                 <button
                   v-if="
+                    caps.substitutions &&
                     props.tournament?.participantType !==
                     ParticipantType.INDIVIDUAL
                   "
@@ -1263,7 +1272,7 @@ const downloadGraphic = async () => {
                   <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5" />
                   <span>Sub</span>
                 </button>
-                <div class="mc-actions-more">
+                <div v-if="caps.penalties" class="mc-actions-more">
                   <button
                     class="mc-btn mc-btn--penalty"
                     :disabled="loadingPlayers || updatingMatch"
@@ -1373,7 +1382,7 @@ const downloadGraphic = async () => {
 
             <!-- Lineups -->
             <MatchLineupEditor
-              v-if="tournament?.participantType !== ParticipantType.INDIVIDUAL"
+              v-if="caps.lineups && tournament?.participantType !== ParticipantType.INDIVIDUAL"
               v-model:collapsed="showLineupCollapsible"
               :fixture="selectedFixture"
               :home-players="homePlayers"
@@ -1418,6 +1427,7 @@ const downloadGraphic = async () => {
             <!-- Penalty Shootout -->
             <MatchPenaltyShootoutPanel
               v-if="
+                caps.penalties &&
                 [
                   'LIVE',
                   'NORMAL_TIME_ENDED',
@@ -1436,6 +1446,7 @@ const downloadGraphic = async () => {
             <!-- Edit Penalties toggle -->
             <div
               v-if="
+                caps.penalties &&
                 selectedFixture.status === 'COMPLETED' &&
                 !isScoreTiedOrAggregateTied &&
                 !hasPenalties &&
@@ -1463,6 +1474,7 @@ const downloadGraphic = async () => {
             <!-- MOTM -->
             <MatchMotmPanel
               v-if="
+                caps.motm &&
                 tournament?.participantType !== ParticipantType.INDIVIDUAL &&
                 selectedFixture.status === 'COMPLETED'
               "

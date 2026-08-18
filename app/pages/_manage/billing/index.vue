@@ -411,7 +411,7 @@ const statusColor = computed(() => {
             color="neutral"
             icon="i-heroicons-pencil-square"
             label="Change Payout Account"
-            @click="showPayoutForm = true"
+            @click="showPayoutForm = true;"
           />
         </div>
         <PayoutAccountForm
