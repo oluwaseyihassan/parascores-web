@@ -64,6 +64,7 @@ const openFixtureFromTournament = (fixture: EventHubFixture) => {
     <EventHubHeader
       :active-tab="activeTab"
       :meta="meta"
+      :real-data="!isMock"
       @update:active-tab="switchTab"
     />
 

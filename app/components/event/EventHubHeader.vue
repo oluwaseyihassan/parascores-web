@@ -4,6 +4,7 @@ import { hubMeta } from './mock'
 const props = defineProps<{
   activeTab: string
   meta?: typeof hubMeta
+  realData?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -42,9 +43,10 @@ const tabs = [
         </button>
       </div>
       <div class="ml-auto flex items-center gap-3">
+        <EventHubSubscribeButton v-if="props.realData" />
         <span class="hidden sm:flex items-center gap-1.5 text-xs font-bold text-red-400">
           <span class="live-dot w-2 h-2 rounded-full bg-red-500 inline-block" />
-          {{ hubMeta.dayIndicator }}
+          {{ props.meta?.dayIndicator ?? hubMeta.dayIndicator }}
         </span>
       </div>
     </div>
