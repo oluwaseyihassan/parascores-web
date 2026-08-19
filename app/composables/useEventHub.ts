@@ -67,6 +67,7 @@ export interface EventHubFixture {
   timerIsRunning: boolean
   matchDuration: number
   half: string | null
+  periodScores?: { home: number[]; away: number[] } | null
   updated_at: string
   matchEvents?: EventHubMatchEvent[]
   homeTeam: { customName: string | null; customShortName: string | null; logoUrl: string | null; team: { name: string } | null } | null

@@ -91,6 +91,9 @@ const liveClock = computed(() => {
 
 const liveEvents = computed(() => props.liveCard?.fixture.matchEvents ?? [])
 
+// Per-set scores for set sports (tennis, table tennis, volleyball)
+const setScores = computed(() => props.liveCard?.fixture.periodScores ?? null)
+
 const eventText = (e: NonNullable<LiveCard['fixture']['matchEvents']>[number]) => {
   const who = e.player?.name ?? e.participant?.customShortName ?? e.participant?.customName ?? ''
   return e.description ?? `${e.type.replace(/_/g, ' ')}${who ? ` — ${who}` : ''}`
@@ -117,7 +120,7 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
           <template v-for="section in ([
             { title: 'Live', items: props.tournament.live, clickable: true },
             { title: 'Upcoming', items: props.tournament.upcoming, clickable: false },
-            { title: 'Results', items: props.tournament.results, clickable: false },
+            { title: 'Results', items: props.tournament.results, clickable: true },
           ] as const)" :key="section.title">
             <div v-if="section.items.length">
               <h4 class="text-xs font-black uppercase tracking-wider text-white/50 mb-2 flex items-center gap-2">
@@ -181,11 +184,31 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
                 <span>{{ props.liveCard.hs }}</span><span class="text-white/30 mx-2">–</span><span>{{ props.liveCard.as }}</span>
               </div>
               <div
-                v-if="liveClock || props.liveCard"
-                class="text-[11px] text-red-400 font-bold mt-1 flex items-center justify-center gap-1"
+                v-if="props.liveCard"
+                class="text-[11px] font-bold mt-1 flex items-center justify-center gap-1"
+                :class="props.liveCard.fixture.status === 'COMPLETED' ? 'text-white/40' : 'text-red-400'"
               >
-                <span class="live-dot w-1.5 h-1.5 bg-red-500 rounded-full inline-block" />
-                {{ liveClock ? `${liveClock} LIVE` : 'LIVE' }}
+                <span
+                  v-if="props.liveCard.fixture.status !== 'COMPLETED'"
+                  class="live-dot w-1.5 h-1.5 bg-red-500 rounded-full inline-block"
+                />
+                {{
+                  props.liveCard.fixture.status === 'COMPLETED'
+                    ? 'FULL TIME'
+                    : liveClock
+                      ? `${liveClock} LIVE`
+                      : 'LIVE'
+                }}
+              </div>
+              <!-- Set-by-set breakdown -->
+              <div v-if="setScores?.home.length" class="flex justify-center gap-2 text-[11px] font-bold mt-2">
+                <span
+                  v-for="(h, i) in setScores.home"
+                  :key="i"
+                  class="px-2.5 py-1 rounded bg-white/5 border border-white/10"
+                >
+                  {{ h }}–{{ setScores.away[i] }}
+                </span>
               </div>
             </div>
             <div class="flex-1">

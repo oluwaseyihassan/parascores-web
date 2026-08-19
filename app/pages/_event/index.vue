@@ -51,11 +51,31 @@ const activeTournament = computed<TournamentDetail | null>(() => {
   }
 })
 
-// Open a live fixture's match centre from within the tournament view
+// Open a fixture's match centre from within the tournament view.
+// Live rows reuse the shared card; completed rows get a card built on the fly
+// so set scores / events are viewable after the match too.
+const teamDisplayFor = (
+  team: EventHubFixture['homeTeam'],
+  placeholder: string | null,
+) => {
+  const name = team?.customName ?? team?.team?.name ?? placeholder ?? 'TBD'
+  const abbr = (team?.customShortName ?? name.slice(0, 3)).toUpperCase()
+  return { name, abbr, logoUrl: team?.logoUrl ?? null }
+}
+
 const openFixtureFromTournament = (fixture: EventHubFixture) => {
-  const card = liveCards.value.find((c) => c.fixture.id === fixture.id)
+  const existing = liveCards.value.find((c) => c.fixture.id === fixture.id)
   activeSport.value = null
-  activeLiveCard.value = card ?? null
+  activeLiveCard.value = existing ?? {
+    fixture,
+    label: [fixture.tournament.name, fixture.roundName, fixture.venue].filter(Boolean).join(' · '),
+    clock: null,
+    home: teamDisplayFor(fixture.homeTeam, fixture.homeTeamPlaceholder),
+    away: teamDisplayFor(fixture.awayTeam, fixture.awayTeamPlaceholder),
+    hs: fixture.homeScore ?? 0,
+    as: fixture.awayScore ?? 0,
+    lastEvent: null,
+  }
 }
 </script>
 

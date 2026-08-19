@@ -28,6 +28,8 @@ export interface SportEngine {
   periods?: number
   /** Quick-score increments offered by the scoring panel (e.g. [1,2,3] for basketball) */
   scoreIncrements?: number[]
+  /** Set-based scoring config (tennis, table tennis, volleyball). Defaults; overridable per-tournament via scoringRules.setsToWin / scoringRules.gamesPerSet */
+  setScoring?: { setsToWin: number; gamesPerSet: number; gameLabel: string }
   /** The live-tab scoring surface. Rendered by MatchControl as <component :is>. */
   panel: Component
   /** Clock label for the scoreboard (e.g. "Q2"). Absent = halves labels. */

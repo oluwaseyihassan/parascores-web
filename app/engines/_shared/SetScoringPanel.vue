@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { Fixture } from '~/types'
 import { useScoreUpdate } from '~/engines/_shared/useScoreUpdate'
+import { SportEngineKey } from '~/engines/types'
 
 const props = defineProps<{
   fixture: Fixture
+  tournament?: any
   updatingMatch: boolean
-  setsToWin?: number
-  gamesPerSet?: number
 }>()
 
 const emit = defineEmits<{
@@ -22,8 +22,69 @@ const { updating: updatingQuickScore } = useScoreUpdate({
 const fixtureStore = useFixtureStore()
 const { handleError } = useErrors()
 
-const setsToWin = computed(() => props.setsToWin ?? 2)
-const gamesPerSet = computed(() => props.gamesPerSet ?? 6)
+// Resolution chain: fixture.config (per-match) → tournament.scoringRules → engine defaults
+const engine = inject(SportEngineKey)
+const engineSetDefaults = computed(() => engine?.value.setScoring)
+
+const setsToWin = computed(() =>
+  Number(props.fixture.config?.setsToWin)
+  || Number(props.tournament?.scoringRules?.setsToWin)
+  || engineSetDefaults.value?.setsToWin
+  || 2,
+)
+const gamesPerSet = computed(() =>
+  Number(props.fixture.config?.gamesPerSet)
+  || Number(props.tournament?.scoringRules?.gamesPerSet)
+  || engineSetDefaults.value?.gamesPerSet
+  || 6,
+)
+// "Game" (tennis) vs "Point" (table tennis, volleyball)
+const gameLabel = computed(() => engineSetDefaults.value?.gameLabel ?? 'Game')
+
+// Per-fixture format override (e.g. best-of-5 final) — free input, odd values only
+const savingConfig = ref(false)
+const bestOfDraft = ref<number | null>(null)
+const bestOfError = ref<string | null>(null)
+
+watch(setsToWin, (v) => {
+  bestOfDraft.value = v * 2 - 1
+}, { immediate: true })
+
+const applyBestOf = async () => {
+  const bestOf = bestOfDraft.value
+  if (bestOf == null || Number.isNaN(bestOf)) return
+  if (bestOf % 2 === 0) {
+    bestOfError.value = 'Must be odd'
+    bestOfDraft.value = setsToWin.value * 2 - 1
+    return
+  }
+  bestOfError.value = null
+  await setFixtureSetsToWin((bestOf + 1) / 2)
+}
+
+const setFixtureSetsToWin = async (value: number) => {
+  if (value === setsToWin.value && !props.fixture.config?.setsToWin) return
+  savingConfig.value = true
+  try {
+    const config = { ...(props.fixture.config ?? {}) }
+    const inheritedDefault =
+      Number(props.tournament?.scoringRules?.setsToWin) ||
+      engineSetDefaults.value?.setsToWin ||
+      2
+    if (inheritedDefault === value) {
+      delete config.setsToWin // matches tournament/engine default: no override needed
+    } else {
+      config.setsToWin = value
+    }
+    const payload = { config }
+    const res = await fixtureStore.updateFixture(props.fixture.id, payload as any)
+    emit('fixture-updated', (res as any)?.data ?? { ...props.fixture, ...payload })
+  } catch (error: any) {
+    handleError(error, { title: 'Failed to update match format' })
+  } finally {
+    savingConfig.value = false
+  }
+}
 
 // Completed sets, persisted on the fixture
 const completedSets = computed(() => props.fixture.periodScores ?? { home: [], away: [] })
@@ -57,6 +118,8 @@ const matchWonBy = computed<'home' | 'away' | null>(() => {
   if (setsWon.value.away >= setsToWin.value) return 'away'
   return null
 })
+
+const isCompleted = computed(() => props.fixture.status === 'COMPLETED')
 
 const recordSet = async (winner: 'home' | 'away') => {
   const fixture = props.fixture
@@ -111,6 +174,22 @@ const undoLastSet = async () => {
 
 <template>
   <div class="col-span-full w-full space-y-4">
+    <!-- Per-match format override (not on completed matches) -->
+    <div v-if="!isCompleted" class="flex items-center justify-center gap-2 text-[11px] text-white/50">
+      <span>Best of</span>
+      <input
+        v-model.number="bestOfDraft"
+        type="number"
+        min="1"
+        max="15"
+        step="2"
+        class="w-14 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-center text-white text-[11px] focus:outline-none focus:border-amber-500/50"
+        :disabled="savingConfig"
+        @change="applyBestOf"
+      />
+      <span v-if="bestOfError" class="text-red-400">{{ bestOfError }}</span>
+    </div>
+
     <!-- Set history -->
     <div v-if="completedSets.home.length" class="flex items-center justify-center gap-2 flex-wrap">
       <span
@@ -129,11 +208,17 @@ const undoLastSet = async () => {
       </button>
     </div>
 
-    <div v-if="matchWonBy" class="text-center text-xs font-bold text-amber-400">
+    <div v-if="matchWonBy && !isCompleted" class="text-center text-xs font-bold text-amber-400">
       Match won on sets — end the match from the footer when ready.
     </div>
 
+    <!-- Completed matches: read-only -->
+    <div v-if="isCompleted" class="text-center text-xs text-white/40">
+      Match completed — reopen to adjust scores.
+    </div>
+
     <!-- Current set games -->
+    <template v-if="!isCompleted">
     <div class="grid grid-cols-2 gap-4">
       <div
         v-for="side in (['home', 'away'] as const)"
@@ -144,7 +229,7 @@ const undoLastSet = async () => {
           {{ side === 'home' ? homeGames : awayGames }}
         </div>
         <div class="text-center text-[10px] text-white/40 uppercase tracking-wider mb-2">
-          games · set {{ completedSets.home.length + 1 }}
+          {{ gameLabel.toLowerCase() }}s · set {{ completedSets.home.length + 1 }}
         </div>
         <div class="mc-actions-more" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;">
           <button
@@ -153,7 +238,7 @@ const undoLastSet = async () => {
             @click="side === 'home' ? homeGames++ : awayGames++"
           >
             <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5" />
-            <span>Game</span>
+            <span>{{ gameLabel }}</span>
           </button>
           <button
             class="mc-btn mc-btn--minus"
@@ -177,5 +262,6 @@ const undoLastSet = async () => {
         <span>Record Set {{ completedSets.home.length + 1 }} ({{ homeGames }}–{{ awayGames }})</span>
       </button>
     </div>
+    </template>
   </div>
 </template>

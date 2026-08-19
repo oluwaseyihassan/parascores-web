@@ -288,6 +288,7 @@ export interface Fixture {
   homePenaltyScore?: number | null;
   awayPenaltyScore?: number | null;
   periodScores?: { home: number[]; away: number[] } | null;
+  config?: Record<string, any> | null;
   status: FixtureStatus;
   stage?: FixtureStage | null;
   half?: MatchHalf | null;

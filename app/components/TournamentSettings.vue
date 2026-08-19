@@ -2,6 +2,7 @@
 import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { TournamentType, ParticipantType, Visibility, type Tournament } from '~/types'
+import { resolveEngine } from '~/engines/registry'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
 import type { PayoutAccountStatus } from '~/stores/payment'
 
@@ -180,7 +181,9 @@ const schema = z.object({
   registrationFee: z.number().min(0, 'Registration fee must be positive').optional().nullable(),
   twoLegsKnockout: z.boolean().optional(),
   doubleRoundRobin: z.boolean().optional(),
-  thirdPlaceMatch: z.boolean().optional()
+  thirdPlaceMatch: z.boolean().optional(),
+  setsToWin: z.number().int().min(1).max(5).optional().nullable(),
+  gamesPerSet: z.number().int().min(1).max(50).optional().nullable()
 })
 
 type Schema = z.output<typeof schema>
@@ -206,7 +209,9 @@ const state = reactive<Partial<Schema>>({
   registrationFee: props.tournament.registrationFee ? props.tournament.registrationFee / 100 : null,
   twoLegsKnockout: props.tournament.twoLegsKnockout ?? false,
   doubleRoundRobin: props.tournament.doubleRoundRobin ?? false,
-  thirdPlaceMatch: props.tournament.thirdPlaceMatch ?? false
+  thirdPlaceMatch: props.tournament.thirdPlaceMatch ?? false,
+  setsToWin: props.tournament.scoringRules?.setsToWin ?? null,
+  gamesPerSet: props.tournament.scoringRules?.gamesPerSet ?? null
 })
 
 
@@ -290,6 +295,31 @@ const visibilityOptions = [
 
 const popularSports = ['Football', 'Basketball', 'Tennis', 'Cricket', 'Rugby', 'Volleyball', 'Esports', 'Other']
 
+// Set-scoring config only applies to set-based sport engines (tennis, volleyball…)
+const engineSetScoring = computed(() => {
+  const engine = resolveEngine(state.sport)
+  return engine.setScoring ?? null
+})
+
+// "Best of N" input in user terms (odd N); state stores setsToWin = (N+1)/2
+const bestOfError = ref<string | null>(null)
+const bestOfModel = computed<number | null>({
+  get: () => (state.setsToWin ? state.setsToWin * 2 - 1 : null),
+  set: (val) => {
+    if (val == null || Number.isNaN(val)) {
+      state.setsToWin = null
+      bestOfError.value = null
+      return
+    }
+    if (val % 2 === 0) {
+      bestOfError.value = 'Best-of must be an odd number (1, 3, 5, 7…)'
+      return
+    }
+    bestOfError.value = null
+    state.setsToWin = (val + 1) / 2
+  },
+})
+
 const timezones = [
   { label: 'UTC', value: 'UTC' },
   { label: 'Lagos (WAT)', value: 'Africa/Lagos' },
@@ -302,6 +332,10 @@ const timezones = [
 
 // Submit handler
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (bestOfError.value) {
+    error.value = bestOfError.value
+    return
+  }
   loading.value = true
   error.value = null
   
@@ -355,6 +389,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       bannerUrl = null
     }
     
+    // Merge set-scoping config into existing scoringRules (don't clobber win/draw/loss)
+    const scoringRules = { ...(props.tournament.scoringRules ?? {}) }
+    if (event.data.setsToWin) scoringRules.setsToWin = event.data.setsToWin
+    if (event.data.gamesPerSet) scoringRules.gamesPerSet = event.data.gamesPerSet
+
     await tournamentStore.updateTournament(props.tournament.id, {
       ...event.data,
       customName: event.data.customName || null,
@@ -364,6 +403,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       registrationFee: event.data.isPaidRegistration && event.data.registrationFee 
         ? Math.round(event.data.registrationFee * 100) 
         : 0,
+      scoringRules,
       logoUrl,
       bannerUrl,
     } as unknown as Partial<Tournament>)
@@ -579,6 +619,45 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               />
             </UFormField>
           </div>
+        </div>
+      </UCard>
+
+      <!-- Set Scoring (only for set-based sport engines like tennis) -->
+      <UCard v-if="engineSetScoring" :ui="{ header: 'px-3 py-2 sm:px-4 sm:py-3' }">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-squares-2x2" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+            <span class="font-medium text-sm sm:text-base">Set Scoring</span>
+          </div>
+        </template>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <UFormField
+            label="Match format"
+            name="setsToWin"
+            description="Best-of series length — must be odd (e.g. 3, 5, 7)"
+            :error="bestOfError || undefined"
+          >
+            <UInput
+              v-model.number="bestOfModel"
+              type="number"
+              :min="1"
+              :max="15"
+              :step="2"
+              placeholder="e.g. 3"
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField label="Games per set" name="gamesPerSet" description="Points/games needed to win a set (6 for tennis, 11 for table tennis, 25 for volleyball)">
+            <UInput
+              v-model.number="state.gamesPerSet"
+              type="number"
+              :min="1"
+              :max="50"
+              class="w-full"
+            />
+          </UFormField>
         </div>
       </UCard>
 
