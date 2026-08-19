@@ -1130,9 +1130,10 @@ const downloadGraphic = async () => {
               />
             </div>
 
-            <!-- Adjust Running Time (only LIVE/NORMAL_TIME_ENDED/EXTRATIME) -->
+            <!-- Adjust Running Time (clocked sports, while live) -->
             <div
               v-if="
+                caps.timer !== 'none' &&
                 ['LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME'].includes(
                   selectedFixture.status,
                 )

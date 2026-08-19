@@ -35,6 +35,10 @@ const engine = inject(SportEngineKey);
 const isHalvesTimer = computed(
   () => (engine?.value.capabilities.timer ?? "halves") === "halves",
 );
+// Clockless sports (tennis) have no pause/resume
+const hasClock = computed(
+  () => (engine?.value.capabilities.timer ?? "halves") !== "none",
+);
 </script>
 
 <template>
@@ -61,9 +65,9 @@ const isHalvesTimer = computed(
       <!-- Live Match Timer Control Buttons -->
       <template v-if="['LIVE', 'EXTRATIME'].includes(fixture.status)">
         <div class="mc-action-group">
-          <!-- Pause / Resume Clock -->
+          <!-- Pause / Resume Clock (clocked sports only) -->
           <button
-            v-if="fixture.timerIsRunning"
+            v-if="hasClock && fixture.timerIsRunning"
             class="mc-primary-btn mc-primary-btn--pause"
             :disabled="updatingMatch"
             @click="
@@ -81,7 +85,7 @@ const isHalvesTimer = computed(
             <span class="sm:hidden">Pause</span>
           </button>
           <button
-            v-else
+            v-else-if="hasClock"
             class="mc-primary-btn mc-primary-btn--resume"
             :disabled="updatingMatch"
             @click="

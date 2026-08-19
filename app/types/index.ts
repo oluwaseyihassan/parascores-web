@@ -287,6 +287,7 @@ export interface Fixture {
   awayScore?: number | null;
   homePenaltyScore?: number | null;
   awayPenaltyScore?: number | null;
+  periodScores?: { home: number[]; away: number[] } | null;
   status: FixtureStatus;
   stage?: FixtureStage | null;
   half?: MatchHalf | null;

@@ -1,10 +1,12 @@
 import type { SportEngine } from '~/engines/types'
 import { footballEngine } from '~/engines/football'
 import { basketballEngine } from '~/engines/basketball'
+import { tennisEngine } from '~/engines/tennis'
 
 const engines: Record<string, SportEngine> = {
   football: footballEngine,
   basketball: basketballEngine,
+  tennis: tennisEngine,
 }
 
 /**

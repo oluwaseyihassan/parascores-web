@@ -90,8 +90,14 @@ const periodLabel = computed(() => {
         :class="{ 'mc-match-time--live-paused': isTimerPaused }"
       >
         <span class="mc-match-time__live-dot" />
-        <span>{{ liveClock }}</span>
-        <span class="text-[10px] opacity-75">({{ periodLabel }})</span>
+        <!-- Clockless sports (tennis) show LIVE without a timer -->
+        <template v-if="engine?.capabilities.timer === 'none'">
+          <span class="text-[10px] font-bold">LIVE</span>
+        </template>
+        <template v-else>
+          <span>{{ liveClock }}</span>
+          <span class="text-[10px] opacity-75">({{ periodLabel }})</span>
+        </template>
       </div>
       <div v-else-if="fixture.startTime" class="mc-match-time">
         {{
