@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { MatchScheduleKey } from "~/composables/match/useMatchSchedule";
+import { SportEngineKey } from "~/engines/types";
 
 const collapsed = defineModel<boolean>("collapsed", { default: false });
 
 const venueStore = useVenueStore();
+
+const engine = inject(SportEngineKey);
+// Clockless sports (tennis) have no match duration to configure
+const hasClock = computed(
+  () => (engine?.value.capabilities.timer ?? "halves") !== "none",
+);
 
 const {
   matchDateVal,
@@ -70,8 +77,9 @@ const {
           :disabled="updatingTime"
         />
       </div>
-      <!-- Match Duration Slider -->
+      <!-- Match Duration Slider (clocked sports only) -->
       <div
+        v-if="hasClock"
         class="mt-3 flex flex-col gap-1.5 p-3 rounded-lg bg-gray-50/50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04]"
       >
         <div

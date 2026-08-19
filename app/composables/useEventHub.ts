@@ -1,5 +1,6 @@
 import { $fetch } from 'ofetch'
 import { getMatchMinute } from '~/composables/useMatchTimer'
+import { resolveEngine } from '~/engines/registry'
 import {
   hubMeta,
   sports as mockSports,
@@ -221,7 +222,8 @@ export const useEventHub = () => {
   const liveCards = computed<LiveCard[]>(() => {
     if (!liveData.value) return []
     return liveData.value.live.map((f) => {
-      const minute = getMatchMinute(f as any)
+      const hasClock = resolveEngine(f.tournament.sport).capabilities.timer !== 'none'
+      const minute = hasClock ? getMatchMinute(f as any) : null
       const latest = f.matchEvents?.[0]
       return {
         fixture: f,

@@ -10,6 +10,7 @@ import {
 } from './mock'
 import type { LiveCard, EventHubFixture } from '~/composables/useEventHub'
 import { getMatchMinute } from '~/composables/useMatchTimer'
+import { resolveEngine } from '~/engines/registry'
 
 export interface TournamentDetail {
   name: string
@@ -82,6 +83,8 @@ const fixtureStatusText = (f: EventHubFixture) => {
 
 const liveClock = computed(() => {
   if (!props.liveCard) return null
+  const hasClock = resolveEngine(props.liveCard.fixture.tournament.sport).capabilities.timer !== 'none'
+  if (!hasClock) return null
   const minute = getMatchMinute(props.liveCard.fixture as any)
   return minute != null ? `${minute}'` : null
 })
@@ -178,11 +181,11 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
                 <span>{{ props.liveCard.hs }}</span><span class="text-white/30 mx-2">–</span><span>{{ props.liveCard.as }}</span>
               </div>
               <div
-                v-if="liveClock"
+                v-if="liveClock || props.liveCard"
                 class="text-[11px] text-red-400 font-bold mt-1 flex items-center justify-center gap-1"
               >
                 <span class="live-dot w-1.5 h-1.5 bg-red-500 rounded-full inline-block" />
-                {{ liveClock }} LIVE
+                {{ liveClock ? `${liveClock} LIVE` : 'LIVE' }}
               </div>
             </div>
             <div class="flex-1">

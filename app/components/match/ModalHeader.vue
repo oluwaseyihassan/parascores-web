@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { isFixtureLiveStatus } from "~/composables/useMatchTimer";
 import { MatchTimerControlsKey } from "~/composables/match/useMatchTimerControls";
+import { SportEngineKey } from "~/engines/types";
 import type { Fixture } from "~/types";
 
 defineProps<{
@@ -15,6 +16,12 @@ const emit = defineEmits<{
 }>();
 
 const { liveClock, isTimerPaused } = inject(MatchTimerControlsKey)!;
+
+const engine = inject(SportEngineKey);
+// Clockless sports (tennis) hide the header clock badge
+const hasClock = computed(
+  () => (engine?.value.capabilities.timer ?? "halves") !== "none",
+);
 </script>
 
 <template>
@@ -33,9 +40,9 @@ const { liveClock, isTimerPaused } = inject(MatchTimerControlsKey)!;
         {{ fixture.status }}
       </span>
 
-      <!-- Live Clock Badge -->
+      <!-- Live Clock Badge (clocked sports only) -->
       <span
-        v-if="fixture && isFixtureLiveStatus(fixture.status)"
+        v-if="fixture && hasClock && isFixtureLiveStatus(fixture.status)"
         class="mc-timer-badge ml-2"
         :class="{ 'mc-timer-badge--paused': isTimerPaused }"
       >
