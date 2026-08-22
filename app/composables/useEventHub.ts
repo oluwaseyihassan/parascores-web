@@ -49,6 +49,16 @@ export interface EventHubMatchEvent {
   player: { name: string } | null
 }
 
+export interface EventHubResultEntry {
+  id: string
+  participantId: string
+  value: string | null
+  lane: number | null
+  note: string | null
+  rank: number | null
+  participant: { customName: string | null; customShortName: string | null; logoUrl: string | null } | null
+}
+
 export interface EventHubFixture {
   id: string
   tournament_id: string
@@ -68,6 +78,7 @@ export interface EventHubFixture {
   matchDuration: number
   half: string | null
   periodScores?: { home: number[]; away: number[] } | null
+  resultEntries?: EventHubResultEntry[]
   updated_at: string
   matchEvents?: EventHubMatchEvent[]
   homeTeam: { customName: string | null; customShortName: string | null; logoUrl: string | null; team: { name: string } | null } | null

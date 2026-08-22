@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { TournamentType, ParticipantType, Visibility, type Tournament } from '~/types'
 import { CalendarDate, type DateValue } from '@internationalized/date'
+import { listEngines, resolveEngine } from '~/engines/registry'
 import type { PayoutAccountStatus } from '~/stores/payment'
 
 definePageMeta({
@@ -469,7 +470,8 @@ const tournamentTypes = [
   { label: 'Round Robin', value: TournamentType.ROUND_ROBIN, description: 'Everyone plays everyone' },
   { label: 'Group Stage', value: TournamentType.GROUP, description: 'Multiple groups without knockout' },
   { label: 'Hybrid (Group + Knockout)', value: TournamentType.HYBRID, description: 'Group Stage followed by Knockout Stage' },
-  { label: 'Friendly / Single Match', value: TournamentType.FRIENDLY, description: 'Single matches, friendly games' }
+  { label: 'Friendly / Single Match', value: TournamentType.FRIENDLY, description: 'Single matches, friendly games' },
+  { label: 'Race / Event Final', value: TournamentType.RACE, description: 'One race or event — all participants ranked by result (athletics, swimming)' }
 ]
 
 const participantTypes = [
@@ -483,7 +485,33 @@ const visibilityOptions = [
   { label: 'Private', value: Visibility.PRIVATE, description: 'Invite only', icon: 'i-heroicons-lock-closed' }
 ]
 
-const popularSports = ['Football', 'Basketball', 'Tennis', 'Cricket', 'Rugby', 'Volleyball', 'Esports', 'Other']
+// Sport options come from the engine registry (registered engines get tailored
+// control surfaces); extras fall back to the default (football) surface
+const popularSports = [...listEngines().map((e) => e.label), 'Cricket', 'Rugby', 'Esports', 'Other']
+
+// Engine-driven creation surface: formats/options adapt to the selected sport
+const creationEngine = computed(() => resolveEngine(state.sport))
+const creation = computed(() => creationEngine.value.creation)
+
+const availableTournamentTypes = computed(() => {
+  if (!creation.value) return tournamentTypes
+  return tournamentTypes.filter((t) => creation.value!.formats.includes(t.value))
+})
+
+// Reset the format when the sport change invalidates it; force participant type
+watch(() => state.sport, () => {
+  const c = creation.value
+  if (!c) return
+  if (!c.formats.includes(state.type as TournamentType)) {
+    state.type = c.formats[0]
+  }
+  if (c.participantType) {
+    state.participantType = c.participantType
+  }
+})
+
+const showFormatOption = (key: 'twoLegs' | 'thirdPlaceMatch' | 'doubleRoundRobin') =>
+  creation.value ? creation.value.options[key] : true
 
 // Timezone options (common ones)
 const timezones = [
@@ -744,7 +772,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <UFormField label="Tournament Type" name="type" required>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <button
-                  v-for="opt in tournamentTypes"
+                  v-for="opt in availableTournamentTypes"
                   :key="opt.value"
                   type="button"
                   @click="state.type = opt.value"
@@ -771,7 +799,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                   :key="opt.value"
                   type="button"
                   @click="state.participantType = opt.value"
-                  class="flex-1 p-5 rounded-xl border-2 flex flex-col items-center gap-3 transition-all"
+                  :disabled="!!creation?.participantType && opt.value !== creation.participantType"
+                  class="flex-1 p-5 rounded-xl border-2 flex flex-col items-center gap-3 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   :class="[
                     state.participantType === opt.value
                       ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 shadow-sm text-indigo-600 dark:text-indigo-400'
@@ -782,6 +811,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                   <span class="font-bold uppercase tracking-wider text-xs">{{ opt.label }}</span>
                 </button>
               </div>
+              <p v-if="creation?.participantType" class="text-[11px] text-gray-500 mt-2">
+                {{ creationEngine.label }} events are individual-based.
+              </p>
             </UFormField>
 
             <div class="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-6">
@@ -794,14 +826,14 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 <p class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Format Configuration</p>
                 
                 <div v-if="state.type === TournamentType.KNOCKOUT || state.type === TournamentType.HYBRID" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div class="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+                  <div v-if="showFormatOption('twoLegs')" class="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
                     <div>
                       <p class="text-sm font-medium text-gray-900 dark:text-white">Two-Legged Ties</p>
                       <p class="text-[10px] text-gray-500">Home & Away rounds</p>
                     </div>
                     <USwitch v-model="state.twoLegsKnockout" />
                   </div>
-                  <div class="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+                  <div v-if="showFormatOption('thirdPlaceMatch')" class="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
                     <div>
                       <p class="text-sm font-medium text-gray-900 dark:text-white">Third-Place Match</p>
                       <p class="text-[10px] text-gray-500">Playoff for 3rd place</p>
@@ -810,7 +842,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                   </div>
                 </div>
 
-                <div v-if="[TournamentType.ROUND_ROBIN, TournamentType.LEAGUE, TournamentType.GROUP, TournamentType.HYBRID].includes(state.type as any)" class="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+                <div v-if="showFormatOption('doubleRoundRobin') && [TournamentType.ROUND_ROBIN, TournamentType.LEAGUE, TournamentType.GROUP, TournamentType.HYBRID].includes(state.type as any)" class="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
                   <div>
                     <p class="text-sm font-medium text-gray-900 dark:text-white">Double Round Robin</p>
                     <p class="text-[10px] text-gray-500">Each team plays twice</p>

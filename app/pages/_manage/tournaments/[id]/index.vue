@@ -18,6 +18,8 @@ import type {
   Tournament,
   Venue,
 } from "~/types";
+import { resolveEngine } from "~/engines/registry";
+import { SportEngineKey } from "~/engines/types";
 import {
   LIVESTREAM_PLATFORMS,
   detectLivestreamPlatform,
@@ -2232,6 +2234,80 @@ const tournamentStatus = computed(() => {
   return { label: "Active", color: "success" as const };
 });
 
+// Race tournaments render fixtures as ranked events, not head-to-head cards.
+// Driven by the sport engine (works for tournaments created before RACE type
+// existed) or explicitly by the RACE tournament type.
+const isRaceTournament = computed(() =>
+  tournament.value?.type === TournamentType.RACE ||
+  !!resolveEngine(tournament.value?.sport).race,
+);
+
+// Race tournaments hold multiple named events (Men's 100m, 200m…)
+const raceFixtures = computed(() =>
+  isRaceTournament.value ? fixtures.value : [],
+);
+
+const newEventName = ref("");
+const creatingEvent = ref(false);
+const showAddEventModal = ref(false);
+const selectedEventParticipantIds = ref<string[]>([]);
+
+const openAddEventModal = () => {
+  newEventName.value = "";
+  // Default: everyone entered
+  selectedEventParticipantIds.value = participants.value.map((p) => p.id);
+  showAddEventModal.value = true;
+};
+
+const toggleEventParticipant = (id: string) => {
+  const idx = selectedEventParticipantIds.value.indexOf(id);
+  if (idx === -1) selectedEventParticipantIds.value.push(id);
+  else selectedEventParticipantIds.value.splice(idx, 1);
+};
+
+const createRaceEvent = async () => {
+  const name = newEventName.value.trim();
+  if (!name || !tournament.value) return;
+  creatingEvent.value = true;
+  try {
+    const res = await fixtureStore.createFixture({
+      tournament_id: tournament.value.id,
+      round: 1,
+      roundName: name,
+      status: undefined,
+    } as any);
+
+    // Seed blank result entries for the selected participants (marks entry)
+    const fixtureId = res?.data?.id;
+    if (fixtureId && selectedEventParticipantIds.value.length) {
+      await $api(`/fixtures/${fixtureId}/results`, {
+        method: "PUT",
+        body: {
+          results: selectedEventParticipantIds.value.map((id) => ({
+            participantId: id,
+          })),
+        },
+      });
+    }
+
+    showAddEventModal.value = false;
+    await fixtureStore.fetchFixtures(tournament.value.id);
+    useToast().add({
+      title: "Event Created",
+      description: `"${name}" is ready for result entry.`,
+      color: "success",
+    });
+  } catch (err: any) {
+    handleError(err, { title: "Failed to create event" });
+  } finally {
+    creatingEvent.value = false;
+  }
+};
+
+// Provide the resolved engine at page level so engine control surfaces
+// (e.g. RaceControl) rendered outside MatchControl can still access it
+provide(SportEngineKey, computed(() => resolveEngine(tournament.value?.sport)));
+
 // Type labels
 const typeLabels: Record<TournamentType, string> = {
   [TournamentType.KNOCKOUT]: "Knockout",
@@ -2240,6 +2316,7 @@ const typeLabels: Record<TournamentType, string> = {
   [TournamentType.GROUP]: "Group Stage",
   [TournamentType.HYBRID]: "Hybrid (Group + Knockout)",
   [TournamentType.FRIENDLY]: "Friendly Match",
+  [TournamentType.RACE]: "Race / Event",
 };
 
 const participantLabels: Record<ParticipantType, string> = {
@@ -2755,12 +2832,16 @@ const hybridKnockoutAccordionItems = computed(() => {
 
 // Match Control Modal
 const showMatchControlModal = ref(false);
+const showRaceControlModal = ref(false);
 const selectedFixture = ref<Fixture | null>(null);
 const updatingMatch = ref(false);
 
 const openMatchControl = (fixture: Fixture) => {
   selectedFixture.value = { ...fixture };
-  showMatchControlModal.value = true;
+  // Race engines get their own control surface — a race is an event, not a match
+  const engine = resolveEngine(tournament.value?.sport);
+  showRaceControlModal.value = !!engine.control;
+  showMatchControlModal.value = !engine.control;
 };
 
 const startMatch = async (fixture: Fixture) => {
@@ -3322,11 +3403,18 @@ const tabItems = computed(() => {
       badge:
         totalPendingRequests.value > 0 ? totalPendingRequests.value : undefined,
     },
-    {
-      slot: "fixtures",
-      label: "Fixtures",
-      icon: "i-heroicons-calendar-days",
-    },
+    // Race tournaments get an Event tab instead of fixtures — the race IS the event
+    isRaceTournament.value
+      ? {
+          slot: "fixtures",
+          label: "Event",
+          icon: "i-heroicons-flag",
+        }
+      : {
+          slot: "fixtures",
+          label: "Fixtures",
+          icon: "i-heroicons-calendar-days",
+        },
   ];
 
   // Add Groups tab for Group/Hybrid tournaments
@@ -4385,15 +4473,7 @@ const copyTournamentLink = async () => {
                         >Format</span
                       >
                       <span class="font-medium text-xs sm:text-sm">
-                        {{
-                          tournament.type === TournamentType.ROUND_ROBIN
-                            ? "Round Robin"
-                            : tournament.type === TournamentType.KNOCKOUT
-                              ? "Knockout"
-                              : tournament.type === TournamentType.GROUP
-                                ? "Group Stage"
-                                : "Hybrid (Groups + Knockout)"
-                        }}
+                        {{ typeLabels[tournament.type] ?? tournament.type }}
                       </span>
                     </div>
 
@@ -5480,7 +5560,74 @@ const copyTournamentLink = async () => {
 
             <!-- Fixtures Tab -->
             <template #fixtures>
-              <UCard class="mt-4">
+              <!-- Race tournament: the event itself is the surface -->
+              <UCard v-if="isRaceTournament" class="mt-4">
+                <template #header>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-heroicons-flag" class="w-5 h-5 text-emerald-500" />
+                    <span class="font-medium">Event</span>
+                  </div>
+                </template>
+
+                <!-- Named event list (Men's 100m, 200m…) -->
+                <div v-if="raceFixtures.length" class="space-y-2 mb-4">
+                  <div
+                    v-for="event in raceFixtures"
+                    :key="event.id"
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-gray-50/50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.06]"
+                  >
+                    <div class="flex items-center gap-3">
+                      <span class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                        <UIcon name="i-heroicons-flag" class="w-5 h-5 text-emerald-500" />
+                      </span>
+                      <div>
+                        <p class="font-bold">{{ event.roundName || 'Event' }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ event.status === 'COMPLETED'
+                            ? `${event.resultEntries?.length ?? 0} results published`
+                            : `${event.resultEntries?.length ?? participants.length} athletes entered · results pending` }}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UBadge
+                        :color="event.status === 'COMPLETED' ? 'success' : 'neutral'"
+                        variant="subtle"
+                      >
+                        {{ event.status === 'COMPLETED' ? 'Official' : event.status }}
+                      </UBadge>
+                      <UButton
+                        color="primary"
+                        icon="i-heroicons-numbered-list"
+                        @click="openMatchControl(event)"
+                        :label="event.status === 'COMPLETED' ? 'View Results' : 'Enter Results'"
+                      />
+                      <UButton
+                        color="error"
+                        variant="ghost"
+                        icon="i-heroicons-trash"
+                        @click="handleDeleteFixture(event)"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Add event -->
+                <div class="flex justify-end">
+                  <UButton
+                    color="primary"
+                    icon="i-heroicons-plus"
+                    :disabled="participants.length < 2"
+                    @click="openAddEventModal"
+                    label="Add Event"
+                  />
+                </div>
+                <p v-if="participants.length < 2" class="text-[11px] text-gray-500 mt-2">
+                  Add at least 2 athletes in the Participants tab first.
+                </p>
+              </UCard>
+
+              <UCard v-else class="mt-4">
                 <template #header>
                   <div
                     class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -5754,6 +5901,7 @@ const copyTournamentLink = async () => {
                               :key="fixture.id"
                               :fixture="fixture"
                               :updating-match="updatingMatch"
+                              :is-race="isRaceTournament"
                               @start="startMatch"
                               @control="openMatchControl"
                               @delete="handleDeleteFixture"
@@ -5833,6 +5981,7 @@ const copyTournamentLink = async () => {
                               :key="fixture.id"
                               :fixture="fixture"
                               :updating-match="updatingMatch"
+                              :is-race="isRaceTournament"
                               @start="startMatch"
                               @control="openMatchControl"
                               @delete="handleDeleteFixture"
@@ -7442,7 +7591,7 @@ const copyTournamentLink = async () => {
     </template>
   </UModal>
 
-  <!-- Match Control Component -->
+  <!-- Match Control Component (head-to-head sports) -->
   <MatchControl
     :fixture="selectedFixture"
     :tournament="tournament"
@@ -7450,6 +7599,75 @@ const copyTournamentLink = async () => {
     @fixture-updated="handleFixtureUpdated"
     @match-ended="handleMatchEnded"
   />
+
+  <!-- Race Control (placement sports — engine-provided full control surface) -->
+  <component
+    :is="resolveEngine(tournament?.sport).control"
+    v-if="selectedFixture && resolveEngine(tournament?.sport).control"
+    :fixture="selectedFixture"
+    :tournament="tournament"
+    v-model:open="showRaceControlModal"
+    @fixture-updated="handleFixtureUpdated"
+  />
+
+  <!-- Add Event Modal (race tournaments) -->
+  <UModal v-model:open="showAddEventModal" title="Add Event">
+    <template #body>
+      <div class="space-y-4">
+        <UFormField label="Event name" required>
+          <UInput
+            v-model="newEventName"
+            placeholder="e.g. Men's 100m Final"
+            class="w-full"
+            @keyup.enter="createRaceEvent"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Participating athletes"
+          :description="`${selectedEventParticipantIds.length} of ${participants.length} selected`"
+        >
+          <div class="max-h-64 overflow-y-auto space-y-1 rounded-lg border border-gray-200 dark:border-gray-800 p-2">
+            <button
+              v-for="p in participants"
+              :key="p.id"
+              type="button"
+              class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors"
+              :class="selectedEventParticipantIds.includes(p.id)
+                ? 'bg-emerald-500/10 text-gray-900 dark:text-white'
+                : 'text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'"
+              @click="toggleEventParticipant(p.id)"
+            >
+              <UIcon
+                :name="selectedEventParticipantIds.includes(p.id)
+                  ? 'i-heroicons-check-circle-solid'
+                  : 'i-heroicons-minus-circle'"
+                class="w-4 h-4 shrink-0"
+                :class="selectedEventParticipantIds.includes(p.id) ? 'text-emerald-500' : ''"
+              />
+              <span class="text-sm font-medium truncate">{{ p.customName }}</span>
+            </button>
+          </div>
+        </UFormField>
+      </div>
+    </template>
+    <template #footer>
+      <div class="flex justify-end gap-3">
+        <UButton color="neutral" variant="ghost" @click="showAddEventModal = false">
+          Cancel
+        </UButton>
+        <UButton
+          color="primary"
+          icon="i-heroicons-plus"
+          :loading="creatingEvent"
+          :disabled="!newEventName.trim() || !selectedEventParticipantIds.length"
+          @click="createRaceEvent"
+        >
+          Create Event
+        </UButton>
+      </div>
+    </template>
+  </UModal>
 
   <!-- Add Sponsor Modal -->
   <UModal v-model:open="showAddSponsorModal">

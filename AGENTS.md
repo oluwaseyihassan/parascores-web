@@ -34,6 +34,8 @@ Hostnames: `lvh.me` (marketing/public), `manage.lvh.me` (organizer dashboard, OR
 - `app/components/` — UI components; `match/`, `marketing/` subdirs; `MatchControl.vue` is the live scoring control surface
 - `server/api/graphics/` — server-side social graphic rendering via Satori + Resvg (SVG → PNG)
 - `app/layouts/` — default, dashboard, admin, auth, widget, feed, explore
+- `app/engines/` — per-sport scoring engines behind the `SportEngine` contract (`types.ts`, `registry.ts` with `resolveEngine(sport)`); engines: football, basketball, tennis, tabletennis, volleyball (set-scoring via `_shared/SetScoringPanel.vue`), athletics/swimming (placement via `_shared/RaceControl.vue`); `_shared/` has common panels/composables; `creation` config drives engine-specific tournament creation options
+- `app/pages/_event/` + `app/components/event/` — event hub (subdomain live-results pages, e.g. waug26)
 
 ## Conventions
 

@@ -4,6 +4,8 @@ import { basketballEngine } from '~/engines/basketball'
 import { tennisEngine } from '~/engines/tennis'
 import { tableTennisEngine } from '~/engines/tabletennis'
 import { volleyballEngine } from '~/engines/volleyball'
+import { athleticsEngine } from '~/engines/athletics'
+import { swimmingEngine } from '~/engines/swimming'
 
 const engines: Record<string, SportEngine> = {
   football: footballEngine,
@@ -11,6 +13,8 @@ const engines: Record<string, SportEngine> = {
   tennis: tennisEngine,
   tabletennis: tableTennisEngine,
   volleyball: volleyballEngine,
+  athletics: athleticsEngine,
+  swimming: swimmingEngine,
 }
 
 /**

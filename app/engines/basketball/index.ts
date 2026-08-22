@@ -1,5 +1,6 @@
 import type { SportEngine } from '~/engines/types'
 import type { Fixture } from '~/types'
+import { TournamentType } from '~/types'
 import { getMatchElapsedSeconds } from '~/composables/useMatchTimer'
 import BasketballPanel from './panel.vue'
 
@@ -10,6 +11,11 @@ export const basketballEngine: SportEngine = {
   periods: 4,
   scoreIncrements: [1, 2, 3],
   panel: BasketballPanel,
+  creation: {
+    // Basketball has no two-legged ties; bronze games are common
+    formats: [TournamentType.KNOCKOUT, TournamentType.LEAGUE, TournamentType.ROUND_ROBIN, TournamentType.GROUP, TournamentType.HYBRID, TournamentType.FRIENDLY],
+    options: { twoLegs: false, thirdPlaceMatch: true, doubleRoundRobin: true },
+  },
   formatPeriodLabel: (fixture: Fixture) => {
     const periods = 4
     const elapsed = getMatchElapsedSeconds(fixture) ?? 0

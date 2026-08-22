@@ -1,5 +1,22 @@
 import type { InjectionKey, ComputedRef, Component } from 'vue'
 import type { Fixture } from '~/types'
+import { TournamentType, ParticipantType } from '~/types'
+
+/** Which creation-form options a sport engine supports */
+export interface EngineCreationConfig {
+  /** Tournament formats offered at creation */
+  formats: TournamentType[]
+  /** Force a participant type (races are always individuals) */
+  participantType?: ParticipantType
+  options: {
+    /** Two-legged knockout ties */
+    twoLegs: boolean
+    /** Third-place playoff */
+    thirdPlaceMatch: boolean
+    /** Double round robin */
+    doubleRoundRobin: boolean
+  }
+}
 
 export type EngineTimerMode = 'halves' | 'periods' | 'none'
 
@@ -30,8 +47,14 @@ export interface SportEngine {
   scoreIncrements?: number[]
   /** Set-based scoring config (tennis, table tennis, volleyball). Defaults; overridable per-tournament via scoringRules.setsToWin / scoringRules.gamesPerSet */
   setScoring?: { setsToWin: number; gamesPerSet: number; gameLabel: string }
+  /** Placement-based racing (athletics, swimming). valueLabel shown on inputs (e.g. "Time"), placeholder hint (e.g. "10.42") */
+  race?: { valueLabel: string; valuePlaceholder: string }
+  /** Creation-form surface. Absent = everything available (football default). */
+  creation?: EngineCreationConfig
   /** The live-tab scoring surface. Rendered by MatchControl as <component :is>. */
   panel: Component
+  /** Full control surface replacing MatchControl entirely (e.g. races are events, not matches) */
+  control?: Component
   /** Clock label for the scoreboard (e.g. "Q2"). Absent = halves labels. */
   formatPeriodLabel?: (fixture: Fixture) => string
   capabilities: SportEngineCapabilities

@@ -2,7 +2,7 @@
 import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { TournamentType, ParticipantType, Visibility, type Tournament } from '~/types'
-import { resolveEngine } from '~/engines/registry'
+import { resolveEngine, listEngines } from '~/engines/registry'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
 import type { PayoutAccountStatus } from '~/stores/payment'
 
@@ -279,7 +279,8 @@ const tournamentTypes = [
   { label: 'Round Robin', value: TournamentType.ROUND_ROBIN, description: 'Everyone plays everyone' },
   { label: 'Group Stage (League)', value: TournamentType.GROUP, description: 'Groups without knockout stage' },
   { label: 'Hybrid (Group + Knockout)', value: TournamentType.HYBRID, description: 'Group Stage followed by Knockout Stage' },
-  { label: 'Friendly / Single Match', value: TournamentType.FRIENDLY, description: 'Single matches, friendly games' }
+  { label: 'Friendly / Single Match', value: TournamentType.FRIENDLY, description: 'Single matches, friendly games' },
+  { label: 'Race / Event Final', value: TournamentType.RACE, description: 'One race or event — all participants ranked by result' }
 ]
 
 const participantTypes = [
@@ -293,13 +294,21 @@ const visibilityOptions = [
   { label: 'Private', value: Visibility.PRIVATE, description: 'Invite only', icon: 'i-heroicons-lock-closed' }
 ]
 
-const popularSports = ['Football', 'Basketball', 'Tennis', 'Cricket', 'Rugby', 'Volleyball', 'Esports', 'Other']
+// Sport options come from the engine registry (registered engines get tailored
+// control surfaces); extras fall back to the default (football) surface
+const popularSports = [...listEngines().map((e) => e.label), 'Cricket', 'Rugby', 'Esports', 'Other']
 
 // Set-scoring config only applies to set-based sport engines (tennis, volleyball…)
 const engineSetScoring = computed(() => {
   const engine = resolveEngine(state.sport)
   return engine.setScoring ?? null
 })
+
+// Engine-driven creation options: hide format toggles the sport doesn't support
+const creationOption = (key: 'twoLegs' | 'thirdPlaceMatch' | 'doubleRoundRobin') => {
+  const c = resolveEngine(state.sport).creation
+  return c ? c.options[key] : true
+}
 
 // "Best of N" input in user terms (odd N); state stores setsToWin = (N+1)/2
 const bestOfError = ref<string | null>(null)
@@ -734,7 +743,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
              <div class="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-800">
                 <h3 class="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Knockout Options</h3>
 
-                <div class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <div v-if="creationOption('twoLegs')" class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                   <div class="flex-1 pr-3">
                     <p class="font-medium text-sm text-gray-900 dark:text-white">Two-Legged Ties</p>
                     <p class="text-[11px] sm:text-sm text-gray-500">Knockout rounds (except Final) will have Home and Away legs</p>
@@ -742,7 +751,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                   <USwitch v-model="state.twoLegsKnockout" />
                 </div>
 
-                <div class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <div v-if="creationOption('thirdPlaceMatch')" class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                   <div class="flex-1 pr-3">
                     <p class="font-medium text-sm text-gray-900 dark:text-white">Third-Place Match</p>
                     <p class="text-[11px] sm:text-sm text-gray-500">Generate a playoff match for semi-final losers</p>
@@ -756,7 +765,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
              <div class="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-800">
                 <h3 class="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Round Robin / Group Options</h3>
 
-                <div class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <div v-if="creationOption('doubleRoundRobin')" class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                   <div class="flex-1 pr-3">
                     <p class="font-medium text-sm text-gray-900 dark:text-white">Double Round Robin</p>
                     <p class="text-[11px] sm:text-sm text-gray-500">Teams will play each other twice (Home and Away)</p>

@@ -24,6 +24,7 @@ export enum TournamentType {
   GROUP = "GROUP",
   FRIENDLY = "FRIENDLY",
   HYBRID = "HYBRID",
+  RACE = "RACE",
 }
 
 export enum ParticipantType {
@@ -259,6 +260,21 @@ export interface Participant {
   tournament?: Tournament | null;
 }
 
+export interface ResultEntry {
+  id: string;
+  fixtureId: string;
+  participantId: string;
+  value: string;
+  lane?: number | null;
+  note?: string | null;
+  rank?: number | null;
+  participant?: {
+    customName?: string | null;
+    customShortName?: string | null;
+    logoUrl?: string | null;
+  } | null;
+}
+
 export interface Fixture {
   id: string;
   tournament_id: string;
@@ -289,6 +305,7 @@ export interface Fixture {
   awayPenaltyScore?: number | null;
   periodScores?: { home: number[]; away: number[] } | null;
   config?: Record<string, any> | null;
+  resultEntries?: ResultEntry[];
   status: FixtureStatus;
   stage?: FixtureStage | null;
   half?: MatchHalf | null;

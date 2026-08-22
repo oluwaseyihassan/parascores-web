@@ -20,6 +20,9 @@ const { liveClock, liveMinuteLabel, isTimerPaused } = inject(
 
 const engine = inject(SportEngineKey);
 
+// Placement sports (athletics, swimming) have no home/away score
+const isRace = computed(() => !!engine?.value.race);
+
 // Period sports use the engine's own clock label (e.g. "Q2"); halves sports
 // keep the football labels from the timer controls
 const periodLabel = computed(() => {
@@ -32,6 +35,23 @@ const periodLabel = computed(() => {
 
 <template>
   <div v-if="fixture" class="mc-scoreboard">
+    <!-- Race fixture: event header instead of home/away score -->
+    <div v-if="isRace" class="flex flex-col items-center justify-center w-full py-2 gap-1">
+      <UIcon name="i-heroicons-flag" class="w-6 h-6 text-emerald-500" />
+      <span class="font-black text-lg">{{ fixture.roundName || 'Race' }}</span>
+      <span class="text-[11px] text-gray-500 dark:text-gray-400">
+        {{ fixture.resultEntries?.length ? `${fixture.resultEntries.length} results recorded` : 'Ranked by recorded results' }}
+      </span>
+      <div
+        v-if="isFixtureLiveStatus(fixture.status)"
+        class="mc-match-time mc-match-time--live mt-1"
+      >
+        <span class="mc-match-time__live-dot" />
+        <span class="text-[10px] font-bold">LIVE</span>
+      </div>
+    </div>
+
+    <template v-else>
     <!-- Home team -->
     <div class="mc-team">
       <div class="mc-team__logo">
@@ -136,5 +156,6 @@ const periodLabel = computed(() => {
         fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || "Away"
       }}</span>
     </div>
+    </template>
   </div>
 </template>

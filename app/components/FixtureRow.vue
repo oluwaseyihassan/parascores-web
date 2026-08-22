@@ -8,6 +8,7 @@ import { getLivestreamPlatformInfo, detectLivestreamPlatform } from '~/utils/liv
 const props = defineProps<{
   fixture: Fixture
   updatingMatch?: boolean
+  isRace?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -65,12 +66,17 @@ const scheduleLabel = computed(() => {
 })
 
 const primaryActionLabel = computed(() => {
+  if (props.isRace) {
+    if (props.fixture.status === FixtureStatus.COMPLETED) return 'Results'
+    return 'Enter Results'
+  }
   if (props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.NORMAL_TIME_ENDED || props.fixture.status === FixtureStatus.EXTRATIME) return 'Control'
   if (props.fixture.status === FixtureStatus.COMPLETED) return 'Details'
   return 'Edit'
 })
 
 const primaryActionIcon = computed(() => {
+  if (props.isRace) return 'i-heroicons-numbered-list'
   if (props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.NORMAL_TIME_ENDED || props.fixture.status === FixtureStatus.EXTRATIME) return 'i-heroicons-adjustments-horizontal'
   if (props.fixture.status === FixtureStatus.COMPLETED) return 'i-heroicons-clipboard-document-list'
   return 'i-heroicons-pencil-square'
@@ -121,7 +127,22 @@ const getInitial = (name: string) => {
         </span>
       </div>
 
-      <div class="fixture-match">
+      <!-- Race fixture: single event, participants ranked by result -->
+      <div v-if="props.isRace" class="fixture-match">
+        <div class="flex items-center gap-3 py-1">
+          <span class="fixture-team__avatar">
+            <UIcon name="i-heroicons-flag" class="w-5 h-5 text-emerald-500" />
+          </span>
+          <div class="flex flex-col">
+            <span class="font-bold text-sm">{{ fixture.roundName || 'Race' }}</span>
+            <span class="text-[11px] text-gray-500 dark:text-gray-400">
+              {{ fixture.resultEntries?.length ? `${fixture.resultEntries.length} results recorded` : 'All participants ranked by result' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="fixture-match">
         <div class="fixture-team">
           <div class="fixture-team__avatar">
             <img

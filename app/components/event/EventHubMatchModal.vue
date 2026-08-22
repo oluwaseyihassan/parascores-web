@@ -94,6 +94,12 @@ const liveEvents = computed(() => props.liveCard?.fixture.matchEvents ?? [])
 // Per-set scores for set sports (tennis, table tennis, volleyball)
 const setScores = computed(() => props.liveCard?.fixture.periodScores ?? null)
 
+// Ranked placements for race sports (athletics, swimming)
+const raceResults = computed(() => {
+  const entries = props.liveCard?.fixture.resultEntries
+  return entries?.length ? entries : null
+})
+
 const eventText = (e: NonNullable<LiveCard['fixture']['matchEvents']>[number]) => {
   const who = e.player?.name ?? e.participant?.customShortName ?? e.participant?.customName ?? ''
   return e.description ?? `${e.type.replace(/_/g, ' ')}${who ? ` — ${who}` : ''}`
@@ -166,7 +172,8 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
 
         <!-- Real live fixture match centre -->
         <div v-else-if="props.liveCard" class="p-6">
-          <div class="flex items-center justify-between text-center">
+          <!-- Head-to-head header (hidden for race sports — placement table below instead) -->
+          <div v-if="!raceResults" class="flex items-center justify-between text-center">
             <div class="flex-1">
               <img
                 v-if="props.liveCard.home.logoUrl"
@@ -224,6 +231,43 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
               <div class="mt-2 font-bold text-sm">{{ props.liveCard.away.name }}</div>
             </div>
           </div>
+
+          <!-- Race results (ranked placements) -->
+          <template v-if="raceResults">
+            <h4 class="text-xs font-black uppercase tracking-wider text-white/50 mt-5 mb-2">
+              {{ props.liveCard.fixture.status === 'COMPLETED' ? 'Official Result' : 'Live Standings' }}
+            </h4>
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="text-[10px] uppercase text-white/40 border-b border-white/10">
+                  <th class="text-left py-2 w-8">#</th>
+                  <th class="text-left py-2 w-10">Lane</th>
+                  <th class="text-left py-2">Athlete</th>
+                  <th class="text-right py-2">Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="entry in raceResults"
+                  :key="entry.id"
+                  class="row-alt"
+                  :class="{ 'medal-gold': entry.rank === 1 }"
+                >
+                  <td class="py-2 font-bold" :class="entry.rank === 1 ? 'text-[#f5b32b]' : ''">
+                    {{ entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank ?? '—' }}
+                  </td>
+                  <td class="py-2 text-white/60">{{ entry.lane ?? '—' }}</td>
+                  <td class="py-2" :class="{ 'font-bold': entry.rank === 1 }">
+                    {{ entry.participant?.customName ?? 'Unknown' }}
+                    <span v-if="entry.note" class="text-[10px] text-[#f5b32b] ml-1">{{ entry.note }}</span>
+                  </td>
+                  <td class="py-2 text-right" :class="entry.rank === 1 ? 'font-extrabold text-[#f5b32b]' : ''">
+                    {{ entry.value ?? '—' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </template>
 
           <h4 class="text-xs font-black uppercase tracking-wider text-white/50 mt-6 mb-2">Match Events</h4>
           <div v-if="liveEvents.length" class="text-xs">
