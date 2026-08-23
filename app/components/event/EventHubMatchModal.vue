@@ -30,6 +30,16 @@ const emit = defineEmits<{
   openFixture: [fixture: EventHubFixture]
 }>()
 
+const { meta } = useEventHub()
+
+// Faded mascot watermark behind the panel content (fixed while scrolling)
+const watermarkStyle = computed(() => ({
+  backgroundImage: `linear-gradient(rgba(13, 21, 48, 0.93), rgba(13, 21, 48, 0.93)), url('${meta.value.mascot}')`,
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 1rem center',
+  backgroundSize: 'auto 75%',
+}))
+
 const open = computed(() => !!props.sport || !!props.liveCard || !!props.tournament)
 
 const close = () => emit('close')
@@ -115,7 +125,7 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
       class="fixed inset-0 z-50 modal-bg bg-black/70 flex items-center justify-center p-4"
       @click.self="close"
     >
-      <div class="modal-panel card rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-[#0d1530] border-white/15">
+      <div class="modal-panel card rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-[#0d1530] border-white/15" :style="watermarkStyle">
         <div class="px-5 py-3 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#0d1530] z-10">
           <span class="text-xs font-extrabold tracking-wider uppercase text-white/60">{{ headerLabel }}</span>
           <button class="text-white/50 hover:text-white text-lg leading-none" @click="close">✕</button>

@@ -40,7 +40,8 @@ export const hubMeta = {
   countdownTarget: '2026-10-12T21:00:00+01:00',
   countdownLabel: 'until the closing ceremony',
   logo: '/images/event/waug-2026-logo.png',
-  mascot: '/images/event/waug-2026-mascot.jpeg',
+  mascot: '/images/event/waug-2026-mascot-cutout.webp',
+  mascotHead: '/images/event/waug-2026-mascot-head.webp',
   parascoresLogo: '/images/event/parascores-logo.png',
 }
 

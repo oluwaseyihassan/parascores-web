@@ -138,9 +138,11 @@ export const useEventHub = () => {
   const liveData = useState<EventHubLive | null>('eventHub.live', () => null)
   const medalTable = useState<MedalTableRow[] | null>('eventHub.medals', () => null)
   const isMock = useState<boolean>('eventHub.isMock', () => true)
+  const pending = useState<boolean>('eventHub.pending', () => false)
 
   const fetchHub = async () => {
     if (!eventSlug.value) return
+    pending.value = true
     const apiBase = useRuntimeConfig().public.API_BASE_URL as string
     try {
       const res = await $fetch<ApiResponse<EventHubOrg>>(
@@ -168,6 +170,7 @@ export const useEventHub = () => {
       liveData.value = liveRes.status === 'fulfilled' ? (liveRes.value.data ?? null) : null
       medalTable.value = medalsRes.status === 'fulfilled' ? (medalsRes.value.data ?? null) : null
     }
+    pending.value = false
   }
 
   const meta = computed(() => {
@@ -183,6 +186,7 @@ export const useEventHub = () => {
       countdownTarget: brand.countdownTarget ?? hubMeta.countdownTarget,
       countdownLabel: brand.countdownLabel ?? hubMeta.countdownLabel,
       mascot: brand.mascotUrl ?? hubMeta.mascot,
+      mascotHead: brand.mascotHeadUrl ?? hubMeta.mascotHead,
       dayIndicator: brand.dayIndicator ?? hubMeta.dayIndicator,
     }
   })
@@ -317,6 +321,7 @@ export const useEventHub = () => {
   return {
     org,
     isMock,
+    pending,
     meta,
     liveData,
     liveCards,

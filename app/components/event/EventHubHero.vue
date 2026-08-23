@@ -36,14 +36,11 @@ onUnmounted(() => {
   <div class="relative overflow-hidden">
     <div class="absolute inset-0 bg-gradient-to-r from-[#1e3a8a]/40 via-transparent to-[#f5b32b]/10 pointer-events-none" />
     <div class="max-w-7xl mx-auto px-4 py-5 flex flex-wrap items-center gap-4 relative">
-      <div class="flex items-center gap-3">
-        <img :src="props.meta.mascot" class="w-12 h-12 rounded-xl object-cover border border-white/20" :alt="`${props.meta.name} mascot`">
-        <div>
-          <div class="text-sm font-extrabold">{{ props.meta.dates }} · {{ props.meta.venue }}</div>
-          <div class="text-[11px] text-white/50">{{ props.meta.tagline }}</div>
-        </div>
+      <div class="min-w-0">
+        <div class="text-sm font-extrabold">{{ props.meta.dates }} · {{ props.meta.venue }}</div>
+        <div class="text-[11px] text-white/50">{{ props.meta.tagline }}</div>
       </div>
-      <div class="ml-auto flex items-center gap-2 text-center">
+      <div class="flex items-center gap-2 text-center sm:ml-auto">
         <div class="card rounded-lg px-3 py-1.5 min-w-[52px]">
           <div class="text-lg font-black text-[#f5b32b] leading-none">{{ days }}</div>
           <div class="text-[8px] text-white/40 uppercase tracking-wider mt-0.5">days</div>
@@ -64,6 +61,16 @@ onUnmounted(() => {
           {{ props.meta.countdownLabel }}
         </div>
       </div>
+      <!-- Mascot centerpiece with flickering torch glow -->
+      <div class="mascot-wrap relative shrink-0 -my-2 ml-auto sm:ml-0">
+        <div class="mascot-aura absolute inset-0 pointer-events-none" />
+        <div class="torch-glow absolute pointer-events-none" />
+        <img
+          :src="props.meta.mascot"
+          :alt="`${props.meta.name} mascot`"
+          class="mascot-img relative h-32 sm:h-40 md:h-48 w-auto"
+        >
+      </div>
     </div>
   </div>
 </template>
@@ -72,5 +79,42 @@ onUnmounted(() => {
 .card {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mascot-img {
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
+  animation: mascot-bob 6s ease-in-out infinite;
+}
+
+/* Soft brand-colored aura behind the figure */
+.mascot-aura {
+  background: radial-gradient(ellipse 60% 55% at 50% 45%, rgba(245, 179, 43, 0.16), rgba(30, 58, 138, 0.12) 55%, transparent 75%);
+}
+
+/* Flame glow — positioned over the torch (upper-left of the figure) */
+.torch-glow {
+  left: -4%;
+  top: 6%;
+  width: 52%;
+  height: 30%;
+  background: radial-gradient(circle, rgba(255, 178, 60, 0.6), rgba(255, 120, 20, 0.28) 45%, transparent 70%);
+  filter: blur(7px);
+  animation: torch-flicker 2.4s ease-in-out infinite;
+}
+
+@keyframes torch-flicker {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  20% { opacity: 1; transform: scale(1.12); }
+  45% { opacity: 0.6; transform: scale(0.94); }
+  70% { opacity: 0.95; transform: scale(1.06); }
+}
+
+@keyframes mascot-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-img, .torch-glow { animation: none; }
 }
 </style>

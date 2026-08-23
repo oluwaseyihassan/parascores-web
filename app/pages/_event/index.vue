@@ -17,7 +17,7 @@ if (!hub.isMock.value) {
 onMounted(() => hub.startLiveUpdates())
 onUnmounted(() => hub.stopLiveUpdates())
 
-const { meta, sports, schedule, medals, ticker, liveCards, isMock } = hub
+const { meta, sports, schedule, medals, ticker, liveCards, isMock, pending } = hub
 
 useSeoMeta({
   title: () => `${meta.value.name} — Live Results Hub | Powered by ParaScores`,
@@ -139,6 +139,17 @@ const openFixtureFromTournament = (fixture: EventHubFixture) => {
       </div>
     </footer>
 
+    <!-- Live refresh indicator (SSE-driven refetches) -->
+    <Transition name="fade">
+      <div
+        v-if="pending"
+        class="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full px-3 py-1.5 bg-[#0b1226]/90 border border-white/10"
+      >
+        <img :src="meta.mascotHead" alt="" class="h-5 w-auto animate-pulse">
+        <span class="text-[10px] text-white/50 font-bold uppercase tracking-wider">Updating</span>
+      </div>
+    </Transition>
+
     <EventHubMatchModal
       :sport="activeSport"
       :live-card="activeLiveCard"
@@ -156,5 +167,11 @@ const openFixtureFromTournament = (fixture: EventHubFixture) => {
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
+}
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>

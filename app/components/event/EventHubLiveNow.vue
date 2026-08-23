@@ -8,6 +8,8 @@ const props = withDefaults(defineProps<{
   cards: null,
 })
 
+const { meta } = useEventHub()
+
 const emit = defineEmits<{
   open: [key: string]
   openFixture: [card: LiveCard]
@@ -89,7 +91,9 @@ const isReal = computed(() => props.cards !== null)
         </button>
       </div>
       <div v-else class="card rounded-2xl p-8 text-center">
-        <p class="text-sm text-white/50">No matches live right now — check the schedule for what's coming up.</p>
+        <img :src="meta.mascot" :alt="`${meta.name} mascot`" class="h-24 w-auto mx-auto mb-3 opacity-90 drop-shadow-lg">
+        <p class="text-sm text-white/60 font-semibold">The torch is lit — no matches live right now.</p>
+        <p class="text-[11px] text-white/40 mt-1">Check the schedule for what's coming up.</p>
       </div>
     </template>
 

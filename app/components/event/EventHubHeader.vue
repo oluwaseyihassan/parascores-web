@@ -43,6 +43,14 @@ const tabs = [
         </button>
       </div>
       <div class="ml-auto flex items-center gap-3">
+        <span v-if="props.realData" class="hidden sm:flex items-center gap-1.5">
+          <img
+            :src="props.meta?.mascotHead ?? hubMeta.mascotHead"
+            alt=""
+            title="Never miss a medal — get live alerts"
+            class="h-8 w-auto -my-1"
+          >
+        </span>
         <EventHubSubscribeButton v-if="props.realData" />
         <span class="hidden sm:flex items-center gap-1.5 text-xs font-bold text-red-400">
           <span class="live-dot w-2 h-2 rounded-full bg-red-500 inline-block" />

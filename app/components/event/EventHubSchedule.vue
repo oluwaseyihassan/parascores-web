@@ -15,6 +15,8 @@ const emit = defineEmits<{
   viewAll: []
 }>()
 
+const { meta } = useEventHub()
+
 const rows = computed(() => props.limit > 0 ? props.items.slice(0, props.limit) : props.items)
 </script>
 
@@ -26,7 +28,11 @@ const rows = computed(() => props.limit > 0 ? props.items.slice(0, props.limit) 
         Full day →
       </button>
     </div>
-    <div class="card rounded-2xl divide-y divide-white/5">
+    <div v-if="!rows.length" class="card rounded-2xl p-8 text-center">
+      <img :src="meta.mascot" :alt="`${meta.name} mascot`" class="h-24 w-auto mx-auto mb-3 opacity-90 drop-shadow-lg">
+      <p class="text-sm text-white/50">Nothing scheduled right now — new fixtures appear here automatically.</p>
+    </div>
+    <div v-else class="card rounded-2xl divide-y divide-white/5">
       <div v-for="item in rows" :key="item.t + item.title" class="px-5 py-3.5 flex items-center gap-4 text-sm">
         <span class="text-[#f5b32b] font-bold w-14 text-xs">{{ item.t }}</span>
         <span class="text-lg">{{ item.e }}</span>
