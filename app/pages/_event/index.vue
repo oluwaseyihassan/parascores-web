@@ -19,6 +19,11 @@ onUnmounted(() => hub.stopLiveUpdates())
 
 const { meta, sports, schedule, medals, ticker, liveCards, isMock, pending } = hub
 
+// Skin: bespoke slot components (hero, afterMedals) + section toggles
+const skin = useEventSkin()
+const heroSlot = computed(() => skin.slotComponent('hero'))
+const afterMedalsSlot = computed(() => skin.slotComponent('afterMedals'))
+
 useSeoMeta({
   title: () => `${meta.value.name} — Live Results Hub | Powered by ParaScores`,
   description: () => `Live scores, results, schedules and medal table for ${meta.value.name}.`,
@@ -88,27 +93,33 @@ const openFixtureFromTournament = (fixture: EventHubFixture) => {
       @update:active-tab="switchTab"
     />
 
-    <EventHubHero :meta="meta" />
+    <!-- Skin hero slot replaces the default hero when the skin provides one -->
+    <component :is="heroSlot" v-if="heroSlot" :meta="meta" />
+    <EventHubHero v-else :meta="meta" />
 
-    <EventHubTicker :items="ticker" />
+    <EventHubTicker v-if="skin.isEnabled('ticker')" :items="ticker" />
 
     <main class="max-w-7xl mx-auto px-4 py-6 space-y-10">
       <!-- Overview tab -->
       <div v-if="activeTab === 'overview'" class="space-y-10">
         <EventHubLiveNow
+          v-if="skin.isEnabled('liveNow')"
           :cards="isMock ? null : liveCards"
           @open="(key) => openSport(sports.find(s => s.detail === key)!)"
           @open-fixture="(card) => (activeLiveCard = card)"
         />
 
-        <EventHubMedalTable :medals="medals" mode="preview" @view-all="switchTab('medals')" />
+        <EventHubMedalTable v-if="skin.isEnabled('medalTable')" :medals="medals" mode="preview" @view-all="switchTab('medals')" />
 
-        <section>
+        <!-- Skin bespoke block (e.g. WAUG host-city highlight) -->
+        <component :is="afterMedalsSlot" v-if="afterMedalsSlot" />
+
+        <section v-if="skin.isEnabled('sportsGrid')">
           <h2 class="text-xl font-black tracking-tight mb-3">All {{ sports.length }} Disciplines</h2>
           <EventHubSportsGrid :sports="sports" @open="openSport" />
         </section>
 
-        <EventHubSchedule :items="schedule" :limit="3" header @view-all="switchTab('schedule')" />
+        <EventHubSchedule v-if="skin.isEnabled('schedule')" :items="schedule" :limit="3" header @view-all="switchTab('schedule')" />
       </div>
 
       <!-- Medals tab -->
@@ -143,7 +154,7 @@ const openFixtureFromTournament = (fixture: EventHubFixture) => {
     <Transition name="fade">
       <div
         v-if="pending"
-        class="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full px-3 py-1.5 bg-[#0b1226]/90 border border-white/10"
+        class="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full px-3 py-1.5 bg-[var(--event-surface)]/90 border border-white/10"
       >
         <img :src="meta.mascotHead" alt="" class="h-5 w-auto animate-pulse">
         <span class="text-[10px] text-white/50 font-bold uppercase tracking-wider">Updating</span>

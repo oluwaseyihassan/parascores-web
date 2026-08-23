@@ -46,7 +46,7 @@ const statusColor = (s: string) => {
 }
 .card-hover:hover {
   background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(245, 179, 43, 0.4);
+  border-color: color-mix(in srgb, var(--event-accent) 40%, transparent);
   transform: translateY(-2px);
   cursor: pointer;
 }

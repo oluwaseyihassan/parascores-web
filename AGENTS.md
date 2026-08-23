@@ -36,6 +36,7 @@ Hostnames: `lvh.me` (marketing/public), `manage.lvh.me` (organizer dashboard, OR
 - `app/layouts/` — default, dashboard, admin, auth, widget, feed, explore
 - `app/engines/` — per-sport scoring engines behind the `SportEngine` contract (`types.ts`, `registry.ts` with `resolveEngine(sport)`); engines: football, basketball, tennis, tabletennis, volleyball (set-scoring via `_shared/SetScoringPanel.vue`), athletics/swimming (placement via `_shared/RaceControl.vue`); `_shared/` has common panels/composables; `creation` config drives engine-specific tournament creation options
 - `app/pages/_event/` + `app/components/event/` — event hub (subdomain live-results pages, e.g. waug26)
+- `app/skins/<slug>/` — per-event hub customization (colors/section toggles/slot components in `config.ts`, bespoke blocks in `slots/`); resolved by `useEventSkin` via `import.meta.glob`, fallback `default/`. Hub colors are CSS vars (`--event-*`) with defaults in `layouts/event.vue`; the match modal teleports to body so it binds skin vars onto its own panel.
 
 ## Conventions
 

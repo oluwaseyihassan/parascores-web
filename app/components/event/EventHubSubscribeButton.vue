@@ -22,7 +22,7 @@ const onClick = async () => {
     class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors border"
     :class="subscribed
       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-      : 'bg-[#f5b32b]/10 text-[#f5b32b] border-[#f5b32b]/40 hover:bg-[#f5b32b]/20'"
+      : 'bg-[var(--event-accent)]/10 text-[var(--event-accent)] border-[var(--event-accent)]/40 hover:bg-[var(--event-accent)]/20'"
     :disabled="loading"
     @click="onClick"
   >

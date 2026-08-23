@@ -24,7 +24,7 @@ const rows = computed(() => props.limit > 0 ? props.items.slice(0, props.limit) 
   <section>
     <div v-if="props.header" class="flex items-center justify-between mb-3">
       <h2 class="text-xl font-black tracking-tight">Coming Up Today</h2>
-      <button class="text-xs font-bold text-[#f5b32b] hover:underline" @click="emit('viewAll')">
+      <button class="text-xs font-bold text-[var(--event-accent)] hover:underline" @click="emit('viewAll')">
         Full day →
       </button>
     </div>
@@ -34,7 +34,7 @@ const rows = computed(() => props.limit > 0 ? props.items.slice(0, props.limit) 
     </div>
     <div v-else class="card rounded-2xl divide-y divide-white/5">
       <div v-for="item in rows" :key="item.t + item.title" class="px-5 py-3.5 flex items-center gap-4 text-sm">
-        <span class="text-[#f5b32b] font-bold w-14 text-xs">{{ item.t }}</span>
+        <span class="text-[var(--event-accent)] font-bold w-14 text-xs">{{ item.t }}</span>
         <span class="text-lg">{{ item.e }}</span>
         <div class="flex-1">
           <span class="font-bold">{{ item.title }}</span>

@@ -13,7 +13,7 @@ const items = computed(() => [...props.items, ...props.items])
 </script>
 
 <template>
-  <div class="bg-[#f5b32b] text-[#0a0f1e] overflow-hidden py-1.5 text-xs font-bold">
+  <div class="bg-[var(--event-accent)] text-[var(--event-on-accent)] overflow-hidden py-1.5 text-xs font-bold">
     <div class="marquee-track">
       <span v-for="(item, i) in items" :key="i" class="flex items-center whitespace-nowrap">
         <span class="mx-6">{{ item }}</span>

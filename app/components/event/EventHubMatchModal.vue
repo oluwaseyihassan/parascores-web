@@ -31,10 +31,13 @@ const emit = defineEmits<{
 }>()
 
 const { meta } = useEventHub()
+// Teleported to <body>: outside the layout root, so skin color overrides
+// must be bound onto the panel itself (defaults still come from :root).
+const skin = useEventSkin()
 
 // Faded mascot watermark behind the panel content (fixed while scrolling)
 const watermarkStyle = computed(() => ({
-  backgroundImage: `linear-gradient(rgba(13, 21, 48, 0.93), rgba(13, 21, 48, 0.93)), url('${meta.value.mascot}')`,
+  backgroundImage: `linear-gradient(color-mix(in srgb, var(--event-raised) 93%, transparent), color-mix(in srgb, var(--event-raised) 93%, transparent)), url('${meta.value.mascot}')`,
   backgroundRepeat: 'no-repeat',
   backgroundPosition: 'right 1rem center',
   backgroundSize: 'auto 75%',
@@ -125,8 +128,8 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
       class="fixed inset-0 z-50 modal-bg bg-black/70 flex items-center justify-center p-4"
       @click.self="close"
     >
-      <div class="modal-panel card rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-[#0d1530] border-white/15" :style="watermarkStyle">
-        <div class="px-5 py-3 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#0d1530] z-10">
+      <div class="modal-panel card rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-[var(--event-raised)] border-white/15" :style="[watermarkStyle, skin.cssVars.value]">
+        <div class="px-5 py-3 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[var(--event-raised)] z-10">
           <span class="text-xs font-extrabold tracking-wider uppercase text-white/60">{{ headerLabel }}</span>
           <button class="text-white/50 hover:text-white text-lg leading-none" @click="close">✕</button>
         </div>
@@ -159,7 +162,7 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
                     <template v-if="f.status === 'COMPLETED' || ['LIVE', 'EXTRATIME', 'NORMAL_TIME_ENDED'].includes(f.status)">
                       {{ f.homeScore ?? 0 }}–{{ f.awayScore ?? 0 }}
                     </template>
-                    <span v-else class="text-[#f5b32b] font-bold">{{ fixtureStatusText(f) }}</span>
+                    <span v-else class="text-[var(--event-accent)] font-bold">{{ fixtureStatusText(f) }}</span>
                   </span>
                   <span class="flex-1 font-bold truncate">{{ fixtureTeam(f.awayTeam, f.awayTeamPlaceholder).name }}</span>
                   <span
@@ -263,15 +266,15 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
                   class="row-alt"
                   :class="{ 'medal-gold': entry.rank === 1 }"
                 >
-                  <td class="py-2 font-bold" :class="entry.rank === 1 ? 'text-[#f5b32b]' : ''">
+                  <td class="py-2 font-bold" :class="entry.rank === 1 ? 'text-[var(--event-accent)]' : ''">
                     {{ entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank ?? '—' }}
                   </td>
                   <td class="py-2 text-white/60">{{ entry.lane ?? '—' }}</td>
                   <td class="py-2" :class="{ 'font-bold': entry.rank === 1 }">
                     {{ entry.participant?.customName ?? 'Unknown' }}
-                    <span v-if="entry.note" class="text-[10px] text-[#f5b32b] ml-1">{{ entry.note }}</span>
+                    <span v-if="entry.note" class="text-[10px] text-[var(--event-accent)] ml-1">{{ entry.note }}</span>
                   </td>
-                  <td class="py-2 text-right" :class="entry.rank === 1 ? 'font-extrabold text-[#f5b32b]' : ''">
+                  <td class="py-2 text-right" :class="entry.rank === 1 ? 'font-extrabold text-[var(--event-accent)]' : ''">
                     {{ entry.value ?? '—' }}
                   </td>
                 </tr>
@@ -286,7 +289,7 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
               :key="event.id"
               class="flex items-center gap-2 py-1.5 border-b border-white/5 last:border-0"
             >
-              <span class="text-[#f5b32b] font-bold w-10 text-right">{{ event.minute != null ? `${event.minute}'` : '—' }}</span>
+              <span class="text-[var(--event-accent)] font-bold w-10 text-right">{{ event.minute != null ? `${event.minute}'` : '—' }}</span>
               <span class="text-white/80">{{ eventText(event) }}</span>
             </div>
           </div>
@@ -331,7 +334,7 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
               :key="i"
               class="flex items-center gap-2 py-1.5 border-b border-white/5 last:border-0"
             >
-              <span class="text-[#f5b32b] font-bold w-10 text-right">{{ event.min }}</span>
+              <span class="text-[var(--event-accent)] font-bold w-10 text-right">{{ event.min }}</span>
               <span>{{ event.icon }}</span>
               <span class="text-white/80">{{ event.text }}</span>
             </div>
@@ -374,12 +377,12 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
             <tbody>
               <tr class="row-alt">
                 <td class="py-2 font-bold">{{ basketballMatch.home.name }}</td>
-                <td v-for="(q, i) in basketballMatch.quarters.home" :key="i" class="text-center" :class="{ 'text-[#f5b32b] font-bold': i === basketballMatch.quarters.home.length - 1 }">{{ q }}</td>
+                <td v-for="(q, i) in basketballMatch.quarters.home" :key="i" class="text-center" :class="{ 'text-[var(--event-accent)] font-bold': i === basketballMatch.quarters.home.length - 1 }">{{ q }}</td>
                 <td class="text-center font-extrabold">{{ basketballMatch.hs }}</td>
               </tr>
               <tr class="row-alt">
                 <td class="py-2 font-bold">{{ basketballMatch.away.name }}</td>
-                <td v-for="(q, i) in basketballMatch.quarters.away" :key="i" class="text-center" :class="{ 'text-[#f5b32b] font-bold': i === basketballMatch.quarters.away.length - 1 }">{{ q }}</td>
+                <td v-for="(q, i) in basketballMatch.quarters.away" :key="i" class="text-center" :class="{ 'text-[var(--event-accent)] font-bold': i === basketballMatch.quarters.away.length - 1 }">{{ q }}</td>
                 <td class="text-center font-extrabold">{{ basketballMatch.as }}</td>
               </tr>
             </tbody>
@@ -410,7 +413,7 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
                   <td class="py-2">{{ row.lane }}</td>
                   <td class="py-2" :class="{ 'font-bold': row.medal }">{{ row.athlete }}</td>
                   <td class="py-2 text-white/60">{{ row.uni }}</td>
-                  <td class="py-2 text-right" :class="row.medal === 'g' ? 'font-extrabold text-[#f5b32b]' : row.medal ? 'font-bold' : ''">
+                  <td class="py-2 text-right" :class="row.medal === 'g' ? 'font-extrabold text-[var(--event-accent)]' : row.medal ? 'font-bold' : ''">
                     {{ row.time }}
                   </td>
                 </tr>
@@ -445,12 +448,12 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
               :class="bout.winner ? 'card' : 'opacity-50'"
             >
               <span :class="{ 'font-bold': bout.winner }">{{ bout.name }}</span>
-              <span v-if="bout.winner" class="text-[#f5b32b] font-bold">{{ bout.result }}</span>
+              <span v-if="bout.winner" class="text-[var(--event-accent)] font-bold">{{ bout.result }}</span>
               <span v-else>{{ bout.result }}</span>
             </div>
-            <div class="rounded-lg px-3 py-2 flex justify-between border border-[#f5b32b]/40 bg-[#f5b32b]/10">
+            <div class="rounded-lg px-3 py-2 flex justify-between border border-[var(--event-accent)]/40 bg-[var(--event-accent)]/10">
               <span class="font-bold">{{ boxingBracket.final.label }}</span>
-              <span class="text-[#f5b32b] font-bold">{{ boxingBracket.final.when }}</span>
+              <span class="text-[var(--event-accent)] font-bold">{{ boxingBracket.final.when }}</span>
             </div>
           </div>
         </div>
@@ -481,7 +484,7 @@ const reversedFootballEvents = computed(() => footballMatch.events.slice().rever
   background: rgba(255, 255, 255, 0.025);
 }
 .medal-gold {
-  background: linear-gradient(90deg, rgba(245, 179, 43, 0.16), transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--event-accent) 16%, transparent), transparent);
 }
 .modal-bg {
   backdrop-filter: blur(6px);

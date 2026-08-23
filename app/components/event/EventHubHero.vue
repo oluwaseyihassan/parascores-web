@@ -34,7 +34,7 @@ onUnmounted(() => {
 
 <template>
   <div class="relative overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-r from-[#1e3a8a]/40 via-transparent to-[#f5b32b]/10 pointer-events-none" />
+    <div class="absolute inset-0 bg-gradient-to-r from-[var(--event-primary)]/40 via-transparent to-[var(--event-accent)]/10 pointer-events-none" />
     <div class="max-w-7xl mx-auto px-4 py-5 flex flex-wrap items-center gap-4 relative">
       <div class="min-w-0">
         <div class="text-sm font-extrabold">{{ props.meta.dates }} · {{ props.meta.venue }}</div>
@@ -42,19 +42,19 @@ onUnmounted(() => {
       </div>
       <div class="flex items-center gap-2 text-center sm:ml-auto">
         <div class="card rounded-lg px-3 py-1.5 min-w-[52px]">
-          <div class="text-lg font-black text-[#f5b32b] leading-none">{{ days }}</div>
+          <div class="text-lg font-black text-[var(--event-accent)] leading-none">{{ days }}</div>
           <div class="text-[8px] text-white/40 uppercase tracking-wider mt-0.5">days</div>
         </div>
         <div class="card rounded-lg px-3 py-1.5 min-w-[52px]">
-          <div class="text-lg font-black text-[#f5b32b] leading-none">{{ hours }}</div>
+          <div class="text-lg font-black text-[var(--event-accent)] leading-none">{{ hours }}</div>
           <div class="text-[8px] text-white/40 uppercase tracking-wider mt-0.5">hrs</div>
         </div>
         <div class="card rounded-lg px-3 py-1.5 min-w-[52px]">
-          <div class="text-lg font-black text-[#f5b32b] leading-none">{{ mins }}</div>
+          <div class="text-lg font-black text-[var(--event-accent)] leading-none">{{ mins }}</div>
           <div class="text-[8px] text-white/40 uppercase tracking-wider mt-0.5">min</div>
         </div>
         <div class="card rounded-lg px-3 py-1.5 min-w-[52px]">
-          <div class="text-lg font-black text-[#f5b32b] leading-none">{{ secs }}</div>
+          <div class="text-lg font-black text-[var(--event-accent)] leading-none">{{ secs }}</div>
           <div class="text-[8px] text-white/40 uppercase tracking-wider mt-0.5">sec</div>
         </div>
         <div class="text-[9px] text-white/40 ml-1 leading-tight text-left">
@@ -88,7 +88,7 @@ onUnmounted(() => {
 
 /* Soft brand-colored aura behind the figure */
 .mascot-aura {
-  background: radial-gradient(ellipse 60% 55% at 50% 45%, rgba(245, 179, 43, 0.16), rgba(30, 58, 138, 0.12) 55%, transparent 75%);
+  background: radial-gradient(ellipse 60% 55% at 50% 45%, color-mix(in srgb, var(--event-accent) 16%, transparent), color-mix(in srgb, var(--event-primary) 12%, transparent) 55%, transparent 75%);
 }
 
 /* Flame glow — positioned over the torch (upper-left of the figure) */

@@ -55,7 +55,7 @@ const fullRows = computed(() => expanded.value ? props.medals : props.medals.sli
           <img :src="meta.mascotHead" alt="" class="h-7 w-auto -my-1">
           🏅 Medal Table
         </h2>
-        <button v-if="props.medals.length" class="text-xs font-bold text-[#f5b32b] hover:underline" @click="emit('viewAll')">
+        <button v-if="props.medals.length" class="text-xs font-bold text-[var(--event-accent)] hover:underline" @click="emit('viewAll')">
           Full table →
         </button>
       </div>
@@ -78,7 +78,7 @@ const fullRows = computed(() => expanded.value ? props.medals : props.medals.sli
           <span class="text-xs text-white/50 w-20 text-center">🥇 {{ m.g }}</span>
           <span class="text-xs text-white/50 w-20 text-center">🥈 {{ m.s }}</span>
           <span class="text-xs text-white/50 w-20 text-center">🥉 {{ m.b }}</span>
-          <span class="w-12 text-right font-black" :class="{ 'text-[#f5b32b]': i === 0 }">{{ m.g + m.s + m.b }}</span>
+          <span class="w-12 text-right font-black" :class="{ 'text-[var(--event-accent)]': i === 0 }">{{ m.g + m.s + m.b }}</span>
         </div>
       </TransitionGroup>
     </template>
@@ -127,7 +127,7 @@ const fullRows = computed(() => expanded.value ? props.medals : props.medals.sli
               <td class="text-center px-4 py-3">{{ m.g }}</td>
               <td class="text-center px-4 py-3">{{ m.s }}</td>
               <td class="text-center px-4 py-3">{{ m.b }}</td>
-              <td class="text-center px-4 py-3 font-extrabold" :class="{ 'text-[#f5b32b]': i === 0 }">
+              <td class="text-center px-4 py-3 font-extrabold" :class="{ 'text-[var(--event-accent)]': i === 0 }">
                 {{ m.g + m.s + m.b }}
                 <img v-if="i === 0" :src="meta.mascotHead" title="Top of the table" alt="" class="inline-block h-5 w-auto ml-1.5 -my-1 align-middle">
               </td>
@@ -154,7 +154,7 @@ const fullRows = computed(() => expanded.value ? props.medals : props.medals.sli
   background: rgba(255, 255, 255, 0.025);
 }
 .medal-gold {
-  background: linear-gradient(90deg, rgba(245, 179, 43, 0.16), transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--event-accent) 16%, transparent), transparent);
 }
 
 /* Rows transition their background too (leader highlight glides, not snaps) */
@@ -187,7 +187,7 @@ const fullRows = computed(() => expanded.value ? props.medals : props.medals.sli
 
 /* Gold pulse on rows whose medal count just changed */
 @keyframes row-flash {
-  0% { background-color: rgba(245, 179, 43, 0.28); }
+  0% { background-color: color-mix(in srgb, var(--event-accent) 28%, transparent); }
   100% { background-color: transparent; }
 }
 .row-flash {

@@ -20,7 +20,7 @@ const tabs = [
 </script>
 
 <template>
-  <header class="sticky top-0 z-40 bg-[#0b1226]/90 backdrop-blur-md border-b border-white/10">
+  <header class="sticky top-0 z-40 bg-[var(--event-surface)]/90 backdrop-blur-md border-b border-white/10">
     <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
       <img :src="props.meta?.logo ?? hubMeta.logo" :alt="props.meta?.name ?? hubMeta.name" class="h-10 w-auto">
       <div>
@@ -78,7 +78,7 @@ const tabs = [
   border-bottom: 3px solid transparent;
 }
 .tab-active {
-  border-bottom-color: #f5b32b;
+  border-bottom-color: var(--event-accent);
   color: #fff !important;
 }
 </style>
