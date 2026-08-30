@@ -1101,119 +1101,111 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     />
 
     <!-- Create Discount Code Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div
-          v-if="showDiscountModal"
-          class="fixed inset-0 z-[100] flex items-center justify-center px-4"
-          @click.self="showDiscountModal = false"
-        >
-          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showDiscountModal = false" />
-
-          <div class="relative w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10">
-            <button
-              class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-500 dark:hover:bg-white/10"
-              @click="showDiscountModal = false"
-            >
-              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
-            </button>
-
-            <div class="flex items-center gap-3 mb-5">
-              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <UIcon name="i-heroicons-ticket" class="w-5 h-5 text-emerald-500" />
+    <UModal v-model:open="showDiscountModal">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                  <UIcon name="i-heroicons-ticket" class="w-5 h-5 text-emerald-500" />
+                </div>
+                <div class="min-w-0">
+                  <h3 class="text-lg font-bold text-gray-900 dark:text-white">New Discount Code</h3>
+                  <p class="text-xs text-gray-500 truncate">For {{ tournament.name }} · fee ₦{{ ((state.registrationFee ?? 0)).toLocaleString() }}</p>
+                </div>
               </div>
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">New Discount Code</h3>
-                <p class="text-xs text-gray-500">For {{ tournament.name }} · fee ₦{{ ((state.registrationFee ?? 0)).toLocaleString() }}</p>
-              </div>
+              <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" class="shrink-0" @click="showDiscountModal = false" />
             </div>
+          </template>
 
-            <div class="space-y-4">
-              <UFormField label="Code" required>
+          <div class="space-y-4">
+            <UFormField label="Code" required>
+              <UInput
+                v-model="discountForm.code"
+                placeholder="e.g. HOST26"
+                class="w-full uppercase"
+                maxlength="32"
+              />
+            </UFormField>
+
+            <UFormField label="Discount type" required>
+              <USelect
+                v-model="discountForm.type"
+                :items="[
+                  { label: 'Percent off', value: 'PERCENT' },
+                  { label: 'Fixed amount off (₦)', value: 'FIXED' },
+                  { label: 'Full waiver (free registration)', value: 'WAIVER' },
+                ]"
+                value-key="value"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField
+              v-if="discountForm.type === 'PERCENT'"
+              label="Percent off (1–100)"
+              required
+            >
+              <UInput
+                v-model.number="discountForm.value"
+                type="number"
+                min="1"
+                max="100"
+                placeholder="e.g. 25"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField
+              v-else-if="discountForm.type === 'FIXED'"
+              label="Amount off (₦)"
+              required
+            >
+              <UInput
+                v-model.number="discountForm.value"
+                type="number"
+                min="1"
+                placeholder="e.g. 2000"
+                class="w-full"
+              />
+            </UFormField>
+
+            <div class="grid grid-cols-2 gap-3">
+              <UFormField label="Max uses (optional)">
                 <UInput
-                  v-model="discountForm.code"
-                  placeholder="e.g. HOST26"
-                  class="w-full uppercase"
-                  maxlength="32"
-                />
-              </UFormField>
-
-              <UFormField label="Discount type" required>
-                <USelect
-                  v-model="discountForm.type"
-                  :items="[
-                    { label: 'Percent off', value: 'PERCENT' },
-                    { label: 'Fixed amount off (₦)', value: 'FIXED' },
-                    { label: 'Full waiver (free registration)', value: 'WAIVER' },
-                  ]"
-                  value-key="value"
-                  class="w-full"
-                />
-              </UFormField>
-
-              <UFormField
-                v-if="discountForm.type === 'PERCENT'"
-                label="Percent off (1–100)"
-                required
-              >
-                <UInput
-                  v-model.number="discountForm.value"
+                  v-model.number="discountForm.maxUses"
                   type="number"
                   min="1"
-                  max="100"
-                  placeholder="e.g. 25"
+                  placeholder="Unlimited"
                   class="w-full"
                 />
               </UFormField>
-
-              <UFormField
-                v-else-if="discountForm.type === 'FIXED'"
-                label="Amount off (₦)"
-                required
-              >
+              <UFormField label="Expires on (optional)">
                 <UInput
-                  v-model.number="discountForm.value"
-                  type="number"
-                  min="1"
-                  placeholder="e.g. 2000"
+                  v-model="discountForm.expiresAt"
+                  type="date"
                   class="w-full"
                 />
               </UFormField>
-
-              <div class="grid grid-cols-2 gap-3">
-                <UFormField label="Max uses (optional)">
-                  <UInput
-                    v-model.number="discountForm.maxUses"
-                    type="number"
-                    min="1"
-                    placeholder="Unlimited"
-                    class="w-full"
-                  />
-                </UFormField>
-                <UFormField label="Expires on (optional)">
-                  <UInput
-                    v-model="discountForm.expiresAt"
-                    type="date"
-                    class="w-full"
-                  />
-                </UFormField>
-              </div>
-
-              <div class="flex justify-end gap-2 pt-1">
-                <UButton variant="ghost" color="neutral" label="Cancel" @click="showDiscountModal = false" />
-                <UButton
-                  color="primary"
-                  icon="i-heroicons-check"
-                  label="Create Code"
-                  :loading="savingDiscount"
-                  :disabled="!discountForm.code.trim() || (discountForm.type !== 'WAIVER' && !discountForm.value)"
-                  @click="handleCreateDiscount"
-                />
-              </div>
             </div>
           </div>
-        </div>
-      </Transition>
-    </Teleport>
+
+          <template #footer>
+            <div class="flex justify-end gap-2">
+              <UButton variant="ghost" color="neutral" label="Cancel" @click="showDiscountModal = false" />
+              <UButton
+                color="primary"
+                icon="i-heroicons-check"
+                label="Create Code"
+                :loading="savingDiscount"
+                :disabled="!discountForm.code.trim() || (discountForm.type !== 'WAIVER' && !discountForm.value)"
+                @click="handleCreateDiscount"
+              />
+            </div>
+          </template>
+        </UCard>
+      </template>
+    </UModal>
   </div>
 </template>

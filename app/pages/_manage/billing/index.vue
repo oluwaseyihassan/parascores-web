@@ -954,208 +954,192 @@ const statusColor = computed(() => {
     </div>
 
     <!-- Record Offline Payment Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div
-          v-if="showOfflineModal"
-          class="fixed inset-0 z-[100] flex items-center justify-center px-4"
-          @click.self="showOfflineModal = false"
-        >
-          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showOfflineModal = false" />
-
-          <div class="relative w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10">
-            <button
-              class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-500 dark:hover:bg-white/10"
-              @click="showOfflineModal = false"
-            >
-              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
-            </button>
-
-            <div class="flex items-center gap-3 mb-5">
-              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <UIcon name="i-heroicons-banknotes" class="w-5 h-5 text-emerald-500" />
+    <UModal v-model:open="showOfflineModal">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                  <UIcon name="i-heroicons-banknotes" class="w-5 h-5 text-emerald-500" />
+                </div>
+                <div class="min-w-0">
+                  <h3 class="text-lg font-bold text-gray-900 dark:text-white">Record Offline Payment</h3>
+                  <p class="text-xs text-gray-500">Log a registration fee collected by cash or bank transfer.</p>
+                </div>
               </div>
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Record Offline Payment</h3>
-                <p class="text-xs text-gray-500">Log a registration fee collected by cash or bank transfer.</p>
-              </div>
+              <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" class="shrink-0" @click="showOfflineModal = false" />
             </div>
+          </template>
 
-            <div v-if="offlineTournamentOptions.length === 0" class="py-4 text-center">
-              <p class="text-sm text-gray-500">No tournaments with paid registration found.</p>
-              <p class="text-xs text-gray-400 mt-1">Enable paid registration on a tournament first.</p>
-            </div>
-
-            <div v-else class="space-y-4">
-              <UFormField label="Tournament" required>
-                <USelect
-                  v-model="offlineForm.tournamentId"
-                  :items="offlineTournamentOptions"
-                  value-key="value"
-                  placeholder="Select tournament"
-                  class="w-full"
-                />
-              </UFormField>
-
-              <UFormField label="Link participant (optional)">
-                <USelect
-                  v-model="offlineForm.participantId"
-                  :items="offlineParticipantOptions"
-                  value-key="value"
-                  :loading="loadingOfflineParticipants"
-                  :disabled="!offlineForm.tournamentId"
-                  placeholder="Walk-in / not linked"
-                  class="w-full"
-                />
-              </UFormField>
-
-              <UFormField v-if="!offlineForm.participantId" label="Payer name (optional)">
-                <UInput
-                  v-model="offlineForm.payerName"
-                  placeholder="e.g. University of Lagos"
-                  class="w-full"
-                />
-              </UFormField>
-
-              <div class="grid grid-cols-2 gap-3">
-                <UFormField label="Amount (₦)">
-                  <UInput
-                    v-model.number="offlineForm.amount"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    :placeholder="offlineSelectedTournament ? String((offlineSelectedTournament.registrationFee ?? 0) / 100) : '0.00'"
-                    class="w-full"
-                  />
-                  <template #hint>
-                    <span v-if="offlineSelectedTournament">
-                      Defaults to the fee: ₦{{ ((offlineSelectedTournament.registrationFee ?? 0) / 100).toLocaleString() }}
-                    </span>
-                  </template>
-                </UFormField>
-
-                <UFormField label="Method" required>
-                  <USelect
-                    v-model="offlineForm.method"
-                    :items="[
-                      { label: 'Cash', value: 'CASH' },
-                      { label: 'Bank Transfer', value: 'BANK_TRANSFER' },
-                      { label: 'Other', value: 'OTHER' },
-                    ]"
-                    value-key="value"
-                    class="w-full"
-                  />
-                </UFormField>
-              </div>
-
-              <UFormField label="Note (optional)">
-                <UInput
-                  v-model="offlineForm.note"
-                  placeholder="e.g. Receipt #0012"
-                  class="w-full"
-                />
-              </UFormField>
-
-              <div class="flex justify-end gap-2 pt-1">
-                <UButton variant="ghost" color="neutral" label="Cancel" @click="showOfflineModal = false" />
-                <UButton
-                  color="primary"
-                  icon="i-heroicons-check"
-                  label="Record Payment"
-                  :loading="recordingOffline"
-                  :disabled="!offlineForm.tournamentId"
-                  @click="handleRecordOffline"
-                />
-              </div>
-            </div>
+          <div v-if="offlineTournamentOptions.length === 0" class="py-4 text-center">
+            <p class="text-sm text-gray-500">No tournaments with paid registration found.</p>
+            <p class="text-xs text-gray-400 mt-1">Enable paid registration on a tournament first.</p>
           </div>
-        </div>
-      </Transition>
-    </Teleport>
 
-    <!-- Refund Payment Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div
-          v-if="showRefundModal && refundTarget"
-          class="fixed inset-0 z-[100] flex items-center justify-center px-4"
-          @click.self="showRefundModal = false"
-        >
-          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showRefundModal = false" />
-
-          <div class="relative w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10">
-            <button
-              class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-500 dark:hover:bg-white/10"
-              @click="showRefundModal = false"
-            >
-              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
-            </button>
-
-            <div class="flex items-center gap-3 mb-5">
-              <div class="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-                <UIcon name="i-heroicons-arrow-uturn-left" class="w-5 h-5 text-red-500" />
-              </div>
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Refund Payment</h3>
-                <p class="text-xs text-gray-500">{{ paymentLabel(refundTarget) }} · ₦{{ (refundTarget.amount / 100).toLocaleString() }}</p>
-              </div>
-            </div>
-
-            <div class="mb-4 p-3 rounded-xl flex items-start gap-2.5 text-xs bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 text-gray-600 dark:text-gray-300">
-              <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-              <div>
-                <template v-if="refundTarget.type === 'OFFLINE_REGISTRATION'">
-                  This only marks the payment as refunded — return the money to the payer directly (cash/transfer).
-                </template>
-                <template v-else-if="refundManual">
-                  The payment is marked as refunded, but <span class="font-bold">you</span> return ₦{{ (refundTarget.amount / 100).toLocaleString() }} to the payer yourself (bank transfer/cash). Use this if the automatic refund fails because your unsettled payout balance is too low.
-                </template>
-                <template v-else>
-                  The full ₦{{ (refundTarget.amount / 100).toLocaleString() }} will be refunded to the payer via Paystack (3–10 business days). Paystack deducts refunds from your unsettled payout first.
-                </template>
-                This does <span class="font-bold">not</span> remove the team from the tournament — withdraw them separately if needed.
-              </div>
-            </div>
-
-            <!-- Refund method (online payments only) -->
-            <div v-if="isOnlinePayment(refundTarget)" class="mb-4 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                :class="[
-                  'p-3 rounded-xl border text-left transition-all',
-                  !refundManual
-                    ? 'border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500'
-                    : 'border-gray-200 dark:border-white/10 hover:border-emerald-500/40'
-                ]"
-                @click="refundManual = false"
-              >
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">Automatic refund</p>
-                <p class="text-[11px] text-gray-500 mt-0.5">Paystack returns the money to the payer's card/bank account.</p>
-              </button>
-              <button
-                type="button"
-                :class="[
-                  'p-3 rounded-xl border text-left transition-all',
-                  refundManual
-                    ? 'border-amber-500 bg-amber-500/5 ring-1 ring-amber-500'
-                    : 'border-gray-200 dark:border-white/10 hover:border-amber-500/40'
-                ]"
-                @click="refundManual = true"
-              >
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">Manual refund</p>
-                <p class="text-[11px] text-gray-500 mt-0.5">You return the money yourself; we just record it.</p>
-              </button>
-            </div>
-
-            <UFormField label="Reason (optional)">
-              <UInput
-                v-model="refundReason"
-                placeholder="e.g. Team withdrew before the draw"
+          <div v-else class="space-y-4">
+            <UFormField label="Tournament" required>
+              <USelect
+                v-model="offlineForm.tournamentId"
+                :items="offlineTournamentOptions"
+                value-key="value"
+                placeholder="Select tournament"
                 class="w-full"
               />
             </UFormField>
 
-            <div class="flex justify-end gap-2 pt-4">
+            <UFormField label="Link participant (optional)">
+              <USelect
+                v-model="offlineForm.participantId"
+                :items="offlineParticipantOptions"
+                value-key="value"
+                :loading="loadingOfflineParticipants"
+                :disabled="!offlineForm.tournamentId"
+                placeholder="Walk-in / not linked"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField v-if="!offlineForm.participantId" label="Payer name (optional)">
+              <UInput
+                v-model="offlineForm.payerName"
+                placeholder="e.g. University of Lagos"
+                class="w-full"
+              />
+            </UFormField>
+
+            <div class="grid grid-cols-2 gap-3">
+              <UFormField label="Amount (₦)">
+                <UInput
+                  v-model.number="offlineForm.amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  :placeholder="offlineSelectedTournament ? String((offlineSelectedTournament.registrationFee ?? 0) / 100) : '0.00'"
+                  class="w-full"
+                />
+                <template #hint>
+                  <span v-if="offlineSelectedTournament">
+                    Defaults to the fee: ₦{{ ((offlineSelectedTournament.registrationFee ?? 0) / 100).toLocaleString() }}
+                  </span>
+                </template>
+              </UFormField>
+
+              <UFormField label="Method" required>
+                <USelect
+                  v-model="offlineForm.method"
+                  :items="[
+                    { label: 'Cash', value: 'CASH' },
+                    { label: 'Bank Transfer', value: 'BANK_TRANSFER' },
+                    { label: 'Other', value: 'OTHER' },
+                  ]"
+                  value-key="value"
+                  class="w-full"
+                />
+              </UFormField>
+            </div>
+
+            <UFormField label="Note (optional)">
+              <UInput
+                v-model="offlineForm.note"
+                placeholder="e.g. Receipt #0012"
+                class="w-full"
+              />
+            </UFormField>
+          </div>
+
+          <template #footer>
+            <div class="flex justify-end gap-2">
+              <UButton variant="ghost" color="neutral" label="Cancel" @click="showOfflineModal = false" />
+              <UButton
+                color="primary"
+                icon="i-heroicons-check"
+                label="Record Payment"
+                :loading="recordingOffline"
+                :disabled="!offlineForm.tournamentId"
+                @click="handleRecordOffline"
+              />
+            </div>
+          </template>
+        </UCard>
+      </template>
+    </UModal>
+
+    <!-- Refund Payment Modal -->
+    <UModal v-model:open="showRefundModal">
+      <template #content>
+        <UCard v-if="refundTarget">
+          <template #header>
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                  <UIcon name="i-heroicons-arrow-uturn-left" class="w-5 h-5 text-red-500" />
+                </div>
+                <div class="min-w-0">
+                  <h3 class="text-lg font-bold text-gray-900 dark:text-white">Refund Payment</h3>
+                  <p class="text-xs text-gray-500 truncate">{{ paymentLabel(refundTarget) }} · ₦{{ (refundTarget.amount / 100).toLocaleString() }}</p>
+                </div>
+              </div>
+              <UButton icon="i-heroicons-x-mark" variant="ghost" color="neutral" size="sm" class="shrink-0" @click="showRefundModal = false" />
+            </div>
+          </template>
+
+          <div class="mb-4 p-3 rounded-xl flex items-start gap-2.5 text-xs bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 text-gray-600 dark:text-gray-300">
+            <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <template v-if="refundTarget.type === 'OFFLINE_REGISTRATION'">
+                This only marks the payment as refunded — return the money to the payer directly (cash/transfer).
+              </template>
+              <template v-else-if="refundManual">
+                The payment is marked as refunded, but <span class="font-bold">you</span> return ₦{{ (refundTarget.amount / 100).toLocaleString() }} to the payer yourself (bank transfer/cash). Use this if the automatic refund fails because your unsettled payout balance is too low.
+              </template>
+              <template v-else>
+                The full ₦{{ (refundTarget.amount / 100).toLocaleString() }} will be refunded to the payer via Paystack (3–10 business days). Paystack deducts refunds from your unsettled payout first.
+              </template>
+              This does <span class="font-bold">not</span> remove the team from the tournament — withdraw them separately if needed.
+            </div>
+          </div>
+
+          <!-- Refund method (online payments only) -->
+          <div v-if="isOnlinePayment(refundTarget)" class="mb-4 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              :class="[
+                'p-3 rounded-xl border text-left transition-all',
+                !refundManual
+                  ? 'border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500'
+                  : 'border-gray-200 dark:border-white/10 hover:border-emerald-500/40'
+              ]"
+              @click="refundManual = false"
+            >
+              <p class="text-sm font-semibold text-gray-900 dark:text-white">Automatic refund</p>
+              <p class="text-[11px] text-gray-500 mt-0.5">Paystack returns the money to the payer's card/bank account.</p>
+            </button>
+            <button
+              type="button"
+              :class="[
+                'p-3 rounded-xl border text-left transition-all',
+                refundManual
+                  ? 'border-amber-500 bg-amber-500/5 ring-1 ring-amber-500'
+                  : 'border-gray-200 dark:border-white/10 hover:border-amber-500/40'
+              ]"
+              @click="refundManual = true"
+            >
+              <p class="text-sm font-semibold text-gray-900 dark:text-white">Manual refund</p>
+              <p class="text-[11px] text-gray-500 mt-0.5">You return the money yourself; we just record it.</p>
+            </button>
+          </div>
+
+          <UFormField label="Reason (optional)">
+            <UInput
+              v-model="refundReason"
+              placeholder="e.g. Team withdrew before the draw"
+              class="w-full"
+            />
+          </UFormField>
+
+          <template #footer>
+            <div class="flex justify-end gap-2">
               <UButton variant="ghost" color="neutral" label="Cancel" @click="showRefundModal = false" />
               <UButton
                 color="error"
@@ -1165,10 +1149,10 @@ const statusColor = computed(() => {
                 @click="handleRefund"
               />
             </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+          </template>
+        </UCard>
+      </template>
+    </UModal>
 
     <!-- Tournament Selector Modal -->
     <Teleport to="body">
