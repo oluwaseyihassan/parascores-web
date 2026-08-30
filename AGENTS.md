@@ -55,3 +55,4 @@ Hostnames: `lvh.me` (marketing/public), `manage.lvh.me` (organizer dashboard, OR
 ## Ongoing work
 
 - WAUG26 event subdomain — see `docs/waug26-plan.md`
+- Platform roles & permissions reference (both repos) — see `docs/platform-roles.md`; update it when any role check changes

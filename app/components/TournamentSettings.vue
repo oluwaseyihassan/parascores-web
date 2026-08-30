@@ -4,7 +4,7 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 import { TournamentType, ParticipantType, Visibility, type Tournament } from '~/types'
 import { resolveEngine, listEngines } from '~/engines/registry'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
-import type { PayoutAccountStatus } from '~/stores/payment'
+import type { PayoutAccountStatus, DiscountCode } from '~/stores/payment'
 
 const props = defineProps<{
   tournament: Tournament
@@ -33,7 +33,101 @@ onMounted(async () => {
   } catch {
     // Silent fail — warning banner stays hidden
   }
+  if (props.tournament.isPaidRegistration) {
+    loadDiscountCodes()
+  }
 })
+
+// ─── Discount & waiver codes ─────────────────────────────
+const toast = useToast()
+const discountCodes = ref<DiscountCode[]>([])
+const loadingDiscountCodes = ref(false)
+const showDiscountModal = ref(false)
+const savingDiscount = ref(false)
+const deletingDiscountId = ref<string | null>(null)
+const discountForm = reactive({
+  code: '',
+  type: 'PERCENT' as 'PERCENT' | 'FIXED' | 'WAIVER',
+  value: null as number | null,
+  maxUses: null as number | null,
+  expiresAt: '',
+})
+
+async function loadDiscountCodes() {
+  loadingDiscountCodes.value = true
+  try {
+    discountCodes.value = await paymentStore.fetchDiscountCodes(props.tournament.id)
+  } catch {
+    // Silent fail — section shows as empty
+  } finally {
+    loadingDiscountCodes.value = false
+  }
+}
+
+function discountLabel(c: DiscountCode) {
+  if (c.type === 'WAIVER') return 'Free registration'
+  if (c.type === 'PERCENT') return `${c.value}% off`
+  return `₦${(c.value / 100).toLocaleString()} off`
+}
+
+function openDiscountModal() {
+  Object.assign(discountForm, {
+    code: '',
+    type: 'PERCENT',
+    value: null,
+    maxUses: null,
+    expiresAt: '',
+  })
+  showDiscountModal.value = true
+}
+
+async function handleCreateDiscount() {
+  if (!discountForm.code.trim()) return
+  savingDiscount.value = true
+  try {
+    await paymentStore.createDiscountCode(props.tournament.id, {
+      code: discountForm.code.trim(),
+      type: discountForm.type,
+      value:
+        discountForm.type === 'WAIVER'
+          ? undefined
+          : discountForm.type === 'FIXED'
+            ? Math.round((discountForm.value ?? 0) * 100)
+            : (discountForm.value ?? undefined),
+      maxUses: discountForm.maxUses ?? undefined,
+      expiresAt: discountForm.expiresAt || undefined,
+    })
+    showDiscountModal.value = false
+    toast.add({ title: 'Discount Code Created', color: 'success' })
+    await loadDiscountCodes()
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to Create Code' })
+  } finally {
+    savingDiscount.value = false
+  }
+}
+
+async function toggleDiscountActive(c: DiscountCode) {
+  try {
+    await paymentStore.updateDiscountCode(c.id, { isActive: !c.isActive })
+    await loadDiscountCodes()
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to Update Code' })
+  }
+}
+
+async function handleDeleteDiscount(c: DiscountCode) {
+  deletingDiscountId.value = c.id
+  try {
+    await paymentStore.deleteDiscountCode(c.id)
+    toast.add({ title: 'Discount Code Deleted', color: 'success' })
+    await loadDiscountCodes()
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to Delete Code' })
+  } finally {
+    deletingDiscountId.value = null
+  }
+}
 
 // Logo upload state
 const logoFileInput = ref<HTMLInputElement | null>(null)
@@ -926,6 +1020,62 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               />
             </UFormField>
           </div>
+
+          <!-- Discount & Waiver Codes -->
+          <div v-if="state.isPaidRegistration" class="p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-3">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex-1 pr-3">
+                <p class="font-medium text-sm text-gray-900 dark:text-white">Discount & Waiver Codes</p>
+                <p class="text-[11px] sm:text-sm text-gray-500">Give selected teams a discount or free registration. Teams enter the code on the join page.</p>
+              </div>
+              <UButton
+                size="xs"
+                icon="i-heroicons-plus"
+                label="New Code"
+                color="primary"
+                @click="openDiscountModal"
+              />
+            </div>
+
+            <div v-if="loadingDiscountCodes" class="flex items-center gap-2 py-2 text-xs text-gray-400">
+              <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
+              Loading codes...
+            </div>
+            <p v-else-if="discountCodes.length === 0" class="text-xs text-gray-400 py-1">No codes yet.</p>
+            <div v-else class="divide-y divide-gray-100 dark:divide-white/[0.06]">
+              <div
+                v-for="c in discountCodes"
+                :key="c.id"
+                class="py-2.5 flex items-center justify-between gap-3"
+              >
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono font-bold text-sm text-gray-900 dark:text-white">{{ c.code }}</span>
+                    <UBadge color="primary" variant="subtle" size="xs">{{ discountLabel(c) }}</UBadge>
+                  </div>
+                  <p class="text-[11px] text-gray-400 mt-0.5">
+                    Used {{ c.usedCount }}{{ c.maxUses ? ` / ${c.maxUses}` : '' }}
+                    <template v-if="c.expiresAt">· expires {{ new Date(c.expiresAt).toLocaleDateString() }}</template>
+                  </p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <USwitch
+                    :model-value="c.isActive"
+                    size="sm"
+                    @update:model-value="toggleDiscountActive(c)"
+                  />
+                  <UButton
+                    size="xs"
+                    variant="ghost"
+                    color="error"
+                    icon="i-heroicons-trash"
+                    :loading="deletingDiscountId === c.id"
+                    @click="handleDeleteDiscount(c)"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </UCard>
 
@@ -949,5 +1099,121 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       :org-id="tournament.organization_id"
       @saved="onPayoutSaved"
     />
+
+    <!-- Create Discount Code Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showDiscountModal"
+          class="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          @click.self="showDiscountModal = false"
+        >
+          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showDiscountModal = false" />
+
+          <div class="relative w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10">
+            <button
+              class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-500 dark:hover:bg-white/10"
+              @click="showDiscountModal = false"
+            >
+              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+            </button>
+
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <UIcon name="i-heroicons-ticket" class="w-5 h-5 text-emerald-500" />
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">New Discount Code</h3>
+                <p class="text-xs text-gray-500">For {{ tournament.name }} · fee ₦{{ ((state.registrationFee ?? 0)).toLocaleString() }}</p>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <UFormField label="Code" required>
+                <UInput
+                  v-model="discountForm.code"
+                  placeholder="e.g. HOST26"
+                  class="w-full uppercase"
+                  maxlength="32"
+                />
+              </UFormField>
+
+              <UFormField label="Discount type" required>
+                <USelect
+                  v-model="discountForm.type"
+                  :items="[
+                    { label: 'Percent off', value: 'PERCENT' },
+                    { label: 'Fixed amount off (₦)', value: 'FIXED' },
+                    { label: 'Full waiver (free registration)', value: 'WAIVER' },
+                  ]"
+                  value-key="value"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField
+                v-if="discountForm.type === 'PERCENT'"
+                label="Percent off (1–100)"
+                required
+              >
+                <UInput
+                  v-model.number="discountForm.value"
+                  type="number"
+                  min="1"
+                  max="100"
+                  placeholder="e.g. 25"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField
+                v-else-if="discountForm.type === 'FIXED'"
+                label="Amount off (₦)"
+                required
+              >
+                <UInput
+                  v-model.number="discountForm.value"
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 2000"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <div class="grid grid-cols-2 gap-3">
+                <UFormField label="Max uses (optional)">
+                  <UInput
+                    v-model.number="discountForm.maxUses"
+                    type="number"
+                    min="1"
+                    placeholder="Unlimited"
+                    class="w-full"
+                  />
+                </UFormField>
+                <UFormField label="Expires on (optional)">
+                  <UInput
+                    v-model="discountForm.expiresAt"
+                    type="date"
+                    class="w-full"
+                  />
+                </UFormField>
+              </div>
+
+              <div class="flex justify-end gap-2 pt-1">
+                <UButton variant="ghost" color="neutral" label="Cancel" @click="showDiscountModal = false" />
+                <UButton
+                  color="primary"
+                  icon="i-heroicons-check"
+                  label="Create Code"
+                  :loading="savingDiscount"
+                  :disabled="!discountForm.code.trim() || (discountForm.type !== 'WAIVER' && !discountForm.value)"
+                  @click="handleCreateDiscount"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
+import type { ApiResponse } from '~/stores/auth'
 import type { PaymentRecord, PayoutAccountStatus, PayoutSummary } from '~/stores/payment'
 
 definePageMeta({
@@ -66,8 +67,12 @@ function onPayoutSaved(status: PayoutAccountStatus | null) {
 }
 
 function paymentLabel(payment: PaymentRecord) {
+  if (payment.type === 'OFFLINE_REGISTRATION') {
+    return payment.teamName ? `Offline · ${payment.teamName}` : 'Offline Registration'
+  }
   if (payment.type === 'TOURNAMENT_REGISTRATION') {
-    return payment.teamName ? `Registration · ${payment.teamName}` : 'Registration'
+    const base = payment.teamName ? `Registration · ${payment.teamName}` : 'Registration'
+    return payment.metadata?.waived ? `${base} (waived)` : base
   }
   return payment.plan === 'PER_TOURNAMENT' ? 'Tournament Upgrade' : payment.plan === 'PRO' ? 'Pro Plan' : payment.plan || 'Payment'
 }
@@ -301,6 +306,183 @@ function formatDate(dateStr: string | null | undefined) {
   })
 }
 
+// ─── Offline payments, exports & refunds ─────────────────
+
+const isOwner = computed(() => {
+  const orgId = authStore.currentOrganization?.id
+  const membership = authStore.organizations.find((m) => m.organizationId === orgId)
+  return membership?.role === 'OWNER'
+})
+
+function statusBadgeColor(status: string) {
+  switch (status) {
+    case 'SUCCESS': return 'success' as const
+    case 'PENDING': return 'warning' as const
+    case 'REFUNDED': return 'neutral' as const
+    default: return 'error' as const
+  }
+}
+
+// Offline payment recording
+const showOfflineModal = ref(false)
+const recordingOffline = ref(false)
+const offlineForm = reactive({
+  tournamentId: '',
+  participantId: '',
+  payerName: '',
+  amount: null as number | null,
+  method: 'CASH' as 'CASH' | 'BANK_TRANSFER' | 'OTHER',
+  note: '',
+})
+const offlineParticipants = ref<any[]>([])
+const loadingOfflineParticipants = ref(false)
+
+const offlineTournamentOptions = computed(() =>
+  tournaments.value
+    .filter((t) => t.isPaidRegistration)
+    .map((t) => ({ label: t.name, value: t.id }))
+)
+
+const offlineSelectedTournament = computed(() =>
+  tournaments.value.find((t) => t.id === offlineForm.tournamentId)
+)
+
+const offlineParticipantOptions = computed(() =>
+  offlineParticipants.value.map((p) => ({
+    label: p.customName || p.team?.name || p.user?.name || 'Unnamed participant',
+    value: p.id,
+  }))
+)
+
+watch(() => offlineForm.tournamentId, async (id) => {
+  offlineForm.participantId = ''
+  offlineParticipants.value = []
+  if (!id) return
+  loadingOfflineParticipants.value = true
+  try {
+    const res = await $api<ApiResponse<any[]>>(`/participants/tournaments/${id}`, { method: 'GET' })
+    offlineParticipants.value = res.data || []
+  } catch {
+    // Participant linking is optional — leave the list empty
+  } finally {
+    loadingOfflineParticipants.value = false
+  }
+})
+
+function openOfflineModal() {
+  Object.assign(offlineForm, {
+    tournamentId: '',
+    participantId: '',
+    payerName: '',
+    amount: null,
+    method: 'CASH',
+    note: '',
+  })
+  showOfflineModal.value = true
+}
+
+async function handleRecordOffline() {
+  if (!offlineForm.tournamentId) return
+  recordingOffline.value = true
+  try {
+    await paymentStore.recordOfflinePayment({
+      tournamentId: offlineForm.tournamentId,
+      participantId: offlineForm.participantId || undefined,
+      payerName: offlineForm.payerName || undefined,
+      amount: offlineForm.amount != null && offlineForm.amount > 0
+        ? Math.round(offlineForm.amount * 100)
+        : undefined,
+      method: offlineForm.method,
+      note: offlineForm.note || undefined,
+    })
+    showOfflineModal.value = false
+    toast.add({ title: 'Offline Payment Recorded', color: 'success' })
+    const orgId = authStore.currentOrganization?.id
+    if (orgId) {
+      paymentStore.fetchPaymentHistory(orgId).catch(() => {})
+      loadPayoutAccount(orgId)
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to Record Payment' })
+  } finally {
+    recordingOffline.value = false
+  }
+}
+
+// CSV settlement export
+const exportTournamentId = ref('')
+const exporting = ref(false)
+
+const exportTournamentOptions = computed(() => [
+  { label: 'All tournaments', value: '' },
+  ...tournaments.value.map((t) => ({ label: t.name, value: t.id })),
+])
+
+async function handleExport() {
+  const orgId = authStore.currentOrganization?.id
+  if (!orgId) return
+  exporting.value = true
+  try {
+    await paymentStore.exportPaymentsCsv(orgId, exportTournamentId.value || undefined)
+  } catch (err: any) {
+    handleError(err, { title: 'Export Failed' })
+  } finally {
+    exporting.value = false
+  }
+}
+
+// Refunds
+const showRefundModal = ref(false)
+const refundTarget = ref<PaymentRecord | null>(null)
+const refundReason = ref('')
+const refundManual = ref(false)
+const refunding = ref(false)
+
+function canRefund(p: PaymentRecord) {
+  return isOwner.value
+    && p.status === 'SUCCESS'
+    && ['TOURNAMENT_REGISTRATION', 'OFFLINE_REGISTRATION'].includes(p.type || '')
+    && p.amount > 0
+}
+
+function isOnlinePayment(p: PaymentRecord) {
+  return p.type === 'TOURNAMENT_REGISTRATION' && !p.metadata?.waived
+}
+
+function openRefund(p: PaymentRecord) {
+  refundTarget.value = p
+  refundReason.value = ''
+  refundManual.value = false
+  showRefundModal.value = true
+}
+
+async function handleRefund() {
+  if (!refundTarget.value) return
+  refunding.value = true
+  try {
+    const res = await paymentStore.refundPayment(
+      refundTarget.value.id,
+      refundReason.value || undefined,
+      refundManual.value || undefined
+    )
+    showRefundModal.value = false
+    toast.add({
+      title: 'Refund Processed',
+      description: res.message,
+      color: 'success',
+    })
+    const orgId = authStore.currentOrganization?.id
+    if (orgId) {
+      paymentStore.fetchPaymentHistory(orgId).catch(() => {})
+      loadPayoutAccount(orgId)
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Refund Failed' })
+  } finally {
+    refunding.value = false
+  }
+}
+
 const statusColor = computed(() => {
   switch (subscription.value?.status) {
     case 'ACTIVE': return 'success'
@@ -400,8 +582,22 @@ const statusColor = computed(() => {
               <span class="text-xs font-normal text-gray-400">of ₦{{ (payoutSummary.totalGross / 100).toLocaleString() }}</span>
             </span>
           </div>
+          <div v-if="payoutSummary.offlineCount > 0" class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-white/[0.06] flex items-center gap-1.5">
+            <UIcon name="i-heroicons-banknotes" class="w-3.5 h-3.5" />
+            <span>
+              Includes <span class="font-semibold text-gray-900 dark:text-white">₦{{ (payoutSummary.offlineGross / 100).toLocaleString() }}</span>
+              collected offline ({{ payoutSummary.offlineCount }} payment{{ payoutSummary.offlineCount === 1 ? '' : 's' }}) — no commission on offline income.
+            </span>
+          </div>
+          <div v-if="payoutSummary.refundCount > 0" class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-white/[0.06] flex items-center gap-1.5">
+            <UIcon name="i-heroicons-arrow-uturn-left" class="w-3.5 h-3.5" />
+            <span>
+              <span class="font-semibold text-gray-900 dark:text-white">₦{{ (payoutSummary.refundedAmount / 100).toLocaleString() }}</span>
+              refunded across {{ payoutSummary.refundCount }} payment{{ payoutSummary.refundCount === 1 ? '' : 's' }} (excluded from totals).
+            </span>
+          </div>
           <p class="px-4 py-2 text-[10px] text-gray-400 border-t border-gray-100 dark:border-white/[0.06]">
-            Estimates after {{ payoutSummary.commissionPercent }}% commission, before Paystack fees. Settlements arrive the next business day.
+            Estimates after {{ payoutSummary.commissionPercent }}% commission on online payments, before Paystack fees. Settlements arrive the next business day.
           </p>
         </div>
 
@@ -586,8 +782,34 @@ const statusColor = computed(() => {
 
     <!-- Payment History -->
     <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
-      <div class="px-6 py-4 border-b border-gray-100 dark:border-white/[0.06]">
+      <div class="px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
         <h3 class="text-sm font-bold text-gray-500">Billing History</h3>
+        <div class="flex flex-wrap items-center gap-2">
+          <USelect
+            v-model="exportTournamentId"
+            :items="exportTournamentOptions"
+            value-key="value"
+            size="xs"
+            class="w-40"
+          />
+          <UButton
+            icon="i-heroicons-arrow-down-tray"
+            label="Export CSV"
+            size="xs"
+            variant="outline"
+            color="neutral"
+            :loading="exporting"
+            :disabled="paymentHistory.length === 0"
+            @click="handleExport"
+          />
+          <UButton
+            icon="i-heroicons-plus"
+            label="Record Offline Payment"
+            size="xs"
+            color="primary"
+            @click="openOfflineModal"
+          />
+        </div>
       </div>
 
       <!-- Empty State -->
@@ -636,13 +858,25 @@ const statusColor = computed(() => {
               </div>
               <div class="flex items-center gap-2 mt-1.5">
                 <UBadge
-                  :color="payment.status === 'SUCCESS' ? 'success' : payment.status === 'PENDING' ? 'warning' : 'error'"
+                  :color="statusBadgeColor(payment.status)"
                   variant="subtle"
                   size="xs"
                 >
                   {{ payment.status }}
                 </UBadge>
+                <UBadge v-if="payment.metadata?.waived" color="info" variant="subtle" size="xs">WAIVED</UBadge>
+                <UBadge v-if="payment.type === 'OFFLINE_REGISTRATION'" color="neutral" variant="subtle" size="xs">OFFLINE</UBadge>
                 <span class="text-[10px] text-gray-500 truncate">{{ payment.paystackReference }}</span>
+              </div>
+              <div v-if="canRefund(payment)" class="mt-2">
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  color="error"
+                  icon="i-heroicons-arrow-uturn-left"
+                  label="Refund"
+                  @click="openRefund(payment)"
+                />
               </div>
             </div>
           </div>
@@ -658,6 +892,7 @@ const statusColor = computed(() => {
                 <th class="px-6 py-3">Amount</th>
                 <th class="px-6 py-3">Status</th>
                 <th class="px-6 py-3">Reference</th>
+                <th class="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-50 dark:divide-white/[0.04]">
@@ -686,16 +921,29 @@ const statusColor = computed(() => {
                 </td>
                 <td class="px-6 py-3.5 whitespace-nowrap">
                   <UBadge
-                    :color="payment.status === 'SUCCESS' ? 'success' : payment.status === 'PENDING' ? 'warning' : 'error'"
+                    :color="statusBadgeColor(payment.status)"
                     variant="subtle"
                     size="xs"
                     class="font-bold uppercase tracking-wider text-[10px]"
                   >
                     {{ payment.status }}
                   </UBadge>
+                  <UBadge v-if="payment.metadata?.waived" color="info" variant="subtle" size="xs" class="ml-1">WAIVED</UBadge>
+                  <UBadge v-if="payment.type === 'OFFLINE_REGISTRATION'" color="neutral" variant="subtle" size="xs" class="ml-1">OFFLINE</UBadge>
                 </td>
                 <td class="px-6 py-3.5 whitespace-nowrap text-xs text-gray-400 font-mono">
                   {{ payment.paystackReference }}
+                </td>
+                <td class="px-6 py-3.5 whitespace-nowrap text-right">
+                  <UButton
+                    v-if="canRefund(payment)"
+                    size="xs"
+                    variant="ghost"
+                    color="error"
+                    icon="i-heroicons-arrow-uturn-left"
+                    label="Refund"
+                    @click="openRefund(payment)"
+                  />
                 </td>
               </tr>
             </tbody>
@@ -703,6 +951,223 @@ const statusColor = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- Record Offline Payment Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showOfflineModal"
+          class="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          @click.self="showOfflineModal = false"
+        >
+          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showOfflineModal = false" />
+
+          <div class="relative w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10">
+            <button
+              class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-500 dark:hover:bg-white/10"
+              @click="showOfflineModal = false"
+            >
+              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+            </button>
+
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <UIcon name="i-heroicons-banknotes" class="w-5 h-5 text-emerald-500" />
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Record Offline Payment</h3>
+                <p class="text-xs text-gray-500">Log a registration fee collected by cash or bank transfer.</p>
+              </div>
+            </div>
+
+            <div v-if="offlineTournamentOptions.length === 0" class="py-4 text-center">
+              <p class="text-sm text-gray-500">No tournaments with paid registration found.</p>
+              <p class="text-xs text-gray-400 mt-1">Enable paid registration on a tournament first.</p>
+            </div>
+
+            <div v-else class="space-y-4">
+              <UFormField label="Tournament" required>
+                <USelect
+                  v-model="offlineForm.tournamentId"
+                  :items="offlineTournamentOptions"
+                  value-key="value"
+                  placeholder="Select tournament"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField label="Link participant (optional)">
+                <USelect
+                  v-model="offlineForm.participantId"
+                  :items="offlineParticipantOptions"
+                  value-key="value"
+                  :loading="loadingOfflineParticipants"
+                  :disabled="!offlineForm.tournamentId"
+                  placeholder="Walk-in / not linked"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField v-if="!offlineForm.participantId" label="Payer name (optional)">
+                <UInput
+                  v-model="offlineForm.payerName"
+                  placeholder="e.g. University of Lagos"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <div class="grid grid-cols-2 gap-3">
+                <UFormField label="Amount (₦)">
+                  <UInput
+                    v-model.number="offlineForm.amount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    :placeholder="offlineSelectedTournament ? String((offlineSelectedTournament.registrationFee ?? 0) / 100) : '0.00'"
+                    class="w-full"
+                  />
+                  <template #hint>
+                    <span v-if="offlineSelectedTournament">
+                      Defaults to the fee: ₦{{ ((offlineSelectedTournament.registrationFee ?? 0) / 100).toLocaleString() }}
+                    </span>
+                  </template>
+                </UFormField>
+
+                <UFormField label="Method" required>
+                  <USelect
+                    v-model="offlineForm.method"
+                    :items="[
+                      { label: 'Cash', value: 'CASH' },
+                      { label: 'Bank Transfer', value: 'BANK_TRANSFER' },
+                      { label: 'Other', value: 'OTHER' },
+                    ]"
+                    value-key="value"
+                    class="w-full"
+                  />
+                </UFormField>
+              </div>
+
+              <UFormField label="Note (optional)">
+                <UInput
+                  v-model="offlineForm.note"
+                  placeholder="e.g. Receipt #0012"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <div class="flex justify-end gap-2 pt-1">
+                <UButton variant="ghost" color="neutral" label="Cancel" @click="showOfflineModal = false" />
+                <UButton
+                  color="primary"
+                  icon="i-heroicons-check"
+                  label="Record Payment"
+                  :loading="recordingOffline"
+                  :disabled="!offlineForm.tournamentId"
+                  @click="handleRecordOffline"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Refund Payment Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showRefundModal && refundTarget"
+          class="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          @click.self="showRefundModal = false"
+        >
+          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showRefundModal = false" />
+
+          <div class="relative w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10">
+            <button
+              class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-500 dark:hover:bg-white/10"
+              @click="showRefundModal = false"
+            >
+              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+            </button>
+
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                <UIcon name="i-heroicons-arrow-uturn-left" class="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Refund Payment</h3>
+                <p class="text-xs text-gray-500">{{ paymentLabel(refundTarget) }} · ₦{{ (refundTarget.amount / 100).toLocaleString() }}</p>
+              </div>
+            </div>
+
+            <div class="mb-4 p-3 rounded-xl flex items-start gap-2.5 text-xs bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 text-gray-600 dark:text-gray-300">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <template v-if="refundTarget.type === 'OFFLINE_REGISTRATION'">
+                  This only marks the payment as refunded — return the money to the payer directly (cash/transfer).
+                </template>
+                <template v-else-if="refundManual">
+                  The payment is marked as refunded, but <span class="font-bold">you</span> return ₦{{ (refundTarget.amount / 100).toLocaleString() }} to the payer yourself (bank transfer/cash). Use this if the automatic refund fails because your unsettled payout balance is too low.
+                </template>
+                <template v-else>
+                  The full ₦{{ (refundTarget.amount / 100).toLocaleString() }} will be refunded to the payer via Paystack (3–10 business days). Paystack deducts refunds from your unsettled payout first.
+                </template>
+                This does <span class="font-bold">not</span> remove the team from the tournament — withdraw them separately if needed.
+              </div>
+            </div>
+
+            <!-- Refund method (online payments only) -->
+            <div v-if="isOnlinePayment(refundTarget)" class="mb-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                :class="[
+                  'p-3 rounded-xl border text-left transition-all',
+                  !refundManual
+                    ? 'border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500'
+                    : 'border-gray-200 dark:border-white/10 hover:border-emerald-500/40'
+                ]"
+                @click="refundManual = false"
+              >
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">Automatic refund</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">Paystack returns the money to the payer's card/bank account.</p>
+              </button>
+              <button
+                type="button"
+                :class="[
+                  'p-3 rounded-xl border text-left transition-all',
+                  refundManual
+                    ? 'border-amber-500 bg-amber-500/5 ring-1 ring-amber-500'
+                    : 'border-gray-200 dark:border-white/10 hover:border-amber-500/40'
+                ]"
+                @click="refundManual = true"
+              >
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">Manual refund</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">You return the money yourself; we just record it.</p>
+              </button>
+            </div>
+
+            <UFormField label="Reason (optional)">
+              <UInput
+                v-model="refundReason"
+                placeholder="e.g. Team withdrew before the draw"
+                class="w-full"
+              />
+            </UFormField>
+
+            <div class="flex justify-end gap-2 pt-4">
+              <UButton variant="ghost" color="neutral" label="Cancel" @click="showRefundModal = false" />
+              <UButton
+                color="error"
+                icon="i-heroicons-arrow-uturn-left"
+                label="Confirm Refund"
+                :loading="refunding"
+                @click="handleRefund"
+              />
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Tournament Selector Modal -->
     <Teleport to="body">
