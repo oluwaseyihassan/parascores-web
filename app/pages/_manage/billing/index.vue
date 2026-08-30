@@ -410,11 +410,12 @@ async function handleRecordOffline() {
 }
 
 // CSV settlement export
-const exportTournamentId = ref('')
+// NB: Select item values must not be empty strings (Reka UI throws) — 'all' is the sentinel
+const exportTournamentId = ref('all')
 const exporting = ref(false)
 
 const exportTournamentOptions = computed(() => [
-  { label: 'All tournaments', value: '' },
+  { label: 'All tournaments', value: 'all' },
   ...tournaments.value.map((t) => ({ label: t.name, value: t.id })),
 ])
 
@@ -423,7 +424,7 @@ async function handleExport() {
   if (!orgId) return
   exporting.value = true
   try {
-    await paymentStore.exportPaymentsCsv(orgId, exportTournamentId.value || undefined)
+    await paymentStore.exportPaymentsCsv(orgId, exportTournamentId.value === 'all' ? undefined : exportTournamentId.value)
   } catch (err: any) {
     handleError(err, { title: 'Export Failed' })
   } finally {
