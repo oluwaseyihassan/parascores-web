@@ -171,6 +171,8 @@ watch(() => authStore.currentOrganization?.id, async (newId) => {
     } catch (err) {
       // Silent fail
     }
+    paymentStore.fetchPaymentHistory(newId).catch(() => {})
+    tournamentStore.fetchTournaments({ limit: 50 }).catch(() => {})
     payoutAccount.value = null
     payoutSummary.value = null
     loadPayoutAccount(newId)
