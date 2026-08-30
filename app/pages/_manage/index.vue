@@ -17,6 +17,35 @@ const userFirstName = computed(() => {
   return authStore.user.name.trim().split(/\s+/)[0]
 })
 
+// Practice (sandbox) tournament
+const creatingPractice = ref(false)
+
+async function handleCreatePractice() {
+  const orgId = authStore.currentOrganization?.id
+  if (!orgId) return
+  creatingPractice.value = true
+  try {
+    const response = await $api<{ data: any }>('/tournaments/practice', {
+      method: 'POST',
+      body: { organizationId: orgId },
+    })
+    if (response.data) {
+      useToast().add({
+        title: 'Practice Tournament Created',
+        description: 'Sandbox mode — experiment freely. Data is temporary.',
+        color: 'success',
+        icon: 'i-heroicons-beaker',
+      })
+      const urlId = response.data.customName || response.data.id
+      await navigateTo(`/tournaments/${urlId}`)
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to create practice tournament' })
+  } finally {
+    creatingPractice.value = false
+  }
+}
+
 // View mode state
 const viewMode = useCookie<'grid' | 'list'>('tournament-view-mode', { default: () => 'grid' })
 const communityBannerDismissed = useCookie<boolean>('community-banner-dismissed', { default: () => false, maxAge: 60 * 60 * 24 * 90 })
@@ -229,6 +258,26 @@ watch(loadMoreTrigger, (el) => {
             @click="viewMode = 'list';"
           />
         </div>
+        <UButton
+          label="Practice Mode"
+          icon="i-heroicons-beaker"
+          color="warning"
+          variant="outline"
+          size="sm"
+          class="hidden sm:inline-flex"
+          :loading="creatingPractice"
+          @click="handleCreatePractice"
+        />
+        <UTooltip text="Practice Mode" class="sm:hidden">
+          <UButton
+            icon="i-heroicons-beaker"
+            color="warning"
+            variant="outline"
+            size="sm"
+            :loading="creatingPractice"
+            @click="handleCreatePractice"
+          />
+        </UTooltip>
         <UButton
           label="Create Tournament"
           icon="i-heroicons-plus"

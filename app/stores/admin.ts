@@ -443,6 +443,26 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  async function updateOrganizationEventHub(
+    id: string,
+    data: { subdomain?: string | null; brandConfig?: Record<string, any> }
+  ) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<ApiResponse<any>>(`/admin/organizations/${id}/event-hub`, {
+        method: 'PATCH',
+        body: data
+      })
+      return res.data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update event hub'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // ─── Payments ──────────────────────────────────────────────
   async function fetchPayments(params: { page?: number; limit?: number; status?: string; type?: string } = {}) {
     loading.value = true
@@ -632,6 +652,7 @@ export const useAdminStore = defineStore('admin', () => {
     fetchOrganization,
     updateOrganizationVerification,
     updateOrganizationSubscription,
+    updateOrganizationEventHub,
     fetchPayments,
     fetchPaymentsSummary,
     fetchPendingPlayers,

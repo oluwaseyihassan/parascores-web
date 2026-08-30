@@ -18,6 +18,8 @@ import type {
   Tournament,
   Venue,
 } from "~/types";
+import { resolveEngine } from "~/engines/registry";
+import { SportEngineKey } from "~/engines/types";
 import {
   LIVESTREAM_PLATFORMS,
   detectLivestreamPlatform,
@@ -242,6 +244,83 @@ const showStandings = computed(() => {
     TournamentType.LEAGUE,
   ].includes(tournament.value.type);
 });
+
+// Practice (sandbox) mode
+const practiceBannerDismissed = ref(false);
+const practiceActionLoading = ref<"autofill" | "reset" | null>(null);
+
+const showPracticeBanner = computed(() => {
+  return !!tournament.value?.isPractice && !practiceBannerDismissed.value;
+});
+
+const practiceExpiryLabel = computed(() => {
+  if (!tournament.value?.end_date) return null;
+  const days = Math.ceil(
+    (new Date(tournament.value.end_date).getTime() - Date.now()) / 86400000,
+  );
+  if (days <= 0) return "expired";
+  return days === 1 ? "expires today" : `expires in ${days} days`;
+});
+
+async function refreshOverviewData() {
+  const response = await $api<any>(
+    `/tournaments/${tournamentId.value}/overview`,
+    { method: "GET" },
+  );
+  if (response.data) {
+    tournamentStore.setCurrentTournament(response.data.tournament);
+    participants.value = response.data.participants;
+    fixtures.value = response.data.fixtures;
+    standings.value = response.data.standings;
+  }
+}
+
+async function handlePracticeAutofill() {
+  practiceActionLoading.value = "autofill";
+  try {
+    await $api(`/tournaments/${tournamentId.value}/practice-autofill`, {
+      method: "POST",
+    });
+    await refreshOverviewData();
+    useToast().add({
+      title: "Sample Results Added",
+      description:
+        "Fixtures were played with random scores and standings updated.",
+      color: "success",
+      icon: "i-heroicons-sparkles",
+    });
+  } catch (err: any) {
+    handleError(err, { title: "Autofill failed" });
+  } finally {
+    practiceActionLoading.value = null;
+  }
+}
+
+async function handlePracticeReset() {
+  if (
+    !window.confirm(
+      "Reset this sandbox? All scores, events and standings will be wiped.",
+    )
+  )
+    return;
+  practiceActionLoading.value = "reset";
+  try {
+    await $api(`/tournaments/${tournamentId.value}/practice-reset`, {
+      method: "POST",
+    });
+    await refreshOverviewData();
+    useToast().add({
+      title: "Sandbox Reset",
+      description: "Back to the initial state — fixtures ready to play again.",
+      color: "success",
+      icon: "i-heroicons-arrow-uturn-left",
+    });
+  } catch (err: any) {
+    handleError(err, { title: "Reset failed" });
+  } finally {
+    practiceActionLoading.value = null;
+  }
+}
 
 // Transfer Ownership logic
 const showTransferModal = ref(false);
@@ -1379,6 +1458,60 @@ const handleLogoChange = (event: Event) => {
   logoPreview.value = URL.createObjectURL(file);
 };
 
+// Roster picker (event orgs)
+interface RosterEntry {
+  id: string;
+  name: string;
+  shortName: string | null;
+  logoUrl: string | null;
+}
+const rosterEntries = ref<RosterEntry[]>([]);
+const loadingRoster = ref(false);
+const selectedRosterEntryId = ref<string | null>(null);
+
+const fetchOrgRoster = async () => {
+  const orgId = tournament.value?.organization_id;
+  if (!orgId) return;
+  loadingRoster.value = true;
+  try {
+    const res = await $api<{ success: boolean; data?: RosterEntry[] }>(
+      `/organizations/${orgId}/roster`,
+    );
+    rosterEntries.value = res.data ?? [];
+  } catch {
+    rosterEntries.value = [];
+  } finally {
+    loadingRoster.value = false;
+  }
+};
+
+const availableRosterEntries = computed(() => {
+  const takenNames = new Set(
+    participants.value.map((p) => p.customName?.toLowerCase()),
+  );
+  return rosterEntries.value.filter(
+    (r) => !takenNames.has(r.name.toLowerCase()),
+  );
+});
+
+const rosterSelectItems = computed(() =>
+  availableRosterEntries.value.map((r) => ({
+    label: r.shortName ? `${r.name} (${r.shortName})` : r.name,
+    value: r.id,
+  })),
+);
+
+const onRosterPick = (entryId: string | null) => {
+  selectedRosterEntryId.value = entryId;
+  if (!entryId) return;
+  const entry = rosterEntries.value.find((r) => r.id === entryId);
+  if (!entry) return;
+  addParticipantState.customName = entry.name;
+  addParticipantState.customShortName = entry.shortName || "";
+  addParticipantState.logoUrl = entry.logoUrl;
+  logoPreview.value = entry.logoUrl;
+};
+
 // Participant Management
 const newParticipantName = ref("");
 const selectedParticipant = ref<Participant | null>(null);
@@ -1797,6 +1930,7 @@ const resetAddForm = () => {
   addParticipantState.seed = null;
   addParticipantState.logoUrl = null;
   addParticipantState.teamId = null;
+  selectedRosterEntryId.value = null;
   removeLogo();
   addError.value = null;
 };
@@ -1804,6 +1938,7 @@ const resetAddForm = () => {
 const openAddModal = () => {
   resetAddForm();
   showAddModal.value = true;
+  fetchOrgRoster();
 };
 
 const handleAddParticipant = async (
@@ -1841,6 +1976,7 @@ const handleAddParticipant = async (
       seed: event.data.seed,
       logoUrl: logoUrl,
       teamId: addParticipantState.teamId,
+      rosterEntryId: selectedRosterEntryId.value ?? undefined,
     });
     showAddModal.value = false;
     resetAddForm();
@@ -2098,6 +2234,80 @@ const tournamentStatus = computed(() => {
   return { label: "Active", color: "success" as const };
 });
 
+// Race tournaments render fixtures as ranked events, not head-to-head cards.
+// Driven by the sport engine (works for tournaments created before RACE type
+// existed) or explicitly by the RACE tournament type.
+const isRaceTournament = computed(() =>
+  tournament.value?.type === TournamentType.RACE ||
+  !!resolveEngine(tournament.value?.sport).race,
+);
+
+// Race tournaments hold multiple named events (Men's 100m, 200m…)
+const raceFixtures = computed(() =>
+  isRaceTournament.value ? fixtures.value : [],
+);
+
+const newEventName = ref("");
+const creatingEvent = ref(false);
+const showAddEventModal = ref(false);
+const selectedEventParticipantIds = ref<string[]>([]);
+
+const openAddEventModal = () => {
+  newEventName.value = "";
+  // Default: everyone entered
+  selectedEventParticipantIds.value = participants.value.map((p) => p.id);
+  showAddEventModal.value = true;
+};
+
+const toggleEventParticipant = (id: string) => {
+  const idx = selectedEventParticipantIds.value.indexOf(id);
+  if (idx === -1) selectedEventParticipantIds.value.push(id);
+  else selectedEventParticipantIds.value.splice(idx, 1);
+};
+
+const createRaceEvent = async () => {
+  const name = newEventName.value.trim();
+  if (!name || !tournament.value) return;
+  creatingEvent.value = true;
+  try {
+    const res = await fixtureStore.createFixture({
+      tournament_id: tournament.value.id,
+      round: 1,
+      roundName: name,
+      status: undefined,
+    } as any);
+
+    // Seed blank result entries for the selected participants (marks entry)
+    const fixtureId = res?.data?.id;
+    if (fixtureId && selectedEventParticipantIds.value.length) {
+      await $api(`/fixtures/${fixtureId}/results`, {
+        method: "PUT",
+        body: {
+          results: selectedEventParticipantIds.value.map((id) => ({
+            participantId: id,
+          })),
+        },
+      });
+    }
+
+    showAddEventModal.value = false;
+    await fixtureStore.fetchFixtures(tournament.value.id);
+    useToast().add({
+      title: "Event Created",
+      description: `"${name}" is ready for result entry.`,
+      color: "success",
+    });
+  } catch (err: any) {
+    handleError(err, { title: "Failed to create event" });
+  } finally {
+    creatingEvent.value = false;
+  }
+};
+
+// Provide the resolved engine at page level so engine control surfaces
+// (e.g. RaceControl) rendered outside MatchControl can still access it
+provide(SportEngineKey, computed(() => resolveEngine(tournament.value?.sport)));
+
 // Type labels
 const typeLabels: Record<TournamentType, string> = {
   [TournamentType.KNOCKOUT]: "Knockout",
@@ -2106,6 +2316,7 @@ const typeLabels: Record<TournamentType, string> = {
   [TournamentType.GROUP]: "Group Stage",
   [TournamentType.HYBRID]: "Hybrid (Group + Knockout)",
   [TournamentType.FRIENDLY]: "Friendly Match",
+  [TournamentType.RACE]: "Race / Event",
 };
 
 const participantLabels: Record<ParticipantType, string> = {
@@ -2621,12 +2832,16 @@ const hybridKnockoutAccordionItems = computed(() => {
 
 // Match Control Modal
 const showMatchControlModal = ref(false);
+const showRaceControlModal = ref(false);
 const selectedFixture = ref<Fixture | null>(null);
 const updatingMatch = ref(false);
 
 const openMatchControl = (fixture: Fixture) => {
   selectedFixture.value = { ...fixture };
-  showMatchControlModal.value = true;
+  // Race engines get their own control surface — a race is an event, not a match
+  const engine = resolveEngine(tournament.value?.sport);
+  showRaceControlModal.value = !!engine.control;
+  showMatchControlModal.value = !engine.control;
 };
 
 const startMatch = async (fixture: Fixture) => {
@@ -3188,11 +3403,18 @@ const tabItems = computed(() => {
       badge:
         totalPendingRequests.value > 0 ? totalPendingRequests.value : undefined,
     },
-    {
-      slot: "fixtures",
-      label: "Fixtures",
-      icon: "i-heroicons-calendar-days",
-    },
+    // Race tournaments get an Event tab instead of fixtures — the race IS the event
+    isRaceTournament.value
+      ? {
+          slot: "fixtures",
+          label: "Event",
+          icon: "i-heroicons-flag",
+        }
+      : {
+          slot: "fixtures",
+          label: "Fixtures",
+          icon: "i-heroicons-calendar-days",
+        },
   ];
 
   // Add Groups tab for Group/Hybrid tournaments
@@ -3492,6 +3714,15 @@ const copyTournamentLink = async () => {
                   size="sm"
                 >
                   {{ tournamentStatus.label }}
+                </UBadge>
+                <UBadge
+                  v-if="tournament.isPractice"
+                  color="warning"
+                  variant="subtle"
+                  size="sm"
+                  icon="i-heroicons-beaker"
+                >
+                  Practice
                 </UBadge>
                 <span
                   v-if="tournament.isPremium || isPro"
@@ -4094,6 +4325,58 @@ const copyTournamentLink = async () => {
 
       <!-- Content Container -->
       <div class="max-w-4xl mx-auto w-full px-3 sm:px-4">
+        <!-- Practice (Sandbox) Banner -->
+        <div
+          v-if="showPracticeBanner"
+          class="mb-4 rounded-xl border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-3 sm:p-4"
+        >
+          <div class="flex items-start gap-3">
+            <UIcon
+              name="i-heroicons-beaker"
+              class="w-5 h-5 text-amber-500 shrink-0 mt-0.5"
+            />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                Practice Mode
+              </p>
+              <p class="text-xs text-amber-600/90 dark:text-amber-400/80 mt-0.5">
+                Sandbox tournament — experiment freely. Teams, players and
+                fixtures are fake<template v-if="practiceExpiryLabel">
+                  · {{ practiceExpiryLabel }}</template
+                >.
+              </p>
+              <div class="flex flex-wrap gap-2 mt-2.5">
+                <UButton
+                  size="xs"
+                  color="warning"
+                  variant="soft"
+                  icon="i-heroicons-sparkles"
+                  label="Fill Sample Results"
+                  :loading="practiceActionLoading === 'autofill'"
+                  @click="handlePracticeAutofill"
+                />
+                <UButton
+                  size="xs"
+                  color="warning"
+                  variant="soft"
+                  icon="i-heroicons-arrow-uturn-left"
+                  label="Reset Sandbox"
+                  :loading="practiceActionLoading === 'reset'"
+                  @click="handlePracticeReset"
+                />
+              </div>
+            </div>
+            <UButton
+              icon="i-heroicons-x-mark"
+              variant="ghost"
+              color="neutral"
+              size="xs"
+              class="shrink-0"
+              @click="practiceBannerDismissed = true"
+            />
+          </div>
+        </div>
+
         <!-- Main Content -->
         <div class="w-full">
           <UTabs
@@ -4190,15 +4473,7 @@ const copyTournamentLink = async () => {
                         >Format</span
                       >
                       <span class="font-medium text-xs sm:text-sm">
-                        {{
-                          tournament.type === TournamentType.ROUND_ROBIN
-                            ? "Round Robin"
-                            : tournament.type === TournamentType.KNOCKOUT
-                              ? "Knockout"
-                              : tournament.type === TournamentType.GROUP
-                                ? "Group Stage"
-                                : "Hybrid (Groups + Knockout)"
-                        }}
+                        {{ typeLabels[tournament.type] ?? tournament.type }}
                       </span>
                     </div>
 
@@ -5285,7 +5560,74 @@ const copyTournamentLink = async () => {
 
             <!-- Fixtures Tab -->
             <template #fixtures>
-              <UCard class="mt-4">
+              <!-- Race tournament: the event itself is the surface -->
+              <UCard v-if="isRaceTournament" class="mt-4">
+                <template #header>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-heroicons-flag" class="w-5 h-5 text-emerald-500" />
+                    <span class="font-medium">Event</span>
+                  </div>
+                </template>
+
+                <!-- Named event list (Men's 100m, 200m…) -->
+                <div v-if="raceFixtures.length" class="space-y-2 mb-4">
+                  <div
+                    v-for="event in raceFixtures"
+                    :key="event.id"
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-gray-50/50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.06]"
+                  >
+                    <div class="flex items-center gap-3">
+                      <span class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                        <UIcon name="i-heroicons-flag" class="w-5 h-5 text-emerald-500" />
+                      </span>
+                      <div>
+                        <p class="font-bold">{{ event.roundName || 'Event' }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ event.status === 'COMPLETED'
+                            ? `${event.resultEntries?.length ?? 0} results published`
+                            : `${event.resultEntries?.length ?? participants.length} athletes entered · results pending` }}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UBadge
+                        :color="event.status === 'COMPLETED' ? 'success' : 'neutral'"
+                        variant="subtle"
+                      >
+                        {{ event.status === 'COMPLETED' ? 'Official' : event.status }}
+                      </UBadge>
+                      <UButton
+                        color="primary"
+                        icon="i-heroicons-numbered-list"
+                        @click="openMatchControl(event)"
+                        :label="event.status === 'COMPLETED' ? 'View Results' : 'Enter Results'"
+                      />
+                      <UButton
+                        color="error"
+                        variant="ghost"
+                        icon="i-heroicons-trash"
+                        @click="handleDeleteFixture(event)"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Add event -->
+                <div class="flex justify-end">
+                  <UButton
+                    color="primary"
+                    icon="i-heroicons-plus"
+                    :disabled="participants.length < 2"
+                    @click="openAddEventModal"
+                    label="Add Event"
+                  />
+                </div>
+                <p v-if="participants.length < 2" class="text-[11px] text-gray-500 mt-2">
+                  Add at least 2 athletes in the Participants tab first.
+                </p>
+              </UCard>
+
+              <UCard v-else class="mt-4">
                 <template #header>
                   <div
                     class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -5559,6 +5901,7 @@ const copyTournamentLink = async () => {
                               :key="fixture.id"
                               :fixture="fixture"
                               :updating-match="updatingMatch"
+                              :is-race="isRaceTournament"
                               @start="startMatch"
                               @control="openMatchControl"
                               @delete="handleDeleteFixture"
@@ -5638,6 +5981,7 @@ const copyTournamentLink = async () => {
                               :key="fixture.id"
                               :fixture="fixture"
                               :updating-match="updatingMatch"
+                              :is-race="isRaceTournament"
                               @start="startMatch"
                               @control="openMatchControl"
                               @delete="handleDeleteFixture"
@@ -6613,6 +6957,28 @@ const copyTournamentLink = async () => {
           @submit="handleAddParticipant"
           class="space-y-4"
         >
+          <!-- Roster picker (only when the org has roster entries) -->
+          <div
+            v-if="tournament?.organization_id && (rosterSelectItems.length > 0 || loadingRoster)"
+            class="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-2"
+          >
+            <label class="text-xs font-bold text-indigo-400 uppercase tracking-wider">
+              From organization roster
+            </label>
+            <USelectMenu
+              :model-value="selectedRosterEntryId ?? undefined"
+              :items="rosterSelectItems"
+              value-key="value"
+              :loading="loadingRoster"
+              placeholder="Pick an institution to autofill…"
+              class="w-full"
+              @update:model-value="onRosterPick($event as string | null)"
+            />
+            <p v-if="selectedRosterEntryId" class="text-[10px] text-indigo-300/70">
+              Linked to the roster — this institution's results aggregate across tournaments.
+            </p>
+          </div>
+
           <!-- Logo Upload -->
           <div class="flex items-center gap-4">
             <!-- Hidden file input -->
@@ -7225,7 +7591,7 @@ const copyTournamentLink = async () => {
     </template>
   </UModal>
 
-  <!-- Match Control Component -->
+  <!-- Match Control Component (head-to-head sports) -->
   <MatchControl
     :fixture="selectedFixture"
     :tournament="tournament"
@@ -7233,6 +7599,75 @@ const copyTournamentLink = async () => {
     @fixture-updated="handleFixtureUpdated"
     @match-ended="handleMatchEnded"
   />
+
+  <!-- Race Control (placement sports — engine-provided full control surface) -->
+  <component
+    :is="resolveEngine(tournament?.sport).control"
+    v-if="selectedFixture && resolveEngine(tournament?.sport).control"
+    :fixture="selectedFixture"
+    :tournament="tournament"
+    v-model:open="showRaceControlModal"
+    @fixture-updated="handleFixtureUpdated"
+  />
+
+  <!-- Add Event Modal (race tournaments) -->
+  <UModal v-model:open="showAddEventModal" title="Add Event">
+    <template #body>
+      <div class="space-y-4">
+        <UFormField label="Event name" required>
+          <UInput
+            v-model="newEventName"
+            placeholder="e.g. Men's 100m Final"
+            class="w-full"
+            @keyup.enter="createRaceEvent"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Participating athletes"
+          :description="`${selectedEventParticipantIds.length} of ${participants.length} selected`"
+        >
+          <div class="max-h-64 overflow-y-auto space-y-1 rounded-lg border border-gray-200 dark:border-gray-800 p-2">
+            <button
+              v-for="p in participants"
+              :key="p.id"
+              type="button"
+              class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors"
+              :class="selectedEventParticipantIds.includes(p.id)
+                ? 'bg-emerald-500/10 text-gray-900 dark:text-white'
+                : 'text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'"
+              @click="toggleEventParticipant(p.id)"
+            >
+              <UIcon
+                :name="selectedEventParticipantIds.includes(p.id)
+                  ? 'i-heroicons-check-circle-solid'
+                  : 'i-heroicons-minus-circle'"
+                class="w-4 h-4 shrink-0"
+                :class="selectedEventParticipantIds.includes(p.id) ? 'text-emerald-500' : ''"
+              />
+              <span class="text-sm font-medium truncate">{{ p.customName }}</span>
+            </button>
+          </div>
+        </UFormField>
+      </div>
+    </template>
+    <template #footer>
+      <div class="flex justify-end gap-3">
+        <UButton color="neutral" variant="ghost" @click="showAddEventModal = false">
+          Cancel
+        </UButton>
+        <UButton
+          color="primary"
+          icon="i-heroicons-plus"
+          :loading="creatingEvent"
+          :disabled="!newEventName.trim() || !selectedEventParticipantIds.length"
+          @click="createRaceEvent"
+        >
+          Create Event
+        </UButton>
+      </div>
+    </template>
+  </UModal>
 
   <!-- Add Sponsor Modal -->
   <UModal v-model:open="showAddSponsorModal">

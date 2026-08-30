@@ -2,8 +2,9 @@
 import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { TournamentType, ParticipantType, Visibility, type Tournament } from '~/types'
+import { resolveEngine, listEngines } from '~/engines/registry'
 import { CalendarDate, parseDate, type DateValue } from '@internationalized/date'
-import type { PayoutAccountStatus } from '~/stores/payment'
+import type { PayoutAccountStatus, DiscountCode } from '~/stores/payment'
 
 const props = defineProps<{
   tournament: Tournament
@@ -32,7 +33,101 @@ onMounted(async () => {
   } catch {
     // Silent fail — warning banner stays hidden
   }
+  if (props.tournament.isPaidRegistration) {
+    loadDiscountCodes()
+  }
 })
+
+// ─── Discount & waiver codes ─────────────────────────────
+const toast = useToast()
+const discountCodes = ref<DiscountCode[]>([])
+const loadingDiscountCodes = ref(false)
+const showDiscountModal = ref(false)
+const savingDiscount = ref(false)
+const deletingDiscountId = ref<string | null>(null)
+const discountForm = reactive({
+  code: '',
+  type: 'PERCENT' as 'PERCENT' | 'FIXED' | 'WAIVER',
+  value: null as number | null,
+  maxUses: null as number | null,
+  expiresAt: '',
+})
+
+async function loadDiscountCodes() {
+  loadingDiscountCodes.value = true
+  try {
+    discountCodes.value = await paymentStore.fetchDiscountCodes(props.tournament.id)
+  } catch {
+    // Silent fail — section shows as empty
+  } finally {
+    loadingDiscountCodes.value = false
+  }
+}
+
+function discountLabel(c: DiscountCode) {
+  if (c.type === 'WAIVER') return 'Free registration'
+  if (c.type === 'PERCENT') return `${c.value}% off`
+  return `₦${(c.value / 100).toLocaleString()} off`
+}
+
+function openDiscountModal() {
+  Object.assign(discountForm, {
+    code: '',
+    type: 'PERCENT',
+    value: null,
+    maxUses: null,
+    expiresAt: '',
+  })
+  showDiscountModal.value = true
+}
+
+async function handleCreateDiscount() {
+  if (!discountForm.code.trim()) return
+  savingDiscount.value = true
+  try {
+    await paymentStore.createDiscountCode(props.tournament.id, {
+      code: discountForm.code.trim(),
+      type: discountForm.type,
+      value:
+        discountForm.type === 'WAIVER'
+          ? undefined
+          : discountForm.type === 'FIXED'
+            ? Math.round((discountForm.value ?? 0) * 100)
+            : (discountForm.value ?? undefined),
+      maxUses: discountForm.maxUses ?? undefined,
+      expiresAt: discountForm.expiresAt || undefined,
+    })
+    showDiscountModal.value = false
+    toast.add({ title: 'Discount Code Created', color: 'success' })
+    await loadDiscountCodes()
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to Create Code' })
+  } finally {
+    savingDiscount.value = false
+  }
+}
+
+async function toggleDiscountActive(c: DiscountCode) {
+  try {
+    await paymentStore.updateDiscountCode(c.id, { isActive: !c.isActive })
+    await loadDiscountCodes()
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to Update Code' })
+  }
+}
+
+async function handleDeleteDiscount(c: DiscountCode) {
+  deletingDiscountId.value = c.id
+  try {
+    await paymentStore.deleteDiscountCode(c.id)
+    toast.add({ title: 'Discount Code Deleted', color: 'success' })
+    await loadDiscountCodes()
+  } catch (err: any) {
+    handleError(err, { title: 'Failed to Delete Code' })
+  } finally {
+    deletingDiscountId.value = null
+  }
+}
 
 // Logo upload state
 const logoFileInput = ref<HTMLInputElement | null>(null)
@@ -180,7 +275,9 @@ const schema = z.object({
   registrationFee: z.number().min(0, 'Registration fee must be positive').optional().nullable(),
   twoLegsKnockout: z.boolean().optional(),
   doubleRoundRobin: z.boolean().optional(),
-  thirdPlaceMatch: z.boolean().optional()
+  thirdPlaceMatch: z.boolean().optional(),
+  setsToWin: z.number().int().min(1).max(5).optional().nullable(),
+  gamesPerSet: z.number().int().min(1).max(50).optional().nullable()
 })
 
 type Schema = z.output<typeof schema>
@@ -206,7 +303,9 @@ const state = reactive<Partial<Schema>>({
   registrationFee: props.tournament.registrationFee ? props.tournament.registrationFee / 100 : null,
   twoLegsKnockout: props.tournament.twoLegsKnockout ?? false,
   doubleRoundRobin: props.tournament.doubleRoundRobin ?? false,
-  thirdPlaceMatch: props.tournament.thirdPlaceMatch ?? false
+  thirdPlaceMatch: props.tournament.thirdPlaceMatch ?? false,
+  setsToWin: props.tournament.scoringRules?.setsToWin ?? null,
+  gamesPerSet: props.tournament.scoringRules?.gamesPerSet ?? null
 })
 
 
@@ -274,7 +373,8 @@ const tournamentTypes = [
   { label: 'Round Robin', value: TournamentType.ROUND_ROBIN, description: 'Everyone plays everyone' },
   { label: 'Group Stage (League)', value: TournamentType.GROUP, description: 'Groups without knockout stage' },
   { label: 'Hybrid (Group + Knockout)', value: TournamentType.HYBRID, description: 'Group Stage followed by Knockout Stage' },
-  { label: 'Friendly / Single Match', value: TournamentType.FRIENDLY, description: 'Single matches, friendly games' }
+  { label: 'Friendly / Single Match', value: TournamentType.FRIENDLY, description: 'Single matches, friendly games' },
+  { label: 'Race / Event Final', value: TournamentType.RACE, description: 'One race or event — all participants ranked by result' }
 ]
 
 const participantTypes = [
@@ -288,7 +388,40 @@ const visibilityOptions = [
   { label: 'Private', value: Visibility.PRIVATE, description: 'Invite only', icon: 'i-heroicons-lock-closed' }
 ]
 
-const popularSports = ['Football', 'Basketball', 'Tennis', 'Cricket', 'Rugby', 'Volleyball', 'Esports', 'Other']
+// Sport options come from the engine registry (registered engines get tailored
+// control surfaces); extras fall back to the default (football) surface
+const popularSports = [...listEngines().map((e) => e.label), 'Cricket', 'Rugby', 'Esports', 'Other']
+
+// Set-scoring config only applies to set-based sport engines (tennis, volleyball…)
+const engineSetScoring = computed(() => {
+  const engine = resolveEngine(state.sport)
+  return engine.setScoring ?? null
+})
+
+// Engine-driven creation options: hide format toggles the sport doesn't support
+const creationOption = (key: 'twoLegs' | 'thirdPlaceMatch' | 'doubleRoundRobin') => {
+  const c = resolveEngine(state.sport).creation
+  return c ? c.options[key] : true
+}
+
+// "Best of N" input in user terms (odd N); state stores setsToWin = (N+1)/2
+const bestOfError = ref<string | null>(null)
+const bestOfModel = computed<number | null>({
+  get: () => (state.setsToWin ? state.setsToWin * 2 - 1 : null),
+  set: (val) => {
+    if (val == null || Number.isNaN(val)) {
+      state.setsToWin = null
+      bestOfError.value = null
+      return
+    }
+    if (val % 2 === 0) {
+      bestOfError.value = 'Best-of must be an odd number (1, 3, 5, 7…)'
+      return
+    }
+    bestOfError.value = null
+    state.setsToWin = (val + 1) / 2
+  },
+})
 
 const timezones = [
   { label: 'UTC', value: 'UTC' },
@@ -302,6 +435,10 @@ const timezones = [
 
 // Submit handler
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (bestOfError.value) {
+    error.value = bestOfError.value
+    return
+  }
   loading.value = true
   error.value = null
   
@@ -355,6 +492,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       bannerUrl = null
     }
     
+    // Merge set-scoping config into existing scoringRules (don't clobber win/draw/loss)
+    const scoringRules = { ...(props.tournament.scoringRules ?? {}) }
+    if (event.data.setsToWin) scoringRules.setsToWin = event.data.setsToWin
+    if (event.data.gamesPerSet) scoringRules.gamesPerSet = event.data.gamesPerSet
+
     await tournamentStore.updateTournament(props.tournament.id, {
       ...event.data,
       customName: event.data.customName || null,
@@ -364,6 +506,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       registrationFee: event.data.isPaidRegistration && event.data.registrationFee 
         ? Math.round(event.data.registrationFee * 100) 
         : 0,
+      scoringRules,
       logoUrl,
       bannerUrl,
     } as unknown as Partial<Tournament>)
@@ -582,6 +725,45 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         </div>
       </UCard>
 
+      <!-- Set Scoring (only for set-based sport engines like tennis) -->
+      <UCard v-if="engineSetScoring" :ui="{ header: 'px-3 py-2 sm:px-4 sm:py-3' }">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-squares-2x2" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+            <span class="font-medium text-sm sm:text-base">Set Scoring</span>
+          </div>
+        </template>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <UFormField
+            label="Match format"
+            name="setsToWin"
+            description="Best-of series length — must be odd (e.g. 3, 5, 7)"
+            :error="bestOfError || undefined"
+          >
+            <UInput
+              v-model.number="bestOfModel"
+              type="number"
+              :min="1"
+              :max="15"
+              :step="2"
+              placeholder="e.g. 3"
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField label="Games per set" name="gamesPerSet" description="Points/games needed to win a set (6 for tennis, 11 for table tennis, 25 for volleyball)">
+            <UInput
+              v-model.number="state.gamesPerSet"
+              type="number"
+              :min="1"
+              :max="50"
+              class="w-full"
+            />
+          </UFormField>
+        </div>
+      </UCard>
+
       <!-- Tournament Format -->
       <UCard :ui="{ header: 'px-3 py-2 sm:px-4 sm:py-3' }">
         <template #header>
@@ -655,7 +837,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
              <div class="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-800">
                 <h3 class="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Knockout Options</h3>
 
-                <div class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <div v-if="creationOption('twoLegs')" class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                   <div class="flex-1 pr-3">
                     <p class="font-medium text-sm text-gray-900 dark:text-white">Two-Legged Ties</p>
                     <p class="text-[11px] sm:text-sm text-gray-500">Knockout rounds (except Final) will have Home and Away legs</p>
@@ -663,7 +845,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                   <USwitch v-model="state.twoLegsKnockout" />
                 </div>
 
-                <div class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <div v-if="creationOption('thirdPlaceMatch')" class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                   <div class="flex-1 pr-3">
                     <p class="font-medium text-sm text-gray-900 dark:text-white">Third-Place Match</p>
                     <p class="text-[11px] sm:text-sm text-gray-500">Generate a playoff match for semi-final losers</p>
@@ -677,7 +859,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
              <div class="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-800">
                 <h3 class="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Round Robin / Group Options</h3>
 
-                <div class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <div v-if="creationOption('doubleRoundRobin')" class="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                   <div class="flex-1 pr-3">
                     <p class="font-medium text-sm text-gray-900 dark:text-white">Double Round Robin</p>
                     <p class="text-[11px] sm:text-sm text-gray-500">Teams will play each other twice (Home and Away)</p>
@@ -838,6 +1020,62 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               />
             </UFormField>
           </div>
+
+          <!-- Discount & Waiver Codes -->
+          <div v-if="state.isPaidRegistration" class="p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-3">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex-1 pr-3">
+                <p class="font-medium text-sm text-gray-900 dark:text-white">Discount & Waiver Codes</p>
+                <p class="text-[11px] sm:text-sm text-gray-500">Give selected teams a discount or free registration. Teams enter the code on the join page.</p>
+              </div>
+              <UButton
+                size="xs"
+                icon="i-heroicons-plus"
+                label="New Code"
+                color="primary"
+                @click="openDiscountModal"
+              />
+            </div>
+
+            <div v-if="loadingDiscountCodes" class="flex items-center gap-2 py-2 text-xs text-gray-400">
+              <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
+              Loading codes...
+            </div>
+            <p v-else-if="discountCodes.length === 0" class="text-xs text-gray-400 py-1">No codes yet.</p>
+            <div v-else class="divide-y divide-gray-100 dark:divide-white/[0.06]">
+              <div
+                v-for="c in discountCodes"
+                :key="c.id"
+                class="py-2.5 flex items-center justify-between gap-3"
+              >
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono font-bold text-sm text-gray-900 dark:text-white">{{ c.code }}</span>
+                    <UBadge color="primary" variant="subtle" size="xs">{{ discountLabel(c) }}</UBadge>
+                  </div>
+                  <p class="text-[11px] text-gray-400 mt-0.5">
+                    Used {{ c.usedCount }}{{ c.maxUses ? ` / ${c.maxUses}` : '' }}
+                    <template v-if="c.expiresAt">· expires {{ new Date(c.expiresAt).toLocaleDateString() }}</template>
+                  </p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <USwitch
+                    :model-value="c.isActive"
+                    size="sm"
+                    @update:model-value="toggleDiscountActive(c)"
+                  />
+                  <UButton
+                    size="xs"
+                    variant="ghost"
+                    color="error"
+                    icon="i-heroicons-trash"
+                    :loading="deletingDiscountId === c.id"
+                    @click="handleDeleteDiscount(c)"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </UCard>
 
@@ -861,5 +1099,121 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       :org-id="tournament.organization_id"
       @saved="onPayoutSaved"
     />
+
+    <!-- Create Discount Code Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showDiscountModal"
+          class="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          @click.self="showDiscountModal = false"
+        >
+          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showDiscountModal = false" />
+
+          <div class="relative w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10">
+            <button
+              class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-500 dark:hover:bg-white/10"
+              @click="showDiscountModal = false"
+            >
+              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+            </button>
+
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <UIcon name="i-heroicons-ticket" class="w-5 h-5 text-emerald-500" />
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">New Discount Code</h3>
+                <p class="text-xs text-gray-500">For {{ tournament.name }} · fee ₦{{ ((state.registrationFee ?? 0)).toLocaleString() }}</p>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <UFormField label="Code" required>
+                <UInput
+                  v-model="discountForm.code"
+                  placeholder="e.g. HOST26"
+                  class="w-full uppercase"
+                  maxlength="32"
+                />
+              </UFormField>
+
+              <UFormField label="Discount type" required>
+                <USelect
+                  v-model="discountForm.type"
+                  :items="[
+                    { label: 'Percent off', value: 'PERCENT' },
+                    { label: 'Fixed amount off (₦)', value: 'FIXED' },
+                    { label: 'Full waiver (free registration)', value: 'WAIVER' },
+                  ]"
+                  value-key="value"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField
+                v-if="discountForm.type === 'PERCENT'"
+                label="Percent off (1–100)"
+                required
+              >
+                <UInput
+                  v-model.number="discountForm.value"
+                  type="number"
+                  min="1"
+                  max="100"
+                  placeholder="e.g. 25"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField
+                v-else-if="discountForm.type === 'FIXED'"
+                label="Amount off (₦)"
+                required
+              >
+                <UInput
+                  v-model.number="discountForm.value"
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 2000"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <div class="grid grid-cols-2 gap-3">
+                <UFormField label="Max uses (optional)">
+                  <UInput
+                    v-model.number="discountForm.maxUses"
+                    type="number"
+                    min="1"
+                    placeholder="Unlimited"
+                    class="w-full"
+                  />
+                </UFormField>
+                <UFormField label="Expires on (optional)">
+                  <UInput
+                    v-model="discountForm.expiresAt"
+                    type="date"
+                    class="w-full"
+                  />
+                </UFormField>
+              </div>
+
+              <div class="flex justify-end gap-2 pt-1">
+                <UButton variant="ghost" color="neutral" label="Cancel" @click="showDiscountModal = false" />
+                <UButton
+                  color="primary"
+                  icon="i-heroicons-check"
+                  label="Create Code"
+                  :loading="savingDiscount"
+                  :disabled="!discountForm.code.trim() || (discountForm.type !== 'WAIVER' && !discountForm.value)"
+                  @click="handleCreateDiscount"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>

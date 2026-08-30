@@ -23,6 +23,14 @@ export interface PaymentInitResponse {
   reference: string
 }
 
+export interface RegistrationInitResponse {
+  authorization_url?: string
+  access_code?: string
+  reference?: string
+  waived?: boolean
+  participant?: any
+}
+
 export interface PaymentVerifyResponse {
   payment: any
   subscription?: Subscription
@@ -37,12 +45,21 @@ export interface PaymentRecord {
   tournamentId?: string | null
   amount: number
   currency: string
-  status: 'PENDING' | 'SUCCESS' | 'FAILED'
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED'
   paystackReference: string
   plan?: string | null
   type?: string | null
   teamName?: string | null
   teamLogoUrl?: string | null
+  metadata?: {
+    channel?: 'OFFLINE'
+    method?: 'CASH' | 'BANK_TRANSFER' | 'OTHER'
+    note?: string | null
+    waived?: boolean
+    discountCode?: string | null
+    refundReason?: string | null
+    [key: string]: any
+  } | null
   created_at: string
   tournament?: { id: string; name: string } | null
 }
@@ -68,6 +85,10 @@ export interface PayoutSummary {
   totalNet: number
   paymentCount: number
   commissionPercent: number
+  offlineGross: number
+  offlineCount: number
+  refundedAmount: number
+  refundCount: number
   tournaments: {
     id: string
     name: string
@@ -75,6 +96,30 @@ export interface PayoutSummary {
     gross: number
     net: number
   }[]
+}
+
+export interface DiscountCode {
+  id: string
+  code: string
+  tournament_id: string
+  type: 'PERCENT' | 'FIXED' | 'WAIVER'
+  value: number
+  maxUses?: number | null
+  usedCount: number
+  expiresAt?: string | null
+  isActive: boolean
+  createdById: string
+  created_at: string
+  updated_at: string
+}
+
+export interface DiscountValidation {
+  valid: boolean
+  reason?: string
+  type?: 'PERCENT' | 'FIXED' | 'WAIVER'
+  value?: number
+  originalAmount?: number
+  finalAmount?: number
 }
 
 export const usePaymentStore = defineStore('payment', () => {
@@ -145,7 +190,9 @@ export const usePaymentStore = defineStore('payment', () => {
   }
 
   /**
-   * Initialize a tournament registration payment
+   * Initialize a tournament registration payment.
+   * Returns a Paystack checkout URL — or `{ waived: true }` when a
+   * waiver/100% discount code completes registration without payment.
    */
   async function initializeRegistration(data: {
     tournamentId: string
@@ -155,11 +202,12 @@ export const usePaymentStore = defineStore('payment', () => {
     logoUrl?: string
     token: string
     callbackUrl: string
+    discountCode?: string
   }) {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<PaymentInitResponse>>('/payments/initialize-registration', {
+      const response = await $api<ApiResponse<RegistrationInitResponse>>('/payments/initialize-registration', {
         method: 'POST',
         body: data,
       })
@@ -385,6 +433,142 @@ export const usePaymentStore = defineStore('payment', () => {
     }
   }
 
+  /**
+   * Record a registration payment collected off-platform (cash/transfer)
+   */
+  async function recordOfflinePayment(data: {
+    tournamentId: string
+    participantId?: string
+    payerName?: string
+    amount?: number
+    method: 'CASH' | 'BANK_TRANSFER' | 'OTHER'
+    note?: string
+  }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<PaymentRecord>>('/payments/offline', {
+        method: 'POST',
+        body: data,
+      })
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Record offline payment failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Download the CSV settlement report for an organization
+   */
+  async function exportPaymentsCsv(orgId: string, tournamentId?: string) {
+    const blob = await $api<Blob>(`/payments/export/${orgId}`, {
+      method: 'GET',
+      query: tournamentId ? { tournamentId } : undefined,
+      responseType: 'blob',
+    })
+    if (import.meta.client) {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `parascores-settlements${tournamentId ? `-${tournamentId}` : ''}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  /**
+   * Discount codes (organizer management)
+   */
+  async function fetchDiscountCodes(tournamentId: string) {
+    const response = await $api<ApiResponse<DiscountCode[]>>(`/payments/tournaments/${tournamentId}/discount-codes`, {
+      method: 'GET',
+    })
+    return response.data || []
+  }
+
+  async function createDiscountCode(tournamentId: string, data: {
+    code: string
+    type: 'PERCENT' | 'FIXED' | 'WAIVER'
+    value?: number
+    maxUses?: number
+    expiresAt?: string
+  }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<DiscountCode>>(`/payments/tournaments/${tournamentId}/discount-codes`, {
+        method: 'POST',
+        body: data,
+      })
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Create discount code failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateDiscountCode(id: string, data: {
+    isActive?: boolean
+    maxUses?: number | null
+    expiresAt?: string | null
+  }) {
+    const response = await $api<ApiResponse<DiscountCode>>(`/payments/discount-codes/${id}`, {
+      method: 'PATCH',
+      body: data,
+    })
+    return response
+  }
+
+  async function deleteDiscountCode(id: string) {
+    const response = await $api<ApiResponse<null>>(`/payments/discount-codes/${id}`, {
+      method: 'DELETE',
+    })
+    return response
+  }
+
+  /**
+   * Preview a discount code on the join page
+   */
+  async function validateDiscountCode(tournamentId: string, code: string) {
+    const response = await $api<ApiResponse<DiscountValidation>>('/payments/discount-codes/validate', {
+      method: 'POST',
+      body: { tournamentId, code },
+    })
+    return response.data
+  }
+
+  /**
+   * Refund a registration payment (OWNER only).
+   * `manual: true` records the refund without calling Paystack —
+   * the organizer returns the money themselves.
+   */
+  async function refundPayment(paymentId: string, reason?: string, manual?: boolean) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<PaymentRecord>>(`/payments/refund/${paymentId}`, {
+        method: 'POST',
+        body: { reason, manual },
+      })
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Refund payment failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // State
     subscription,
@@ -414,5 +598,13 @@ export const usePaymentStore = defineStore('payment', () => {
     fetchPayoutAccount,
     fetchPayoutSummary,
     setupPayoutAccount,
+    recordOfflinePayment,
+    exportPaymentsCsv,
+    fetchDiscountCodes,
+    createDiscountCode,
+    updateDiscountCode,
+    deleteDiscountCode,
+    validateDiscountCode,
+    refundPayment,
   }
 })

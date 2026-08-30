@@ -35,6 +35,20 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   const isApp = host.startsWith('manage.') || host.startsWith('manage-dev.')
   const isAdmin = host.startsWith('admin.')
 
+  // Event hub subdomains (any non-reserved label on a known base domain) are fully public
+  const RESERVED_SUBDOMAINS = ['manage', 'manage-dev', 'admin', 'admin-dev', 'dev', 'www', 'api']
+  const hostname = host.split(':')[0] || ''
+  const labels = hostname.split('.')
+  const isKnownBaseDomain = hostname === 'lvh.me' || hostname.endsWith('.lvh.me')
+    || hostname === 'parascores.com' || hostname.endsWith('.parascores.com')
+  const firstLabel = labels.length > 2 ? labels[0]! : null
+  const isEventHub = isKnownBaseDomain && !!firstLabel && !RESERVED_SUBDOMAINS.includes(firstLabel)
+
+  if (isEventHub) {
+    authStore.authLoading = false
+    return
+  }
+
   // 3. Dynamic Protocol & Domain Helper
   const protocol = import.meta.dev ? 'http' : 'https'
   // Fix: Strip both 'manage.', 'manage-dev.', 'admin.', and 'www.' to get the true root domain

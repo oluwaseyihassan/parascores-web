@@ -31,8 +31,8 @@ export interface UpdateFixtureData {
 
 export interface CreateFixtureData {
   tournament_id: string;
-  homeTeamId: string;
-  awayTeamId: string;
+  homeTeamId?: string;
+  awayTeamId?: string;
   round: number;
   roundName?: string | null;
   matchNumber?: number;

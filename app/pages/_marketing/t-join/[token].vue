@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useTournamentInviteStore } from '~/stores/tournamentInvite'
 import { useAuthStore } from '~/stores/auth'
 import { usePaymentStore } from '~/stores/payment'
+import type { DiscountValidation } from '~/stores/payment'
 import { useTeamStore } from '~/stores/team'
 import { z } from 'zod'
 import type { FormSubmitEvent } from '#ui/types'
@@ -141,6 +142,46 @@ onMounted(async () => {
 const invite = computed(() => inviteStore.currentInvite)
 const myTeams = computed(() => teamStore.teams)
 
+// Discount / waiver code
+const discountCodeInput = ref('')
+const appliedDiscount = ref<DiscountValidation | null>(null)
+const applyingDiscount = ref(false)
+const discountError = ref<string | null>(null)
+
+const baseFee = computed(() => invite.value?.tournament?.registrationFee ?? 0)
+const effectiveFee = computed(() =>
+  appliedDiscount.value?.valid
+    ? (appliedDiscount.value.finalAmount ?? baseFee.value)
+    : baseFee.value
+)
+
+async function applyDiscountCode() {
+  const tournamentId = invite.value?.tournament?.id
+  if (!discountCodeInput.value.trim() || !tournamentId) return
+  applyingDiscount.value = true
+  discountError.value = null
+  try {
+    const result = await paymentStore.validateDiscountCode(tournamentId, discountCodeInput.value.trim())
+    if (result?.valid) {
+      appliedDiscount.value = result
+    } else {
+      appliedDiscount.value = null
+      discountError.value = result?.reason || 'Invalid discount code'
+    }
+  } catch (err: any) {
+    appliedDiscount.value = null
+    discountError.value = err.data?.message || 'Could not validate code'
+  } finally {
+    applyingDiscount.value = false
+  }
+}
+
+function removeDiscount() {
+  appliedDiscount.value = null
+  discountCodeInput.value = ''
+  discountError.value = null
+}
+
 const handleJoin = async (event: FormSubmitEvent<Schema>) => {
   if (!authStore.isAuthenticated) {
     router.push(`/login?redirect=/t-join/${token}`)
@@ -190,7 +231,22 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
         logoUrl: selectedTeamId.value === 'new' ? finalLogoUrl : undefined,
         token,
         callbackUrl,
+        discountCode: appliedDiscount.value?.valid ? discountCodeInput.value.trim() : undefined,
       })
+
+      // Waiver / 100% discount — registration completed without a checkout
+      if (response?.data?.waived) {
+        successMessage.value = 'Registration Complete — Fee Waived! 🎉'
+        joinStatus.value = 'CONFIRMED'
+        setTimeout(() => {
+          if (invite.value?.tournament?.customName) {
+            router.push(`/t/${invite.value.tournament.customName}`)
+          } else if (invite.value?.tournament?.id) {
+            router.push(`/t/${invite.value.tournament.id}`)
+          }
+        }, 3000)
+        return
+      }
 
       if (response?.data?.authorization_url) {
         window.location.href = response.data.authorization_url
@@ -272,7 +328,12 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
           
           <div v-if="invite.tournament?.isPaidRegistration" class="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
             <UIcon name="i-heroicons-banknotes" class="w-4 h-4" />
-            <span>Registration Fee: ₦{{ (((invite.tournament.registrationFee ?? 0) / 100)).toLocaleString() }}</span>
+            <span v-if="appliedDiscount?.valid && effectiveFee < baseFee">
+              Registration Fee:
+              <span class="line-through opacity-60">₦{{ (baseFee / 100).toLocaleString() }}</span>
+              ₦{{ (effectiveFee / 100).toLocaleString() }}
+            </span>
+            <span v-else>Registration Fee: ₦{{ (baseFee / 100).toLocaleString() }}</span>
           </div>
 
           <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">
@@ -340,6 +401,42 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
               </UFormField>
             </div>
 
+            <!-- Discount Code -->
+            <div v-if="invite.tournament?.isPaidRegistration && authStore.isAuthenticated" class="pt-4 border-t border-gray-100 dark:border-white/5">
+              <div v-if="appliedDiscount?.valid" class="flex items-center justify-between gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-500/20">
+                <div class="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 font-semibold min-w-0">
+                  <UIcon name="i-heroicons-ticket" class="w-4 h-4 shrink-0" />
+                  <span class="font-mono truncate">{{ discountCodeInput.toUpperCase() }}</span>
+                  <span class="text-xs font-normal">
+                    — {{ appliedDiscount.type === 'WAIVER' ? 'fee waived' : `you pay ₦${(effectiveFee / 100).toLocaleString()}` }}
+                  </span>
+                </div>
+                <UButton size="xs" variant="ghost" color="neutral" icon="i-heroicons-x-mark" @click="removeDiscount" />
+              </div>
+              <div v-else>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Have a discount code?</label>
+                <div class="flex gap-2">
+                  <UInput
+                    v-model="discountCodeInput"
+                    placeholder="Enter code"
+                    class="flex-1 uppercase"
+                    size="lg"
+                    @keyup.enter.prevent="applyDiscountCode"
+                  />
+                  <UButton
+                    size="lg"
+                    variant="soft"
+                    color="neutral"
+                    label="Apply"
+                    :loading="applyingDiscount"
+                    :disabled="!discountCodeInput.trim()"
+                    @click.prevent="applyDiscountCode"
+                  />
+                </div>
+                <p v-if="discountError" class="text-xs text-red-500 mt-1.5">{{ discountError }}</p>
+              </div>
+            </div>
+
             <!-- Auth Help -->
             <div v-if="!authStore.isAuthenticated" class="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/10 text-center">
               <p class="text-sm text-gray-600 dark:text-gray-400">Login is required to register.</p>
@@ -356,8 +453,11 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
               <template v-if="!authStore.isAuthenticated">
                 Login to Join
               </template>
+              <template v-else-if="invite.tournament?.isPaidRegistration && appliedDiscount?.valid && effectiveFee <= 0">
+                Register for Free
+              </template>
               <template v-else-if="invite.tournament?.isPaidRegistration">
-                Pay ₦{{ (((invite.tournament.registrationFee ?? 0) / 100)).toLocaleString() }} & Register
+                Pay ₦{{ (effectiveFee / 100).toLocaleString() }} & Register
               </template>
               <template v-else>
                 {{ selectedTeamId === 'new' ? 'Register Team' : 'Join Tournament' }}
