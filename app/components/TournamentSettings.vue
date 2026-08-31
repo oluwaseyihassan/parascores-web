@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const tournamentStore = useTournamentStore()
 const paymentStore = usePaymentStore()
-const { handleError } = useErrors()
+const { handleError, extractErrorMessage } = useErrors()
 
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -44,6 +44,7 @@ const discountCodes = ref<DiscountCode[]>([])
 const loadingDiscountCodes = ref(false)
 const showDiscountModal = ref(false)
 const savingDiscount = ref(false)
+const discountError = ref<string | null>(null)
 const deletingDiscountId = ref<string | null>(null)
 const discountForm = reactive({
   code: '',
@@ -78,12 +79,23 @@ function openDiscountModal() {
     maxUses: null,
     expiresAt: '',
   })
+  discountError.value = null
   showDiscountModal.value = true
 }
 
+const discountFormInvalid = computed(() => {
+  if (!discountForm.code.trim()) return true
+  if (discountForm.type === 'WAIVER') return false
+  const v = discountForm.value
+  if (v == null || v <= 0) return true
+  if (discountForm.type === 'PERCENT' && v > 100) return true
+  return false
+})
+
 async function handleCreateDiscount() {
-  if (!discountForm.code.trim()) return
+  if (discountFormInvalid.value) return
   savingDiscount.value = true
+  discountError.value = null
   try {
     await paymentStore.createDiscountCode(props.tournament.id, {
       code: discountForm.code.trim(),
@@ -101,7 +113,7 @@ async function handleCreateDiscount() {
     toast.add({ title: 'Discount Code Created', color: 'success' })
     await loadDiscountCodes()
   } catch (err: any) {
-    handleError(err, { title: 'Failed to Create Code' })
+    discountError.value = extractErrorMessage(err)
   } finally {
     savingDiscount.value = false
   }
@@ -1189,6 +1201,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 />
               </UFormField>
             </div>
+
+            <!-- Inline error -->
+            <div
+              v-if="discountError"
+              class="flex items-start gap-2.5 p-3 rounded-xl text-xs bg-red-500/5 dark:bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400"
+            >
+              <UIcon name="i-heroicons-exclamation-circle" class="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{{ discountError }}</span>
+            </div>
           </div>
 
           <template #footer>
@@ -1199,7 +1220,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 icon="i-heroicons-check"
                 label="Create Code"
                 :loading="savingDiscount"
-                :disabled="!discountForm.code.trim() || (discountForm.type !== 'WAIVER' && !discountForm.value)"
+                :disabled="discountFormInvalid"
                 @click="handleCreateDiscount"
               />
             </div>
