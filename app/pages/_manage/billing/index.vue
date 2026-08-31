@@ -16,6 +16,7 @@ useSeoMeta({
 const authStore = useAuthStore()
 const paymentStore = usePaymentStore()
 const { handleError } = useErrors()
+const { toMain } = useHost()
 const toast = useToast()
 const config = useRuntimeConfig()
 
@@ -260,7 +261,8 @@ function handlePlanAction(plan: typeof plans.value[0]) {
     selectedTournamentId.value = ''
     showTournamentSelector.value = true
   } else if (plan.key === 'ENTERPRISE') {
-    navigateTo('/contact?subject=Enterprise Inquiry')
+    // /contact only exists on the marketing (root) domain — go cross-subdomain
+    return navigateTo(toMain('/contact?subject=Enterprise Inquiry'), { external: true })
   } else if (canSubscribe(plan)) {
     handleSubscribe(plan)
   }
