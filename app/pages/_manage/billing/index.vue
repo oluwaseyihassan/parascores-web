@@ -149,6 +149,12 @@ const plans = computed(() => [
   }
 ])
 
+// Page tabs
+const billingTabs = [
+  { label: 'Earnings', value: 'earnings', slot: 'earnings', icon: 'i-heroicons-banknotes' },
+  { label: 'Plan & Pricing', value: 'plans', slot: 'plans', icon: 'i-heroicons-sparkles' },
+]
+
 // Fetch subscription + payment history on mount
 onMounted(async () => {
   if (authStore.currentOrganization?.id) {
@@ -500,13 +506,75 @@ const statusColor = computed(() => {
 <template>
   <div>
     <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Billing</h1>
-      <p class="text-gray-500 mt-1">Manage your subscription and plan.</p>
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Billing</h1>
+        <p class="text-gray-500 mt-1">
+          Earnings, payouts and subscription for
+          <span class="font-semibold text-gray-900 dark:text-white">{{ authStore.currentOrganization?.name }}</span>
+        </p>
+      </div>
+      <USelect
+        v-if="orgOptions.length > 1"
+        :model-value="authStore.activeOrganizationId ?? undefined"
+        :items="orgOptions"
+        value-key="value"
+        size="sm"
+        class="w-52 shrink-0"
+        @update:model-value="(id) => authStore.syncActiveOrganization(id as string)"
+      />
     </div>
 
+    <!-- Stat cards -->
+    <div v-if="payoutSummary" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl p-4 sm:p-5">
+        <div class="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+          <UIcon name="i-heroicons-banknotes" class="w-4 h-4 text-emerald-500" />
+          <span>Net earned</span>
+        </div>
+        <p class="mt-2 text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+          ₦{{ (payoutSummary.totalNet / 100).toLocaleString() }}
+        </p>
+        <p class="text-[11px] text-gray-400 mt-0.5">of ₦{{ (payoutSummary.totalGross / 100).toLocaleString() }} gross</p>
+      </div>
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl p-4 sm:p-5">
+        <div class="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+          <UIcon name="i-heroicons-receipt-percent" class="w-4 h-4 text-indigo-500" />
+          <span>Payments</span>
+        </div>
+        <p class="mt-2 text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+          {{ payoutSummary.paymentCount }}
+        </p>
+        <p class="text-[11px] text-gray-400 mt-0.5">registration payment{{ payoutSummary.paymentCount === 1 ? '' : 's' }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl p-4 sm:p-5">
+        <div class="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+          <UIcon name="i-heroicons-wallet" class="w-4 h-4 text-amber-500" />
+          <span>Collected offline</span>
+        </div>
+        <p class="mt-2 text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+          ₦{{ (payoutSummary.offlineGross / 100).toLocaleString() }}
+        </p>
+        <p class="text-[11px] text-gray-400 mt-0.5">{{ payoutSummary.offlineCount }} payment{{ payoutSummary.offlineCount === 1 ? '' : 's' }} — no commission</p>
+      </div>
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl p-4 sm:p-5">
+        <div class="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+          <UIcon name="i-heroicons-arrow-uturn-left" class="w-4 h-4 text-red-500" />
+          <span>Refunded</span>
+        </div>
+        <p class="mt-2 text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+          ₦{{ (payoutSummary.refundedAmount / 100).toLocaleString() }}
+        </p>
+        <p class="text-[11px] text-gray-400 mt-0.5">{{ payoutSummary.refundCount }} refund{{ payoutSummary.refundCount === 1 ? '' : 's' }}</p>
+      </div>
+    </div>
+
+    <UTabs :items="billingTabs" default-value="earnings" class="w-full">
+      <template #earnings>
+        <div class="mt-6 space-y-6">
+
     <!-- Payout Account -->
-    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm mb-8">
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
       <div class="px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <UIcon name="i-heroicons-banknotes" class="w-4.5 h-4.5 text-emerald-500" />
@@ -519,29 +587,6 @@ const statusColor = computed(() => {
         >
           {{ payoutAccount?.hasPayoutAccount ? 'Active' : 'Not set up' }}
         </UBadge>
-      </div>
-
-      <div class="px-6 py-2.5 border-b border-gray-100 dark:border-white/[0.06] bg-gray-50/50 dark:bg-white/[0.02] flex items-center gap-2.5">
-        <UAvatar
-          v-if="authStore.currentOrganization?.logoUrl"
-          :src="authStore.currentOrganization.logoUrl"
-          size="xs"
-        />
-        <div v-else class="w-5 h-5 rounded-md bg-gray-200 dark:bg-white/10 flex items-center justify-center text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase">
-          {{ authStore.currentOrganization?.name?.charAt(0) }}
-        </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 min-w-0 truncate">
-          Payout account for <span class="font-semibold text-gray-900 dark:text-white">{{ authStore.currentOrganization?.name }}</span>
-        </p>
-        <USelect
-          v-if="orgOptions.length > 1"
-          :model-value="authStore.activeOrganizationId ?? undefined"
-          :items="orgOptions"
-          value-key="value"
-          size="xs"
-          class="w-44 ml-auto shrink-0"
-          @update:model-value="(id) => authStore.syncActiveOrganization(id as string)"
-        />
       </div>
 
       <div class="p-6 space-y-5">
@@ -623,8 +668,186 @@ const statusColor = computed(() => {
       </div>
     </div>
 
+    <!-- Payment History -->
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
+      <div class="px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
+        <h3 class="text-sm font-bold text-gray-500">Billing History</h3>
+        <div class="flex flex-wrap items-center gap-2">
+          <USelect
+            v-model="exportTournamentId"
+            :items="exportTournamentOptions"
+            value-key="value"
+            size="xs"
+            class="w-40"
+          />
+          <UButton
+            icon="i-heroicons-arrow-down-tray"
+            label="Export CSV"
+            size="xs"
+            variant="outline"
+            color="neutral"
+            :loading="exporting"
+            :disabled="paymentHistory.length === 0"
+            @click="handleExport"
+          />
+          <UButton
+            icon="i-heroicons-plus"
+            label="Record Offline Payment"
+            size="xs"
+            color="primary"
+            @click="openOfflineModal"
+          />
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div v-if="paymentHistory.length === 0" class="p-8 text-center">
+        <UIcon name="i-heroicons-document-text" class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+        <p class="text-sm text-gray-400">No payment history yet.</p>
+        <p class="text-xs text-gray-400 mt-1">Invoices will appear here after your first payment.</p>
+      </div>
+
+      <!-- Payment List (Mobile: Cards) -->
+      <div v-else>
+        <div class="md:hidden divide-y divide-gray-100 dark:divide-white/[0.06]">
+          <div
+            v-for="payment in paymentHistory"
+            :key="payment.id"
+            class="px-5 py-4 flex items-start gap-3"
+          >
+            <div
+              v-if="payment.teamLogoUrl"
+              class="w-9 h-9 rounded-lg overflow-hidden shrink-0 mt-0.5 border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5"
+            >
+              <img :src="payment.teamLogoUrl" :alt="payment.teamName || 'Team logo'" class="w-full h-full object-cover" />
+            </div>
+            <div
+              v-else
+              class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+              :class="payment.status === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-500' : payment.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'"
+            >
+              <UIcon
+                :name="payment.status === 'SUCCESS' ? 'i-heroicons-check-circle' : payment.status === 'PENDING' ? 'i-heroicons-clock' : 'i-heroicons-x-circle'"
+                class="w-5 h-5"
+              />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-sm font-bold text-gray-900 dark:text-white truncate">
+                  {{ paymentLabel(payment) }}
+                </span>
+                <span class="text-sm font-bold text-gray-900 dark:text-white shrink-0">
+                  ₦{{ (payment.amount / 100).toLocaleString() }}
+                </span>
+              </div>
+              <div class="flex items-center gap-2 mt-0.5">
+                <span class="text-xs text-gray-400">{{ formatDate(payment.created_at) }}</span>
+                <span v-if="payment.tournament" class="text-xs text-gray-400 truncate">· {{ payment.tournament.name }}</span>
+              </div>
+              <div class="flex items-center gap-2 mt-1.5">
+                <UBadge
+                  :color="statusBadgeColor(payment.status)"
+                  variant="subtle"
+                  size="xs"
+                >
+                  {{ payment.status }}
+                </UBadge>
+                <UBadge v-if="payment.metadata?.waived" color="info" variant="subtle" size="xs">WAIVED</UBadge>
+                <UBadge v-if="payment.type === 'OFFLINE_REGISTRATION'" color="neutral" variant="subtle" size="xs">OFFLINE</UBadge>
+                <span class="text-[10px] text-gray-500 truncate">{{ payment.paystackReference }}</span>
+              </div>
+              <div v-if="canRefund(payment)" class="mt-2">
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  color="error"
+                  icon="i-heroicons-arrow-uturn-left"
+                  label="Refund"
+                  @click="openRefund(payment)"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Table (Desktop) -->
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-white/[0.06]">
+                <th class="px-6 py-3">Date</th>
+                <th class="px-6 py-3">Description</th>
+                <th class="px-6 py-3">Amount</th>
+                <th class="px-6 py-3">Status</th>
+                <th class="px-6 py-3">Reference</th>
+                <th class="px-6 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-white/[0.04]">
+              <tr v-for="payment in paymentHistory" :key="payment.id" class="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                <td class="px-6 py-3.5 whitespace-nowrap text-gray-600 dark:text-gray-300">
+                  {{ formatDate(payment.created_at) }}
+                </td>
+                 <td class="px-6 py-3.5">
+                   <div class="flex items-center gap-2">
+                    <img
+                      v-if="payment.teamLogoUrl"
+                      :src="payment.teamLogoUrl"
+                      :alt="payment.teamName || 'Team logo'"
+                      class="w-6 h-6 rounded-md object-cover shrink-0 border border-gray-200 dark:border-white/10"
+                    />
+                    <span class="font-bold text-gray-900 dark:text-white">
+                      {{ paymentLabel(payment) }}
+                    </span>
+                    <span v-if="payment.tournament" class="text-xs text-gray-400">
+                      · {{ payment.tournament.name }}
+                    </span>
+                  </div>
+                </td>
+                <td class="px-6 py-3.5 whitespace-nowrap font-bold text-gray-900 dark:text-white">
+                  ₦{{ (payment.amount / 100).toLocaleString() }}
+                </td>
+                <td class="px-6 py-3.5 whitespace-nowrap">
+                  <UBadge
+                    :color="statusBadgeColor(payment.status)"
+                    variant="subtle"
+                    size="xs"
+                    class="font-bold uppercase tracking-wider text-[10px]"
+                  >
+                    {{ payment.status }}
+                  </UBadge>
+                  <UBadge v-if="payment.metadata?.waived" color="info" variant="subtle" size="xs" class="ml-1">WAIVED</UBadge>
+                  <UBadge v-if="payment.type === 'OFFLINE_REGISTRATION'" color="neutral" variant="subtle" size="xs" class="ml-1">OFFLINE</UBadge>
+                </td>
+                <td class="px-6 py-3.5 whitespace-nowrap text-xs text-gray-400 font-mono">
+                  {{ payment.paystackReference }}
+                </td>
+                <td class="px-6 py-3.5 whitespace-nowrap text-right">
+                  <UButton
+                    v-if="canRefund(payment)"
+                    size="xs"
+                    variant="ghost"
+                    color="error"
+                    icon="i-heroicons-arrow-uturn-left"
+                    label="Refund"
+                    @click="openRefund(payment)"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+        </div>
+      </template>
+
+      <template #plans>
+        <div class="mt-6 space-y-8">
+
     <!-- Current Plan Status Card -->
-    <div class="mb-8 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl p-6 shadow-sm">
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl p-6 shadow-sm">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex items-center gap-4">
           <div 
@@ -783,177 +1006,9 @@ const statusColor = computed(() => {
       </div>
     </div>
 
-    <!-- Payment History -->
-    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
-      <div class="px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
-        <h3 class="text-sm font-bold text-gray-500">Billing History</h3>
-        <div class="flex flex-wrap items-center gap-2">
-          <USelect
-            v-model="exportTournamentId"
-            :items="exportTournamentOptions"
-            value-key="value"
-            size="xs"
-            class="w-40"
-          />
-          <UButton
-            icon="i-heroicons-arrow-down-tray"
-            label="Export CSV"
-            size="xs"
-            variant="outline"
-            color="neutral"
-            :loading="exporting"
-            :disabled="paymentHistory.length === 0"
-            @click="handleExport"
-          />
-          <UButton
-            icon="i-heroicons-plus"
-            label="Record Offline Payment"
-            size="xs"
-            color="primary"
-            @click="openOfflineModal"
-          />
         </div>
-      </div>
-
-      <!-- Empty State -->
-      <div v-if="paymentHistory.length === 0" class="p-8 text-center">
-        <UIcon name="i-heroicons-document-text" class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-        <p class="text-sm text-gray-400">No payment history yet.</p>
-        <p class="text-xs text-gray-400 mt-1">Invoices will appear here after your first payment.</p>
-      </div>
-
-      <!-- Payment List (Mobile: Cards) -->
-      <div v-else>
-        <div class="md:hidden divide-y divide-gray-100 dark:divide-white/[0.06]">
-          <div 
-            v-for="payment in paymentHistory" 
-            :key="payment.id" 
-            class="px-5 py-4 flex items-start gap-3"
-          >
-            <div
-              v-if="payment.teamLogoUrl"
-              class="w-9 h-9 rounded-lg overflow-hidden shrink-0 mt-0.5 border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5"
-            >
-              <img :src="payment.teamLogoUrl" :alt="payment.teamName || 'Team logo'" class="w-full h-full object-cover" />
-            </div>
-            <div
-              v-else
-              class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-              :class="payment.status === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-500' : payment.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'"
-            >
-              <UIcon
-                :name="payment.status === 'SUCCESS' ? 'i-heroicons-check-circle' : payment.status === 'PENDING' ? 'i-heroicons-clock' : 'i-heroicons-x-circle'"
-                class="w-5 h-5"
-              />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-sm font-bold text-gray-900 dark:text-white truncate">
-                  {{ paymentLabel(payment) }}
-                </span>
-                <span class="text-sm font-bold text-gray-900 dark:text-white shrink-0">
-                  ₦{{ (payment.amount / 100).toLocaleString() }}
-                </span>
-              </div>
-              <div class="flex items-center gap-2 mt-0.5">
-                <span class="text-xs text-gray-400">{{ formatDate(payment.created_at) }}</span>
-                <span v-if="payment.tournament" class="text-xs text-gray-400 truncate">· {{ payment.tournament.name }}</span>
-              </div>
-              <div class="flex items-center gap-2 mt-1.5">
-                <UBadge
-                  :color="statusBadgeColor(payment.status)"
-                  variant="subtle"
-                  size="xs"
-                >
-                  {{ payment.status }}
-                </UBadge>
-                <UBadge v-if="payment.metadata?.waived" color="info" variant="subtle" size="xs">WAIVED</UBadge>
-                <UBadge v-if="payment.type === 'OFFLINE_REGISTRATION'" color="neutral" variant="subtle" size="xs">OFFLINE</UBadge>
-                <span class="text-[10px] text-gray-500 truncate">{{ payment.paystackReference }}</span>
-              </div>
-              <div v-if="canRefund(payment)" class="mt-2">
-                <UButton
-                  size="xs"
-                  variant="ghost"
-                  color="error"
-                  icon="i-heroicons-arrow-uturn-left"
-                  label="Refund"
-                  @click="openRefund(payment)"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Payment Table (Desktop) -->
-        <div class="hidden md:block overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-white/[0.06]">
-                <th class="px-6 py-3">Date</th>
-                <th class="px-6 py-3">Description</th>
-                <th class="px-6 py-3">Amount</th>
-                <th class="px-6 py-3">Status</th>
-                <th class="px-6 py-3">Reference</th>
-                <th class="px-6 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50 dark:divide-white/[0.04]">
-              <tr v-for="payment in paymentHistory" :key="payment.id" class="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
-                <td class="px-6 py-3.5 whitespace-nowrap text-gray-600 dark:text-gray-300">
-                  {{ formatDate(payment.created_at) }}
-                </td>
-                 <td class="px-6 py-3.5">
-                   <div class="flex items-center gap-2">
-                    <img
-                      v-if="payment.teamLogoUrl"
-                      :src="payment.teamLogoUrl"
-                      :alt="payment.teamName || 'Team logo'"
-                      class="w-6 h-6 rounded-md object-cover shrink-0 border border-gray-200 dark:border-white/10"
-                    />
-                    <span class="font-bold text-gray-900 dark:text-white">
-                      {{ paymentLabel(payment) }}
-                    </span>
-                    <span v-if="payment.tournament" class="text-xs text-gray-400">
-                      · {{ payment.tournament.name }}
-                    </span>
-                  </div>
-                </td>
-                <td class="px-6 py-3.5 whitespace-nowrap font-bold text-gray-900 dark:text-white">
-                  ₦{{ (payment.amount / 100).toLocaleString() }}
-                </td>
-                <td class="px-6 py-3.5 whitespace-nowrap">
-                  <UBadge
-                    :color="statusBadgeColor(payment.status)"
-                    variant="subtle"
-                    size="xs"
-                    class="font-bold uppercase tracking-wider text-[10px]"
-                  >
-                    {{ payment.status }}
-                  </UBadge>
-                  <UBadge v-if="payment.metadata?.waived" color="info" variant="subtle" size="xs" class="ml-1">WAIVED</UBadge>
-                  <UBadge v-if="payment.type === 'OFFLINE_REGISTRATION'" color="neutral" variant="subtle" size="xs" class="ml-1">OFFLINE</UBadge>
-                </td>
-                <td class="px-6 py-3.5 whitespace-nowrap text-xs text-gray-400 font-mono">
-                  {{ payment.paystackReference }}
-                </td>
-                <td class="px-6 py-3.5 whitespace-nowrap text-right">
-                  <UButton
-                    v-if="canRefund(payment)"
-                    size="xs"
-                    variant="ghost"
-                    color="error"
-                    icon="i-heroicons-arrow-uturn-left"
-                    label="Refund"
-                    @click="openRefund(payment)"
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+      </template>
+    </UTabs>
 
     <!-- Record Offline Payment Modal -->
     <UModal v-model:open="showOfflineModal">
