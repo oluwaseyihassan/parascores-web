@@ -92,6 +92,19 @@ const discountFormInvalid = computed(() => {
   return false
 })
 
+// Why the create button is disabled — shown under the value field
+const discountValueError = computed(() => {
+  const v = discountForm.value
+  if (discountForm.type === 'WAIVER' || v == null) return null
+  if (discountForm.type === 'PERCENT' && (v < 1 || v > 100)) {
+    return 'Enter a percentage between 1 and 100'
+  }
+  if (discountForm.type === 'FIXED' && v <= 0) {
+    return 'Enter an amount greater than zero'
+  }
+  return null
+})
+
 async function handleCreateDiscount() {
   if (discountFormInvalid.value) return
   savingDiscount.value = true
@@ -1157,6 +1170,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <UFormField
               v-if="discountForm.type === 'PERCENT'"
               label="Percent off (1–100)"
+              :error="discountValueError || undefined"
               required
             >
               <UInput
@@ -1172,6 +1186,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <UFormField
               v-else-if="discountForm.type === 'FIXED'"
               label="Amount off (₦)"
+              :error="discountValueError || undefined"
               required
             >
               <UInput
