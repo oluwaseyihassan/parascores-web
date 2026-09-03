@@ -564,6 +564,16 @@ export const usePaymentStore = defineStore('payment', () => {
   }
 
   /**
+   * Retry a failed/stuck instant payout (OWNER only)
+   */
+  async function retryPayout(paymentId: string) {
+    const response = await $api<ApiResponse<PaymentRecord>>(`/payments/payout/${paymentId}/retry`, {
+      method: 'POST',
+    })
+    return response
+  }
+
+  /**
    * Refund a registration payment (OWNER only).
    * `manual: true` records the refund without calling Paystack —
    * the organizer returns the money themselves.
@@ -624,5 +634,6 @@ export const usePaymentStore = defineStore('payment', () => {
     deleteDiscountCode,
     validateDiscountCode,
     refundPayment,
+    retryPayout,
   }
 })

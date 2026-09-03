@@ -367,6 +367,38 @@ function payoutChip(p: PaymentRecord) {
   }
 }
 
+// Retry failed/stuck instant payouts (OWNER only)
+const retryingPayoutId = ref<string | null>(null)
+
+function canRetryPayout(p: PaymentRecord) {
+  return isOwner.value
+    && p.type === 'TOURNAMENT_REGISTRATION'
+    && p.status === 'SUCCESS'
+    && p.metadata?.instantPayout === true
+    && ['FAILED', 'REVERSED'].includes(p.payoutStatus ?? '')
+}
+
+async function handleRetryPayout(p: PaymentRecord) {
+  retryingPayoutId.value = p.id
+  try {
+    const res = await paymentStore.retryPayout(p.id)
+    toast.add({
+      title: 'Payout Retried',
+      description: res.message,
+      color: res.data?.payoutStatus === 'PROCESSING' ? 'success' : 'warning',
+    })
+    const orgId = authStore.currentOrganization?.id
+    if (orgId) {
+      paymentStore.fetchPaymentHistory(orgId).catch(() => {})
+      loadPayoutAccount(orgId)
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Payout Retry Failed' })
+  } finally {
+    retryingPayoutId.value = null
+  }
+}
+
 // Offline payment recording
 const showOfflineModal = ref(false)
 const recordingOffline = ref(false)
@@ -821,8 +853,19 @@ const statusColor = computed(() => {
                 </UBadge>
                 <span class="text-[10px] text-gray-500 truncate">{{ payment.paystackReference }}</span>
               </div>
-              <div v-if="canRefund(payment)" class="mt-2">
+              <div v-if="canRefund(payment) || canRetryPayout(payment)" class="mt-2 flex items-center gap-2">
                 <UButton
+                  v-if="canRetryPayout(payment)"
+                  size="xs"
+                  variant="soft"
+                  color="warning"
+                  icon="i-heroicons-arrow-path"
+                  label="Retry payout"
+                  :loading="retryingPayoutId === payment.id"
+                  @click="handleRetryPayout(payment)"
+                />
+                <UButton
+                  v-if="canRefund(payment)"
                   size="xs"
                   variant="ghost"
                   color="error"
@@ -891,15 +934,27 @@ const statusColor = computed(() => {
                   {{ payment.paystackReference }}
                 </td>
                 <td class="px-6 py-3.5 whitespace-nowrap text-right">
-                  <UButton
-                    v-if="canRefund(payment)"
-                    size="xs"
-                    variant="ghost"
-                    color="error"
-                    icon="i-heroicons-arrow-uturn-left"
-                    label="Refund"
-                    @click="openRefund(payment)"
-                  />
+                  <div class="flex items-center justify-end gap-2">
+                    <UButton
+                      v-if="canRetryPayout(payment)"
+                      size="xs"
+                      variant="soft"
+                      color="warning"
+                      icon="i-heroicons-arrow-path"
+                      label="Retry payout"
+                      :loading="retryingPayoutId === payment.id"
+                      @click="handleRetryPayout(payment)"
+                    />
+                    <UButton
+                      v-if="canRefund(payment)"
+                      size="xs"
+                      variant="ghost"
+                      color="error"
+                      icon="i-heroicons-arrow-uturn-left"
+                      label="Refund"
+                      @click="openRefund(payment)"
+                    />
+                  </div>
                 </td>
               </tr>
             </tbody>
