@@ -46,6 +46,8 @@ export interface PaymentRecord {
   amount: number
   currency: string
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED'
+  payoutStatus?: 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'REVERSED' | null
+  payoutAmount?: number | null
   paystackReference: string
   plan?: string | null
   type?: string | null
@@ -78,6 +80,7 @@ export interface PayoutAccountStatus {
   accountNumberMasked?: string | null
   accountName?: string | null
   createdAt?: string | null
+  instantPayouts?: boolean
 }
 
 export interface PayoutSummary {
@@ -416,6 +419,20 @@ export const usePaymentStore = defineStore('payment', () => {
   }
 
   /**
+   * Enable/disable instant payouts for an organization (OWNER only)
+   */
+  async function setInstantPayouts(orgId: string, enabled: boolean) {
+    const response = await $api<ApiResponse<{ instantPayouts: boolean }>>(
+      `/payments/payout-account/${orgId}/instant-payouts`,
+      {
+        method: 'POST',
+        body: { enabled },
+      },
+    )
+    return response
+  }
+
+  /**
    * Fetch payment history for an organization
    */
   async function fetchPaymentHistory(orgId: string) {
@@ -598,6 +615,7 @@ export const usePaymentStore = defineStore('payment', () => {
     fetchPayoutAccount,
     fetchPayoutSummary,
     setupPayoutAccount,
+    setInstantPayouts,
     recordOfflinePayment,
     exportPaymentsCsv,
     fetchDiscountCodes,

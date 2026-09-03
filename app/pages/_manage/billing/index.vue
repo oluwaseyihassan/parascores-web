@@ -333,6 +333,40 @@ function statusBadgeColor(status: string) {
   }
 }
 
+// Instant payouts (OWNER only)
+const togglingInstant = ref(false)
+
+async function handleInstantToggle(enabled: boolean) {
+  const orgId = authStore.currentOrganization?.id
+  if (!orgId || togglingInstant.value) return
+  togglingInstant.value = true
+  try {
+    const res = await paymentStore.setInstantPayouts(orgId, enabled)
+    if (payoutAccount.value) payoutAccount.value.instantPayouts = enabled
+    toast.add({
+      title: enabled ? 'Instant Payouts Enabled' : 'Instant Payouts Disabled',
+      description: res.message,
+      color: 'success',
+    })
+  } catch (err: any) {
+    handleError(err, { title: 'Could Not Update Instant Payouts' })
+  } finally {
+    togglingInstant.value = false
+  }
+}
+
+// Payout status chip for online registration payments (instant-payout orgs)
+function payoutChip(p: PaymentRecord) {
+  if (p.type !== 'TOURNAMENT_REGISTRATION' || !p.payoutStatus) return null
+  switch (p.payoutStatus) {
+    case 'PROCESSING': return { label: 'Payout processing', color: 'warning' as const }
+    case 'SUCCESS': return { label: 'Paid out instantly', color: 'success' as const }
+    case 'FAILED': return { label: 'Payout failed', color: 'error' as const }
+    case 'REVERSED': return { label: 'Payout reversed', color: 'error' as const }
+    default: return null
+  }
+}
+
 // Offline payment recording
 const showOfflineModal = ref(false)
 const recordingOffline = ref(false)
@@ -593,7 +627,12 @@ const statusColor = computed(() => {
 
       <div class="p-6 space-y-5">
         <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-          Connect a bank account to receive paid registration fees directly. Paystack settles funds to your account the next business day — ParaScores keeps only a {{ isPro ? 3 : 5 }}% platform commission{{ isPro ? ' (Pro rate)' : '' }}.
+          <template v-if="payoutAccount?.instantPayouts">
+            Instant payouts are on — registration fees are transferred to your bank within minutes of payment. ParaScores keeps only a {{ isPro ? 3 : 5 }}% platform commission{{ isPro ? ' (Pro rate)' : '' }}.
+          </template>
+          <template v-else>
+            Connect a bank account to receive paid registration fees directly. Paystack settles funds to your account the next business day — ParaScores keeps only a {{ isPro ? 3 : 5 }}% platform commission{{ isPro ? ' (Pro rate)' : '' }}.
+          </template>
         </p>
 
         <div v-if="payoutAccount?.hasPayoutAccount" class="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-500/20">
@@ -604,6 +643,27 @@ const statusColor = computed(() => {
               <template v-if="payoutAccount.bankName">{{ payoutAccount.bankName }} · </template>{{ payoutAccount.accountNumberMasked }}
             </p>
           </div>
+        </div>
+
+        <!-- Instant payouts toggle (OWNER only) -->
+        <div
+          v-if="payoutAccount?.hasPayoutAccount && isOwner"
+          class="flex items-center justify-between gap-3 p-4 rounded-xl border border-gray-200 dark:border-white/[0.06] bg-gray-50/50 dark:bg-white/[0.02]"
+        >
+          <div class="flex items-start gap-3 min-w-0">
+            <UIcon name="i-heroicons-bolt" class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-gray-900 dark:text-white">Instant payouts</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Transfer registration fees to your bank within minutes of payment, instead of settling the next business day.
+              </p>
+            </div>
+          </div>
+          <USwitch
+            :model-value="!!payoutAccount.instantPayouts"
+            :loading="togglingInstant"
+            @update:model-value="(v) => handleInstantToggle(!!v)"
+          />
         </div>
 
         <!-- Earnings Summary -->
@@ -756,6 +816,9 @@ const statusColor = computed(() => {
                 </UBadge>
                 <UBadge v-if="payment.metadata?.waived" color="info" variant="subtle" size="xs">WAIVED</UBadge>
                 <UBadge v-if="payment.type === 'OFFLINE_REGISTRATION'" color="neutral" variant="subtle" size="xs">OFFLINE</UBadge>
+                <UBadge v-if="payoutChip(payment)" :color="payoutChip(payment)!.color" variant="subtle" size="xs">
+                  {{ payoutChip(payment)!.label }}
+                </UBadge>
                 <span class="text-[10px] text-gray-500 truncate">{{ payment.paystackReference }}</span>
               </div>
               <div v-if="canRefund(payment)" class="mt-2">
@@ -820,6 +883,9 @@ const statusColor = computed(() => {
                   </UBadge>
                   <UBadge v-if="payment.metadata?.waived" color="info" variant="subtle" size="xs" class="ml-1">WAIVED</UBadge>
                   <UBadge v-if="payment.type === 'OFFLINE_REGISTRATION'" color="neutral" variant="subtle" size="xs" class="ml-1">OFFLINE</UBadge>
+                  <UBadge v-if="payoutChip(payment)" :color="payoutChip(payment)!.color" variant="subtle" size="xs" class="ml-1">
+                    {{ payoutChip(payment)!.label }}
+                  </UBadge>
                 </td>
                 <td class="px-6 py-3.5 whitespace-nowrap text-xs text-gray-400 font-mono">
                   {{ payment.paystackReference }}
