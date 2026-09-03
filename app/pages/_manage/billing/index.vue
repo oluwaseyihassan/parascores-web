@@ -370,6 +370,25 @@ function payoutChip(p: PaymentRecord) {
 // Retry failed/stuck instant payouts (OWNER only)
 const retryingPayoutId = ref<string | null>(null)
 
+// Refresh history + earnings without a full page reload
+const refreshingHistory = ref(false)
+
+async function handleRefreshHistory() {
+  const orgId = authStore.currentOrganization?.id
+  if (!orgId || refreshingHistory.value) return
+  refreshingHistory.value = true
+  try {
+    await Promise.all([
+      paymentStore.fetchPaymentHistory(orgId),
+      loadPayoutAccount(orgId),
+    ])
+  } catch {
+    // Keep existing data on failure
+  } finally {
+    refreshingHistory.value = false
+  }
+}
+
 function canRetryPayout(p: PaymentRecord) {
   return isOwner.value
     && p.type === 'TOURNAMENT_REGISTRATION'
@@ -767,6 +786,15 @@ const statusColor = computed(() => {
       <div class="px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
         <h3 class="text-sm font-bold text-gray-500">Billing History</h3>
         <div class="flex flex-wrap items-center gap-2">
+          <UButton
+            icon="i-heroicons-arrow-path"
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            :loading="refreshingHistory"
+            title="Refresh"
+            @click="handleRefreshHistory"
+          />
           <USelect
             v-model="exportTournamentId"
             :items="exportTournamentOptions"
