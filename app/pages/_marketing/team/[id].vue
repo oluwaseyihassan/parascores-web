@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import type { ApiResponse } from '~/stores/auth'
 
 definePageMeta({
   auth: false,
@@ -13,6 +14,108 @@ const teamId = route.params.id as string
 const loading = ref(true)
 const error = ref<string | null>(null)
 const team = ref<any>(null)
+
+// Owner roster management
+const authStore = useAuthStore()
+const toast = useToast()
+const { handleError } = useErrors()
+const isTeamOwner = ref(false)
+const expandedRoster = ref<string | null>(null)
+const rosterPlayers = ref<Record<string, any[]>>({})
+const rosterLoading = ref<string | null>(null)
+const addForms = ref<Record<string, { name: string; number?: number; position: string }>>({})
+const addingTo = ref<string | null>(null)
+const removingPlayerId = ref<string | null>(null)
+
+const rosterPositionOptions = [
+  { label: 'Goalkeeper', value: 'GK' },
+  { label: 'Defender', value: 'DEF' },
+  { label: 'Midfielder', value: 'MID' },
+  { label: 'Forward', value: 'FWD' },
+]
+
+async function checkOwnership() {
+  if (!authStore.isAuthenticated) return
+  try {
+    // Owner-only endpoint — succeeds only for the team owner
+    await $api(`/teams/${teamId}`, { method: 'GET' })
+    isTeamOwner.value = true
+  } catch {
+    // Not the owner — public profile only
+  }
+}
+
+async function toggleRoster(participantId: string) {
+  if (expandedRoster.value === participantId) {
+    expandedRoster.value = null
+    return
+  }
+  expandedRoster.value = participantId
+  if (!addForms.value[participantId]) {
+    addForms.value[participantId] = { name: '', number: undefined, position: '' }
+  }
+  if (!rosterPlayers.value[participantId]) {
+    rosterLoading.value = participantId
+    try {
+      const res = await $publicApi<ApiResponse<any[]>>(`/participants/${participantId}/players`)
+      rosterPlayers.value[participantId] = res.data || []
+    } catch {
+      rosterPlayers.value[participantId] = []
+    } finally {
+      rosterLoading.value = null
+    }
+  }
+}
+
+async function addRosterPlayer(participantId: string) {
+  const form = addForms.value[participantId]
+  if (!form?.name.trim() || addingTo.value) return
+  addingTo.value = participantId
+  try {
+    const res = await $api<ApiResponse<any>>(`/participants/${participantId}/players`, {
+      method: 'POST',
+      body: {
+        name: form.name.trim(),
+        number: form.number || undefined,
+        position: form.position || undefined,
+      },
+    })
+    if (res.data) {
+      rosterPlayers.value[participantId] = [...(rosterPlayers.value[participantId] || []), res.data]
+      addForms.value[participantId] = { name: '', number: undefined, position: '' }
+      toast.add({
+        title: res.data.status === 'PENDING' ? 'Player Added — Pending Approval' : 'Player Added',
+        color: 'success',
+      })
+    }
+  } catch (err: any) {
+    handleError(err, { title: 'Could not add player' })
+  } finally {
+    addingTo.value = null
+  }
+}
+
+async function removeRosterPlayer(participantId: string, playerId: string) {
+  if (removingPlayerId.value) return
+  removingPlayerId.value = playerId
+  try {
+    await $api(`/participants/${participantId}/players/${playerId}`, { method: 'DELETE' })
+    rosterPlayers.value[participantId] = (rosterPlayers.value[participantId] || []).filter((p) => p.id !== playerId)
+    toast.add({ title: 'Player Removed', color: 'success' })
+  } catch (err: any) {
+    handleError(err, { title: 'Could not remove player' })
+  } finally {
+    removingPlayerId.value = null
+  }
+}
+
+function playerStatusColor(status: string) {
+  switch (status) {
+    case 'APPROVED': return 'success' as const
+    case 'PENDING': return 'warning' as const
+    default: return 'error' as const
+  }
+}
 
 onMounted(async () => {
   try {
@@ -27,6 +130,7 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  checkOwnership()
 })
 
 const formatDate = (date: string) => {
@@ -170,6 +274,110 @@ const stats = computed(() => {
 
             <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 shrink-0 transition-colors" />
           </NuxtLink>
+        </div>
+      </div>
+
+      <!-- Owner Roster Management -->
+      <div v-if="isTeamOwner && team.participants?.length" class="mt-10">
+        <div class="mb-5 px-1">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <UIcon name="i-heroicons-user-group" class="w-4 h-4 text-emerald-500" />
+            Manage Roster
+          </h2>
+          <p class="text-xs text-gray-400 mt-1">
+            Add players to your squads. Where the tournament requires it, the organizer reviews additions before they appear on the team sheet.
+          </p>
+        </div>
+
+        <div class="space-y-2.5">
+          <div
+            v-for="p in team.participants"
+            :key="p.id"
+            class="rounded-xl bg-white dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.05] overflow-hidden"
+          >
+            <button
+              class="w-full flex items-center gap-4 p-4 text-left hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors"
+              @click="toggleRoster(p.id)"
+            >
+              <div class="flex-1 min-w-0">
+                <h4 class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ p.tournament.name }}</h4>
+                <p class="text-xs text-gray-400 mt-0.5 capitalize">{{ p.tournament.sport?.toLowerCase() }}</p>
+              </div>
+              <UIcon
+                name="i-heroicons-chevron-down"
+                class="w-4 h-4 text-gray-400 transition-transform"
+                :class="{ 'rotate-180': expandedRoster === p.id }"
+              />
+            </button>
+
+            <div v-if="expandedRoster === p.id" class="border-t border-gray-100 dark:border-white/[0.05] p-4 space-y-4">
+              <div v-if="rosterLoading === p.id" class="flex items-center gap-2 text-xs text-gray-400 py-2">
+                <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
+                Loading players...
+              </div>
+
+              <template v-else>
+                <div v-if="rosterPlayers[p.id]?.length" class="space-y-1.5">
+                  <div
+                    v-for="player in rosterPlayers[p.id]"
+                    :key="player.id"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-white/[0.03]"
+                  >
+                    <span class="text-xs font-mono font-bold text-gray-400 w-6 text-center">{{ player.number || '—' }}</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white flex-1 truncate">{{ player.name }}</span>
+                    <span class="text-[10px] text-gray-400 uppercase">{{ player.position || '' }}</span>
+                    <UBadge :color="playerStatusColor(player.status)" variant="subtle" size="xs">{{ player.status }}</UBadge>
+                    <UButton
+                      icon="i-heroicons-trash"
+                      size="xs"
+                      variant="ghost"
+                      color="error"
+                      :loading="removingPlayerId === player.id"
+                      @click="removeRosterPlayer(p.id, player.id)"
+                    />
+                  </div>
+                </div>
+                <p v-else class="text-xs text-gray-400 py-1">No players yet — add your squad below.</p>
+
+                <!-- Add player form -->
+                <div class="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100 dark:border-white/[0.05]">
+                  <UInput
+                    v-model="addForms[p.id].name"
+                    placeholder="Player name"
+                    size="sm"
+                    class="flex-1"
+                    @keyup.enter="addRosterPlayer(p.id)"
+                  />
+                  <UInput
+                    v-model.number="addForms[p.id].number"
+                    type="number"
+                    placeholder="No."
+                    size="sm"
+                    class="sm:w-20"
+                    :min="1"
+                    :max="99"
+                  />
+                  <USelect
+                    v-model="addForms[p.id].position"
+                    :items="rosterPositionOptions"
+                    value-key="value"
+                    placeholder="Position"
+                    size="sm"
+                    class="sm:w-36"
+                  />
+                  <UButton
+                    size="sm"
+                    color="primary"
+                    icon="i-heroicons-plus"
+                    label="Add"
+                    :loading="addingTo === p.id"
+                    :disabled="!addForms[p.id].name.trim()"
+                    @click="addRosterPlayer(p.id)"
+                  />
+                </div>
+              </template>
+            </div>
+          </div>
         </div>
       </div>
     </div>
