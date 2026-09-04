@@ -8,7 +8,7 @@ definePageMeta({
 
 const route = useRoute()
 const authStore = useAuthStore()
-const paymentStore = usePaymentStore()
+const teamInviteStore = useTeamInviteStore()
 const token = route.params.token as string
 
 const invite = ref<TeamInvite | null>(null)
@@ -18,7 +18,6 @@ const joining = ref(false)
 const joinSuccess = ref(false)
 const joinStatus = ref<'APPROVED' | 'PENDING'>('APPROVED')
 const joinError = ref<string | null>(null)
-const verifyingPayment = ref(false)
 
 // Player form
 const playerForm = reactive({
@@ -34,47 +33,21 @@ const positionOptions = [
   { label: 'Forward', value: 'FWD' },
 ]
 
-// Fetch invite details or verify payment
+// Fetch invite details
 onMounted(async () => {
-  const reference = (route.query.reference || route.query.trxref) as string
-  if (reference) {
-    verifyingPayment.value = true
-    try {
-      const res = await paymentStore.verifyPayment(reference)
-      if (res.data) {
-        joinStatus.value = (res.data.status as 'APPROVED' | 'PENDING') || 'APPROVED'
-        joinSuccess.value = true
-        
-        // Fetch invite details to populate team info
-        const inviteResponse = await $publicApi<ApiResponse<TeamInvite>>(`/team-invites/token/${token}`)
-        if (inviteResponse.data) {
-          invite.value = inviteResponse.data
-        }
+  try {
+    const response = await $publicApi<ApiResponse<TeamInvite>>(`/team-invites/token/${token}`)
+    if (response.data) {
+      invite.value = response.data
+      // Pre-fill name from user profile if logged in
+      if (authStore.user?.name) {
+        playerForm.name = authStore.user.name
       }
-    } catch (err: any) {
-      joinError.value = err?.data?.message || err?.message || 'Failed to verify payment'
-    } finally {
-      verifyingPayment.value = false
-      loading.value = false
-      // Clear reference query params from URL
-      const { reference: _, trxref: __, ...query } = route.query
-      navigateTo({ path: route.path, query }, { replace: true })
     }
-  } else {
-    try {
-      const response = await $publicApi<ApiResponse<TeamInvite>>(`/team-invites/token/${token}`)
-      if (response.data) {
-        invite.value = response.data
-        // Pre-fill name from user profile if logged in
-        if (authStore.user?.name) {
-          playerForm.name = authStore.user.name
-        }
-      }
-    } catch (err: any) {
-      error.value = err?.data?.message || err?.message || 'Invite not found'
-    } finally {
-      loading.value = false
-    }
+  } catch (err: any) {
+    error.value = err?.data?.message || err?.message || 'Invite not found'
+  } finally {
+    loading.value = false
   }
 })
 
@@ -90,22 +63,20 @@ const handleJoin = async () => {
   joining.value = true
   joinError.value = null
   try {
-    const callbackUrl = `${window.location.origin}/join/${token}`
-    const response = await paymentStore.initializeTeamJoin({
-      token,
+    const response = await teamInviteStore.acceptInvite(token, {
       name: playerForm.name.trim(),
       number: playerForm.number || undefined,
       position: playerForm.position || undefined,
-      callbackUrl,
     })
 
-    if (response.data?.authorization_url) {
-      window.location.href = response.data.authorization_url
+    if (response?.data) {
+      joinStatus.value = (response.data.status as 'APPROVED' | 'PENDING') || 'APPROVED'
+      joinSuccess.value = true
     } else {
-      throw new Error('Failed to generate checkout URL')
+      throw new Error('Failed to join team')
     }
   } catch (err: any) {
-    joinError.value = err?.data?.message || err?.message || 'Failed to join team'
+    joinError.value = err.data?.message || err?.message || 'Failed to join team'
   } finally {
     joining.value = false
   }
@@ -122,15 +93,8 @@ const formatDate = (dateStr: string) => {
 
 <template>
   <div class="min-h-screen flex items-center justify-center p-4">
-    <!-- Verifying Payment -->
-    <div v-if="verifyingPayment" class="text-center">
-      <UIcon name="i-heroicons-arrow-path" class="w-10 h-10 animate-spin text-emerald-500 mb-4" />
-      <p class="text-gray-900 dark:text-white font-semibold">Verifying registration payment...</p>
-      <p class="text-gray-500 text-sm mt-1">Please do not close this page.</p>
-    </div>
-
     <!-- Loading -->
-    <div v-else-if="loading" class="text-center">
+    <div v-if="loading" class="text-center">
       <UIcon name="i-heroicons-arrow-path" class="w-10 h-10 animate-spin text-gray-400 mb-4" />
       <p class="text-gray-500">Loading invite...</p>
     </div>
@@ -306,14 +270,13 @@ const formatDate = (dateStr: string) => {
               class="mb-2"
             />
 
-            <!-- Registration Fee & Benefits Info -->
+            <!-- Benefits Info (free to join) -->
             <div class="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 space-y-3">
               <div class="flex items-center justify-between">
-                <span class="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Player Registration Fee</span>
-                <span class="text-lg font-bold text-emerald-600 dark:text-emerald-400">₦500</span>
+                <span class="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Free to join</span>
               </div>
               <div class="border-t border-emerald-500/10 pt-2">
-                <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Benefits of joining:</p>
+                <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">What you get:</p>
                 <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-1 list-inside list-disc pl-1">
                   <li>Get an official, linked player profile in the tournament.</li>
                   <li>Track your live match statistics (goals, assists, appearances, cards).</li>
