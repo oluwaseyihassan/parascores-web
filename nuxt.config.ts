@@ -101,7 +101,7 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
     server: {
-      allowedHosts: ['.lvh.me', '.parascores.com']
+      allowedHosts: ['manage.lvh.me', 'manage-dev.lvh.me']
     }
   },
 

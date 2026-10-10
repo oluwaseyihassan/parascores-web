@@ -178,7 +178,7 @@ const getActivityEntityLink = (log: any) => {
     />
 
     <!-- Quick Stats Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
       <!-- Users Stats Card -->
       <div class="relative overflow-hidden bg-slate-950 border border-slate-800 rounded-3xl p-6 transition-all hover:border-slate-700 hover:shadow-lg hover:shadow-rose-950/10 group">
         <div class="absolute -top-12 -right-12 w-32 h-32 bg-rose-500/5 rounded-full blur-2xl group-hover:bg-rose-500/10 transition-colors"></div>
@@ -259,6 +259,27 @@ const getActivityEntityLink = (log: any) => {
           <p class="text-slate-500 text-xs mt-1.5 flex items-center gap-1">
             <span class="text-emerald-500 font-bold">{{ stats ? stats.paymentsCount : 0 }}</span>
             completed transactions
+          </p>
+        </div>
+      </div>
+
+      <!-- Paragee (AI bot) Stats Card -->
+      <div class="relative overflow-hidden bg-slate-950 border border-slate-800 rounded-3xl p-6 transition-all hover:border-slate-700 hover:shadow-lg hover:shadow-indigo-950/10 group">
+        <div class="absolute -top-12 -right-12 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400 text-xs font-bold uppercase tracking-wider">Paragee Calls</span>
+          <div class="w-8 h-8 rounded-lg bg-indigo-950/50 text-indigo-400 flex items-center justify-center">
+            <UIcon name="i-heroicons-sparkles" class="w-5 h-5" />
+          </div>
+        </div>
+        <div class="mt-4">
+          <div class="text-3xl font-extrabold text-white tracking-tight tabular-nums">
+            <template v-if="stats">{{ stats.parageeCalls }}</template>
+            <template v-else><div class="h-8 w-16 bg-slate-800 rounded animate-pulse"></div></template>
+          </div>
+          <p class="text-slate-500 text-xs mt-1.5 flex items-center gap-1">
+            <UIcon name="i-heroicons-chat-bubble-left-right" class="w-3.5 h-3.5 text-indigo-400" />
+            AI answers served in tournament chats
           </p>
         </div>
       </div>

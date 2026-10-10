@@ -19,27 +19,6 @@ export default <RouterConfig> {
     const isAppSubdomain = host.startsWith('manage.') || host.startsWith('manage-dev.')
     const isAdminSubdomain = host.startsWith('admin.')
 
-    // Any non-reserved subdomain on a known base domain is an event hub slug
-    const RESERVED_SUBDOMAINS = ['manage', 'manage-dev', 'admin', 'admin-dev', 'dev', 'www', 'api']
-    const hostname = host.split(':')[0] || ''
-    const labels = hostname.split('.')
-    const isKnownBaseDomain = hostname === 'lvh.me' || hostname.endsWith('.lvh.me')
-      || hostname === 'parascores.com' || hostname.endsWith('.parascores.com')
-    const firstLabel = labels.length > 2 ? labels[0]! : null
-    const isEventSubdomain = isKnownBaseDomain && !!firstLabel && !RESERVED_SUBDOMAINS.includes(firstLabel)
-
-    // 3. Return the correct routes
-    if (isEventSubdomain) {
-      // 🟣 EVENT HUB: Show _event routes + widget routes
-      return _routes
-        .filter(r => r.path.startsWith('/_event') || r.path.startsWith('/widget'))
-        .map(r => ({
-          ...r,
-          // Rewrite path: /_event/football -> /football
-          path: r.path.replace('/_event', '') || '/'
-        }))
-    }
-
     if (isAdminSubdomain) {
       // 🔴 ADMIN: Show _admin routes only
       return _routes

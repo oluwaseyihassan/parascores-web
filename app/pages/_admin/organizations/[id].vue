@@ -28,13 +28,6 @@ onMounted(() => {
 })
 
 watch(org, (val) => {
-  eventHubSubdomain.value = val?.subdomain || ''
-  const brand = (val?.brandConfig ?? {}) as Record<string, string>
-  brandForm.dates = brand.dates || ''
-  brandForm.venue = brand.venue || ''
-  brandForm.location = brand.location || ''
-  brandForm.tagline = brand.tagline || ''
-  brandForm.countdownTarget = brand.countdownTarget ? formatDateTimeLocal(brand.countdownTarget) : ''
   if (val?.id) loadRoster()
 })
 
@@ -132,54 +125,6 @@ const saveSubscription = async () => {
     })
   } finally {
     isUpdatingSubscription.value = false
-  }
-}
-
-const eventHubSubdomain = ref('')
-const isSavingEventHub = ref(false)
-const brandForm = reactive({
-  dates: '',
-  venue: '',
-  location: '',
-  tagline: '',
-  countdownTarget: ''
-})
-
-const saveEventHub = async () => {
-  if (!org.value) return
-  isSavingEventHub.value = true
-  try {
-    const subdomain = eventHubSubdomain.value.trim().toLowerCase()
-    const brandConfig: Record<string, string> = {}
-    if (brandForm.dates.trim()) brandConfig.dates = brandForm.dates.trim()
-    if (brandForm.venue.trim()) brandConfig.venue = brandForm.venue.trim()
-    if (brandForm.location.trim()) brandConfig.location = brandForm.location.trim()
-    if (brandForm.tagline.trim()) brandConfig.tagline = brandForm.tagline.trim()
-    if (brandForm.countdownTarget) {
-      brandConfig.countdownTarget = new Date(brandForm.countdownTarget).toISOString()
-    }
-
-    const updated = await adminStore.updateOrganizationEventHub(org.value.id, {
-      subdomain: subdomain === '' ? null : subdomain,
-      brandConfig
-    })
-    org.value.subdomain = updated.subdomain
-    org.value.brandConfig = updated.brandConfig
-    useToast().add({
-      title: 'Event Hub Updated',
-      description: updated.subdomain
-        ? `Hub live at ${updated.subdomain}.parascores.com`
-        : 'Event hub subdomain removed.',
-      color: 'success'
-    })
-  } catch (err: any) {
-    useToast().add({
-      title: 'Update Failed',
-      description: err.data?.message || err.message || 'Failed to update event hub.',
-      color: 'error'
-    })
-  } finally {
-    isSavingEventHub.value = false
   }
 }
 
@@ -509,69 +454,6 @@ const copyToClipboard = async (value: string, field: string) => {
               <span class="text-slate-500">Created</span>
               <span class="text-slate-300">{{ formatDate(org.created_at) }}</span>
             </div>
-          </div>
-        </div>
-
-        <!-- Event Hub -->
-        <div class="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4">
-          <h3 class="text-sm font-bold text-white">Event Hub</h3>
-          <p class="text-[11px] text-slate-500 leading-relaxed">
-            Serve a public live results hub for this organization at its own subdomain.
-          </p>
-          <div class="space-y-2">
-            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subdomain</label>
-            <div class="flex items-center gap-1.5">
-              <UInput
-                v-model="eventHubSubdomain"
-                placeholder="e.g. waug26"
-                size="sm"
-                class="flex-1"
-              />
-            </div>
-            <p v-if="eventHubSubdomain.trim()" class="text-[10px] text-slate-500 font-mono">
-              {{ eventHubSubdomain.trim().toLowerCase() }}.parascores.com
-            </p>
-          </div>
-          <div class="space-y-2 pt-3 border-t border-slate-900">
-            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Brand Config</label>
-            <UInput v-model="brandForm.dates" placeholder="Dates (e.g. 2–12 October 2026)" size="sm" />
-            <div class="flex gap-2">
-              <UInput v-model="brandForm.venue" placeholder="Venue" size="sm" class="flex-1" />
-              <UInput v-model="brandForm.location" placeholder="Location" size="sm" class="flex-1" />
-            </div>
-            <UInput v-model="brandForm.tagline" placeholder="Tagline (e.g. 16 disciplines · 24 universities)" size="sm" />
-            <div class="space-y-1">
-              <label class="text-[10px] text-slate-500">Countdown target</label>
-              <input
-                v-model="brandForm.countdownTarget"
-                type="datetime-local"
-                class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-sm font-semibold rounded-xl px-3.5 py-2 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <UButton
-              block
-              size="sm"
-              color="primary"
-              variant="soft"
-              icon="i-heroicons-globe-alt"
-              :loading="isSavingEventHub"
-              @click="saveEventHub"
-            >
-              Save Event Hub
-            </UButton>
-            <UButton
-              v-if="org?.subdomain"
-              size="sm"
-              color="neutral"
-              variant="ghost"
-              icon="i-heroicons-arrow-top-right-on-square"
-              :to="`http://${org.subdomain}.lvh.me:3001`"
-              target="_blank"
-              title="Open hub (local dev)"
-            />
           </div>
         </div>
 
