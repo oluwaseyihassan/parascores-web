@@ -1,35 +1,41 @@
 <script setup lang="ts">
-import { isFixtureLiveStatus } from "~/composables/useMatchTimer";
-import { MatchTimerControlsKey } from "~/composables/match/useMatchTimerControls";
-import { SportEngineKey } from "~/engines/types";
 import type { Fixture } from "~/types";
 
-defineProps<{
+const props = defineProps<{
   fixture: Fixture | null;
   canShare: boolean;
   sharingMatch: boolean;
+  swappingTeams: boolean;
 }>();
 
 const emit = defineEmits<{
   close: [];
   share: [];
+  swap: [];
+  download: [];
 }>();
 
-const { liveClock, isTimerPaused } = inject(MatchTimerControlsKey)!;
-
-const engine = inject(SportEngineKey);
-// Clockless sports (tennis) hide the header clock badge
-const hasClock = computed(
-  () => (engine?.value.capabilities.timer ?? "halves") !== "none",
-);
+// Secondary match actions live here (scoreboard stays clean)
+const overflowItems = computed(() => [
+  [
+    {
+      label: "Swap teams",
+      icon: "i-heroicons-arrows-right-left",
+      disabled: props.swappingTeams,
+      onSelect: () => emit("swap"),
+    },
+    {
+      label: "Download graphic",
+      icon: "i-heroicons-arrow-down-tray",
+      onSelect: () => emit("download"),
+    },
+  ],
+]);
 </script>
 
 <template>
   <div class="mc-header">
     <div class="mc-header__left">
-      <span class="mc-header__icon">
-        <UIcon name="i-heroicons-adjustments-horizontal" class="w-3.5 h-3.5" />
-      </span>
       <span class="mc-header__title">Match Control</span>
       <span
         v-if="fixture"
@@ -39,24 +45,9 @@ const hasClock = computed(
         <span class="mc-status-chip__dot" />
         {{ fixture.status }}
       </span>
-
-      <!-- Live Clock Badge (clocked sports only) -->
-      <span
-        v-if="fixture && hasClock && isFixtureLiveStatus(fixture.status)"
-        class="mc-timer-badge ml-2"
-        :class="{ 'mc-timer-badge--paused': isTimerPaused }"
-      >
-        <UIcon
-          :name="isTimerPaused ? 'i-heroicons-pause-circle' : 'i-heroicons-clock'"
-          class="w-3.5 h-3.5"
-        />
-        <span class="tabular-nums font-semibold">{{ liveClock }}</span>
-        <span
-          v-if="isTimerPaused"
-          class="text-[9px] font-bold tracking-wider ml-1 opacity-75 animate-pulse"
-          >PAUSED</span
-        >
-      </span>
+      <span v-if="fixture?.roundName" class="mc-header__meta">{{
+        fixture.roundName
+      }}</span>
     </div>
     <div class="mc-header__right">
       <button
@@ -68,6 +59,11 @@ const hasClock = computed(
       >
         <UIcon name="i-heroicons-share" class="w-4 h-4" />
       </button>
+      <UDropdownMenu :items="overflowItems" :content="{ align: 'end' }">
+        <button class="mc-header__more" title="More actions">
+          <UIcon name="i-heroicons-ellipsis-vertical" class="w-4 h-4" />
+        </button>
+      </UDropdownMenu>
       <button class="mc-header__close" @click="emit('close')">
         <UIcon name="i-heroicons-x-mark" class="w-4 h-4" />
       </button>

@@ -2,8 +2,6 @@
 import { MatchScheduleKey } from "~/composables/match/useMatchSchedule";
 import { SportEngineKey } from "~/engines/types";
 
-const collapsed = defineModel<boolean>("collapsed", { default: false });
-
 const venueStore = useVenueStore();
 
 const engine = inject(SportEngineKey);
@@ -27,22 +25,14 @@ const {
 
 <template>
   <div class="mc-section">
-    <div
-      class="mc-section__head cursor-pointer"
-      @click="collapsed = !collapsed"
-    >
+    <div class="mc-section__head mc-section__head--static">
       <UIcon
         name="i-heroicons-calendar"
         class="w-3.5 h-3.5 text-emerald-500"
       />
       <span>Schedule</span>
-      <UIcon
-        name="i-heroicons-chevron-down"
-        class="w-4 h-4 ml-auto transition-transform"
-        :class="{ 'rotate-180': collapsed }"
-      />
     </div>
-    <div v-show="collapsed" class="mc-section__body">
+    <div class="mc-section__body">
       <div class="flex flex-col sm:flex-row flex-wrap gap-2">
         <UPopover class="flex-1 min-w-0">
           <UButton

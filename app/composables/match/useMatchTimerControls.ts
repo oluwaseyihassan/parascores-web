@@ -550,6 +550,7 @@ export function useMatchTimerControls(options: {
     adjustedMinute,
     isEditingMinute,
     adjustTimerMaxMinutes,
+    updatingTime,
     liveClock,
     liveMinuteLabel,
     isTimerRunning,
