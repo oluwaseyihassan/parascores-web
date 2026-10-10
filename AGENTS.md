@@ -11,7 +11,7 @@ Nuxt 4 + Vue 3 multi-tenant frontend for tournament management, live scoreboards
 
 ## Multi-tenant subdomain routing (critical architecture)
 
-One codebase serves multiple apps based on hostname. When adding a new subdomain (e.g. `waug26`), you must touch:
+One codebase serves multiple apps based on hostname. When adding a new subdomain, you must touch:
 
 1. `app/router.options.ts` — host detection filters/rewrites route paths. Underscore-prefixed page dirs (`_manage`, `_admin`, `_marketing`) are stripped to root on their subdomain.
 2. `app/middleware/auth.global.ts` — enforces per-subdomain access control and redirects.
@@ -34,9 +34,7 @@ Hostnames: `lvh.me` (marketing/public), `manage.lvh.me` (organizer dashboard, OR
 - `app/components/` — UI components; `match/`, `marketing/` subdirs; `MatchControl.vue` is the live scoring control surface
 - `server/api/graphics/` — server-side social graphic rendering via Satori + Resvg (SVG → PNG)
 - `app/layouts/` — default, dashboard, admin, auth, widget, feed, explore
-- `app/engines/` — per-sport scoring engines behind the `SportEngine` contract (`types.ts`, `registry.ts` with `resolveEngine(sport)`); engines: football, basketball, tennis, tabletennis, volleyball (set-scoring via `_shared/SetScoringPanel.vue`), athletics/swimming (placement via `_shared/RaceControl.vue`); `_shared/` has common panels/composables; `creation` config drives engine-specific tournament creation options
-- `app/pages/_event/` + `app/components/event/` — event hub (subdomain live-results pages, e.g. waug26)
-- `app/skins/<slug>/` — per-event hub customization (colors/section toggles/slot components in `config.ts`, bespoke blocks in `slots/`); resolved by `useEventSkin` via `import.meta.glob`, fallback `default/`. Hub colors are CSS vars (`--event-*`) with defaults in `layouts/event.vue`; the match modal teleports to body so it binds skin vars onto its own panel.
+- `app/engines/` — per-sport scoring engines behind the `SportEngine` contract (`types.ts`, `registry.ts` with `resolveEngine(sport)`); engines: football, basketball, handball, rugby (increments via `basketball/panel.vue`), tennis, tabletennis, volleyball, badminton (set-scoring via `_shared/SetScoringPanel.vue`), athletics/swimming/cycling/weightlifting (placement via `_shared/RaceControl.vue`; `race.direction` high = biggest value wins), boxing/judo/taekwondo/wrestling (`combat/` — rounds clock + resultType/winnerId in fixture.config); `_shared/` has common panels/composables; `creation` config drives engine-specific tournament creation options. Unknown sports fall back to football.
 
 ## Conventions
 
@@ -45,14 +43,17 @@ Hostnames: `lvh.me` (marketing/public), `manage.lvh.me` (organizer dashboard, OR
 - Auth is cookie-based via `$api`; never hand-roll fetch calls — use the `useApi`/`$api` composable.
 - PWA via `@vite-pwa/nuxt` with custom `app/sw.ts` (injectManifest strategy).
 - TypeScript throughout; types live in `app/types/`.
+- Design workflow: a read-only `designer` opencode agent (`.opencode/agent/designer.md`) plans page designs and reviews UI before implementation. Consult it (Tab-switch or delegate) before building new pages or redesigning existing ones; implement its approved specs in the build agent.
 
 ## Gotchas
 
 - Backend API runs separately on port 3000; frontend on 3001.
 - Sentry is currently disabled (config commented out in `nuxt.config.ts`).
-- `waug-screenshots/` at repo root contains design mockups/screenshots for the WAUG26 event site work.
+
+## Documentation
+
+- `docs/README.md` — index of the full section-by-section documentation in `docs/sections/` (architecture, public site, organizer dashboard, admin panel, live scoring, sport engines, widgets, graphics pipeline, data layer, auth) plus `docs/ownership-map.md` for team delegation. Update the matching section doc when behavior changes.
 
 ## Ongoing work
 
-- WAUG26 event subdomain — see `docs/waug26-plan.md`
 - Platform roles & permissions reference (both repos) — see `docs/platform-roles.md`; update it when any role check changes

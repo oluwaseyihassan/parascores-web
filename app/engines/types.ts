@@ -47,8 +47,8 @@ export interface SportEngine {
   scoreIncrements?: number[]
   /** Set-based scoring config (tennis, table tennis, volleyball). Defaults; overridable per-tournament via scoringRules.setsToWin / scoringRules.gamesPerSet */
   setScoring?: { setsToWin: number; gamesPerSet: number; gameLabel: string }
-  /** Placement-based racing (athletics, swimming). valueLabel shown on inputs (e.g. "Time"), placeholder hint (e.g. "10.42") */
-  race?: { valueLabel: string; valuePlaceholder: string }
+  /** Placement-based racing (athletics, swimming). valueLabel shown on inputs (e.g. "Time"), placeholder hint (e.g. "10.42"). direction: 'low' = fastest wins (default), 'high' = biggest value wins (weightlifting, jumps, throws) */
+  race?: { valueLabel: string; valuePlaceholder: string; direction?: 'low' | 'high' }
   /** Creation-form surface. Absent = everything available (football default). */
   creation?: EngineCreationConfig
   /** The live-tab scoring surface. Rendered by MatchControl as <component :is>. */

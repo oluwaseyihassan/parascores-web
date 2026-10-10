@@ -16,6 +16,7 @@ const emit = defineEmits<{
 
 const engine = inject(SportEngineKey)
 const raceConfig = computed(() => engine?.value.race)
+const direction = computed(() => raceConfig.value?.direction ?? 'low')
 
 const participantStore = useParticipantStore()
 const { handleError } = useErrors()
@@ -43,20 +44,25 @@ const publishing = ref(false)
 
 const isCompleted = computed(() => props.fixture.status === FixtureStatus.COMPLETED)
 
-// Parse "10.42" or "2:03.44" to comparable seconds
+// Parse "10.42" / "2:03.44" / "1:02:33.5" to comparable seconds
 const toSeconds = (v: string): number => {
   const parts = v.split(':')
+  if (parts.length === 3) return Number(parts[0]) * 3600 + Number(parts[1]) * 60 + Number(parts[2])
   if (parts.length === 2) return Number(parts[0]) * 60 + Number(parts[1])
   return Number(v)
 }
 
-// Live rank preview — sorts as times are typed (empty values sink to bottom)
+// Live rank preview — sorts as values are typed (empty values sink to bottom)
 const rankByParticipant = computed(() => {
   const map = new Map<string, number>()
   rows.value
     .filter((r) => r.entered && r.value.trim() !== '' && !Number.isNaN(toSeconds(r.value.trim())))
     .slice()
-    .sort((a, b) => toSeconds(a.value.trim()) - toSeconds(b.value.trim()))
+    .sort((a, b) =>
+      direction.value === 'high'
+        ? toSeconds(b.value.trim()) - toSeconds(a.value.trim())
+        : toSeconds(a.value.trim()) - toSeconds(b.value.trim()),
+    )
     .forEach((r, i) => map.set(r.participantId, i + 1))
   return map
 })
@@ -122,6 +128,7 @@ const publish = async () => {
       {
         method: 'PUT',
         body: {
+          direction: direction.value,
           results: rows.value
             .filter(rowRecorded)
             .map((r) => ({

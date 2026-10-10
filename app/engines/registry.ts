@@ -4,8 +4,14 @@ import { basketballEngine } from '~/engines/basketball'
 import { tennisEngine } from '~/engines/tennis'
 import { tableTennisEngine } from '~/engines/tabletennis'
 import { volleyballEngine } from '~/engines/volleyball'
+import { badmintonEngine } from '~/engines/badminton'
+import { handballEngine } from '~/engines/handball'
+import { rugbyEngine } from '~/engines/rugby'
 import { athleticsEngine } from '~/engines/athletics'
 import { swimmingEngine } from '~/engines/swimming'
+import { cyclingEngine } from '~/engines/cycling'
+import { weightliftingEngine } from '~/engines/weightlifting'
+import { boxingEngine, judoEngine, taekwondoEngine, wrestlingEngine } from '~/engines/combat'
 
 const engines: Record<string, SportEngine> = {
   football: footballEngine,
@@ -13,8 +19,17 @@ const engines: Record<string, SportEngine> = {
   tennis: tennisEngine,
   tabletennis: tableTennisEngine,
   volleyball: volleyballEngine,
+  badminton: badmintonEngine,
+  handball: handballEngine,
+  rugby: rugbyEngine,
   athletics: athleticsEngine,
   swimming: swimmingEngine,
+  cycling: cyclingEngine,
+  weightlifting: weightliftingEngine,
+  boxing: boxingEngine,
+  judo: judoEngine,
+  taekwondo: taekwondoEngine,
+  wrestling: wrestlingEngine,
 }
 
 /**
