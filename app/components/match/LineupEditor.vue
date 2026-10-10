@@ -2,8 +2,6 @@
 import { MatchLineupsKey } from "~/composables/match/useMatchLineups";
 import type { Fixture, Player } from "~/types";
 
-const collapsed = defineModel<boolean>("collapsed", { default: false });
-
 defineProps<{
   fixture: Fixture | null;
   homePlayers: Player[];
@@ -33,20 +31,12 @@ const {
 
 <template>
   <div class="mc-section">
-    <div
-      class="mc-section__head cursor-pointer"
-      @click="collapsed = !collapsed"
-    >
+    <div class="mc-section__head mc-section__head--static">
       <UIcon name="i-heroicons-users" class="w-3.5 h-3.5 text-emerald-500" />
-      <span>Lineups Selection</span>
+      <span>Lineups</span>
       <span class="mc-tag">{{ selectedLineupIds.length }} selected</span>
-      <UIcon
-        name="i-heroicons-chevron-down"
-        class="w-4 h-4 ml-auto transition-transform"
-        :class="{ 'rotate-180': collapsed }"
-      />
     </div>
-    <div v-show="collapsed" class="mc-section__body">
+    <div class="mc-section__body">
       <!-- Formation Selection -->
       <div
         class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pb-4 border-b border-gray-100 dark:border-white/[0.06]"

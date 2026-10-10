@@ -2,8 +2,6 @@
 import { MatchEventsKey } from "~/composables/match/useMatchEvents";
 import type { Fixture } from "~/types";
 
-const collapsed = defineModel<boolean>("collapsed", { default: false });
-
 defineProps<{
   fixture: Fixture | null;
 }>();
@@ -21,24 +19,17 @@ const {
 </script>
 
 <template>
+  <!-- The event log IS the Events tab content — always expanded, no chevron -->
   <div class="mc-section">
-    <div
-      class="mc-section__head cursor-pointer"
-      @click="collapsed = !collapsed"
-    >
+    <div class="mc-section__head mc-section__head--static">
       <UIcon
         name="i-heroicons-clipboard-document-list"
         class="w-3.5 h-3.5 text-indigo-500"
       />
       <span>Match Events</span>
       <span class="mc-tag">{{ matchEvents.length }}</span>
-      <UIcon
-        name="i-heroicons-chevron-down"
-        class="w-4 h-4 ml-auto transition-transform"
-        :class="{ 'rotate-180': collapsed }"
-      />
     </div>
-    <div v-show="collapsed" class="mc-section__body">
+    <div class="mc-section__body mc-section__body--flush">
       <div
         v-if="loadingEvents"
         class="flex items-center justify-center gap-2 py-6 text-sm text-gray-400"
@@ -52,142 +43,126 @@ const {
       >
         No events recorded yet
       </div>
-      <div v-else class="mc-events-list">
+
+      <!-- Two-sided timeline: home left / away right around a center minute -->
+      <div v-else class="mc-timeline">
         <div
           v-for="group in groupedMatchEvents"
           :key="group.half"
-          class="mc-events-group"
         >
-          <div class="mc-events-group__header">{{ group.label }}</div>
-          <div v-for="event in group.events" :key="event.id">
-            <!-- Home event -->
-            <div
-              v-if="event.participant_id === fixture?.homeTeamId"
-              class="mc-event mc-event--home"
-            >
-              <div class="mc-event__min">
-                {{ getEventMinuteDisplay(event) }}
-              </div>
-              <div class="mc-event__info">
-                <div class="flex items-center gap-1.5">
-                  <IconsSoccerBallIcon
-                    v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)"
-                    class="w-4 h-4 flex-shrink-0"
-                    :class="getEventColor(event.type)"
-                  />
-                  <UIcon
-                    v-else
-                    :name="getEventIcon(event.type)"
-                    :class="['w-4 h-4 flex-shrink-0', getEventColor(event.type)]"
-                  />
-                  <span class="mc-event__player">{{
-                    getPlayerName(event.playerId) || "Unknown"
-                  }}</span>
-                  <span v-if="event.type === 'PENALTY'" class="mc-event__tag"
-                    >(P)</span
-                  >
-                  <span v-if="event.type === 'OWN_GOAL'" class="mc-event__tag"
-                    >(OG)</span
-                  >
-                </div>
-                <div
-                  v-if="
-                    event.relatedPlayerId &&
-                    event.type !== 'OWN_GOAL' &&
-                    event.type !== 'SUBSTITUTION'
-                  "
-                  class="mc-event__assist"
+          <div class="mc-timeline__group" role="separator">{{ group.label }}</div>
+          <div
+            v-for="event in group.events"
+            :key="event.id"
+            class="mc-tl-row"
+          >
+            <!-- Home event: content hugs the center, actions on the outer edge -->
+            <template v-if="event.participant_id === fixture?.homeTeamId">
+              <div class="mc-tl-side mc-tl-side--home">
+                <UDropdownMenu
+                  :items="getEventActionItems(event)"
+                  :content="{ align: 'start' }"
                 >
-                  <IconsAssistIcon class="w-2.5 h-2.5 flex-shrink-0" />
-                  {{ getPlayerName(event.relatedPlayerId) }}
-                </div>
-                <div
-                  v-if="event.type === 'SUBSTITUTION' && event.relatedPlayerId"
-                  class="text-red-500 text-[10px] font-semibold flex items-center gap-1 mt-0.5"
-                >
-                  <UIcon
-                    name="i-heroicons-arrow-down-circle"
-                    class="w-3 h-3 text-red-500 flex-shrink-0"
+                  <UButton
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-heroicons-ellipsis-vertical"
+                    size="xs"
+                    aria-label="Event actions"
                   />
-                  <span>off: {{ getPlayerName(event.relatedPlayerId) }}</span>
+                </UDropdownMenu>
+                <span class="mc-tl-spacer" />
+                <div class="mc-tl-text mc-tl-text--right">
+                  <div class="mc-tl-player">
+                    {{ getPlayerName(event.playerId) || "Unknown" }}
+                    <span v-if="event.type === 'PENALTY'" class="mc-event__tag">(P)</span>
+                    <span v-if="event.type === 'OWN_GOAL'" class="mc-event__tag">(OG)</span>
+                  </div>
+                  <div
+                    v-if="
+                      event.relatedPlayerId &&
+                      event.type !== 'OWN_GOAL' &&
+                      event.type !== 'SUBSTITUTION'
+                    "
+                    class="mc-tl-detail"
+                  >
+                    assist: {{ getPlayerName(event.relatedPlayerId) }}
+                  </div>
+                  <div
+                    v-if="event.type === 'SUBSTITUTION' && event.relatedPlayerId"
+                    class="mc-tl-detail mc-tl-detail--off"
+                  >
+                    off: {{ getPlayerName(event.relatedPlayerId) }}
+                  </div>
                 </div>
-              </div>
-              <UDropdownMenu
-                :items="getEventActionItems(event)"
-                :content="{ align: 'end' }"
-              >
-                <UButton
-                  color="neutral"
-                  variant="ghost"
-                  icon="i-heroicons-ellipsis-vertical"
-                  size="xs"
+                <IconsSoccerBallIcon
+                  v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)"
+                  class="w-4 h-4 flex-shrink-0"
+                  :class="getEventColor(event.type)"
                 />
-              </UDropdownMenu>
-            </div>
+                <UIcon
+                  v-else
+                  :name="getEventIcon(event.type)"
+                  :class="['w-4 h-4 flex-shrink-0', getEventColor(event.type)]"
+                />
+              </div>
+              <span class="mc-tl-min">{{ getEventMinuteDisplay(event) }}</span>
+              <div />
+            </template>
+
             <!-- Away event -->
-            <div
-              v-else-if="event.participant_id === fixture?.awayTeamId"
-              class="mc-event mc-event--away"
-            >
-              <UDropdownMenu
-                :items="getEventActionItems(event)"
-                :content="{ align: 'start' }"
-              >
-                <UButton
-                  color="neutral"
-                  variant="ghost"
-                  icon="i-heroicons-ellipsis-vertical"
-                  size="xs"
+            <template v-else-if="event.participant_id === fixture?.awayTeamId">
+              <div />
+              <span class="mc-tl-min">{{ getEventMinuteDisplay(event) }}</span>
+              <div class="mc-tl-side">
+                <IconsSoccerBallIcon
+                  v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)"
+                  class="w-4 h-4 flex-shrink-0"
+                  :class="getEventColor(event.type)"
                 />
-              </UDropdownMenu>
-              <div class="mc-event__info mc-event__info--right">
-                <div class="flex items-center justify-end gap-1.5">
-                  <span v-if="event.type === 'OWN_GOAL'" class="mc-event__tag"
-                    >(OG)</span
+                <UIcon
+                  v-else
+                  :name="getEventIcon(event.type)"
+                  :class="['w-4 h-4 flex-shrink-0', getEventColor(event.type)]"
+                />
+                <div class="mc-tl-text">
+                  <div class="mc-tl-player">
+                    <span v-if="event.type === 'OWN_GOAL'" class="mc-event__tag">(OG)</span>
+                    <span v-if="event.type === 'PENALTY'" class="mc-event__tag">(P)</span>
+                    {{ getPlayerName(event.playerId) || "Unknown" }}
+                  </div>
+                  <div
+                    v-if="
+                      event.relatedPlayerId &&
+                      event.type !== 'OWN_GOAL' &&
+                      event.type !== 'SUBSTITUTION'
+                    "
+                    class="mc-tl-detail"
                   >
-                  <span v-if="event.type === 'PENALTY'" class="mc-event__tag"
-                    >(P)</span
+                    assist: {{ getPlayerName(event.relatedPlayerId) }}
+                  </div>
+                  <div
+                    v-if="event.type === 'SUBSTITUTION' && event.relatedPlayerId"
+                    class="mc-tl-detail mc-tl-detail--off"
                   >
-                  <span class="mc-event__player">{{
-                    getPlayerName(event.playerId) || "Unknown"
-                  }}</span>
-                  <IconsSoccerBallIcon
-                    v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)"
-                    class="w-4 h-4 flex-shrink-0"
-                    :class="getEventColor(event.type)"
-                  />
-                  <UIcon
-                    v-else
-                    :name="getEventIcon(event.type)"
-                    :class="['w-4 h-4 flex-shrink-0', getEventColor(event.type)]"
-                  />
+                    off: {{ getPlayerName(event.relatedPlayerId) }}
+                  </div>
                 </div>
-                <div
-                  v-if="
-                    event.relatedPlayerId &&
-                    event.type !== 'OWN_GOAL' &&
-                    event.type !== 'SUBSTITUTION'
-                  "
-                  class="mc-event__assist mc-event__assist--right"
+                <span class="mc-tl-spacer" />
+                <UDropdownMenu
+                  :items="getEventActionItems(event)"
+                  :content="{ align: 'end' }"
                 >
-                  {{ getPlayerName(event.relatedPlayerId) }}
-                  <IconsAssistIcon class="w-2.5 h-2.5 flex-shrink-0" />
-                </div>
-                <div
-                  v-if="event.type === 'SUBSTITUTION' && event.relatedPlayerId"
-                  class="text-red-500 text-[10px] font-semibold flex items-center justify-end gap-1 mt-0.5"
-                >
-                  <span>off: {{ getPlayerName(event.relatedPlayerId) }}</span>
-                  <UIcon
-                    name="i-heroicons-arrow-down-circle"
-                    class="w-3 h-3 text-red-500 flex-shrink-0"
+                  <UButton
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-heroicons-ellipsis-vertical"
+                    size="xs"
+                    aria-label="Event actions"
                   />
-                </div>
+                </UDropdownMenu>
               </div>
-              <div class="mc-event__min">
-                {{ getEventMinuteDisplay(event) }}
-              </div>
-            </div>
+            </template>
           </div>
         </div>
       </div>

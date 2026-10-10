@@ -41,47 +41,50 @@ const {
     </div>
     <div v-show="collapsed" class="mc-section__body space-y-4">
       <div class="space-y-3">
-        <UFormField label="Platform">
-          <USelect
-            v-model="newHighlightPlatform"
-            :items="highlightPlatformOptions"
-            placeholder="Select platform..."
-            value-key="value"
-            class="w-full"
-          />
-        </UFormField>
-        <UFormField
-          :label="
-            selectedHighlightPlatformInfo?.placeholder || 'Video URL'
-          "
-        >
-          <UInput
-            v-model="newHighlightUrl"
-            :placeholder="
-              selectedHighlightPlatformInfo?.placeholder ||
-              'https://...'
+        <div class="flex flex-col sm:flex-row gap-2">
+          <UFormField label="Platform" class="sm:w-40 shrink-0">
+            <USelect
+              v-model="newHighlightPlatform"
+              :items="highlightPlatformOptions"
+              placeholder="Select..."
+              value-key="value"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField
+            :label="
+              selectedHighlightPlatformInfo?.placeholder || 'Video URL'
             "
-            class="w-full"
-          />
-        </UFormField>
-        <UFormField label="Caption (optional)">
-          <UInput
-            v-model="newHighlightCaption"
-            placeholder="e.g. 90th minute winner"
-            class="w-full"
-          />
-        </UFormField>
-        <UFormField label="Duration in seconds (optional)">
-          <UInput
-            v-model.number="newHighlightDuration"
-            type="number"
-            placeholder="e.g. 30"
-            class="w-full"
-          />
-        </UFormField>
-        <div class="flex justify-end">
+            class="flex-1"
+          >
+            <UInput
+              v-model="newHighlightUrl"
+              :placeholder="
+                selectedHighlightPlatformInfo?.placeholder ||
+                'https://...'
+              "
+              class="w-full"
+            />
+          </UFormField>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2 sm:items-end">
+          <UFormField label="Caption (optional)" class="flex-1">
+            <UInput
+              v-model="newHighlightCaption"
+              placeholder="e.g. 90th minute winner"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField label="Secs" class="sm:w-24 shrink-0">
+            <UInput
+              v-model.number="newHighlightDuration"
+              type="number"
+              placeholder="30"
+              class="w-full"
+            />
+          </UFormField>
           <UButton
-            size="xs"
+            size="sm"
             color="success"
             variant="soft"
             icon="i-heroicons-plus"
@@ -89,6 +92,7 @@ const {
             :loading="savingHighlight"
             :disabled="isAddHighlightDisabled"
             @click="addHighlight"
+            class="shrink-0"
           />
         </div>
       </div>

@@ -985,6 +985,14 @@ const awaySubs = computed(() => {
         </div>
       </section>
 
+      <!-- Score submissions (esports double-entry — renders only for fixture participants) -->
+      <MarketingSubmitScoreCard
+        v-if="fixture && tournament"
+        :fixture="fixture"
+        :tournament="tournament"
+        @updated="fetchData"
+      />
+
       <!-- Livestream -->
       <section
         v-if="fixture.livestreamUrl"

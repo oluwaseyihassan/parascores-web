@@ -48,29 +48,78 @@ const {
       />
     </div>
     <div v-show="collapsed" class="mc-section__body">
-      <!-- Scores -->
-      <div class="flex items-center justify-center gap-6 mb-4">
-        <div class="flex flex-col items-center gap-2">
-          <span class="mc-pen-label">{{
-            fixture?.homeTeam?.customShortName ||
-            fixture?.homeTeam?.customName ||
-            "Home"
-          }}</span>
-          <span class="text-2xl font-bold text-gray-900 dark:text-white">{{
-            fixture?.homePenaltyScore ?? 0
-          }}</span>
+      <!-- Compact summary: score flanking the round dots -->
+      <div class="flex items-center justify-center gap-3 sm:gap-4 mb-4 flex-wrap">
+        <span class="text-lg font-black text-gray-900 dark:text-white tabular-nums">
+          {{ fixture?.homeTeam?.customShortName || fixture?.homeTeam?.customName || "Home" }}&nbsp;{{ fixture?.homePenaltyScore ?? 0 }}
+        </span>
+        <div
+          v-if="penaltyShootoutEvents.length > 0"
+          class="flex items-center justify-center gap-3 sm:gap-4"
+        >
+          <div class="flex flex-wrap items-center justify-center gap-1.5">
+            <div
+              v-for="n in maxPenaltyRounds"
+              :key="`home-${n}`"
+              class="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
+              :class="
+                homePenaltyShootoutEvents[n - 1]?.type === MatchEventType.PENALTY
+                  ? 'bg-emerald-500 text-white'
+                  : homePenaltyShootoutEvents[n - 1]
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'
+              "
+            >
+              <UIcon
+                v-if="
+                  homePenaltyShootoutEvents[n - 1]?.type ===
+                  MatchEventType.PENALTY
+                "
+                name="i-heroicons-check"
+                class="w-3 h-3 sm:w-3.5 sm:h-3.5"
+              />
+              <UIcon
+                v-else-if="homePenaltyShootoutEvents[n - 1]"
+                name="i-heroicons-x-mark"
+                class="w-3 h-3 sm:w-3.5 sm:h-3.5"
+              />
+              <span v-else>{{ n }}</span>
+            </div>
+          </div>
+          <div class="w-px h-5 bg-gray-300 dark:bg-white/10" />
+          <div class="flex flex-wrap items-center justify-center gap-1.5">
+            <div
+              v-for="n in maxPenaltyRounds"
+              :key="`away-${n}`"
+              class="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
+              :class="
+                awayPenaltyShootoutEvents[n - 1]?.type === MatchEventType.PENALTY
+                  ? 'bg-emerald-500 text-white'
+                  : awayPenaltyShootoutEvents[n - 1]
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'
+              "
+            >
+              <UIcon
+                v-if="
+                  awayPenaltyShootoutEvents[n - 1]?.type ===
+                  MatchEventType.PENALTY
+                "
+                name="i-heroicons-check"
+                class="w-3 h-3 sm:w-3.5 sm:h-3.5"
+              />
+              <UIcon
+                v-else-if="awayPenaltyShootoutEvents[n - 1]"
+                name="i-heroicons-x-mark"
+                class="w-3 h-3 sm:w-3.5 sm:h-3.5"
+              />
+              <span v-else>{{ n }}</span>
+            </div>
+          </div>
         </div>
-        <span class="text-gray-400 font-medium">–</span>
-        <div class="flex flex-col items-center gap-2">
-          <span class="mc-pen-label">{{
-            fixture?.awayTeam?.customShortName ||
-            fixture?.awayTeam?.customName ||
-            "Away"
-          }}</span>
-          <span class="text-2xl font-bold text-gray-900 dark:text-white">{{
-            fixture?.awayPenaltyScore ?? 0
-          }}</span>
-        </div>
+        <span class="text-lg font-black text-gray-900 dark:text-white tabular-nums">
+          {{ fixture?.awayPenaltyScore ?? 0 }}&nbsp;{{ fixture?.awayTeam?.customShortName || fixture?.awayTeam?.customName || "Away" }}
+        </span>
       </div>
 
       <!-- Per-shot buttons -->
@@ -153,76 +202,8 @@ const {
         </div>
       </div>
 
-      <!-- Recent shootout events -->
-      <div v-if="penaltyShootoutEvents.length > 0" class="mt-6 space-y-6">
-        <!-- Team round indicators -->
-        <div class="flex items-center justify-center gap-4 md:gap-8">
-          <div
-            class="flex flex-wrap items-center justify-center gap-1.5 md:gap-2 max-w-[45%]"
-          >
-            <div
-              v-for="n in maxPenaltyRounds"
-              :key="`home-${n}`"
-              class="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold"
-              :class="
-                homePenaltyShootoutEvents[n - 1]?.type === MatchEventType.PENALTY
-                  ? 'bg-emerald-500 text-white'
-                  : homePenaltyShootoutEvents[n - 1]
-                    ? 'bg-red-500 text-white'
-                    : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'
-              "
-            >
-              <UIcon
-                v-if="
-                  homePenaltyShootoutEvents[n - 1]?.type ===
-                  MatchEventType.PENALTY
-                "
-                name="i-heroicons-check"
-                class="w-3 h-3 sm:w-3.5 sm:h-3.5"
-              />
-              <UIcon
-                v-else-if="homePenaltyShootoutEvents[n - 1]"
-                name="i-heroicons-x-mark"
-                class="w-3 h-3 sm:w-3.5 sm:h-3.5"
-              />
-              <span v-else>{{ n }}</span>
-            </div>
-          </div>
-          <div class="w-px h-6 bg-gray-300 dark:bg-white/10" />
-          <div
-            class="flex flex-wrap items-center justify-center gap-1.5 md:gap-2 max-w-[45%]"
-          >
-            <div
-              v-for="n in maxPenaltyRounds"
-              :key="`away-${n}`"
-              class="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold"
-              :class="
-                awayPenaltyShootoutEvents[n - 1]?.type === MatchEventType.PENALTY
-                  ? 'bg-emerald-500 text-white'
-                  : awayPenaltyShootoutEvents[n - 1]
-                    ? 'bg-red-500 text-white'
-                    : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'
-              "
-            >
-              <UIcon
-                v-if="
-                  awayPenaltyShootoutEvents[n - 1]?.type ===
-                  MatchEventType.PENALTY
-                "
-                name="i-heroicons-check"
-                class="w-3 h-3 sm:w-3.5 sm:h-3.5"
-              />
-              <UIcon
-                v-else-if="awayPenaltyShootoutEvents[n - 1]"
-                name="i-heroicons-x-mark"
-                class="w-3 h-3 sm:w-3.5 sm:h-3.5"
-              />
-              <span v-else>{{ n }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Chronological shootout list -->
+      <!-- Chronological shootout list -->
+      <div v-if="penaltyShootoutEvents.length > 0" class="mt-6">
         <div class="space-y-3">
           <div
             v-for="event in chronologicalPenaltyEvents"

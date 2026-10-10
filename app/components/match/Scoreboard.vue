@@ -6,12 +6,6 @@ import type { Fixture } from "~/types";
 
 const props = defineProps<{
   fixture: Fixture | null;
-  swappingTeams: boolean;
-  updatingMatch: boolean;
-}>();
-
-const emit = defineEmits<{
-  swap: [];
 }>();
 
 const { liveClock, liveMinuteLabel, isTimerPaused } = inject(
@@ -87,23 +81,7 @@ const periodLabel = computed(() => {
         <UIcon name="i-heroicons-bolt" class="w-2.5 h-2.5" />
         <span>{{ fixture.homePenaltyScore ?? 0 }} – {{ fixture.awayPenaltyScore ?? 0 }} pen</span>
       </div>
-      <!-- Swap Teams Button -->
-      <button
-        class="mc-swap-btn"
-        :disabled="swappingTeams || updatingMatch"
-        @click="emit('swap')"
-        title="Swap home and away"
-      >
-        <UIcon
-          :name="
-            swappingTeams
-              ? 'i-heroicons-arrow-path'
-              : 'i-heroicons-arrows-right-left'
-          "
-          :class="['w-3 h-3', swappingTeams && 'animate-spin']"
-        />
-        <span>Swap</span>
-      </button>
+      <!-- The single clock — owns live time, pause state included -->
       <div
         v-if="isFixtureLiveStatus(fixture.status)"
         class="mc-match-time mc-match-time--live"

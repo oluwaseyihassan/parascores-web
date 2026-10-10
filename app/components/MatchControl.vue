@@ -58,17 +58,13 @@ const awayPlayers = ref<Player[]>([]);
 const loadingPlayers = ref(false);
 const matchEvents = ref<MatchEvent[]>([]);
 const loadingEvents = ref(false);
-const showEventsCollapsible = ref(false);
-const showScheduleCollapsible = ref(false);
 const showLivestreamCollapsible = ref(false);
 const showPenaltyCollapsible = ref(false);
-const showWalkoverCollapsible = ref(false);
 const errorMessage = ref<string | null>(null);
 const swappingTeams = ref(false);
 const highlights = ref<Highlight[]>([]);
 const loadingHighlights = ref(false);
 const showHighlightsCollapsible = ref(false);
-const showLineupCollapsible = ref(false);
 const showMotmCollapsible = ref(false);
 
 const activeTab = ref<"live" | "setup" | "events" | "media">("live");
@@ -180,7 +176,6 @@ const {
   adjustedMinute,
   isEditingMinute,
   adjustTimerMaxMinutes,
-  adjustMatchTimer,
 } = timerControlsApi;
 
 const eventsTabBadge = computed(() => {
@@ -323,26 +318,13 @@ watch(
       scheduleApi.resetSchedule();
       highlightsApi.resetHighlightForm();
       showLivestreamCollapsible.value = false;
-      showEventsCollapsible.value = false;
       showPenaltyCollapsible.value = false;
       showHighlightsCollapsible.value = false;
-      showLineupCollapsible.value = false;
       showMotmCollapsible.value = false;
-      showWalkoverCollapsible.value = false;
-      showScheduleCollapsible.value = false;
       lineupsApi.resetLineups();
     }
   },
 );
-
-watch(showScheduleCollapsible, (isOpen) => {
-  if (isOpen && isFixtureLiveStatus(selectedFixture.value?.status)) {
-    const currentElapsed =
-      matchTimer.getElapsedSeconds(selectedFixture.value) ?? 0;
-    const rawMinute = Math.floor(currentElapsed / 60);
-    adjustedMinute.value = Math.min(rawMinute, adjustTimerMaxMinutes.value);
-  }
-});
 
 watch(
   () => matchTimer.now.value,
@@ -1010,17 +992,15 @@ const downloadGraphic = async () => {
           :fixture="selectedFixture"
           :can-share="canShare"
           :sharing-match="sharingMatch"
+          :swapping-teams="swappingTeams"
           @close="closeModal"
           @share="handleShareGraphic"
+          @swap="showSwapConfirmModal = true"
+          @download="downloadGraphic"
         />
 
         <!-- Persistent Scoreboard (outside tabs) -->
-        <MatchScoreboard
-          :fixture="selectedFixture"
-          :swapping-teams="swappingTeams"
-          :updating-match="updatingMatch"
-          @swap="showSwapConfirmModal = true"
-        />
+        <MatchScoreboard :fixture="selectedFixture" />
 
         <!-- Tabs -->
         <div v-if="selectedFixture" class="mc-tabs">
@@ -1104,6 +1084,18 @@ const downloadGraphic = async () => {
 
           <!-- Live Tab -->
           <div v-show="activeTab === 'live'" class="mc-tab-pane">
+            <!-- Clock bar (clocked sports): pause/resume, adjust, one progression step -->
+            <MatchClockBar
+              v-if="
+                caps.timer !== 'none' &&
+                ['LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME'].includes(
+                  selectedFixture.status,
+                )
+              "
+              :fixture="selectedFixture"
+              :updating-match="updatingMatch"
+            />
+
             <!-- Scoring surface — provided by the resolved sport engine -->
             <div
               v-if="
@@ -1129,54 +1121,6 @@ const downloadGraphic = async () => {
                 @fixture-updated="(f: Fixture) => emit('fixture-updated', f)"
               />
             </div>
-
-            <!-- Adjust Running Time (clocked sports, while live) -->
-            <div
-              v-if="
-                caps.timer !== 'none' &&
-                ['LIVE', 'NORMAL_TIME_ENDED', 'EXTRATIME'].includes(
-                  selectedFixture.status,
-                )
-              "
-              class="mc-timer-adjust"
-            >
-              <div
-                class="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400"
-              >
-                <span class="flex items-center gap-1">
-                  <UIcon
-                    name="i-heroicons-clock"
-                    class="w-3.5 h-3.5 text-amber-500"
-                  />
-                  <span>Adjust Running Time (minutes)</span>
-                </span>
-                <span class="font-bold text-amber-500"
-                  >{{ adjustedMinute }}'</span
-                >
-              </div>
-              <div class="flex gap-2 items-center mt-1.5">
-                <UInput
-                  type="number"
-                  v-model.number="adjustedMinute"
-                  min="0"
-                  :max="adjustTimerMaxMinutes"
-                  class="flex-1"
-                  size="sm"
-                  :disabled="updatingTime"
-                  @focus="isEditingMinute = true"
-                  @blur="isEditingMinute = false"
-                />
-                <UButton
-                  color="warning"
-                  variant="solid"
-                  size="sm"
-                  :loading="updatingTime"
-                  @click="adjustMatchTimer"
-                >
-                  Apply
-                </UButton>
-              </div>
-            </div>
           </div>
 
           <!-- Setup Tab -->
@@ -1192,48 +1136,36 @@ const downloadGraphic = async () => {
                   'COMPLETED',
                 ].includes(selectedFixture.status)
               "
-              v-model:collapsed="showScheduleCollapsible"
             />
 
             <!-- Lineups -->
             <MatchLineupEditor
               v-if="caps.lineups && tournament?.participantType !== ParticipantType.INDIVIDUAL"
-              v-model:collapsed="showLineupCollapsible"
               :fixture="selectedFixture"
               :home-players="homePlayers"
               :away-players="awayPlayers"
               :loading-players="loadingPlayers"
             />
 
-            <!-- Walkover -->
+            <!-- Walkover: quiet one-liner, not a collapsible -->
             <div
               v-if="selectedFixture.status !== 'COMPLETED'"
-              class="mc-section mc-section--walkover"
+              class="mc-quiet-row"
             >
-              <div
-                class="mc-section__head cursor-pointer"
-                @click="showWalkoverCollapsible = !showWalkoverCollapsible"
+              <UIcon
+                name="i-heroicons-flag"
+                class="w-4 h-4 text-amber-500 shrink-0"
+              />
+              <span class="mc-quiet-row__text">
+                Team no-show? Skip the match flow and record the result directly.
+              </span>
+              <button
+                class="mc-walkover-btn mc-walkover-btn--inline"
+                :disabled="updatingMatch"
+                @click="() => { showWalkoverModal = true }"
               >
-                <UIcon
-                  name="i-heroicons-flag"
-                  class="w-3.5 h-3.5 text-amber-500"
-                />
-                <span>Walkover</span>
-                <UIcon
-                  name="i-heroicons-chevron-down"
-                  class="w-4 h-4 ml-auto transition-transform"
-                  :class="{ 'rotate-180': showWalkoverCollapsible }"
-                />
-              </div>
-              <div v-show="showWalkoverCollapsible" class="mc-section__body">
-                <button
-                  class="mc-walkover-btn"
-                  :disabled="updatingMatch"
-                  @click="() => { showWalkoverModal = true }"
-                >
-                  Record Walkover
-                </button>
-              </div>
+                Record walkover
+              </button>
             </div>
           </div>
 
@@ -1282,7 +1214,6 @@ const downloadGraphic = async () => {
             <!-- Match Events -->
             <MatchEventsPanel
               v-if="tournament?.participantType !== ParticipantType.INDIVIDUAL"
-              v-model:collapsed="showEventsCollapsible"
               :fixture="selectedFixture"
             />
 

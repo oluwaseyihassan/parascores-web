@@ -14,6 +14,7 @@ const emit = defineEmits<{
 
 const engine = inject(SportEngineKey)
 const raceConfig = computed(() => engine?.value.race)
+const direction = computed(() => raceConfig.value?.direction ?? 'low')
 
 const participantStore = useParticipantStore()
 const { handleError } = useErrors()
@@ -79,6 +80,7 @@ const save = async () => {
       {
         method: 'PUT',
         body: {
+          direction: direction.value,
           results: filledRows.value.map((r) => ({
             participantId: r.participantId,
             value: r.value.trim(),
@@ -115,7 +117,7 @@ const initRowsFromEntries = (entries: ResultEntry[]) => {
 <template>
   <div class="col-span-full w-full space-y-3">
     <div class="text-center text-[10px] text-white/40 uppercase tracking-wider">
-      {{ raceConfig?.valueLabel ?? 'Result' }} per participant — lowest wins
+      {{ raceConfig?.valueLabel ?? 'Result' }} per participant — {{ direction === 'high' ? 'highest wins' : 'lowest wins' }}
     </div>
 
     <div v-if="loadingParticipants" class="text-center text-xs text-white/40 py-4">
