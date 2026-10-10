@@ -1,8 +1,8 @@
 export const useHost = () => {
   const config = useRuntimeConfig()
   const route = useRoute()
-  
-  const host = process.server 
+
+  const host = process.server
     ? useRequestHeaders(['host']).host || ''
     : window.location.host
 

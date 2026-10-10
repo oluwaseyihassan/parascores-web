@@ -133,33 +133,35 @@ const handleLogout = async () => {
         </div>
 
         <!-- Organization Switcher -->
-        <div class="flex flex-col gap-4 py-2 w-full px-2 border-b border-gray-100 dark:border-white/10 mb-6 pb-6">
-          <UTooltip 
-            v-for="orgMember in authStore.organizations" 
-            :key="orgMember.organizationId" 
-            :text="orgMember.organization?.name"
-            :content="{ side: 'right' }"
-          >
-            <button
-              @click="authStore.setActiveOrganization(orgMember.organizationId)"
-              class="relative group flex-shrink-0 flex items-center justify-center h-10 w-10 mx-auto rounded-xl transition-all duration-300 overflow-hidden ring-2"
-              :class="[
-                authStore.activeOrganizationId === orgMember.organizationId
-                  ? 'ring-indigo-500 scale-110 shadow-lg shadow-indigo-500/20' 
-                  : 'ring-transparent hover:ring-gray-300 dark:hover:ring-white/20'
-              ]"
+        <div class="flex flex-col gap-4 py-2 w-full px-2 border-b border-gray-100 dark:border-white/10 mb-6 pb-6 flex-shrink-0">
+          <div class="flex flex-col gap-4 max-h-72 overflow-y-auto overflow-x-hidden no-scrollbar">
+            <UTooltip 
+              v-for="orgMember in authStore.organizations" 
+              :key="orgMember.organizationId" 
+              :text="orgMember.organization?.name"
+              :content="{ side: 'right' }"
             >
-              <UAvatar 
-                v-if="orgMember.organization?.logoUrl" 
-                :src="orgMember.organization.logoUrl" 
-                size="sm" 
-                class="w-full h-full object-cover"
-              />
-              <div v-else class="w-full h-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-xs font-bold uppercase text-gray-500">
-                {{ orgMember.organization?.name?.charAt(0) }}
-              </div>
-            </button>
-          </UTooltip>
+              <button
+                @click="authStore.setActiveOrganization(orgMember.organizationId)"
+                class="relative group flex-shrink-0 flex items-center justify-center h-10 w-10 mx-auto rounded-xl transition-all duration-300 overflow-hidden ring-2"
+                :class="[
+                  authStore.activeOrganizationId === orgMember.organizationId
+                    ? 'ring-indigo-500 scale-110 shadow-lg shadow-indigo-500/20' 
+                    : 'ring-transparent hover:ring-gray-300 dark:hover:ring-white/20'
+                ]"
+              >
+                <UAvatar 
+                  v-if="orgMember.organization?.logoUrl" 
+                  :src="orgMember.organization.logoUrl" 
+                  size="sm" 
+                  class="w-full h-full object-cover"
+                />
+                <div v-else class="w-full h-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-xs font-bold uppercase text-gray-500">
+                  {{ orgMember.organization?.name?.charAt(0) }}
+                </div>
+              </button>
+            </UTooltip>
+          </div>
 
           <!-- Manage Organizations Button -->
           <UTooltip text="Manage Organizations" :content="{ side: 'right' }">

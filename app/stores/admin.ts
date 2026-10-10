@@ -7,6 +7,7 @@ export interface AdminStats {
   organizationsCount: number
   paymentsCount: number
   totalRevenue: number
+  parageeCalls: number
 }
 
 export interface AdminUser {
@@ -114,6 +115,7 @@ export const useAdminStore = defineStore('admin', () => {
         organizationsCount: data?.counts?.organizations || 0,
         paymentsCount: data?.counts?.payments || 0,
         totalRevenue: (data?.revenue?.total || 0) / 100, // Convert from kobo/cents
+        parageeCalls: data?.counts?.botCalls || 0,
       }
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch stats'
@@ -236,6 +238,34 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  async function fetchTournament(id: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<ApiResponse<any>>(`/admin/tournaments/${id}`, {
+        method: 'GET',
+      })
+      const data = res.data
+      if (data && data.payments) {
+        data.payments = data.payments.map((p: any) => ({
+          ...p,
+          amount: p.amount / 100
+        }))
+      }
+      if (data) {
+        data.tournamentPrice = data.tournamentPrice ? data.tournamentPrice / 100 : 0
+        data.paymentPerTeam = data.paymentPerTeam ? data.paymentPerTeam / 100 : 0
+        data.registrationFee = data.registrationFee ? data.registrationFee / 100 : 0
+      }
+      return data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to fetch tournament'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function deleteTournament(id: string) {
     loading.value = true
     error.value = null
@@ -246,6 +276,58 @@ export const useAdminStore = defineStore('admin', () => {
       return res
     } catch (err: any) {
       error.value = err.message || 'Failed to delete tournament'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateTournament(
+    id: string,
+    data: {
+      name?: string
+      customName?: string | null
+      description?: string | null
+      visibility?: 'PUBLIC' | 'PRIVATE' | 'UNLISTED'
+      isPremium?: boolean
+      isPinned?: boolean
+      isPaidRegistration?: boolean
+      registrationFee?: number
+      tournamentPrice?: number
+      paymentPerTeam?: number
+      startDate?: string
+      endDate?: string
+      location?: string | null
+      timezone?: string
+      maxParticipants?: number | null
+      sport?: string
+      type?: 'LEAGUE' | 'KNOCKOUT' | 'ROUND_ROBIN' | 'GROUP' | 'HYBRID' | 'FRIENDLY'
+      autoApprove?: boolean
+      thirdPlaceMatch?: boolean
+      twoLegsKnockout?: boolean
+      doubleRoundRobin?: boolean
+    }
+  ) {
+    loading.value = true
+    error.value = null
+    try {
+      const payload: any = { ...data }
+      if (payload.registrationFee !== undefined) {
+        payload.registrationFee = Math.round(payload.registrationFee * 100)
+      }
+      if (payload.tournamentPrice !== undefined) {
+        payload.tournamentPrice = Math.round(payload.tournamentPrice * 100)
+      }
+      if (payload.paymentPerTeam !== undefined) {
+        payload.paymentPerTeam = Math.round(payload.paymentPerTeam * 100)
+      }
+      const res = await $api<ApiResponse<any>>(`/admin/tournaments/${id}`, {
+        method: 'PATCH',
+        body: payload,
+      })
+      return res.data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update tournament'
       throw err
     } finally {
       loading.value = false
@@ -320,6 +402,43 @@ export const useAdminStore = defineStore('admin', () => {
       return data
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch organization'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateOrganizationVerification(id: string, isVerified: boolean) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<ApiResponse<any>>(`/admin/organizations/${id}/verify`, {
+        method: 'PATCH',
+        body: { isVerified }
+      })
+      return res.data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update organization verification'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateOrganizationSubscription(
+    id: string,
+    data: { plan?: string; status?: string; currentPeriodEnd?: string }
+  ) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<ApiResponse<any>>(`/admin/organizations/${id}/subscription`, {
+        method: 'PATCH',
+        body: data
+      })
+      return res.data
+    } catch (err: any) {
+      error.value = err.message || 'Failed to update organization subscription'
       throw err
     } finally {
       loading.value = false
@@ -444,6 +563,60 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  // ─── Audit Logs ────────────────────────────────────────────
+  async function fetchAuditLogs(params: {
+    page?: number
+    limit?: number
+    action?: string
+    entityType?: string
+    entityId?: string
+    actorId?: string
+  } = {}) {
+    loading.value = true
+    error.value = null
+    try {
+      const query = new URLSearchParams()
+      if (params.page) query.append('page', params.page.toString())
+      if (params.limit) query.append('limit', params.limit.toString())
+      if (params.action) query.append('action', params.action)
+      if (params.entityType) query.append('entityType', params.entityType)
+      if (params.entityId) query.append('entityId', params.entityId)
+      if (params.actorId) query.append('actorId', params.actorId)
+
+      const res = await $api<any>(
+        `/admin/audit-logs?${query.toString()}`,
+        { method: 'GET' }
+      )
+      return {
+        items: res.data || [],
+        total: res.pagination?.total || 0,
+        pages: res.pagination?.totalPages || 0
+      }
+    } catch (err: any) {
+      error.value = err.message || 'Failed to fetch audit logs'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchRecentAuditLogs(limit: number = 10) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await $api<any>(
+        `/admin/audit-logs/recent?limit=${limit}`,
+        { method: 'GET' }
+      )
+      return res.data || []
+    } catch (err: any) {
+      error.value = err.message || 'Failed to fetch recent audit logs'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     loading,
     error,
@@ -453,14 +626,20 @@ export const useAdminStore = defineStore('admin', () => {
     deleteUser,
     updateUserRole,
     fetchTournaments,
+    fetchTournament,
     deleteTournament,
+    updateTournament,
     updateTournamentPricing,
     fetchOrganizations,
     fetchOrganization,
+    updateOrganizationVerification,
+    updateOrganizationSubscription,
     fetchPayments,
     fetchPaymentsSummary,
     fetchPendingPlayers,
     updatePlayerStatus,
     fetchHealth,
+    fetchAuditLogs,
+    fetchRecentAuditLogs,
   }
 })

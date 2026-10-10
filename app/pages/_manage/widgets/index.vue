@@ -5,7 +5,7 @@ import { TournamentType } from '~/types'
 
 definePageMeta({
   middleware: ['require-organizer'],
-  layout: 'dashboard'
+  layout: 'dashboard-v2'
 })
 
 const tournamentStore = useTournamentStore()
@@ -17,7 +17,10 @@ const selectedWidgetType = ref<'fixtures' | 'standings' | 'bracket' | 'stats'>('
 const widgetTheme = ref<'dark' | 'light'>('dark')
 const widgetWidth = ref(400)
 const widgetHeight = ref(600)
-const copied = ref(false)
+const copiedEmbed = ref(false)
+const copiedLink = ref(false)
+// Once the user edits dimensions manually, type-switching stops suggesting presets
+const sizeCustomized = ref(false)
 
 const route = useRoute()
 const toast = useToast()
@@ -27,7 +30,7 @@ onMounted(async () => {
   if (tournaments.value.length === 0) {
     await tournamentStore.fetchTournaments({ limit: 50 })
   }
-  
+
   // Auto-select tournament from query parameter or default to first
   const queryTournament = (route.query.t || route.query.tournament) as string | undefined
   if (queryTournament) {
@@ -45,7 +48,7 @@ onMounted(async () => {
       })
     }
   }
-  
+
   if (tournaments.value.length > 0 && !selectedTournamentId.value) {
     selectedTournamentId.value = tournaments.value[0]?.id ?? ''
   }
@@ -55,17 +58,23 @@ const selectedTournament = computed(() => {
   return tournaments.value.find(t => t.id === selectedTournamentId.value) || null
 })
 
+const tournamentMetaLine = computed(() => {
+  const t = selectedTournament.value
+  if (!t) return ''
+  return `${t.type?.replace(/_/g, ' ').toLowerCase()} · ${String(t.visibility).toLowerCase()}`
+})
+
 // Widget type options based on tournament type
 const widgetTypes = computed(() => {
   const types = [
-    { label: 'Fixtures', value: 'fixtures', icon: 'i-heroicons-calendar-days', description: 'Live scores & upcoming matches' }
+    { label: 'Fixtures', value: 'fixtures', icon: 'i-heroicons-calendar-days', description: 'Live scores & schedule' }
   ]
-  
+
   const t = selectedTournament.value
   if (t) {
     // Standings available for Round Robin, Group, Hybrid
     if ([TournamentType.ROUND_ROBIN, TournamentType.GROUP, TournamentType.HYBRID].includes(t.type)) {
-      types.push({ label: 'Standings', value: 'standings', icon: 'i-heroicons-table-cells', description: 'League table & group standings' })
+      types.push({ label: 'Standings', value: 'standings', icon: 'i-heroicons-chart-bar', description: 'League table & groups' })
     }
     // Bracket available for Knockout, Hybrid
     if ([TournamentType.KNOCKOUT, TournamentType.HYBRID].includes(t.type)) {
@@ -73,10 +82,10 @@ const widgetTypes = computed(() => {
     }
     // Player Stats available for Team tournaments
     if (t.participantType === 'TEAM') {
-      types.push({ label: 'Player Stats', value: 'stats', icon: 'i-heroicons-chart-bar', description: 'Top goals and assists' })
+      types.push({ label: 'Player Stats', value: 'stats', icon: 'i-heroicons-star', description: 'Top goals and assists' })
     }
   }
-  
+
   return types
 })
 
@@ -86,6 +95,36 @@ const tournamentItems = computed(() => {
     label: t.name,
     value: t.id
   }))
+})
+
+// Size presets (per-type suggestion applied until the user customizes)
+const sizePresets = [
+  { key: 'portrait', label: 'Portrait', width: 400, height: 600 },
+  { key: 'wide', label: 'Wide', width: 640, height: 420 },
+  { key: 'tall', label: 'Tall', width: 380, height: 720 },
+] as const
+
+const typePresetKey: Record<string, (typeof sizePresets)[number]['key']> = {
+  fixtures: 'portrait',
+  standings: 'tall',
+  bracket: 'wide',
+  stats: 'portrait',
+}
+
+const activePresetKey = computed(() => {
+  const match = sizePresets.find(p => p.width === widgetWidth.value && p.height === widgetHeight.value)
+  return match?.key ?? 'custom'
+})
+
+const applyPreset = (preset: (typeof sizePresets)[number]) => {
+  widgetWidth.value = preset.width
+  widgetHeight.value = preset.height
+  sizeCustomized.value = false
+}
+
+watch([widgetWidth, widgetHeight], () => {
+  // Editing the inputs directly counts as customizing
+  if (activePresetKey.value === 'custom') sizeCustomized.value = true
 })
 
 // Build widget URL
@@ -98,7 +137,7 @@ const widgetBaseUrl = computed(() => {
 const widgetUrl = computed(() => {
   if (!selectedTournamentId.value || !selectedTournament.value) return ''
   const urlId = selectedTournament.value.customName || selectedTournament.value.id
-  
+
   const params = new URLSearchParams()
   if (widgetTheme.value !== 'dark') params.set('theme', widgetTheme.value)
   const queryString = params.toString()
@@ -112,30 +151,49 @@ const demoWidgetUrl = computed(() => {
   return `${widgetBaseUrl.value}/widget/oau-supremacy-2026/${selectedWidgetType.value}${queryString ? '?' + queryString : ''}`
 })
 
+// Preview uses the real tournament when selected, else the public demo
+const previewUrl = computed(() => selectedTournamentId.value ? widgetUrl.value : demoWidgetUrl.value)
+
+const widgetTypeLabel = computed(() => {
+  return widgetTypes.value.find(t => t.value === selectedWidgetType.value)?.label || 'Fixtures'
+})
+
 // Generate embed code
 const embedCode = computed(() => {
   if (!widgetUrl.value) return ''
   return `<iframe src="${widgetUrl.value}" width="${widgetWidth.value}" height="${widgetHeight.value}" frameborder="0" style="border-radius: 12px; overflow: hidden;" title="ParaScores Widget"></iframe>`
 })
 
-const copyEmbedCode = async () => {
-  if (!embedCode.value) return
+// Syntax-tinted display copy (escaped; copy always uses the raw embedCode)
+const embedCodeHtml = computed(() => {
+  if (!embedCode.value) return ''
+  const esc = embedCode.value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  return esc
+    .replace(/(&lt;\/?)([a-zA-Z]+)/g, '$1<span class="text-sky-400">$2</span>')
+    .replace(/([a-zA-Z-]+)=(&quot;|")([^"]*)("|$)/g, '<span class="text-violet-400">$1</span>=<span class="text-emerald-400">$2$3$4</span>')
+})
+
+const copyText = async (text: string, flag: typeof copiedEmbed) => {
   try {
-    await navigator.clipboard.writeText(embedCode.value)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 2000)
+    await navigator.clipboard.writeText(text)
   } catch {
     // Fallback
     const el = document.createElement('textarea')
-    el.value = embedCode.value
+    el.value = text
     document.body.appendChild(el)
     el.select()
     document.execCommand('copy')
     document.body.removeChild(el)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 2000)
   }
+  flag.value = true
+  setTimeout(() => { flag.value = false }, 2000)
 }
+
+const copyEmbedCode = () => copyText(embedCode.value, copiedEmbed)
+const copyWidgetLink = () => copyText(widgetUrl.value, copiedLink)
 
 // Reset widget type when tournament changes
 watch(selectedTournamentId, () => {
@@ -144,172 +202,296 @@ watch(selectedTournamentId, () => {
     selectedWidgetType.value = 'fixtures'
   }
 })
+
+// Suggest a fitting size preset when the widget type changes
+watch(selectedWidgetType, (type) => {
+  if (sizeCustomized.value) return
+  const preset = sizePresets.find(p => p.key === typePresetKey[type])
+  if (preset) applyPreset(preset)
+})
+
+// Preview scale-to-fit (iframe stays at real pixel size; the frame scales)
+const stageRef = ref<HTMLElement | null>(null)
+const stageWidth = ref(0)
+let stageObserver: ResizeObserver | null = null
+
+onMounted(() => {
+  if (stageRef.value) {
+    stageWidth.value = stageRef.value.clientWidth
+    stageObserver = new ResizeObserver((entries) => {
+      stageWidth.value = entries[0]?.contentRect.width ?? stageWidth.value
+    })
+    stageObserver.observe(stageRef.value)
+  }
+})
+
+onUnmounted(() => {
+  stageObserver?.disconnect()
+})
+
+const previewScale = computed(() => {
+  if (!stageWidth.value) return 1
+  return Math.min(1, (stageWidth.value - 40) / widgetWidth.value)
+})
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto">
-    <!-- Page Header -->
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Widget Builder</h1>
-      <p class="text-gray-500 mt-1">Embed live tournament data on your website</p>
-    </div>
+  <div class="max-w-6xl mx-auto">
+    <div class="grid lg:grid-cols-[380px_minmax(0,1fr)] gap-4 items-start">
 
-    <div class="grid lg:grid-cols-2 gap-8">
-      <!-- Configuration Panel -->
-      <div class="space-y-6">
-        <!-- Tournament Select -->
-        <div class="p-6 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <UIcon name="i-heroicons-trophy" class="w-4 h-4 text-indigo-500" />
-            Select Tournament
-          </h3>
-          <USelect
-            v-model="selectedTournamentId"
-            :items="tournamentItems"
-            placeholder="Choose a tournament..."
-            value-key="value"
-            class="w-full"
-            :loading="tournamentsLoading"
-          />
-          <p v-if="selectedTournament" class="text-xs text-gray-400 mt-2">
-            {{ selectedTournament.type?.replace('_', ' ') }} • 
-            {{ selectedTournament.visibility }}
-          </p>
-        </div>
+      <!-- ═══ Config rail ═══ -->
+      <div class="flex flex-col gap-3">
 
-        <!-- Widget Type -->
-        <div class="p-6 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <UIcon name="i-heroicons-squares-2x2" class="w-4 h-4 text-indigo-500" />
-            Widget Type
-          </h3>
-          <div class="grid gap-2">
-            <button
-              v-for="type in widgetTypes"
-              :key="type.value"
-              class="flex items-center gap-3 p-3 rounded-lg border text-left transition-all"
-              :class="selectedWidgetType === type.value 
-                ? 'border-indigo-500 bg-indigo-500/10 text-indigo-500 dark:text-indigo-400'
-                : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 text-gray-700 dark:text-gray-300'"
-              @click="selectedWidgetType = type.value as 'fixtures' | 'standings' | 'bracket' | 'stats'"
-            >
-              <UIcon :name="type.icon" class="w-5 h-5 flex-shrink-0" />
-              <div>
-                <p class="text-sm font-medium">{{ type.label }}</p>
-                <p class="text-xs text-gray-400">{{ type.description }}</p>
-              </div>
-            </button>
+        <!-- Tournament -->
+        <section class="bg-surface border border-subtle rounded-2xl overflow-hidden">
+          <header class="flex items-center gap-2.5 px-4 py-3 border-b border-subtle">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+              <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5" />
+            </span>
+            <h2 class="text-[13px] font-bold text-heading">Tournament</h2>
+            <span v-if="tournamentMetaLine" class="ml-auto text-[11px] text-muted capitalize truncate">{{ tournamentMetaLine }}</span>
+          </header>
+          <div class="p-4">
+            <USelectMenu
+              v-model="selectedTournamentId"
+              :items="tournamentItems"
+              placeholder="Choose a tournament…"
+              value-key="value"
+              class="w-full"
+              :loading="tournamentsLoading"
+              searchable
+            />
           </div>
-        </div>
+        </section>
+
+        <!-- Widget type -->
+        <section class="bg-surface border border-subtle rounded-2xl overflow-hidden">
+          <header class="flex items-center gap-2.5 px-4 py-3 border-b border-subtle">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+              <UIcon name="i-heroicons-squares-2x2" class="w-3.5 h-3.5" />
+            </span>
+            <h2 class="text-[13px] font-bold text-heading">Widget</h2>
+            <span class="ml-auto text-[11px] text-muted">Options adapt to the format</span>
+          </header>
+          <div class="p-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                v-for="type in widgetTypes"
+                :key="type.value"
+                type="button"
+                class="flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all"
+                :class="selectedWidgetType === type.value
+                  ? 'border-emerald-500/50 bg-emerald-500/[0.08]'
+                  : 'border-subtle bg-black/[0.02] dark:bg-white/[0.03] hover:border-white/[0.16]'"
+                :aria-pressed="selectedWidgetType === type.value"
+                @click="selectedWidgetType = type.value as 'fixtures' | 'standings' | 'bracket' | 'stats'"
+              >
+                <span
+                  class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                  :class="selectedWidgetType === type.value
+                    ? 'bg-emerald-500/15 text-emerald-500'
+                    : 'bg-black/5 dark:bg-white/[0.07] text-muted'"
+                >
+                  <UIcon :name="type.icon" class="w-4 h-4" />
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-xs font-bold text-heading">{{ type.label }}</span>
+                  <span class="block text-[10px] text-muted truncate">{{ type.description }}</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </section>
 
         <!-- Appearance -->
-        <div class="p-6 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <UIcon name="i-heroicons-paint-brush" class="w-4 h-4 text-indigo-500" />
-            Appearance
-          </h3>
-          
-          <div class="space-y-4">
+        <section class="bg-surface border border-subtle rounded-2xl overflow-hidden">
+          <header class="flex items-center gap-2.5 px-4 py-3 border-b border-subtle">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+              <UIcon name="i-heroicons-paint-brush" class="w-3.5 h-3.5" />
+            </span>
+            <h2 class="text-[13px] font-bold text-heading">Appearance</h2>
+          </header>
+          <div class="p-4 flex flex-col gap-4">
             <!-- Theme -->
+            <div class="flex items-center gap-1 bg-black/[0.03] dark:bg-white/[0.04] border border-subtle p-0.5 rounded-lg">
+              <button
+                type="button"
+                class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[11.5px] font-bold transition-all"
+                :class="widgetTheme === 'dark' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted hover:text-heading'"
+                :aria-pressed="widgetTheme === 'dark'"
+                @click="widgetTheme = 'dark'"
+              >
+                <UIcon name="i-heroicons-moon" class="w-3.5 h-3.5" />
+                Dark
+              </button>
+              <button
+                type="button"
+                class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[11.5px] font-bold transition-all"
+                :class="widgetTheme === 'light' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted hover:text-heading'"
+                :aria-pressed="widgetTheme === 'light'"
+                @click="widgetTheme = 'light'"
+              >
+                <UIcon name="i-heroicons-sun" class="w-3.5 h-3.5" />
+                Light
+              </button>
+            </div>
+
+            <!-- Size presets + custom -->
             <div>
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">Theme</label>
-              <div class="flex gap-2 flex-wrap">
+              <div class="flex flex-wrap gap-1.5 mb-2.5">
                 <button
-                  class="flex-1 py-2 px-3 text-sm rounded-lg border transition-all"
-                  :class="widgetTheme === 'dark' 
-                    ? 'border-indigo-500 bg-indigo-500/10 text-indigo-500'
-                    : 'border-gray-200 dark:border-white/10 text-gray-500'"
-                  @click="widgetTheme = 'dark'"
+                  v-for="preset in sizePresets"
+                  :key="preset.key"
+                  type="button"
+                  class="px-2.5 py-1 text-[10.5px] font-bold rounded-full border transition-all"
+                  :class="activePresetKey === preset.key
+                    ? 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/[0.08]'
+                    : 'border-subtle text-muted hover:text-heading hover:border-white/[0.16]'"
+                  @click="applyPreset(preset)"
                 >
-                  🌙 Dark
+                  {{ preset.label }} · {{ preset.width }}×{{ preset.height }}
                 </button>
                 <button
-                  class="flex-1 py-2 px-3 text-sm rounded-lg border transition-all"
-                  :class="widgetTheme === 'light' 
-                    ? 'border-indigo-500 bg-indigo-500/10 text-indigo-500'
-                    : 'border-gray-200 dark:border-white/10 text-gray-500'"
-                  @click="widgetTheme = 'light'"
+                  type="button"
+                  class="px-2.5 py-1 text-[10.5px] font-bold rounded-full border transition-all"
+                  :class="activePresetKey === 'custom'
+                    ? 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/[0.08]'
+                    : 'border-subtle text-muted hover:text-heading hover:border-white/[0.16]'"
+                  @click="sizeCustomized = true"
                 >
-                  ☀️ Light
+                  Custom
                 </button>
               </div>
-            </div>
-
-            <!-- Dimensions -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">Width (px)</label>
-                <UInput v-model.number="widgetWidth" type="number" :min="200" :max="1200" />
-              </div>
-              <div>
-                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">Height (px)</label>
-                <UInput v-model.number="widgetHeight" type="number" :min="200" :max="1200" />
+              <div class="grid grid-cols-2 gap-2">
+                <UInput v-model.number="widgetWidth" type="number" :min="200" :max="1200">
+                  <template #leading><span class="text-[10px] font-bold text-muted">W</span></template>
+                  <template #trailing><span class="text-[10px] text-muted">px</span></template>
+                </UInput>
+                <UInput v-model.number="widgetHeight" type="number" :min="200" :max="1200">
+                  <template #leading><span class="text-[10px] font-bold text-muted">H</span></template>
+                  <template #trailing><span class="text-[10px] text-muted">px</span></template>
+                </UInput>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Embed Code -->
-        <div v-if="selectedTournamentId" class="p-6 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <UIcon name="i-heroicons-code-bracket" class="w-4 h-4 text-indigo-500" />
-            Embed Code
-          </h3>
-          <div class="relative w-full overflow-hidden">
-            <pre class="text-xs w-full p-3 rounded-lg overflow-x-auto whitespace-pre-wrap break-all font-mono bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10">{{ embedCode }}</pre>
-            <button
-              class="absolute top-2 right-2 px-3 py-1 text-xs font-medium rounded-md transition-colors"
-              :class="copied 
-                ? 'bg-green-500 text-white' 
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
-              @click="copyEmbedCode"
-            >
-              {{ copied ? '✓ Copied!' : 'Copy' }}
-            </button>
-          </div>
-          <p class="text-xs text-gray-400 mt-2">Paste this code into your website's HTML.</p>
-        </div>
-      </div>
-
-      <!-- Preview Panel -->
-      <div class="lg:sticky lg:top-4 lg:self-start">
-        <div class="p-6 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <UIcon name="i-heroicons-eye" class="w-4 h-4 text-indigo-500" />
-            Preview
-          </h3>
-          
-          <div v-if="!selectedTournamentId" class="flex flex-col items-center w-full">
-            <div class="mb-5 text-center">
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 mb-2 animate-pulse">
-                Live Demo
-              </span>
-              <h4 class="text-sm font-bold text-gray-900 dark:text-white">OAU Supremacy Cup</h4>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Select options on the left to customize</p>
-            </div>
-            
-            <div 
-              class="rounded-xl overflow-hidden border shadow-lg max-w-full"
-              :class="widgetTheme === 'dark' ? 'border-white/10' : 'border-gray-200'"
-              :style="{ width: Math.min(widgetWidth, 500) + 'px', height: widgetHeight + 'px' }"
-            >
-              <iframe 
-                :src="demoWidgetUrl" 
-                class="w-full h-full"
-                frameborder="0"
-                title="Widget Preview Demo"
+        <!-- Share -->
+        <section v-if="selectedTournamentId" class="bg-surface border border-subtle rounded-2xl overflow-hidden">
+          <header class="flex items-center gap-2.5 px-4 py-3 border-b border-subtle">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+              <UIcon name="i-heroicons-link" class="w-3.5 h-3.5" />
+            </span>
+            <h2 class="text-[13px] font-bold text-heading">Share</h2>
+          </header>
+          <div class="p-4 flex flex-col gap-3">
+            <!-- Direct link -->
+            <div class="flex items-center gap-1.5 bg-black/[0.03] dark:bg-white/[0.04] border border-subtle rounded-lg pl-3 pr-1.5 py-1.5">
+              <span class="flex-1 min-w-0 font-mono text-[11px] text-muted truncate select-all">{{ widgetUrl }}</span>
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                :icon="copiedLink ? 'i-heroicons-check' : 'i-heroicons-clipboard-document'"
+                aria-label="Copy link"
+                @click="copyWidgetLink"
+              />
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                icon="i-heroicons-arrow-top-right-on-square"
+                aria-label="Open in new tab"
+                :to="widgetUrl"
+                target="_blank"
               />
             </div>
-          </div>
 
-          <div v-else class="flex flex-col items-center justify-center overflow-x-auto p-2">
-            <div 
-              class="rounded-xl overflow-hidden border shadow-lg max-w-full"
-              :class="widgetTheme === 'dark' ? 'border-white/10' : 'border-gray-200'"
-              :style="{ width: Math.min(widgetWidth, 500) + 'px', height: widgetHeight + 'px' }"
+            <!-- Embed code -->
+            <pre
+              class="font-mono text-[10.5px] leading-relaxed p-3 rounded-lg overflow-x-auto whitespace-pre-wrap break-all bg-black/[0.03] dark:bg-black/40 text-muted border border-subtle"
+              aria-label="Embed code"
+              v-html="embedCodeHtml"
+            ></pre>
+
+            <div class="flex gap-2">
+              <UButton
+                color="primary"
+                class="flex-1 font-bold"
+                :icon="copiedEmbed ? 'i-heroicons-check' : 'i-heroicons-clipboard-document'"
+                @click="copyEmbedCode"
+              >
+                {{ copiedEmbed ? 'Copied!' : 'Copy embed code' }}
+              </UButton>
+              <UButton
+                variant="outline"
+                color="neutral"
+                class="font-bold"
+                :icon="copiedLink ? 'i-heroicons-check' : 'i-heroicons-link'"
+                @click="copyWidgetLink"
+              >
+                {{ copiedLink ? 'Copied!' : 'Copy link' }}
+              </UButton>
+            </div>
+            <p class="text-[10.5px] text-muted leading-relaxed">
+              Embed for websites · bare link for OBS / stream overlays. Data updates live — no refresh needed.
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <!-- ═══ Preview ═══ -->
+      <section class="bg-surface border border-subtle rounded-2xl overflow-hidden lg:sticky lg:top-4">
+        <header class="flex items-center gap-2.5 px-4 py-3 border-b border-subtle">
+          <span class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+            <UIcon name="i-heroicons-eye" class="w-3.5 h-3.5" />
+          </span>
+          <h2 class="text-[13px] font-bold text-heading">Preview</h2>
+          <div class="ml-auto flex items-center gap-1.5">
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/[0.07] text-body">{{ widgetTypeLabel }}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/[0.07] text-body tabular-nums">{{ widgetWidth }} × {{ widgetHeight }}</span>
+            <span class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+              Live data
+            </span>
+          </div>
+        </header>
+
+        <!-- Demo notice when no tournament is selected -->
+        <div
+          v-if="!selectedTournamentId"
+          class="flex items-center gap-2 px-4 py-2.5 border-b border-subtle bg-emerald-500/[0.06] text-[11px] font-semibold text-emerald-600 dark:text-emerald-400"
+        >
+          <UIcon name="i-heroicons-sparkles" class="w-3.5 h-3.5 shrink-0" />
+          Live demo — OAU Supremacy Cup. Select a tournament to preview yours.
+        </div>
+
+        <!-- Stage -->
+        <div
+          ref="stageRef"
+          class="relative overflow-hidden border-b border-subtle p-5 flex justify-center"
+          style="background-image: radial-gradient(rgba(128,128,128,0.16) 1px, transparent 1px); background-size: 14px 14px;"
+        >
+          <div
+            class="shrink-0"
+            :style="{
+              width: Math.round(widgetWidth * previewScale) + 'px',
+              height: Math.round(widgetHeight * previewScale) + 'px',
+            }"
+          >
+            <div
+              class="rounded-xl overflow-hidden border shadow-xl dark:shadow-black/50"
+              :class="widgetTheme === 'dark' ? 'border-white/10' : 'border-gray-300'"
+              :style="{
+                width: widgetWidth + 'px',
+                height: widgetHeight + 'px',
+                transform: `scale(${previewScale})`,
+                transformOrigin: 'top left',
+              }"
             >
-              <iframe 
-                :src="widgetUrl" 
+              <iframe
+                v-if="previewUrl"
+                :src="previewUrl"
                 class="w-full h-full"
                 frameborder="0"
                 title="Widget Preview"
@@ -317,7 +499,22 @@ watch(selectedTournamentId, () => {
             </div>
           </div>
         </div>
-      </div>
+
+        <footer class="flex items-center justify-between gap-3 px-4 py-3">
+          <span class="text-[10.5px] text-muted">Shown at actual size · scaled to fit the panel</span>
+          <UButton
+            v-if="previewUrl"
+            size="xs"
+            variant="outline"
+            color="neutral"
+            icon="i-heroicons-arrow-top-right-on-square"
+            label="Open in new tab"
+            :to="previewUrl"
+            target="_blank"
+            class="font-bold"
+          />
+        </footer>
+      </section>
     </div>
   </div>
 </template>

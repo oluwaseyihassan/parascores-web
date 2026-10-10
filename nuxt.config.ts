@@ -71,7 +71,7 @@ export default defineNuxtConfig({
       ]
     },
     injectManifest: {
-      swSrc: 'sw.ts',
+      swSrc: resolve(__dirname, 'app', 'sw.ts'),
       globPatterns: ['**/*.{js,css,html,png,svg,ico}']
     },
     client: {
@@ -92,7 +92,11 @@ export default defineNuxtConfig({
     }
   },
 
-  css: ["@/assets/css/main.css"],
+  css: ["@/assets/css/main.css", "@/assets/css/match-control.css"],
+
+  imports: {
+    dirs: ["composables/**"],
+  },
 
   vite: {
     plugins: [tailwindcss()],

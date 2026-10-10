@@ -19,7 +19,6 @@ export default <RouterConfig> {
     const isAppSubdomain = host.startsWith('manage.') || host.startsWith('manage-dev.')
     const isAdminSubdomain = host.startsWith('admin.')
 
-    // 3. Return the correct routes
     if (isAdminSubdomain) {
       // 🔴 ADMIN: Show _admin routes only
       return _routes

@@ -31,6 +31,24 @@
               class="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-white/10 rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-emerald-500 shadow-sm focus:ring-1 focus:ring-emerald-500/20 transition-all"
             />
           </div>
+
+          <!-- Near Me -->
+          <button
+            :disabled="locating"
+            :class="[
+              'inline-flex items-center gap-2 px-4 py-3 text-xs font-bold rounded-lg border transition-all duration-200 shadow-sm',
+              nearbyMode
+                ? 'bg-emerald-500 text-white border-emerald-500'
+                : 'bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-emerald-500/30 hover:text-emerald-600 dark:hover:text-white'
+            ]"
+            @click="toggleNearby"
+          >
+            <UIcon
+              :name="locating ? 'i-heroicons-arrow-path' : 'i-heroicons-map-pin'"
+              :class="['w-4 h-4', locating && 'animate-spin']"
+            />
+            {{ nearbyMode ? `Within ${nearbyRadiusKm} km` : 'Near Me' }}
+          </button>
         </div>
 
         <!-- Type Filters -->
@@ -49,6 +67,24 @@
             {{ filter.label }}
           </button>
         </div>
+
+        <!-- Radius Filters (nearby mode) -->
+        <div v-if="nearbyMode" class="flex flex-wrap items-center gap-2 mt-3">
+          <span class="text-xs text-gray-500 dark:text-gray-400">Radius:</span>
+          <button
+            v-for="r in radiusOptions"
+            :key="r"
+            :class="[
+              'px-3 py-1.5 text-xs font-medium rounded-lg border transition-all duration-200',
+              nearbyRadiusKm === r
+                ? 'bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                : 'bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-emerald-500/30 hover:text-emerald-600 dark:hover:text-white shadow-sm'
+            ]"
+            @click="nearbyRadiusKm = r"
+          >
+            {{ r }} km
+          </button>
+        </div>
       </div>
     </section>
 
@@ -58,7 +94,8 @@
         <!-- Results Count -->
         <div class="flex items-center justify-between mb-6">
           <p class="text-sm text-gray-600 dark:text-gray-500">
-            <span v-if="!loading">{{ totalCount }} tournament{{ totalCount === 1 ? '' : 's' }} found</span>
+            <span v-if="nearbyMode">{{ totalCount }} tournament{{ totalCount === 1 ? '' : 's' }} within {{ nearbyRadiusKm }} km of you, sorted by distance</span>
+            <span v-else-if="!loading">{{ totalCount }} tournament{{ totalCount === 1 ? '' : 's' }} found</span>
             <span v-else>Loading tournaments...</span>
           </p>
         </div>
@@ -198,6 +235,7 @@ watch(searchQuery, (val) => {
 
 // Re-fetch from page 1 whenever search or type filter changes
 watch([debouncedSearch, selectedType], () => {
+  if (nearbyMode.value) return
   fetchPublicTournaments(1)
 })
 
@@ -212,8 +250,74 @@ const typeFilters = [
 ]
 
 // Computed
-const hasMore = computed(() => currentPage.value < totalPages.value)
+const hasMore = computed(() => !nearbyMode.value && currentPage.value < totalPages.value)
 const filteredTournaments = computed(() => tournaments.value)
+
+// Nearby (tournaments near me)
+const nearbyMode = ref(false)
+const nearbyRadiusKm = ref(50)
+const radiusOptions = [50, 100, 250]
+const locating = ref(false)
+const userCoords = ref<{ lat: number; lon: number } | null>(null)
+
+async function fetchNearbyTournaments() {
+  if (!userCoords.value) return
+  const params = new URLSearchParams({
+    lat: String(userCoords.value.lat),
+    lon: String(userCoords.value.lon),
+    radius: String(nearbyRadiusKm.value),
+    limit: '50',
+  })
+  const response = await $publicApi<PaginatedResponse<Tournament>>(
+    `/tournaments/nearby?${params}`,
+    { method: 'GET' }
+  )
+  tournaments.value = response.data || []
+  totalCount.value = response.pagination?.total || 0
+  currentPage.value = 1
+  totalPages.value = 1
+
+  console.log('[Nearby] Your location:', userCoords.value)
+  console.table(
+    tournaments.value.map((t: any) => ({
+      name: t.name,
+      location: t.location,
+      lat: t.latitude,
+      lon: t.longitude,
+      distanceKm: t.distanceKm,
+    }))
+  )
+}
+
+async function toggleNearby() {
+  if (nearbyMode.value) {
+    nearbyMode.value = false
+    fetchPublicTournaments(1)
+    return
+  }
+
+  locating.value = true
+  try {
+    const position = await new Promise<GeolocationPosition>((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
+    )
+    userCoords.value = { lat: position.coords.latitude, lon: position.coords.longitude }
+    await fetchNearbyTournaments()
+    nearbyMode.value = true
+  } catch (err: any) {
+    useToast().add({
+      title: 'Location unavailable',
+      description: 'Allow location access in your browser to see tournaments near you.',
+      color: 'error',
+    })
+  } finally {
+    locating.value = false
+  }
+}
+
+watch(nearbyRadiusKm, () => {
+  if (nearbyMode.value) fetchNearbyTournaments()
+})
 
 // Fetch public tournaments — search & type are sent to the API
 async function fetchPublicTournaments(page = 1, append = false) {

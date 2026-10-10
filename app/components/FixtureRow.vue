@@ -8,6 +8,7 @@ import { getLivestreamPlatformInfo, detectLivestreamPlatform } from '~/utils/liv
 const props = defineProps<{
   fixture: Fixture
   updatingMatch?: boolean
+  isRace?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -30,6 +31,10 @@ const isStarted = computed(() => {
   return props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.NORMAL_TIME_ENDED || props.fixture.status === FixtureStatus.EXTRATIME || props.fixture.status === FixtureStatus.COMPLETED
 })
 
+const isLive = computed(() => {
+  return props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.NORMAL_TIME_ENDED || props.fixture.status === FixtureStatus.EXTRATIME
+})
+
 const hasPenalties = computed(() => {
   return props.fixture.homePenaltyScore != null || props.fixture.awayPenaltyScore != null
 })
@@ -40,41 +45,41 @@ const livestreamInfo = computed(() => {
   return getLivestreamPlatformInfo(platform)
 })
 
-const normalizedStatus = computed(() => props.fixture.status.toLowerCase())
-
-const statusLabel = computed(() => {
-  if (props.fixture.status === FixtureStatus.LIVE) return liveMinuteLabel.value || 'Live'
-  if (props.fixture.status === FixtureStatus.NORMAL_TIME_ENDED) return liveMinuteLabel.value || 'Full Time'
-  if (props.fixture.status === FixtureStatus.EXTRATIME) return liveMinuteLabel.value || 'Extra Time'
-  if (props.fixture.status === FixtureStatus.COMPLETED) return 'Final'
-  if (props.fixture.status === FixtureStatus.CANCELLED) return 'Cancelled'
-  if (!props.fixture.startTime) return 'Unscheduled'
-  return 'Scheduled'
-})
-
-const scheduleLabel = computed(() => {
+// Left status column: live minute / FT / kickoff time
+const leftLabel = computed(() => {
+  if (isLive.value) return liveMinuteLabel.value || 'Live'
+  if (props.fixture.status === FixtureStatus.COMPLETED) return 'FT'
+  if (props.fixture.status === FixtureStatus.CANCELLED) return '—'
   if (!props.fixture.startTime) return 'TBD'
-
   const date = new Date(props.fixture.startTime)
   if (Number.isNaN(date.getTime())) return 'TBD'
-
-  const day = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
-  const time = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-
-  return `${day}, ${time}`
+  return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 })
 
-const primaryActionLabel = computed(() => {
-  if (props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.NORMAL_TIME_ENDED || props.fixture.status === FixtureStatus.EXTRATIME) return 'Control'
-  if (props.fixture.status === FixtureStatus.COMPLETED) return 'Details'
-  return 'Edit'
+// Status pill
+const pill = computed(() => {
+  switch (props.fixture.status) {
+    case FixtureStatus.LIVE:
+      return { label: 'Live', classes: 'text-red-500 border-red-500/40 bg-red-500/10' }
+    case FixtureStatus.EXTRATIME:
+      return { label: 'ET Live', classes: 'text-red-500 border-red-500/40 bg-red-500/10' }
+    case FixtureStatus.NORMAL_TIME_ENDED:
+      return { label: 'Full Time', classes: 'text-amber-500 border-amber-500/40 bg-amber-500/10' }
+    case FixtureStatus.COMPLETED:
+      return { label: 'Full Time', classes: 'text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10' }
+    case FixtureStatus.CANCELLED:
+      return { label: 'Cancelled', classes: 'text-gray-500 border-gray-400/30 bg-gray-500/10' }
+    default:
+      return props.fixture.startTime
+        ? { label: 'Upcoming', classes: 'text-gray-500 dark:text-gray-400 border-gray-300 dark:border-white/10 bg-gray-500/5 dark:bg-white/5' }
+        : { label: 'TBD', classes: 'text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10' }
+  }
 })
 
-const primaryActionIcon = computed(() => {
-  if (props.fixture.status === FixtureStatus.LIVE || props.fixture.status === FixtureStatus.NORMAL_TIME_ENDED || props.fixture.status === FixtureStatus.EXTRATIME) return 'i-heroicons-adjustments-horizontal'
-  if (props.fixture.status === FixtureStatus.COMPLETED) return 'i-heroicons-clipboard-document-list'
-  return 'i-heroicons-pencil-square'
-})
+const homeScore = computed(() => props.fixture.homeScore ?? 0)
+const awayScore = computed(() => props.fixture.awayScore ?? 0)
+const homeWinning = computed(() => isStarted.value && homeScore.value > awayScore.value)
+const awayWinning = computed(() => isStarted.value && awayScore.value > homeScore.value)
 
 const canStart = computed(() => {
   return props.fixture.status === FixtureStatus.SCHEDULED
@@ -83,599 +88,195 @@ const canStart = computed(() => {
     && !!props.fixture.startTime
 })
 
-const getInitial = (name: string) => {
-  return name.trim().charAt(0).toUpperCase() || 'T'
+// One primary action per row
+const primaryAction = computed(() => {
+  if (props.isRace) {
+    return { label: props.fixture.status === FixtureStatus.COMPLETED ? 'Results' : 'Enter Results', icon: 'i-heroicons-numbered-list', color: 'primary', emit: 'control' as const }
+  }
+  if (isLive.value) {
+    return { label: 'Control', icon: 'i-heroicons-adjustments-horizontal', color: 'live', emit: 'control' as const }
+  }
+  if (props.fixture.status === FixtureStatus.COMPLETED) {
+    return { label: 'Report', icon: 'i-heroicons-clipboard-document-list', color: 'neutral', emit: 'control' as const }
+  }
+  if (canStart.value) {
+    return { label: 'Start', icon: 'i-heroicons-play', color: 'start', emit: 'start' as const }
+  }
+  return { label: 'Edit', icon: 'i-heroicons-pencil-square', color: 'neutral', emit: 'control' as const }
+})
+
+const getShort = (p: { customShortName?: string | null, customName?: string | null } | null | undefined, fallback: string) => {
+  const short = p?.customShortName?.trim()
+  if (short) return short.slice(0, 3).toUpperCase()
+  const name = (p?.customName || fallback).trim()
+  return (name.charAt(0) || 'T').toUpperCase()
 }
+
+const homeShort = computed(() => getShort(props.fixture.homeTeam, homeTeamName.value))
+const awayShort = computed(() => getShort(props.fixture.awayTeam, awayTeamName.value))
 </script>
 
 <template>
-  <div class="fixture-card" :class="`fixture-card--${normalizedStatus}`">
-    <div class="fixture-card__accent" aria-hidden="true" />
+  <!-- Race fixture: single event, participants ranked by result -->
+  <div
+    v-if="props.isRace"
+    class="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.03]"
+  >
+    <span class="w-10 shrink-0 text-center text-[11px] font-bold text-gray-400 dark:text-gray-500">
+      {{ fixture.status === FixtureStatus.COMPLETED ? 'FT' : '—' }}
+    </span>
+    <span class="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+      <UIcon name="i-heroicons-flag" class="w-4.5 h-4.5 text-emerald-500" />
+    </span>
+    <div class="min-w-0 flex-1">
+      <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ fixture.roundName || 'Race' }}</p>
+      <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+        {{ fixture.resultEntries?.length ? `${fixture.resultEntries.length} results recorded` : 'Ranked by recorded results' }}
+      </p>
+    </div>
+    <span
+      class="shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+      :class="pill.classes"
+    >{{ fixture.status === FixtureStatus.COMPLETED ? 'Official' : fixture.status }}</span>
+    <UButton
+      size="xs"
+      color="primary"
+      :icon="primaryAction.icon"
+      :label="primaryAction.label"
+      @click.stop="emit('control', fixture)"
+    />
+    <UButton
+      v-if="hasActions"
+      size="xs"
+      color="neutral"
+      variant="ghost"
+      icon="i-heroicons-trash"
+      aria-label="Delete fixture"
+      title="Delete fixture"
+      class="shrink-0 text-gray-400 hover:text-red-500"
+      @click.stop="emit('delete', fixture)"
+    />
+  </div>
 
-    <div class="fixture-card__content">
-      <div class="fixture-card__header">
-        <div class="fixture-meta">
-          <span class="fixture-date" :class="{ 'fixture-date--empty': !fixture.startTime }">
-            <UIcon name="i-heroicons-calendar-days" class="fixture-meta__icon" />
-            {{ scheduleLabel }}
-          </span>
+  <!-- Head-to-head fixture: slim single-line row -->
+  <div
+    v-else
+    class="flex items-center gap-3 px-3 py-2.5 transition-colors"
+    :class="isLive
+      ? 'bg-red-500/[0.06] dark:bg-red-500/[0.08]'
+      : 'hover:bg-gray-50 dark:hover:bg-white/[0.03]'"
+  >
+    <!-- Status column -->
+    <span
+      class="w-11 shrink-0 text-center text-[11px] font-bold tabular-nums"
+      :class="isLive ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'"
+    >
+      <span v-if="isLive" class="inline-flex items-center gap-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>{{ leftLabel }}
+      </span>
+      <template v-else>{{ leftLabel }}</template>
+    </span>
 
-          <span v-if="fixture.group" class="fixture-chip">
-            {{ fixture.group.name }}
-          </span>
+    <!-- Avatar stack (home over away) -->
+    <span class="flex flex-col -space-y-1.5 shrink-0">
+      <span
+        class="w-[22px] h-[22px] rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-gray-800 ring-2 ring-white dark:ring-gray-900 flex items-center justify-center"
+      >
+        <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" :alt="homeTeamName" class="w-full h-full object-cover" />
+        <span v-else class="text-[8px] font-extrabold text-gray-500 dark:text-gray-300">{{ homeShort }}</span>
+      </span>
+      <span
+        class="w-[22px] h-[22px] rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-gray-800 ring-2 ring-white dark:ring-gray-900 flex items-center justify-center"
+      >
+        <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" :alt="awayTeamName" class="w-full h-full object-cover" />
+        <span v-else class="text-[8px] font-extrabold text-gray-500 dark:text-gray-300">{{ awayShort }}</span>
+      </span>
+    </span>
 
-          <span v-if="fixture.venue" class="fixture-venue">
-            <UIcon name="i-heroicons-map-pin" class="fixture-meta__icon" />
-            {{ fixture.venue }}
-          </span>
-
-          <span v-if="livestreamInfo" class="fixture-livestream">
-            <UIcon :name="livestreamInfo.icon" class="fixture-meta__icon" :class="livestreamInfo.color" />
-            <span>Live</span>
-          </span>
-        </div>
-
-        <span v-if="fixture.startTime || fixture.status !== FixtureStatus.SCHEDULED" class="fixture-status" :class="`fixture-status--${normalizedStatus}`">
-          <span class="fixture-status__dot" />
-          {{ statusLabel }}
-        </span>
-      </div>
-
-      <div class="fixture-match">
-        <div class="fixture-team">
-          <div class="fixture-team__avatar">
-            <img
-              v-if="fixture.homeTeam?.logoUrl"
-              :src="fixture.homeTeam.logoUrl"
-              :alt="homeTeamName"
-              class="fixture-team__logo"
-            >
-            <span v-else class="fixture-team__initial">{{ getInitial(homeTeamName) }}</span>
-          </div>
-
-          <span class="fixture-team__name">{{ homeTeamName }}</span>
-
-          <span v-if="isStarted" class="fixture-score">{{ fixture.homeScore ?? 0 }}</span>
-        </div>
-
-        <div class="fixture-divider">
-          <span v-if="!isStarted" class="fixture-vs">vs</span>
-          <span v-else-if="hasPenalties" class="fixture-penalties">
-            Pens {{ fixture.homePenaltyScore ?? 0 }}-{{ fixture.awayPenaltyScore ?? 0 }}
-          </span>
-        </div>
-
-        <div class="fixture-team">
-          <div class="fixture-team__avatar">
-            <img
-              v-if="fixture.awayTeam?.logoUrl"
-              :src="fixture.awayTeam.logoUrl"
-              :alt="awayTeamName"
-              class="fixture-team__logo"
-            >
-            <span v-else class="fixture-team__initial">{{ getInitial(awayTeamName) }}</span>
-          </div>
-
-          <span class="fixture-team__name">{{ awayTeamName }}</span>
-
-          <span v-if="isStarted" class="fixture-score">{{ fixture.awayScore ?? 0 }}</span>
-        </div>
-      </div>
+    <!-- Scoreline -->
+    <div class="min-w-0 flex-1 flex items-center gap-1.5 text-sm">
+      <span
+        class="truncate font-semibold"
+        :class="[
+          homeWinning ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300',
+          { 'line-through opacity-60': fixture.status === FixtureStatus.CANCELLED },
+        ]"
+      >{{ homeTeamName }}</span>
+      <span
+        v-if="isStarted"
+        class="shrink-0 font-black tabular-nums text-gray-900 dark:text-white"
+      >{{ homeScore }} <span class="font-light text-gray-400 dark:text-gray-500">–</span> {{ awayScore }}</span>
+      <span v-else class="shrink-0 text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500">vs</span>
+      <span
+        class="truncate font-semibold"
+        :class="[
+          awayWinning ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300',
+          { 'line-through opacity-60': fixture.status === FixtureStatus.CANCELLED },
+        ]"
+      >{{ awayTeamName }}</span>
+      <span v-if="hasPenalties" class="shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
+        ({{ fixture.homePenaltyScore ?? 0 }}–{{ fixture.awayPenaltyScore ?? 0 }} p)
+      </span>
+      <span v-if="fixture.venue" class="hidden xl:inline shrink-0 text-[11px] text-gray-400 dark:text-gray-500 truncate">
+        · {{ fixture.venue }}
+      </span>
     </div>
 
-    <div v-if="hasActions" class="fixture-card__actions" :class="{ 'fixture-card__actions--with-start': canStart }">
-      <button
-        v-if="canStart"
-        type="button"
-        class="fx-btn fx-btn--start"
+    <!-- Livestream indicator -->
+    <UIcon
+      v-if="livestreamInfo"
+      :name="livestreamInfo.icon"
+      class="w-3.5 h-3.5 shrink-0 hidden sm:block"
+      :class="livestreamInfo.color"
+      title="Livestream available"
+    />
+
+    <!-- Status pill -->
+    <span
+      class="shrink-0 hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+      :class="pill.classes"
+    >{{ pill.label }}</span>
+
+    <!-- Primary action + delete -->
+    <div v-if="hasActions" class="flex items-center gap-1 shrink-0">
+      <UButton
+        v-if="primaryAction.color === 'live'"
+        size="xs"
+        variant="outline"
+        color="error"
+        :icon="primaryAction.icon"
+        :label="primaryAction.label"
+        @click.stop="emit('control', fixture)"
+      />
+      <UButton
+        v-else-if="primaryAction.color === 'start'"
+        size="xs"
+        color="success"
+        variant="soft"
+        :icon="primaryAction.icon"
+        :label="primaryAction.label"
         :disabled="updatingMatch"
         @click.stop="emit('start', fixture)"
-      >
-        <UIcon name="i-heroicons-play" class="fx-btn__icon" />
-        <span>Start</span>
-      </button>
-
-      <button
-        type="button"
-        class="fx-btn fx-btn--primary"
+      />
+      <UButton
+        v-else
+        size="xs"
+        variant="outline"
+        color="neutral"
+        :icon="primaryAction.icon"
+        :label="primaryAction.label"
         @click.stop="emit('control', fixture)"
-      >
-        <UIcon :name="primaryActionIcon" class="fx-btn__icon" />
-        <span>{{ primaryActionLabel }}</span>
-      </button>
-
-      <button
-        type="button"
-        class="fx-btn fx-btn--delete"
+      />
+      <UButton
+        size="xs"
+        color="neutral"
+        variant="ghost"
+        icon="i-heroicons-trash"
         aria-label="Delete fixture"
         title="Delete fixture"
+        class="text-gray-400 hover:text-red-500"
         @click.stop="emit('delete', fixture)"
-      >
-        <UIcon name="i-heroicons-trash" class="fx-btn__icon" />
-      </button>
+      />
     </div>
   </div>
 </template>
-
-<style scoped>
-.fixture-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  overflow: hidden;
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
-}
-
-.fixture-card:hover {
-  border-color: rgba(16, 185, 129, 0.38);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-  transform: translateY(-1px);
-}
-
-:root.dark .fixture-card {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.035);
-  box-shadow: none;
-}
-
-:root.dark .fixture-card:hover {
-  border-color: rgba(16, 185, 129, 0.32);
-  background: rgba(255, 255, 255, 0.052);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.26);
-}
-
-.fixture-card__accent {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: #9ca3af;
-}
-
-.fixture-card--live .fixture-card__accent,
-.fixture-card--normal_time_ended .fixture-card__accent,
-.fixture-card--extratime .fixture-card__accent {
-  background: #f59e0b;
-}
-
-.fixture-card--completed .fixture-card__accent {
-  background: #10b981;
-}
-
-.fixture-card--cancelled .fixture-card__accent {
-  background: #6b7280;
-}
-
-.fixture-card__content {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 10px;
-  padding-left: 4px;
-}
-
-.fixture-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  min-width: 0;
-}
-
-.fixture-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-width: 0;
-}
-
-.fixture-date,
-.fixture-chip,
-.fixture-venue,
-.fixture-status {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  border-radius: 999px;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.fixture-date {
-  gap: 5px;
-  padding: 0 8px;
-  color: #374151;
-  background: #f3f4f6;
-}
-
-:root.dark .fixture-date {
-  color: #d1d5db;
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.fixture-date--empty {
-  color: #b45309;
-  background: rgba(245, 158, 11, 0.12);
-}
-
-:root.dark .fixture-date--empty {
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.16);
-}
-
-.fixture-chip {
-  padding: 0 8px;
-  color: #4f46e5;
-  background: rgba(99, 102, 241, 0.1);
-}
-
-:root.dark .fixture-chip {
-  color: #a5b4fc;
-  background: rgba(99, 102, 241, 0.18);
-}
-
-.fixture-venue {
-  max-width: 180px;
-  gap: 5px;
-  padding: 0 8px;
-  overflow: hidden;
-  color: #6b7280;
-  background: #f9fafb;
-}
-
-:root.dark .fixture-venue {
-  color: #9ca3af;
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.fixture-livestream {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0 8px;
-  min-height: 24px;
-  border-radius: 999px;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  line-height: 1;
-  color: #be123c;
-  background: rgba(244, 63, 94, 0.08);
-}
-
-:root.dark .fixture-livestream {
-  color: #fb7185;
-  background: rgba(244, 63, 94, 0.12);
-}
-
-.fixture-meta__icon {
-  width: 13px;
-  height: 13px;
-  flex: 0 0 auto;
-}
-
-.fixture-status {
-  flex: 0 0 auto;
-  gap: 6px;
-  padding: 0 8px;
-  color: #6b7280;
-  background: #f9fafb;
-  text-transform: uppercase;
-}
-
-:root.dark .fixture-status {
-  color: #a3a3a3;
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.fixture-status__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: currentColor;
-}
-
-.fixture-status--live,
-.fixture-status--normal_time_ended,
-.fixture-status--extratime {
-  color: #d97706;
-  background: rgba(245, 158, 11, 0.13);
-}
-
-:root.dark .fixture-status--live,
-:root.dark .fixture-status--normal_time_ended,
-:root.dark .fixture-status--extratime {
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.16);
-}
-
-.fixture-status--live .fixture-status__dot,
-.fixture-status--normal_time_ended .fixture-status__dot,
-.fixture-status--extratime .fixture-status__dot {
-  animation: pulse 1.6s ease-in-out infinite;
-}
-
-.fixture-status--completed {
-  color: #059669;
-  background: rgba(16, 185, 129, 0.12);
-}
-
-:root.dark .fixture-status--completed {
-  color: #34d399;
-  background: rgba(16, 185, 129, 0.14);
-}
-
-.fixture-status--cancelled {
-  color: #6b7280;
-}
-
-.fixture-match {
-  display: grid;
-  gap: 4px;
-}
-
-.fixture-team {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  min-height: 42px;
-}
-
-.fixture-team__avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  overflow: hidden;
-  border: 1px solid #e5e7eb;
-  border-radius: 999px;
-  color: #475569;
-  background: linear-gradient(135deg, #eef2ff, #ecfdf5);
-}
-
-:root.dark .fixture-team__avatar {
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #cbd5e1;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(16, 185, 129, 0.14));
-}
-
-.fixture-team__logo {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.fixture-team__initial {
-  font-size: 0.8125rem;
-  font-weight: 800;
-}
-
-.fixture-team__name {
-  min-width: 0;
-  overflow: hidden;
-  color: #111827;
-  font-size: 0.9375rem;
-  font-weight: 750;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-:root.dark .fixture-team__name {
-  color: #f5f5f5;
-}
-
-.fixture-score {
-  min-width: 32px;
-  color: #111827;
-  font-size: 1.375rem;
-  font-weight: 850;
-  line-height: 1;
-  text-align: right;
-}
-
-:root.dark .fixture-score {
-  color: #ffffff;
-}
-
-.fixture-divider {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 8px;
-  color: #9ca3af;
-}
-
-.fixture-divider::before,
-.fixture-divider::after {
-  height: 1px;
-  content: "";
-  background: #eef2f7;
-}
-
-:root.dark .fixture-divider::before,
-:root.dark .fixture-divider::after {
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.fixture-vs,
-.fixture-penalties {
-  font-size: 0.625rem;
-  font-weight: 800;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.fixture-vs {
-  color: #6b7280;
-}
-
-:root.dark .fixture-vs {
-  color: #a3a3a3;
-}
-
-.fixture-penalties {
-  color: #6b7280;
-}
-
-:root.dark .fixture-penalties {
-  color: #a3a3a3;
-}
-
-.fixture-card__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 112px;
-}
-
-.fx-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  font-size: 0.75rem;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease, transform 0.16s ease;
-}
-
-.fx-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.fx-btn:disabled {
-  cursor: default;
-  opacity: 0.55;
-}
-
-.fx-btn__icon {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 auto;
-}
-
-.fx-btn--start {
-  color: #047857;
-  border-color: rgba(16, 185, 129, 0.24);
-  background: rgba(16, 185, 129, 0.1);
-}
-
-.fx-btn--start:hover:not(:disabled) {
-  border-color: rgba(16, 185, 129, 0.42);
-  background: rgba(16, 185, 129, 0.17);
-}
-
-:root.dark .fx-btn--start {
-  color: #34d399;
-  border-color: rgba(16, 185, 129, 0.2);
-  background: rgba(16, 185, 129, 0.12);
-}
-
-.fx-btn--primary {
-  color: #374151;
-  border-color: #e5e7eb;
-  background: #f9fafb;
-}
-
-.fx-btn--primary:hover {
-  border-color: #d1d5db;
-  background: #f3f4f6;
-}
-
-:root.dark .fx-btn--primary {
-  color: #e5e7eb;
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.055);
-}
-
-:root.dark .fx-btn--primary:hover {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.085);
-}
-
-.fx-btn--delete {
-  color: #dc2626;
-  border-color: rgba(239, 68, 68, 0.18);
-  background: rgba(239, 68, 68, 0.07);
-}
-
-.fx-btn--delete:hover {
-  border-color: rgba(239, 68, 68, 0.32);
-  background: rgba(239, 68, 68, 0.13);
-}
-
-:root.dark .fx-btn--delete {
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.2);
-  background: rgba(239, 68, 68, 0.1);
-}
-
-@media (max-width: 640px) {
-  .fixture-card {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 11px;
-  }
-
-  .fixture-card__header {
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .fixture-meta {
-    gap: 5px;
-  }
-
-  .fixture-status {
-    min-height: 22px;
-    padding: 0 7px;
-    font-size: 0.625rem;
-  }
-
-  .fixture-team {
-    min-height: 38px;
-  }
-
-  .fixture-card__actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 38px;
-    width: 100%;
-  }
-
-  .fixture-card__actions--with-start {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 38px;
-  }
-
-  .fx-btn {
-    min-width: 0;
-    min-height: 32px;
-    padding: 0 8px;
-  }
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.35;
-  }
-}
-</style>

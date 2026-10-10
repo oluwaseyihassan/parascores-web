@@ -9,6 +9,7 @@ export interface CreateParticipantData {
   seed?: number | null
   groupId?: string | null
   teamId?: string | null
+  rosterEntryId?: string
 }
 
 export interface CreatePlayerData {

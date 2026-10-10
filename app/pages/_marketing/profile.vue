@@ -104,11 +104,6 @@ const claimingPlayer = ref(false)
 const verifiedPlayer = ref<any | null>(null)
 const verifyingCode = ref(false)
 
-const route = useRoute()
-const router = useRouter()
-const paymentStore = usePaymentStore()
-const verifyingPayment = ref(false)
-
 const openPlayerClaim = () => {
   claimCode.value = ''
   verifiedPlayer.value = null
@@ -133,24 +128,26 @@ const handleVerifyClaimCode = async () => {
   }
 }
 
-const handleInitializeClaimPayment = async () => {
+const handleClaimPlayer = async () => {
   if (!verifiedPlayer.value || !claimCode.value) return
   claimingPlayer.value = true
   try {
-    const callbackUrl = window.location.origin + '/profile'
-    const res = await paymentStore.initializePlayerClaim({
-      playerId: verifiedPlayer.value.id,
-      code: claimCode.value,
-      callbackUrl
+    const res = await $api<{ success: boolean; data: any; message: string }>('/players/claim', {
+      method: 'POST',
+      body: { code: claimCode.value }
     })
-
-    if (res?.data?.authorization_url) {
-      window.location.href = res.data.authorization_url
+    if (res?.success) {
+      toast.add({ title: 'Successfully claimed player profile! 🎉', color: 'success' })
+      showClaimModal.value = false
+      verifiedPlayer.value = null
+      claimCode.value = ''
+      await authStore.fetchUser()
     } else {
-      throw new Error('Failed to generate Paystack checkout URL')
+      throw new Error('Failed to claim player profile')
     }
   } catch (err: any) {
-    handleError(err, { title: 'Payment initialization failed' })
+    handleError(err, { title: 'Claim failed' })
+  } finally {
     claimingPlayer.value = false
   }
 }
@@ -165,27 +162,6 @@ const getPositionLabel = (pos: string | null | undefined) => {
   const cat = pos ? pos.split('-')[0] : ''
   return cat ? map[cat] || cat : 'Unknown'
 }
-
-onMounted(async () => {
-  const reference = route.query.reference as string
-  if (reference) {
-    verifyingPayment.value = true
-    try {
-      const res = await paymentStore.verifyPayment(reference)
-      if (res?.success) {
-        toast.add({ title: 'Successfully claimed player profile! 🎉', color: 'success' })
-        await authStore.fetchUser()
-      } else {
-        toast.add({ title: 'Payment verification failed. Please contact support.', color: 'error' })
-      }
-    } catch (err: any) {
-      handleError(err, { title: 'Payment verification failed' })
-    } finally {
-      verifyingPayment.value = false
-      router.replace('/profile')
-    }
-  }
-})
 
 // Unlink state
 const showUnlinkModal = ref(false)
@@ -235,15 +211,8 @@ useSeoMeta({
       />
     </div>
 
-    <!-- Verifying Payment State -->
-    <div v-if="verifyingPayment" class="text-center py-24 bg-white dark:bg-[#0A0A0A] p-8 rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm w-full">
-      <UIcon name="i-heroicons-arrow-path" class="w-12 h-12 animate-spin text-emerald-500 mx-auto mb-4" />
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white">Verifying Profile Claim...</h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Please do not close or refresh this page.</p>
-    </div>
-
     <!-- Profile Dashboard -->
-    <div v-else class="space-y-6">
+    <div class="space-y-6">
       <!-- Header -->
       <div class="mb-10">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">My Profile</h1>
@@ -528,21 +497,21 @@ useSeoMeta({
             </div>
           </div>
 
-          <div class="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex gap-3">
-            <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-            <p class="text-xs text-amber-700 dark:text-amber-400 font-medium leading-relaxed">
-              Claiming this profile requires a one-time verification fee of <strong>₦500</strong>. You will be redirected to Paystack to complete the payment.
+          <div class="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex gap-3">
+            <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+            <p class="text-xs text-emerald-700 dark:text-emerald-400 font-medium leading-relaxed">
+              Claiming a profile is free. Confirm the details above are you, then link the profile to your account.
             </p>
           </div>
 
           <div class="flex justify-end gap-3">
             <UButton color="neutral" variant="ghost" @click="verifiedPlayer = null;" :disabled="claimingPlayer">Back</UButton>
-            <UButton 
-              color="primary" 
+            <UButton
+              color="primary"
               :loading="claimingPlayer"
-              @click="handleInitializeClaimPayment"
+              @click="handleClaimPlayer"
             >
-              Pay ₦500 & Link Profile
+              Link Profile
             </UButton>
           </div>
         </div>

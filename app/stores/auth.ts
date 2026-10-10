@@ -262,7 +262,7 @@ async function signup(email: string, password: string, name: string) {
     }
   }
 
-  const setActiveOrganization = (id: string) => {
+  const setActiveOrganization = (id: string, options?: { navigate?: boolean }) => {
     activeOrganizationId.value = id
     const cookie = useCookie('active_org_id')
     cookie.value = id
@@ -271,8 +271,17 @@ async function signup(email: string, password: string, name: string) {
     const tournamentStore = useTournamentStore()
     tournamentStore.fetchTournaments({ limit: 50 })
 
-    // Redirect to home dashboard
-    navigateTo('/')
+    // Redirect to home dashboard — unless the caller manages workspaces in
+    // place (e.g. the organizations page) and opts out
+    if (options?.navigate !== false) navigateTo('/')
+  }
+
+  // Switch the active org context without refetching or navigating
+  const syncActiveOrganization = (id: string) => {
+    if (activeOrganizationId.value === id) return
+    activeOrganizationId.value = id
+    const cookie = useCookie('active_org_id')
+    cookie.value = id
   }
 
   return {
@@ -297,6 +306,7 @@ async function signup(email: string, password: string, name: string) {
     updateUser,
     upgradeToOrganizer,
     activeOrganizationId,
-    setActiveOrganization
+    setActiveOrganization,
+    syncActiveOrganization
   }
 })

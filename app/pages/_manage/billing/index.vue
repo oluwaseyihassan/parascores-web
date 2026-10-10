@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
+import type { PaymentRecord, PayoutAccountStatus, PayoutSummary } from '~/stores/payment'
+import type { BillingPlan } from '~/types/billing'
 
 definePageMeta({
   middleware: ['require-organizer'],
-  layout: 'dashboard'
+  layout: 'dashboard-v2'
 })
 
 useSeoMeta({
@@ -14,31 +16,55 @@ useSeoMeta({
 const authStore = useAuthStore()
 const paymentStore = usePaymentStore()
 const { handleError } = useErrors()
+const { toMain } = useHost()
 const toast = useToast()
 const config = useRuntimeConfig()
 
 const { subscription, paymentHistory, loading, currentPlan, isActive, isPro, isCancelled, isPastDue } = storeToRefs(paymentStore)
 
-// Cancel confirmation
+// Plan & pricing state
 const showCancelModal = ref(false)
-const cancelling = ref(false)
-
-// Billing toggle
 const isYearly = ref(true)
 
 // Tournament upgrade
 const showTournamentSelector = ref(false)
+
 const tournamentStore = useTournamentStore()
 const { tournaments } = storeToRefs(tournamentStore)
-const selectedTournamentId = ref('')
-const upgradingTournament = ref(false)
 
+// Payout account + earnings summary
+const payoutAccount = ref<PayoutAccountStatus | null>(null)
+const payoutSummary = ref<PayoutSummary | null>(null)
+
+async function loadPayoutAccount(orgId: string) {
+  try {
+    payoutAccount.value = await paymentStore.fetchPayoutAccount(orgId)
+  } catch {
+    // Silent fail — section shows as not set up
+  }
+  try {
+    payoutSummary.value = await paymentStore.fetchPayoutSummary(orgId)
+  } catch {
+    // Silent fail — summary stays hidden
+  }
+}
+
+const orgOptions = computed(() =>
+  authStore.organizations.map((m) => ({
+    label: m.organization?.name || 'Organization',
+    value: m.organizationId,
+  }))
+)
+
+function onPayoutSaved(status: PayoutAccountStatus | null) {
+  payoutAccount.value = status
+}
 
 // Plan definitions
-const plans = computed(() => [
+const plans = computed<BillingPlan[]>(() => [
   {
     name: 'Free',
-    key: 'FREE' as const,
+    key: 'FREE',
     description: 'For casual organizers running small tournaments.',
     monthlyPrice: 0,
     yearlyPrice: 0,
@@ -53,7 +79,7 @@ const plans = computed(() => [
   },
   {
     name: 'Per Tournament',
-    key: 'PER_TOURNAMENT' as const,
+    key: 'PER_TOURNAMENT',
     description: 'Upgrade a single tournament at ₦1,000 per team.',
     monthlyPrice: '₦1k/team',
     yearlyPrice: null,
@@ -69,7 +95,7 @@ const plans = computed(() => [
   },
   {
     name: 'Pro',
-    key: 'PRO' as const,
+    key: 'PRO',
     description: 'For serious organizers running large-scale events.',
     monthlyPrice: 5000,
     yearlyPrice: 48000,
@@ -88,7 +114,7 @@ const plans = computed(() => [
   },
   {
     name: 'Enterprise',
-    key: 'ENTERPRISE' as const,
+    key: 'ENTERPRISE',
     description: 'Custom integrations and white-labeling.',
     monthlyPrice: 'Custom',
     yearlyPrice: 'Custom',
@@ -105,6 +131,12 @@ const plans = computed(() => [
   }
 ])
 
+// Page tabs
+const billingTabs = [
+  { label: 'Earnings', value: 'earnings', slot: 'earnings', icon: 'i-heroicons-banknotes' },
+  { label: 'Plan & Pricing', value: 'plans', slot: 'plans', icon: 'i-heroicons-sparkles' },
+]
+
 // Fetch subscription + payment history on mount
 onMounted(async () => {
   if (authStore.currentOrganization?.id) {
@@ -114,6 +146,7 @@ onMounted(async () => {
       // Silent fail — will show FREE tier
     }
     paymentStore.fetchPaymentHistory(authStore.currentOrganization.id).catch(() => {})
+    loadPayoutAccount(authStore.currentOrganization.id)
   }
   await tournamentStore.fetchTournaments({ limit: 50 })
 })
@@ -126,12 +159,17 @@ watch(() => authStore.currentOrganization?.id, async (newId) => {
     } catch (err) {
       // Silent fail
     }
+    paymentStore.fetchPaymentHistory(newId).catch(() => {})
+    tournamentStore.fetchTournaments({ limit: 50 }).catch(() => {})
+    payoutAccount.value = null
+    payoutSummary.value = null
+    loadPayoutAccount(newId)
   }
 })
 
 // Subscribe to a plan
 const subscribing = ref(false)
-async function handleSubscribe(plan: typeof plans.value[0]) {
+async function handleSubscribe(plan: BillingPlan) {
   if (!plan.planType || !authStore.currentOrganization?.id) return
 
   subscribing.value = true
@@ -157,567 +195,243 @@ async function handleSubscribe(plan: typeof plans.value[0]) {
   }
 }
 
-// Cancel subscription
-async function handleCancelSubscription() {
-  if (!authStore.currentOrganization?.id) return
-
-  cancelling.value = true
-  try {
-    await paymentStore.cancelSubscription(authStore.currentOrganization.id)
-    showCancelModal.value = false
-    toast.add({
-      title: 'Subscription Cancelled',
-      description: 'Your subscription has been cancelled. Features remain active until the end of your billing period.',
-      color: 'success',
-    })
-  } catch (err: any) {
-    handleError(err, { title: 'Cancellation Failed' })
-  } finally {
-    cancelling.value = false
-  }
-}
-
-// Helpers
-function getButtonLabel(plan: typeof plans.value[0]) {
-  if (plan.key === 'PRO') return 'Coming Soon'
-  if (plan.key === currentPlan.value && isActive.value) return 'Current Plan'
-  if (plan.key === 'FREE') return 'Free Forever'
-  if (plan.key === 'ENTERPRISE') return 'Contact Sales'
-  if (plan.key === 'PER_TOURNAMENT') return 'Select Tournament'
-  return 'Upgrade Now'
-}
-
-function isCurrentPlan(plan: typeof plans.value[0]) {
-  if (plan.key === 'PER_TOURNAMENT') return false
-  return plan.key === currentPlan.value && isActive.value
-}
-
-function canSubscribe(plan: typeof plans.value[0]) {
+function canSubscribePlan(plan: BillingPlan) {
   if (plan.key === 'FREE' || plan.key === 'ENTERPRISE' || plan.key === 'PRO') return false
   if (plan.key === 'PER_TOURNAMENT') return true
-  if (isCurrentPlan(plan)) return false
+  if (plan.key === currentPlan.value && isActive.value) return false
   return true
 }
 
-function handlePlanAction(plan: typeof plans.value[0]) {
+function handlePlanAction(plan: BillingPlan) {
   if (plan.key === 'PER_TOURNAMENT') {
-    selectedTournamentId.value = ''
     showTournamentSelector.value = true
   } else if (plan.key === 'ENTERPRISE') {
-    navigateTo('/contact?subject=Enterprise Inquiry')
-  } else if (canSubscribe(plan)) {
+    // /contact only exists on the marketing (root) domain — go cross-subdomain
+    return navigateTo(toMain('/contact?subject=Enterprise Inquiry'), { external: true })
+  } else if (canSubscribePlan(plan)) {
     handleSubscribe(plan)
   }
 }
 
-function getTournamentUpgradePrice(maxParticipants: number | null | undefined): number {
-  if (typeof maxParticipants !== 'number') return 25000
-  return maxParticipants * 1000
-}
+// ─── Offline payments, exports & refunds ─────────────────
 
-const selectedTournamentUpgradePrice = computed(() => {
-  if (!selectedTournamentId.value) return 0
-  const t = tournaments.value.find(x => x.id === selectedTournamentId.value)
-  if (!t) return 0
-  return getTournamentUpgradePrice(t.maxParticipants)
+const isOwner = computed(() => {
+  const orgId = authStore.currentOrganization?.id
+  const membership = authStore.organizations.find((m) => m.organizationId === orgId)
+  return membership?.role === 'OWNER'
 })
 
-async function handleTournamentUpgrade() {
-  if (!authStore.currentOrganization?.id || !selectedTournamentId.value) return
+// Retry failed/stuck instant payouts (OWNER only)
+const retryingPayoutId = ref<string | null>(null)
 
-  upgradingTournament.value = true
+// Refresh history + earnings without a full page reload
+const refreshingHistory = ref(false)
+
+async function handleRefreshHistory() {
+  const orgId = authStore.currentOrganization?.id
+  if (!orgId || refreshingHistory.value) return
+  refreshingHistory.value = true
   try {
-    const dashboardUrl = config.public.DASHBOARD_URL || window.location.origin
-    const callbackUrl = `${dashboardUrl}/billing/callback`
-    const feeInKobo = selectedTournamentUpgradePrice.value * 100
+    await Promise.all([
+      paymentStore.fetchPaymentHistory(orgId),
+      loadPayoutAccount(orgId),
+    ])
+  } catch {
+    // Keep existing data on failure
+  } finally {
+    refreshingHistory.value = false
+  }
+}
 
-    const response = await paymentStore.initializePayment(
-      authStore.currentOrganization.id,
-      'PER_TOURNAMENT',
-      feeInKobo,
-      callbackUrl,
-      selectedTournamentId.value
-    )
-
-    if (response.data?.authorization_url) {
-      window.location.href = response.data.authorization_url
+async function handleRetryPayout(p: PaymentRecord) {
+  retryingPayoutId.value = p.id
+  try {
+    const res = await paymentStore.retryPayout(p.id)
+    toast.add({
+      title: 'Payout Retried',
+      description: res.message,
+      color: res.data?.payoutStatus === 'PROCESSING' ? 'success' : 'warning',
+    })
+    const orgId = authStore.currentOrganization?.id
+    if (orgId) {
+      paymentStore.fetchPaymentHistory(orgId).catch(() => {})
+      loadPayoutAccount(orgId)
     }
   } catch (err: any) {
-    handleError(err, { title: 'Upgrade Failed' })
+    handleError(err, { title: 'Payout Retry Failed' })
   } finally {
-    upgradingTournament.value = false
+    retryingPayoutId.value = null
   }
 }
 
-function formatDate(dateStr: string | null | undefined) {
-  if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  })
+// CSV settlement export
+const exporting = ref(false)
+
+async function handleExport(tournamentId?: string) {
+  const orgId = authStore.currentOrganization?.id
+  if (!orgId) return
+  exporting.value = true
+  try {
+    await paymentStore.exportPaymentsCsv(orgId, tournamentId)
+  } catch (err: any) {
+    handleError(err, { title: 'Export Failed' })
+  } finally {
+    exporting.value = false
+  }
 }
 
-const statusColor = computed(() => {
-  switch (subscription.value?.status) {
-    case 'ACTIVE': return 'success'
-    case 'TRIALING': return 'info'
-    case 'PAST_DUE': return 'warning'
-    case 'CANCELLED': return 'error'
-    default: return 'neutral'
+// Refund modal
+const showRefundModal = ref(false)
+const refundTarget = ref<PaymentRecord | null>(null)
+
+function openRefund(p: PaymentRecord) {
+  refundTarget.value = p
+  showRefundModal.value = true
+}
+
+// Offline payment modal
+const showOfflineModal = ref(false)
+
+// After a refund/offline record: refresh history + earnings
+function onPaymentsChanged() {
+  const orgId = authStore.currentOrganization?.id
+  if (orgId) {
+    paymentStore.fetchPaymentHistory(orgId).catch(() => {})
+    loadPayoutAccount(orgId)
   }
-})
+}
+
+// "Manage" on the current-plan card scrolls to the grid
+const plansGridRef = ref<HTMLElement | null>(null)
+function scrollToPlans() {
+  plansGridRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 </script>
 
 <template>
-  <div>
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Billing</h1>
-      <p class="text-gray-500 mt-1">Manage your subscription and plan.</p>
+  <div class="max-w-6xl mx-auto">
+    <!-- Page context line + org scope -->
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm text-muted">
+        Earnings, payouts and subscription for
+        <span class="font-semibold text-heading">{{ authStore.currentOrganization?.name }}</span>
+      </p>
+      <USelect
+        v-if="orgOptions.length > 1"
+        :model-value="authStore.activeOrganizationId ?? undefined"
+        :items="orgOptions"
+        value-key="value"
+        size="sm"
+        class="w-52 shrink-0"
+        @update:model-value="(id) => authStore.syncActiveOrganization(id as string)"
+      />
     </div>
 
-    <!-- Current Plan Status Card -->
-    <div class="mb-8 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl p-6 shadow-sm">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-4">
-          <div 
-            class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-            :class="isPro ? 'bg-emerald-500/10 text-emerald-500' : 'bg-gray-100 dark:bg-white/5 text-gray-500'"
-          >
-            <UIcon :name="isPro ? 'i-heroicons-bolt-solid' : 'i-heroicons-sparkles'" class="w-6 h-6" />
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <h3 class="text-lg font-bold text-gray-900 dark:text-white">
-                {{ currentPlan }} Plan
-              </h3>
-              <UBadge 
-                v-if="subscription?.status" 
-                :color="statusColor" 
-                variant="subtle" 
-                size="sm"
-                class="uppercase font-bold tracking-wider text-[10px]"
-              >
-                {{ subscription.status }}
-              </UBadge>
-            </div>
-            <p class="text-sm text-gray-500 mt-0.5">
-              <template v-if="isPro && subscription?.currentPeriodEnd">
-                Renews {{ formatDate(subscription.currentPeriodEnd) }}
-              </template>
-              <template v-else-if="isCancelled && subscription?.currentPeriodEnd">
-                Active until {{ formatDate(subscription.currentPeriodEnd) }}
-              </template>
-              <template v-else-if="isPastDue">
-                Payment failed — please update your payment method.
-              </template>
-              <template v-else>
-                {{ authStore.currentOrganization?.name || 'Your organization' }}
-              </template>
-            </p>
-          </div>
-        </div>
+    <UTabs :items="billingTabs" default-value="earnings" variant="link" class="w-full">
+      <!-- ═══ Earnings tab ═══ -->
+      <template #earnings>
+        <div class="mt-4 flex flex-col gap-3 pb-8">
+          <BillingEarningsStats v-if="payoutSummary" :summary="payoutSummary" />
 
-        <div class="flex items-center gap-2">
-          <UButton
-            v-if="isPro && isActive"
-            label="Cancel Plan"
-            color="error"
-            variant="ghost"
-            size="sm"
-            icon="i-heroicons-x-mark"
-            @click="showCancelModal = true;"
+          <BillingPayoutAccountCard
+            :payout-account="payoutAccount"
+            :is-owner="isOwner"
+            @saved="onPayoutSaved"
+          />
+
+          <BillingEarningsByTournament
+            v-if="payoutSummary && payoutSummary.paymentCount > 0"
+            :summary="payoutSummary"
+          />
+
+          <BillingPaymentHistoryCard
+            :payments="paymentHistory"
+            :tournaments="tournaments"
+            :is-owner="isOwner"
+            :refreshing="refreshingHistory"
+            :exporting="exporting"
+            :retrying-payout-id="retryingPayoutId"
+            @refresh="handleRefreshHistory"
+            @export="handleExport"
+            @record="showOfflineModal = true"
+            @refund="openRefund"
+            @retry="handleRetryPayout"
           />
         </div>
-      </div>
-    </div>
+      </template>
 
-    <!-- Billing Toggle -->
-    <div class="flex items-center justify-center gap-4 mb-8">
-      <span :class="['text-sm font-bold transition-colors', !isYearly ? 'text-gray-900 dark:text-white' : 'text-gray-400']">Monthly</span>
-      <UToggle v-model="isYearly" color="primary" size="lg" />
-      <span :class="['text-sm font-bold transition-colors flex items-center gap-2', isYearly ? 'text-gray-900 dark:text-white' : 'text-gray-400']">
-        Yearly
-        <span class="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 py-0.5 px-2 rounded-full uppercase tracking-wider">
-          Save 20%
-        </span>
-      </span>
-    </div>
+      <!-- ═══ Plan & pricing tab ═══ -->
+      <template #plans>
+        <div class="mt-4 pb-8">
+          <BillingCurrentPlanCard
+            :current-plan="currentPlan"
+            :subscription="subscription"
+            :is-pro="isPro"
+            :is-active="isActive"
+            :is-cancelled="isCancelled"
+            :is-past-due="isPastDue"
+            :org-name="authStore.currentOrganization?.name"
+            @cancel="showCancelModal = true"
+            @manage="scrollToPlans"
+          />
 
-    <!-- Plan Cards -->
-    <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-6 mb-12">
-      <div
-        v-for="plan in plans"
-        :key="plan.key"
-        :class="[
-          'relative bg-white dark:bg-gray-900 rounded-2xl p-6 transition-all duration-300 flex flex-col',
-          plan.popular && !isCurrentPlan(plan) 
-            ? 'border-2 border-emerald-500 shadow-lg shadow-emerald-500/10' 
-            : isCurrentPlan(plan) 
-              ? 'border-2 border-indigo-500 shadow-lg shadow-indigo-500/10' 
-              : 'border border-gray-200 dark:border-white/[0.06] hover:border-emerald-500/30',
-        ]"
-      >
-        <!-- Current Plan Badge -->
-        <div 
-          v-if="isCurrentPlan(plan)" 
-          class="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-[10px] font-extrabold px-4 py-1 rounded-full uppercase tracking-wider shadow-lg"
-        >
-          Current Plan
-        </div>
-
-        <!-- Popular Badge -->
-        <div 
-          v-else-if="plan.popular" 
-          class="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] font-extrabold px-4 py-1 rounded-full uppercase tracking-wider shadow-lg"
-        >
-          Most Popular
-        </div>
-
-        <!-- One-Time Badge -->
-        <div 
-          v-else-if="plan.oneTime" 
-          class="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-extrabold px-4 py-1 rounded-full uppercase tracking-wider shadow-lg"
-        >
-          One-Time
-        </div>
-
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-1">{{ plan.name }}</h3>
-        <p class="text-sm text-gray-500 mb-5 min-h-[40px] leading-relaxed">{{ plan.description }}</p>
-
-        <!-- Price -->
-        <div class="mb-5">
-          <template v-if="plan.monthlyPrice === 'Custom'">
-            <span class="text-3xl font-extrabold text-gray-900 dark:text-white">Custom</span>
-          </template>
-          <template v-else-if="plan.oneTime">
-            <span class="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              {{ typeof plan.monthlyPrice === 'number' ? `₦${(plan.monthlyPrice as number).toLocaleString()}` : `₦${plan.monthlyPrice}` }}
-            </span>
-            <span class="text-gray-500 font-bold ml-1">/tournament</span>
-          </template>
-          <template v-else>
-            <span class="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              ₦{{ (isYearly && plan.yearlyPrice ? Math.round((plan.yearlyPrice as number) / 12) : plan.monthlyPrice).toLocaleString() }}
-            </span>
-            <span class="text-gray-500 font-bold ml-1">/mo</span>
-            <div v-if="isYearly && (plan.monthlyPrice as number) > 0" class="text-sm text-emerald-500 mt-1 font-bold">
-              Billed ₦{{ (plan.yearlyPrice as number).toLocaleString() }} yearly
-            </div>
-          </template>
-        </div>
-
-        <!-- CTA Button -->
-        <UButton
-          block
-          size="lg"
-          :disabled="isCurrentPlan(plan) || loading || subscribing || plan.key === 'PRO'"
-          :loading="subscribing && canSubscribe(plan)"
-          :color="canSubscribe(plan) ? 'primary' : 'neutral'"
-          :variant="isCurrentPlan(plan) ? 'subtle' : 'solid'"
-          class="font-bold mb-6 h-11 rounded-xl transition-all"
-          @click="handlePlanAction(plan)"
-        >
-          {{ getButtonLabel(plan) }}
-        </UButton>
-
-        <!-- Features -->
-        <div class="space-y-3 flex-grow border-t border-gray-100 dark:border-white/[0.06] pt-5">
-          <div class="text-[10px] font-extrabold text-gray-400 tracking-widest uppercase">What's included:</div>
-          <ul class="space-y-3">
-            <li v-for="feature in plan.features" :key="feature.text" class="flex items-start gap-2.5">
-              <UIcon name="i-heroicons-check-circle" class="w-4.5 h-4.5 text-emerald-500 flex-shrink-0 mt-0.5" />
-              <UTooltip :text="feature.tooltip" :content="{ side: 'top', align: 'center' }">
-                <span class="text-sm text-gray-600 dark:text-gray-300 leading-tight border-b border-dashed border-gray-300 dark:border-white/10 cursor-help hover:text-emerald-500 transition-colors">{{ feature.text }}</span>
-              </UTooltip>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <!-- Payment History -->
-    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
-      <div class="px-6 py-4 border-b border-gray-100 dark:border-white/[0.06]">
-        <h3 class="text-sm font-bold text-gray-500">Billing History</h3>
-      </div>
-
-      <!-- Empty State -->
-      <div v-if="paymentHistory.length === 0" class="p-8 text-center">
-        <UIcon name="i-heroicons-document-text" class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-        <p class="text-sm text-gray-400">No payment history yet.</p>
-        <p class="text-xs text-gray-400 mt-1">Invoices will appear here after your first payment.</p>
-      </div>
-
-      <!-- Payment List (Mobile: Cards) -->
-      <div v-else>
-        <div class="md:hidden divide-y divide-gray-100 dark:divide-white/[0.06]">
-          <div 
-            v-for="payment in paymentHistory" 
-            :key="payment.id" 
-            class="px-5 py-4 flex items-start gap-3"
-          >
-            <div 
-              class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-              :class="payment.status === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-500' : payment.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'"
-            >
-              <UIcon 
-                :name="payment.status === 'SUCCESS' ? 'i-heroicons-check-circle' : payment.status === 'PENDING' ? 'i-heroicons-clock' : 'i-heroicons-x-circle'" 
-                class="w-5 h-5" 
-              />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-sm font-bold text-gray-900 dark:text-white truncate">
-                  {{ payment.plan === 'PER_TOURNAMENT' ? 'Tournament Upgrade' : payment.plan === 'PRO' ? 'Pro Plan' : payment.plan || 'Payment' }}
-                </span>
-                <span class="text-sm font-bold text-gray-900 dark:text-white shrink-0">
-                  ₦{{ (payment.amount / 100).toLocaleString() }}
-                </span>
-              </div>
-              <div class="flex items-center gap-2 mt-0.5">
-                <span class="text-xs text-gray-400">{{ formatDate(payment.created_at) }}</span>
-                <span v-if="payment.tournament" class="text-xs text-gray-400 truncate">· {{ payment.tournament.name }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Payment Table (Desktop) -->
-        <div class="hidden md:block overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-white/[0.06]">
-                <th class="px-6 py-3">Date</th>
-                <th class="px-6 py-3">Description</th>
-                <th class="px-6 py-3">Amount</th>
-                <th class="px-6 py-3">Status</th>
-                <th class="px-6 py-3">Reference</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50 dark:divide-white/[0.04]">
-              <tr v-for="payment in paymentHistory" :key="payment.id" class="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
-                <td class="px-6 py-3.5 whitespace-nowrap text-gray-600 dark:text-gray-300">
-                  {{ formatDate(payment.created_at) }}
-                </td>
-                <td class="px-6 py-3.5">
-                  <div class="flex items-center gap-2">
-                    <span class="font-bold text-gray-900 dark:text-white">
-                      {{ payment.plan === 'PER_TOURNAMENT' ? 'Tournament Upgrade' : payment.plan === 'PRO' ? 'Pro Plan' : payment.plan || 'Payment' }}
-                    </span>
-                    <span v-if="payment.tournament" class="text-xs text-gray-400">
-                      · {{ payment.tournament.name }}
-                    </span>
-                  </div>
-                </td>
-                <td class="px-6 py-3.5 whitespace-nowrap font-bold text-gray-900 dark:text-white">
-                  ₦{{ (payment.amount / 100).toLocaleString() }}
-                </td>
-                <td class="px-6 py-3.5 whitespace-nowrap">
-                  <UBadge
-                    :color="payment.status === 'SUCCESS' ? 'success' : payment.status === 'PENDING' ? 'warning' : 'error'"
-                    variant="subtle"
-                    size="xs"
-                    class="font-bold uppercase tracking-wider text-[10px]"
-                  >
-                    {{ payment.status }}
-                  </UBadge>
-                </td>
-                <td class="px-6 py-3.5 whitespace-nowrap text-xs text-gray-400 font-mono">
-                  {{ payment.paystackReference }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tournament Selector Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div
-          v-if="showTournamentSelector"
-          class="fixed inset-0 z-[100] flex items-center justify-center px-4"
-          @click.self="showTournamentSelector = false"
-        >
-          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showTournamentSelector = false" />
-
-          <div class="relative w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10">
-            <button
-              class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-500 dark:hover:bg-white/10"
-              @click="showTournamentSelector = false"
-            >
-              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
-            </button>
-
-            <div class="flex items-center gap-3 mb-5">
-              <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-amber-500" />
-              </div>
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Upgrade Tournament</h3>
-                <p class="text-xs text-gray-500">Select a tournament to upgrade with premium features.</p>
-              </div>
-            </div>
-
-            <!-- Capacity Pricing Info Alert -->
-            <div class="mb-4 p-3 rounded-xl flex items-start gap-2.5 text-xs bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-gray-600 dark:text-gray-300">
-              <UIcon name="i-heroicons-information-circle" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-              <div>
-                <span class="font-bold text-emerald-600 dark:text-emerald-400">₦1,000 per Team:</span>
-                Pricing is calculated as max participants × ₦1,000. For example, a 16-team tournament costs ₦16,000.
-              </div>
-            </div>
-
-            <div v-if="tournaments.length === 0" class="py-6 text-center">
-              <UIcon name="i-heroicons-trophy" class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-              <p class="text-sm text-gray-500">No tournaments found.</p>
-              <p class="text-xs text-gray-400 mt-1">Create a tournament first, then come back to upgrade it.</p>
-            </div>
-
-            <div v-else class="space-y-2 max-h-60 overflow-y-auto mb-5">
+          <!-- Billing period -->
+          <div class="flex justify-center my-6">
+            <div class="inline-flex items-center gap-1 bg-black/[0.03] dark:bg-white/[0.04] border border-subtle p-1 rounded-xl">
               <button
-                v-for="t in tournaments"
-                :key="t.id"
-                :disabled="t.isPremium"
-                @click="selectedTournamentId = t.id"
-                :class="[
-                  'w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left',
-                  t.isPremium
-                    ? 'opacity-50 cursor-not-allowed border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/[0.02]'
-                    : selectedTournamentId === t.id
-                      ? 'border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500'
-                      : 'border-gray-200 dark:border-white/10 hover:border-emerald-500/40'
-                ]"
+                type="button"
+                class="px-4 py-1.5 rounded-lg text-[12.5px] font-bold transition-all"
+                :class="!isYearly ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted hover:text-heading'"
+                :aria-pressed="!isYearly"
+                @click="isYearly = false"
               >
-                <UAvatar v-if="t.logoUrl" :src="t.logoUrl" size="xs" class="rounded-md shrink-0" />
-                <div v-else class="w-8 h-8 rounded-md bg-gray-100 dark:bg-white/10 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">
-                  {{ t.name?.charAt(0) }}
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ t.name }}</p>
-                  <p class="text-xs text-gray-500">
-                    {{ t.sport }} · {{ t.type }} · 
-                    <span class="font-medium text-gray-600 dark:text-gray-400">
-                      {{ typeof t.maxParticipants === 'number' ? `${t.maxParticipants} max` : 'Unlimited capacity' }}
-                    </span>
-                  </p>
-                </div>
-                <div v-if="!t.isPremium" class="text-right shrink-0 mr-1">
-                  <span class="text-xs font-extrabold text-emerald-500 dark:text-emerald-400">
-                    ₦{{ getTournamentUpgradePrice(t.maxParticipants).toLocaleString() }}
-                  </span>
-                </div>
-                <UBadge v-if="t.isPremium" color="success" variant="subtle" size="xs" class="shrink-0">
-                  Premium
-                </UBadge>
-                <UIcon 
-                  v-else-if="selectedTournamentId === t.id" 
-                  name="i-heroicons-check-circle-solid" 
-                  class="w-5 h-5 text-emerald-500 shrink-0" 
-                />
+                Monthly
+              </button>
+              <button
+                type="button"
+                class="px-4 py-1.5 rounded-lg text-[12.5px] font-bold transition-all inline-flex items-center gap-2"
+                :class="isYearly ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted hover:text-heading'"
+                :aria-pressed="isYearly"
+                @click="isYearly = true"
+              >
+                Yearly
+                <span
+                  class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                  :class="isYearly ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'"
+                >−20%</span>
               </button>
             </div>
+          </div>
 
-            <div class="flex items-center gap-3">
-              <UButton
-                label="Cancel"
-                color="neutral"
-                variant="soft"
-                class="flex-1 font-bold"
-                @click="showTournamentSelector = false;"
-              />
-              <UButton
-                :label="selectedTournamentUpgradePrice ? `Pay ₦${selectedTournamentUpgradePrice.toLocaleString()} & Upgrade` : 'Select a Tournament'"
-                color="primary"
-                variant="solid"
-                class="flex-1 font-bold bg-emerald-500 hover:bg-emerald-600"
-                :disabled="!selectedTournamentId"
-                :loading="upgradingTournament"
-                @click="handleTournamentUpgrade"
-              />
-            </div>
+          <!-- Plan grid -->
+          <div ref="plansGridRef" class="grid sm:grid-cols-2 xl:grid-cols-4 gap-3 scroll-mt-24">
+            <BillingPlanCard
+              v-for="plan in plans"
+              :key="plan.key"
+              :plan="plan"
+              :is-yearly="isYearly"
+              :current-plan="currentPlan"
+              :is-active="isActive"
+              :subscribing="subscribing"
+              :store-loading="loading"
+              @action="handlePlanAction"
+            />
           </div>
         </div>
-      </Transition>
-    </Teleport>
+      </template>
+    </UTabs>
 
-    <!-- Cancel Confirmation Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div
-          v-if="showCancelModal"
-          class="fixed inset-0 z-[100] flex items-center justify-center px-4"
-          @click.self="showCancelModal = false"
-        >
-          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showCancelModal = false" />
-
-          <div class="relative w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-white/10">
-            <button
-              class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-500 dark:hover:bg-white/10"
-              @click="showCancelModal = false"
-            >
-              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
-            </button>
-
-            <div class="flex items-center gap-3 mb-4">
-              <div class="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-                <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-red-500" />
-              </div>
-              <h3 class="text-lg font-bold text-gray-900 dark:text-white">Cancel Subscription?</h3>
-            </div>
-
-            <p class="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-              Are you sure you want to cancel your <strong>Pro</strong> subscription? 
-              You'll keep access to Pro features until the end of your current billing period.
-              After that, your account will revert to the Free plan.
-            </p>
-
-            <div class="flex items-center gap-3">
-              <UButton
-                label="Keep Plan"
-                color="neutral"
-                variant="soft"
-                class="flex-1 font-bold"
-                @click="showCancelModal = false;"
-              />
-              <UButton
-                label="Cancel Plan"
-                color="error"
-                variant="solid"
-                class="flex-1 font-bold"
-                :loading="cancelling"
-                @click="handleCancelSubscription"
-              />
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+    <!-- Modals (all UModal) -->
+    <BillingOfflinePaymentModal
+      v-model:open="showOfflineModal"
+      @recorded="onPaymentsChanged"
+    />
+    <BillingRefundModal
+      v-model:open="showRefundModal"
+      :payment="refundTarget"
+      @refunded="onPaymentsChanged"
+    />
+    <BillingTournamentUpgradeModal v-model:open="showTournamentSelector" />
+    <BillingCancelPlanModal v-model:open="showCancelModal" />
   </div>
 </template>
-
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s ease;
-}
-.modal-enter-active > div:last-child,
-.modal-leave-active > div:last-child {
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-.modal-enter-from > div:last-child {
-  transform: scale(0.95);
-  opacity: 0;
-}
-.modal-leave-to > div:last-child {
-  transform: scale(0.95);
-  opacity: 0;
-}
-</style>

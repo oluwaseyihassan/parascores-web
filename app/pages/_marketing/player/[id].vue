@@ -19,7 +19,6 @@ const error = ref<string | null>(null);
 const authStore = useAuthStore();
 const { user, isAuthenticated } = storeToRefs(authStore);
 const playerStore = usePlayerStore();
-const paymentStore = usePaymentStore();
 const config = useRuntimeConfig();
 const toast = useToast();
 const { handleError } = useErrors();
@@ -27,7 +26,6 @@ const { handleError } = useErrors();
 // Claim state
 const claiming = ref(false);
 const showClaimModal = ref(false);
-const verifyingPayment = ref(false);
 
 const handleClaimProfile = async () => {
   if (!player.value) return;
@@ -54,22 +52,31 @@ const handleClaimProfile = async () => {
   showClaimModal.value = true;
 };
 
-const handleConfirmClaimPayment = async () => {
+const handleConfirmClaim = async () => {
   claiming.value = true;
   try {
-    const callbackUrl = `${window.location.origin}/player/${playerId}`;
-    const res = await paymentStore.initializePlayerClaim({
-      playerId,
-      callbackUrl,
-    });
+    const res = await $api<{ success: boolean; data: any; message: string }>(
+      "/players/claim",
+      {
+        method: "POST",
+        body: { playerId },
+      },
+    );
 
-    if (res.data?.authorization_url) {
-      window.location.href = res.data.authorization_url;
+    if (res.success && res.data) {
+      player.value = { ...player.value, userId: res.data.userId, status: res.data.status };
+      showClaimModal.value = false;
+      toast.add({
+        title: "Claim Submitted 🎉",
+        description:
+          res.message || "The tournament organizer will review your claim.",
+        color: "success",
+      });
     } else {
-      throw new Error("Failed to generate checkout URL");
+      throw new Error("Failed to submit claim");
     }
   } catch (err: any) {
-    handleError(err, { title: "Checkout Failed" });
+    handleError(err, { title: "Claim Failed" });
   } finally {
     claiming.value = false;
   }
@@ -218,34 +225,6 @@ onMounted(async () => {
     error.value = err?.data?.message || err?.message || "Player not found";
   } finally {
     loading.value = false;
-  }
-
-  // Check if there is a payment reference query param to verify
-  const reference = route.query.reference as string;
-  if (reference) {
-    verifyingPayment.value = true;
-    try {
-      await paymentStore.verifyPayment(reference);
-      toast.add({
-        title: "Claim Request Submitted 🎉",
-        description:
-          "Your payment was successful. The claim is now pending approval from the tournament organizer.",
-        color: "success",
-      });
-      // Clear query params
-      await navigateTo(`/player/${playerId}`, { replace: true });
-      // Re-fetch player details to show pending status
-      const response = await $publicApi<{ success: boolean; data: any }>(
-        `/players/${playerId}`,
-      );
-      if (response.data) {
-        player.value = response.data;
-      }
-    } catch (err: any) {
-      handleError(err, { title: "Payment Verification Failed" });
-    } finally {
-      verifyingPayment.value = false;
-    }
   }
 });
 
@@ -508,23 +487,6 @@ const positionStats = computed((): StatCard[] => {
         class="w-8 h-8 animate-spin text-emerald-500 mb-3"
       />
       <p class="text-sm text-gray-400">Loading player profile...</p>
-    </div>
-
-    <!-- Verifying Payment Loading -->
-    <div
-      v-else-if="verifyingPayment"
-      class="flex flex-col items-center justify-center py-24 bg-white dark:bg-white/[0.02] rounded-3xl border border-gray-100 dark:border-white/[0.05]"
-    >
-      <UIcon
-        name="i-heroicons-arrow-path"
-        class="w-8 h-8 animate-spin text-emerald-500 mb-3"
-      />
-      <h2 class="text-lg font-bold text-gray-900 dark:text-white">
-        Verifying Profile Claim...
-      </h2>
-      <p class="text-sm text-gray-400 mt-1">
-        Please wait while we confirm your payment transaction.
-      </p>
     </div>
 
     <!-- Error -->
@@ -1052,9 +1014,8 @@ const positionStats = computed((): StatCard[] => {
             <strong>{{ player?.name }}</strong> in
             <strong>{{ player?.participant?.tournament?.name }}</strong
             >? <br /><br />
-            Claiming this profile requires a one-time verification fee of
-            <strong>₦500</strong>. After payment, the tournament organizer will
-            verify your identity to approve the claim.
+            Claiming is free. The tournament organizer will review your claim
+            before the profile goes live on your account.
           </p>
 
           <div class="flex gap-3">
@@ -1066,12 +1027,12 @@ const positionStats = computed((): StatCard[] => {
               @click="showClaimModal = false"
             />
             <UButton
-              label="Pay ₦500 & Claim"
+              label="Claim Profile"
               color="primary"
               variant="solid"
               class="flex-1 font-bold rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
               :loading="claiming"
-              @click="handleConfirmClaimPayment"
+              @click="handleConfirmClaim"
             />
           </div>
         </div>

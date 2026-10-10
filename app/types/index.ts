@@ -24,6 +24,7 @@ export enum TournamentType {
   GROUP = "GROUP",
   FRIENDLY = "FRIENDLY",
   HYBRID = "HYBRID",
+  RACE = "RACE",
 }
 
 export enum ParticipantType {
@@ -166,8 +167,11 @@ export interface Tournament {
 
   // Logistics
   location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   timezone: string;
   visibility: Visibility;
+  isPractice?: boolean;
 
   // Rules & Config
   sport: string;
@@ -184,6 +188,13 @@ export interface Tournament {
   registrationFee?: number;
   isPinned?: boolean;
   isPremium?: boolean;
+
+  // Esports package: chat + Paragee (AI bot) + score submissions
+  chatEnabled?: boolean;
+  chatRules?: string | null;
+  parageeBot?: ParageeBotFlags | null;
+  botCalls?: number;
+  requiresScoreEvidence?: boolean;
   tournamentPrice?: number | null;
   paymentPerTeam?: number | null;
   pendingRequestsCount?: number;
@@ -256,6 +267,21 @@ export interface Participant {
   tournament?: Tournament | null;
 }
 
+export interface ResultEntry {
+  id: string;
+  fixtureId: string;
+  participantId: string;
+  value: string;
+  lane?: number | null;
+  note?: string | null;
+  rank?: number | null;
+  participant?: {
+    customName?: string | null;
+    customShortName?: string | null;
+    logoUrl?: string | null;
+  } | null;
+}
+
 export interface Fixture {
   id: string;
   tournament_id: string;
@@ -284,6 +310,9 @@ export interface Fixture {
   awayScore?: number | null;
   homePenaltyScore?: number | null;
   awayPenaltyScore?: number | null;
+  periodScores?: { home: number[]; away: number[] } | null;
+  config?: Record<string, any> | null;
+  resultEntries?: ResultEntry[];
   status: FixtureStatus;
   stage?: FixtureStage | null;
   half?: MatchHalf | null;
@@ -460,6 +489,67 @@ export interface AuthState {
   user: User | null;
   token: string | null;
   loading: boolean;
+}
+
+// Chat (esports package)
+export type ChatAuthorType = "USER" | "ORGANIZER" | "BOT" | "SYSTEM";
+export type ChatCardType =
+  | "FIXTURE"
+  | "TABLE"
+  | "STATS"
+  | "LINK"
+  | "SCORE_SUBMITTED"
+  | "SCORE_CONFIRMED"
+  | "SCORE_CONFLICT";
+
+export interface ChatMessageAuthor {
+  name: string;
+  avatarUrl?: string | null;
+  teamName?: string | null;
+  participantId?: string | null;
+}
+
+export interface ChatReactionSummary {
+  emoji: string;
+  count: number;
+  mine: boolean;
+}
+
+/** Fixed quick-reaction set (mirrors the server's whitelist). */
+export const REACTION_EMOJIS = ['👍', '⚽', '🔥', '❤️', '😂', '🎉'] as const;
+
+export interface ChatMessage {
+  id: string;
+  authorType: ChatAuthorType;
+  text: string;
+  cardType?: ChatCardType | null;
+  cardPayload?: any;
+  pinnedAt?: string | null;
+  createdAt: string;
+  author: ChatMessageAuthor;
+  reactions?: ChatReactionSummary[];
+  // Quoted reply target (null text = original was deleted)
+  replyTo?: {
+    id: string;
+    authorName: string;
+    deleted: boolean;
+    text: string | null;
+  } | null;
+}
+
+export interface ParageeBotFlags {
+  enabled?: boolean;
+  fixtures?: boolean;
+  standings?: boolean;
+  rules?: boolean;
+  quickChips?: boolean;
+  llm?: boolean;
+}
+
+export interface ChatSettings {
+  chatEnabled: boolean;
+  chatRules?: string | null;
+  parageeBot?: ParageeBotFlags | null;
 }
 
 // Stats

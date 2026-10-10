@@ -23,6 +23,12 @@
           </span>
         </div>
       </div>
+      <span
+        v-if="tournament.isPractice"
+        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-amber-500/10 border border-amber-500/30 text-amber-500 shrink-0"
+      >
+        Practice
+      </span>
     </div>
 
     <!-- Title & Desc -->

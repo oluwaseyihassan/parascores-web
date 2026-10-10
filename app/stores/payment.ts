@@ -23,6 +23,14 @@ export interface PaymentInitResponse {
   reference: string
 }
 
+export interface RegistrationInitResponse {
+  authorization_url?: string
+  access_code?: string
+  reference?: string
+  waived?: boolean
+  participant?: any
+}
+
 export interface PaymentVerifyResponse {
   payment: any
   subscription?: Subscription
@@ -37,11 +45,84 @@ export interface PaymentRecord {
   tournamentId?: string | null
   amount: number
   currency: string
-  status: 'PENDING' | 'SUCCESS' | 'FAILED'
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED'
+  payoutStatus?: 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'REVERSED' | null
+  payoutAmount?: number | null
   paystackReference: string
   plan?: string | null
+  type?: string | null
+  teamName?: string | null
+  teamLogoUrl?: string | null
+  metadata?: {
+    channel?: 'OFFLINE'
+    method?: 'CASH' | 'BANK_TRANSFER' | 'OTHER'
+    note?: string | null
+    waived?: boolean
+    discountCode?: string | null
+    refundReason?: string | null
+    [key: string]: any
+  } | null
   created_at: string
   tournament?: { id: string; name: string } | null
+}
+
+export interface PaystackBank {
+  id: number
+  name: string
+  code: string
+  active: boolean
+}
+
+export interface PayoutAccountStatus {
+  hasPayoutAccount: boolean
+  bankCode?: string | null
+  bankName?: string | null
+  accountNumberMasked?: string | null
+  accountName?: string | null
+  createdAt?: string | null
+  instantPayouts?: boolean
+}
+
+export interface PayoutSummary {
+  totalGross: number
+  totalNet: number
+  paymentCount: number
+  commissionPercent: number
+  offlineGross: number
+  offlineCount: number
+  refundedAmount: number
+  refundCount: number
+  tournaments: {
+    id: string
+    name: string
+    count: number
+    gross: number
+    net: number
+  }[]
+}
+
+export interface DiscountCode {
+  id: string
+  code: string
+  tournament_id: string
+  type: 'PERCENT' | 'FIXED' | 'WAIVER'
+  value: number
+  maxUses?: number | null
+  usedCount: number
+  expiresAt?: string | null
+  isActive: boolean
+  createdById: string
+  created_at: string
+  updated_at: string
+}
+
+export interface DiscountValidation {
+  valid: boolean
+  reason?: string
+  type?: 'PERCENT' | 'FIXED' | 'WAIVER'
+  value?: number
+  originalAmount?: number
+  finalAmount?: number
 }
 
 export const usePaymentStore = defineStore('payment', () => {
@@ -112,7 +193,9 @@ export const usePaymentStore = defineStore('payment', () => {
   }
 
   /**
-   * Initialize a tournament registration payment
+   * Initialize a tournament registration payment.
+   * Returns a Paystack checkout URL — or `{ waived: true }` when a
+   * waiver/100% discount code completes registration without payment.
    */
   async function initializeRegistration(data: {
     tournamentId: string
@@ -122,11 +205,12 @@ export const usePaymentStore = defineStore('payment', () => {
     logoUrl?: string
     token: string
     callbackUrl: string
+    discountCode?: string
   }) {
     loading.value = true
     error.value = null
     try {
-      const response = await $api<ApiResponse<PaymentInitResponse>>('/payments/initialize-registration', {
+      const response = await $api<ApiResponse<RegistrationInitResponse>>('/payments/initialize-registration', {
         method: 'POST',
         body: data,
       })
@@ -246,6 +330,109 @@ export const usePaymentStore = defineStore('payment', () => {
   }
 
   /**
+   * List banks supported for payout settlements
+   */
+  async function fetchPayoutBanks() {
+    try {
+      const response = await $api<ApiResponse<PaystackBank[]>>('/payments/payout/banks', {
+        method: 'GET',
+      })
+      return response.data || []
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Fetch banks failed:', error.value)
+      throw err
+    }
+  }
+
+  /**
+   * Resolve an account number to the account holder name
+   */
+  async function resolvePayoutAccount(accountNumber: string, bankCode: string) {
+    try {
+      const response = await $api<ApiResponse<{ account_number: string; account_name: string }>>(
+        '/payments/payout/resolve-account',
+        {
+          method: 'GET',
+          query: { accountNumber, bankCode },
+        },
+      )
+      return response.data
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Resolve account failed:', error.value)
+      throw err
+    }
+  }
+
+  /**
+   * Get the payout account status for an organization
+   */
+  async function fetchPayoutAccount(orgId: string) {
+    try {
+      const response = await $api<ApiResponse<PayoutAccountStatus>>(`/payments/payout-account/${orgId}`, {
+        method: 'GET',
+      })
+      return response.data || null
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Fetch payout account failed:', error.value)
+      throw err
+    }
+  }
+
+  /**
+   * Get registration earnings summary for an organization
+   */
+  async function fetchPayoutSummary(orgId: string) {
+    try {
+      const response = await $api<ApiResponse<PayoutSummary>>(`/payments/payout-summary/${orgId}`, {
+        method: 'GET',
+      })
+      return response.data || null
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Fetch payout summary failed:', error.value)
+      throw err
+    }
+  }
+
+  /**
+   * Create or update the payout account for an organization
+   */
+  async function setupPayoutAccount(orgId: string, data: { bankCode: string; accountNumber: string; businessName?: string }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<PayoutAccountStatus & { commissionPercent?: number }>>(`/payments/payout-account/${orgId}`, {
+        method: 'POST',
+        body: data,
+      })
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Setup payout account failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Enable/disable instant payouts for an organization (OWNER only)
+   */
+  async function setInstantPayouts(orgId: string, enabled: boolean) {
+    const response = await $api<ApiResponse<{ instantPayouts: boolean }>>(
+      `/payments/payout-account/${orgId}/instant-payouts`,
+      {
+        method: 'POST',
+        body: { enabled },
+      },
+    )
+    return response
+  }
+
+  /**
    * Fetch payment history for an organization
    */
   async function fetchPaymentHistory(orgId: string) {
@@ -260,6 +447,152 @@ export const usePaymentStore = defineStore('payment', () => {
     } catch (err: any) {
       console.error('Fetch payment history failed:', extractErrorMessage(err))
       throw err
+    }
+  }
+
+  /**
+   * Record a registration payment collected off-platform (cash/transfer)
+   */
+  async function recordOfflinePayment(data: {
+    tournamentId: string
+    participantId?: string
+    payerName?: string
+    amount?: number
+    method: 'CASH' | 'BANK_TRANSFER' | 'OTHER'
+    note?: string
+  }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<PaymentRecord>>('/payments/offline', {
+        method: 'POST',
+        body: data,
+      })
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Record offline payment failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Download the CSV settlement report for an organization
+   */
+  async function exportPaymentsCsv(orgId: string, tournamentId?: string) {
+    const blob = await $api<Blob>(`/payments/export/${orgId}`, {
+      method: 'GET',
+      query: tournamentId ? { tournamentId } : undefined,
+      responseType: 'blob',
+    })
+    if (import.meta.client) {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `parascores-settlements${tournamentId ? `-${tournamentId}` : ''}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  /**
+   * Discount codes (organizer management)
+   */
+  async function fetchDiscountCodes(tournamentId: string) {
+    const response = await $api<ApiResponse<DiscountCode[]>>(`/payments/tournaments/${tournamentId}/discount-codes`, {
+      method: 'GET',
+    })
+    return response.data || []
+  }
+
+  async function createDiscountCode(tournamentId: string, data: {
+    code: string
+    type: 'PERCENT' | 'FIXED' | 'WAIVER'
+    value?: number
+    maxUses?: number
+    expiresAt?: string
+  }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<DiscountCode>>(`/payments/tournaments/${tournamentId}/discount-codes`, {
+        method: 'POST',
+        body: data,
+      })
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Create discount code failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateDiscountCode(id: string, data: {
+    isActive?: boolean
+    maxUses?: number | null
+    expiresAt?: string | null
+  }) {
+    const response = await $api<ApiResponse<DiscountCode>>(`/payments/discount-codes/${id}`, {
+      method: 'PATCH',
+      body: data,
+    })
+    return response
+  }
+
+  async function deleteDiscountCode(id: string) {
+    const response = await $api<ApiResponse<null>>(`/payments/discount-codes/${id}`, {
+      method: 'DELETE',
+    })
+    return response
+  }
+
+  /**
+   * Preview a discount code on the join page
+   */
+  async function validateDiscountCode(tournamentId: string, code: string) {
+    const response = await $api<ApiResponse<DiscountValidation>>('/payments/discount-codes/validate', {
+      method: 'POST',
+      body: { tournamentId, code },
+    })
+    return response.data
+  }
+
+  /**
+   * Retry a failed/stuck instant payout (OWNER only)
+   */
+  async function retryPayout(paymentId: string) {
+    const response = await $api<ApiResponse<PaymentRecord>>(`/payments/payout/${paymentId}/retry`, {
+      method: 'POST',
+    })
+    return response
+  }
+
+  /**
+   * Refund a registration payment (OWNER only).
+   * `manual: true` records the refund without calling Paystack —
+   * the organizer returns the money themselves.
+   */
+  async function refundPayment(paymentId: string, reason?: string, manual?: boolean) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await $api<ApiResponse<PaymentRecord>>(`/payments/refund/${paymentId}`, {
+        method: 'POST',
+        body: { reason, manual },
+      })
+      return response
+    } catch (err: any) {
+      error.value = extractErrorMessage(err)
+      console.error('Refund payment failed:', error.value)
+      throw err
+    } finally {
+      loading.value = false
     }
   }
 
@@ -287,5 +620,20 @@ export const usePaymentStore = defineStore('payment', () => {
     cancelSubscription,
     clearSubscription,
     fetchPaymentHistory,
+    fetchPayoutBanks,
+    resolvePayoutAccount,
+    fetchPayoutAccount,
+    fetchPayoutSummary,
+    setupPayoutAccount,
+    setInstantPayouts,
+    recordOfflinePayment,
+    exportPaymentsCsv,
+    fetchDiscountCodes,
+    createDiscountCode,
+    updateDiscountCode,
+    deleteDiscountCode,
+    validateDiscountCode,
+    refundPayment,
+    retryPayout,
   }
 })
