@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tournament, Fixture, Standing, Participant, Sponsor, Social, Venue } from '~/types'
-import { TournamentType, FixtureStatus, FixtureStage, ParticipantType } from '~/types'
+import { TournamentType, FixtureStatus, FixtureStage, ParticipantType, ParticipantStatus } from '~/types'
 import { getLivestreamPlatformInfo, detectLivestreamPlatform } from '~/utils/livestream'
 
 definePageMeta({
@@ -19,7 +19,7 @@ const { handleError, extractErrorMessage } = useErrors()
 // State — fetched via useAsyncData for SSR support (SEO meta tags)
 const selectedSponsor = ref<Sponsor | null>(null)
 const { toMain, toTournament } = useHost()
-const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats'>(
+const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats' | 'chat'>(
   (route.query.tab as any) || 'info'
 )
 const selectedFixtureId = ref<string | null>(null)
@@ -234,16 +234,40 @@ const showBracketTab = computed(() => {
 watchEffect(() => {
   if (!tournament.value || loading.value) return
   
-  const validTabs = ['info', 'fixtures', 'standings', 'bracket', 'participants', 'stats']
+  const validTabs = ['info', 'fixtures', 'standings', 'bracket', 'participants', 'stats', 'chat']
   if (!validTabs.includes(activeTab.value)) {
     activeTab.value = 'info'
   }
-  
+
   if (activeTab.value === 'bracket' && !showBracketTab.value) activeTab.value = 'info'
   else if (activeTab.value === 'standings' && standings.value.length === 0) activeTab.value = 'info'
   else if (activeTab.value === 'participants' && participants.value.length === 0) activeTab.value = 'info'
   else if (activeTab.value === 'stats' && !isTeams.value) activeTab.value = 'info'
+  else if (activeTab.value === 'chat' && !tournament.value?.chatEnabled) activeTab.value = 'info'
 })
+
+// Chat: the viewer posts as their confirmed participant identity (organizers post from manage)
+const viewerParticipant = computed(() => {
+  const uid = authStore.user?.id
+  if (!uid) return null
+  return participants.value.find((p) => p.user_id === uid && p.status === ParticipantStatus.CONFIRMED) ?? null
+})
+
+// Mentionable room members (confirmed participants) with profile links
+const chatMembers = computed(() =>
+  participants.value
+    .filter((p) => p.status === ParticipantStatus.CONFIRMED)
+    .map((p) => ({
+      id: p.id,
+      name: p.customName ?? 'Player',
+      teamName: (p as any).team?.name ?? null,
+      href: p.team_id
+        ? `/team/${p.team_id}`
+        : p.players?.[0]?.id
+          ? `/player/${p.players[0].id}`
+          : null,
+    })),
+)
 
 // Follow Feature
 const isFollowing = ref(false)
@@ -858,6 +882,19 @@ function getTeamCards(fixture: any, isHome: boolean) {
             >
                Player Stats
             </button>
+            <button
+              v-if="tournament?.chatEnabled"
+              @click="activeTab = 'chat'"
+              :class="[
+                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
+                activeTab === 'chat'
+                  ? 'text-gray-900 border-gray-900 dark:text-white dark:border-white'
+                  : 'text-gray-500 border-transparent hover:text-gray-700 dark:hover:text-gray-300'
+              ]"
+            >
+               Chat
+               <span class="text-[10px] opacity-70" title="Only approved participants can post">🔒</span>
+            </button>
           </nav>
         </div>
       </section>
@@ -1333,6 +1370,21 @@ function getTeamCards(fixture: any, isHome: boolean) {
         <div v-else-if="activeTab === 'stats'">
           <div class="max-w-7xl mx-auto">
             <MarketingPlayerStatsLeaderboard :stats="playerStats" :loading="playerStatsLoading" />
+          </div>
+        </div>
+
+        <!-- ====== CHAT TAB ====== -->
+        <div v-else-if="activeTab === 'chat' && tournament?.chatEnabled">
+          <!-- pb clears the fixed mobile bottom nav so the composer stays visible -->
+          <div class="max-w-3xl mx-auto pb-24 md:pb-8">
+            <ChatTournamentChat
+              :tournament-id="tournament.id"
+              :can-post="viewerParticipant ? 'participant' : false"
+              :viewer-participant-id="viewerParticipant?.id ?? null"
+              :paragee-bot="tournament.parageeBot"
+              :member-count="participants.length || undefined"
+              :members="chatMembers"
+            />
           </div>
         </div>
 
