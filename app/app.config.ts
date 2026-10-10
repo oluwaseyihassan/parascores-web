@@ -3,10 +3,10 @@ export default defineAppConfig({
     colors: {
       neutral: 'neutral'
     },
-    card: { 
+    card: {
       slots: {
         // Force the background here instead of in 'variants'
-        root: 'bg-white dark:backdrop-blur-xl ring-1 ring-gray-200 dark:ring-white/10', 
+        root: 'bg-white dark:bg-[#0A0A0A] ring-1 ring-gray-200', 
         // header: 'p-4 sm:px-6',
         // body: 'p-4 sm:p-6',
         // footer: 'p-4 sm:px-6'
