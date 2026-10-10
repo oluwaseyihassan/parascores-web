@@ -14,6 +14,7 @@ const participantStore = useParticipantStore()
 const standingStore = useStandingStore()
 const sponsorStore = useSponsorStore()
 const socialStore = useSocialStore()
+const authStore = useAuthStore()
 
 // State
 const tournament = ref<Tournament | null>(null)
@@ -209,6 +210,25 @@ const fetchData = async () => {
       $api<any>(`/participants/tournaments/${tournamentId}`)
     ])
 
+    tournament.value = tournRes.data || tournRes
+
+    // Access control: these endpoints are public (they also power the
+    // marketing site), so verify the tournament belongs to an organization
+    // the user is a member of before rendering the graphics studio.
+    const isOrgMember = authStore.organizations.some(
+      (org) => org.organizationId === tournament.value?.organization_id,
+    )
+    if (!isOrgMember) {
+      error.value = "You don't have access to this tournament. It belongs to another organization."
+      useToast().add({
+        title: 'Access denied',
+        description: 'This tournament belongs to another organization.',
+        color: 'error',
+      })
+      await navigateTo('/')
+      return
+    }
+
     // Load standings, sponsors, and socials too
     await Promise.all([
       standingStore.fetchStandings(tournamentId),
@@ -216,8 +236,6 @@ const fetchData = async () => {
       socialStore.fetchSocials(tournamentId)
     ])
 
-    tournament.value = tournRes.data || tournRes
-    
     // Handle fixtures
     const fixturesData = fixRes.data || fixRes
     if (fixturesData && fixturesData.rounds) {
