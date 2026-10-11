@@ -396,13 +396,15 @@ function railClass(m: ChatMessage) {
   const own = isOwn(m)
   if (m.authorType === 'ORGANIZER') {
     return own
-      ? 'bg-gray-100/70 dark:bg-white/[0.04] border-r-2 border-r-gray-400 dark:border-r-white/40'
-      : 'bg-gray-100/70 dark:bg-white/[0.04] border-l-2 border-l-gray-400 dark:border-l-white/40'
+      ? 'bg-amber-500/[0.02] dark:bg-amber-400/[0.025] border-r-2 border-r-amber-500/40 dark:border-r-amber-400/40'
+      : 'bg-amber-500/[0.02] dark:bg-amber-400/[0.025] border-l-2 border-l-amber-500/40 dark:border-l-amber-400/40'
   }
   if (m.authorType === 'BOT' || m.authorType === 'SYSTEM') {
-    return 'bg-gray-50 dark:bg-white/[0.02] border-l-2 border-l-gray-300 dark:border-l-white/20'
+    return 'bg-indigo-500/[0.015] dark:bg-indigo-400/[0.02] border-l-2 border-l-indigo-500/40 dark:border-l-indigo-400/40'
   }
-  return own ? 'bg-gray-50/50 dark:bg-white/[0.02] border-r-2 border-r-gray-300 dark:border-r-white/20' : ''
+  return own
+    ? 'bg-primary-500/[0.015] dark:bg-primary-400/[0.02] border-r-2 border-r-primary-500/40 dark:border-r-primary-400/40'
+    : 'border-l-2 border-l-transparent'
 }
 
 // Structured bot cards (cardType) — FIXTURE renders per the approved design;
@@ -799,27 +801,27 @@ function onScoreModalSubmitted(result: { state: string }) {
 
 <template>
   <div
-    class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] overflow-hidden flex flex-col"
+    class="bg-white dark:bg-[#111216] border border-gray-200 dark:border-white/[0.08] overflow-hidden flex flex-col shadow-sm"
     :class="fullscreen
       ? 'fixed inset-0 z-[60] rounded-none border-0' // above the mobile bottom nav (z-50)
       : 'rounded-2xl'"
   >
     <!-- header -->
     <div
-      class="px-4 sm:px-5 py-3.5 border-b border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3 flex-wrap"
+      class="px-4 sm:px-5 py-3 border-b border-gray-200/80 dark:border-white/[0.06] bg-gray-50/50 dark:bg-[#14161b] flex items-center justify-between gap-3 flex-wrap"
       :class="fullscreen && 'max-w-3xl w-full mx-auto border-x-0'"
     >
       <div>
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           💬 Tournament chat
         </h2>
-        <p class="text-xs text-gray-500 mt-0.5">
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
           Approved participants and organizers can post · everyone can read
         </p>
       </div>
       <div class="flex items-center gap-3 text-[11px] text-gray-400">
         <span class="flex items-center gap-1.5">
-          <span class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,.8)]"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
           {{ online }} online
         </span>
         <span v-if="memberCount != null">{{ memberCount }} members</span>
@@ -1049,14 +1051,22 @@ function onScoreModalSubmitted(result: { state: string }) {
             v-for="m in messages"
             :key="m.id"
             :id="`chatmsg-${m.id}`"
-            class="group relative flex gap-3 px-4 sm:px-5 py-2 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.025]"
-            :class="[isOwn(m) && 'flex-row-reverse', railClass(m), flashId === m.id && 'bg-gray-200/60 dark:bg-white/[0.08]']"
+            class="group relative flex gap-3 px-4 sm:px-5 py-2.5 transition-colors duration-150"
+            :class="[
+              isOwn(m) && 'flex-row-reverse',
+              railClass(m),
+              flashId === m.id ? 'bg-primary-500/15 dark:bg-primary-400/20 ring-1 ring-primary-500/40' : 'hover:bg-gray-50/80 dark:hover:bg-white/[0.03]'
+            ]"
           >
             <!-- avatar -->
             <span
-              class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white overflow-hidden mt-0.5"
+              class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white overflow-hidden mt-0.5 ring-1 ring-black/5 dark:ring-white/10 shadow-xs"
+              :class="[
+                m.authorType === 'ORGANIZER' && 'ring-1 ring-amber-500/30 dark:ring-amber-400/30',
+                (m.authorType === 'BOT' || m.authorType === 'SYSTEM') && 'ring-1 ring-indigo-500/30 dark:ring-indigo-400/30'
+              ]"
               :style="m.authorType === 'BOT' || m.authorType === 'SYSTEM'
-                ? { background: '#4B5563' }
+                ? { background: 'linear-gradient(135deg, #475569 0%, #4338ca 100%)' }
                 : { background: avatarColor(m.author.name) }"
             >
               <img v-if="m.author.avatarUrl" :src="m.author.avatarUrl" class="w-full h-full object-cover" alt="" />
@@ -1064,42 +1074,70 @@ function onScoreModalSubmitted(result: { state: string }) {
             </span>
 
             <div class="flex-1 min-w-0" :class="isOwn(m) && 'flex flex-col items-end'">
-              <div class="flex items-baseline gap-2 flex-wrap" :class="isOwn(m) && 'flex-row-reverse'">
-                <span class="text-[13px] font-bold text-gray-900 dark:text-white">{{ isOwn(m) ? 'You' : m.author.name }}</span>
+              <!-- message author header -->
+              <div class="flex items-center gap-2 flex-wrap" :class="isOwn(m) && 'flex-row-reverse'">
+                <span class="text-[13px] font-semibold text-gray-900 dark:text-white hover:underline cursor-pointer">
+                  {{ isOwn(m) ? 'You' : m.author.name }}
+                </span>
+
+                <!-- Organizer badge -->
                 <span
                   v-if="m.authorType === 'ORGANIZER'"
-                  class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-white/10"
-                >Organizer</span>
+                  class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400/90 border border-amber-500/20 dark:border-amber-400/20"
+                >
+                  <UIcon name="i-heroicons-shield-check" class="w-3 h-3 text-amber-500/80 dark:text-amber-400/80" />
+                  Organizer
+                </span>
+
+                <!-- Bot badge -->
                 <span
                   v-else-if="m.authorType === 'BOT'"
-                  class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-white/10"
-                >AI · Paragee</span>
+                  class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-600 dark:text-indigo-400/90 border border-indigo-500/20 dark:border-indigo-400/20"
+                >
+                  <UIcon name="i-heroicons-sparkles" class="w-3 h-3 text-indigo-500/80 dark:text-indigo-400/80" />
+                  AI · Paragee
+                </span>
+
+                <!-- Team badge -->
                 <span
                   v-else-if="m.author.teamName"
-                  class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-white/[0.08]"
-                >{{ m.author.teamName }}</span>
-                <span class="text-[10.5px] text-gray-400 dark:text-gray-500">{{ formatTime(m.createdAt) }}</span>
+                  class="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 border border-gray-200/80 dark:border-white/[0.08]"
+                >
+                  <UIcon name="i-heroicons-user-group" class="w-2.5 h-2.5 text-gray-400" />
+                  {{ m.author.teamName }}
+                </span>
+
+                <span class="text-[11px] text-gray-400 dark:text-gray-500 font-normal tabular-nums">
+                  {{ formatTime(m.createdAt) }}
+                </span>
               </div>
 
               <!-- quoted reply -->
               <button
                 v-if="m.replyTo"
                 type="button"
-                class="mt-0.5 mb-1 flex items-center gap-2 max-w-full text-left rounded-lg border-l-2 border-gray-400 dark:border-white/30 bg-gray-50 dark:bg-white/[0.03] px-2.5 py-1.5 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors"
-                :class="isOwn(m) && 'border-l-0 border-r-2 text-right'"
+                class="mt-1 mb-1.5 flex items-center gap-2 max-w-full text-left rounded-lg border-l-2 border-gray-400/50 dark:border-white/20 bg-gray-100/60 dark:bg-white/[0.03] px-2.5 py-1 hover:bg-gray-200/60 dark:hover:bg-white/[0.06] transition-colors group/reply cursor-pointer"
+                :class="isOwn(m) && 'border-l-0 border-r-2 border-r-gray-400/50 dark:border-r-white/20 text-right'"
                 title="Jump to original message"
                 @click="jumpTo(m.replyTo!.id)"
               >
-                <UIcon name="i-heroicons-arrow-uturn-left" class="w-3 h-3 text-gray-400 shrink-0" />
-                <span class="min-w-0">
-                  <span class="block text-[10.5px] font-bold text-gray-900 dark:text-white truncate">{{ m.replyTo.authorName }}</span>
-                  <span v-if="m.replyTo.deleted" class="block text-[11.5px] italic text-gray-400 dark:text-gray-500 truncate">Original message was deleted</span>
-                  <span v-else class="block text-[11.5px] text-gray-500 dark:text-gray-400 truncate">{{ m.replyTo.text }}</span>
+                <UIcon name="i-heroicons-arrow-uturn-left" class="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0 group-hover/reply:-translate-x-0.5 transition-transform" />
+                <span class="min-w-0 flex-1">
+                  <span class="block text-[11px] font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    {{ m.replyTo.authorName }}
+                  </span>
+                  <span v-if="m.replyTo.deleted" class="block text-[11.5px] italic text-gray-400 dark:text-gray-500 truncate">
+                    Original message was deleted
+                  </span>
+                  <span v-else class="block text-[11.5px] text-gray-500 dark:text-gray-400 truncate">
+                    {{ m.replyTo.text }}
+                  </span>
                 </span>
               </button>
 
+              <!-- message text -->
               <p
-                class="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300 mt-0.5 break-words whitespace-pre-wrap"
+                class="text-[13.5px] leading-relaxed text-gray-800 dark:text-gray-200 mt-0.5 break-words whitespace-pre-wrap select-text font-normal"
                 :class="isOwn(m) && 'text-right'"
               >
                 <template v-for="(part, i) in textParts(m.text)" :key="i"><ChatMentionChip
@@ -1110,24 +1148,25 @@ function onScoreModalSubmitted(result: { state: string }) {
                 /><template v-else>{{ part.text }}</template></template>
               </p>
 
-              <!-- structured card (bot answers / score reports) -->
+              <!-- structured card: fixture (Discord Embed style) -->
               <div
                 v-if="m.cardType === 'FIXTURE' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-3.5"
+                class="mt-2 max-w-md rounded-xl border border-gray-200/80 dark:border-white/[0.08] border-l-2 border-l-primary-500/50 dark:border-l-primary-400/40 bg-gray-50/90 dark:bg-[#16181f] p-3.5 shadow-xs"
               >
-                <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1.5">
+                  <UIcon name="i-heroicons-calendar" class="w-3 h-3" />
                   {{ fixtureCard(m).label }}
                 </p>
                 <p class="text-sm font-bold text-gray-900 dark:text-white">
-                  {{ fixtureCard(m).home }} <span class="font-mono text-xs text-gray-400 font-normal">vs</span> {{ fixtureCard(m).away }}
+                  {{ fixtureCard(m).home }} <span class="font-mono text-xs text-gray-400 font-normal mx-1">vs</span> {{ fixtureCard(m).away }}
                 </p>
-                <p v-if="fixtureCard(m).meta" class="text-[11.5px] text-gray-500 mt-1">{{ fixtureCard(m).meta }}</p>
-                <div class="flex items-center gap-2 mt-2">
+                <p v-if="fixtureCard(m).meta" class="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">{{ fixtureCard(m).meta }}</p>
+                <div class="flex items-center gap-2 mt-2.5 pt-2 border-t border-gray-200/60 dark:border-white/[0.06]">
                   <NuxtLink
                     v-if="fixtureCard(m).href"
                     :to="cardTo(fixtureCard(m).href)"
                     :external="isManage"
-                    class="inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
+                    class="inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-200/60 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
                   >View fixture →</NuxtLink>
                   <UButton
                     v-if="canSubmitForFixtureCard(m)"
@@ -1140,22 +1179,23 @@ function onScoreModalSubmitted(result: { state: string }) {
                 </div>
               </div>
 
-              <!-- ranked rows card (table / top scorers) -->
+              <!-- ranked rows card: table / stats (Discord Embed style) -->
               <div
                 v-if="(m.cardType === 'TABLE' || m.cardType === 'STATS') && m.cardPayload"
-                class="mt-2 max-w-sm rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-3.5"
+                class="mt-2 max-w-sm rounded-xl border border-gray-200/80 dark:border-white/[0.08] border-l-2 border-l-indigo-500/50 dark:border-l-indigo-400/40 bg-gray-50/90 dark:bg-[#16181f] p-3.5 shadow-xs"
               >
-                <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
+                  <UIcon :name="m.cardType === 'TABLE' ? 'i-heroicons-table-cells' : 'i-heroicons-chart-bar'" class="w-3 h-3" />
                   {{ rowsCard(m).title }}
                 </p>
                 <div
                   v-for="row in rowsCard(m).rows"
                   :key="row.rank ?? row.name"
-                  class="flex items-center justify-between gap-3 py-1 text-[12.5px]"
+                  class="flex items-center justify-between gap-3 py-1 text-[12.5px] hover:bg-black/[0.02] dark:hover:bg-white/[0.02] rounded px-1 transition-colors"
                 >
                   <span class="flex items-center gap-2 min-w-0">
                     <span
-                      class="font-mono font-bold w-4 text-center text-gray-500 dark:text-gray-400"
+                      class="font-mono font-bold w-4 text-center text-gray-500 dark:text-gray-400 text-xs"
                     >{{ row.rank }}</span>
                     <span class="font-semibold text-gray-900 dark:text-white truncate">{{ row.name }}</span>
                   </span>
@@ -1163,35 +1203,35 @@ function onScoreModalSubmitted(result: { state: string }) {
                 </div>
               </div>
 
-              <!-- score submitted (awaiting opponent) -->
+              <!-- score submitted: awaiting opponent (Discord Embed style) -->
               <div
                 v-if="m.cardType === 'SCORE_SUBMITTED' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-3.5"
+                class="mt-2 max-w-md rounded-xl border border-gray-200/80 dark:border-white/[0.08] border-l-2 border-l-amber-500/50 dark:border-l-amber-400/40 bg-gray-50/90 dark:bg-[#16181f] p-3.5 shadow-xs"
               >
                 <div class="flex items-center justify-between gap-2 mb-1.5">
-                  <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                    ⏳ Score submitted — awaiting opponent
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-amber-600/90 dark:text-amber-400/80 flex items-center gap-1">
+                    <span>⏳</span> Score submitted — awaiting opponent
                   </p>
                   <span
                     v-if="isOpponentOfCard(m)"
-                    class="text-[9.5px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full"
+                    class="text-[9.5px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full"
                   >
                     Your response needed
                   </span>
                 </div>
                 <p class="text-sm font-bold text-gray-900 dark:text-white">
                   {{ scoreCard(m).submittedBy }} <span class="text-gray-400 font-normal text-xs">reports</span>
-                  <span class="font-mono text-lg mx-1 tabular-nums">{{ scoreCard(m).score?.home }} – {{ scoreCard(m).score?.away }}</span>
+                  <span class="font-mono text-lg mx-1 tabular-nums font-bold text-gray-900 dark:text-white">{{ scoreCard(m).score?.home }} – {{ scoreCard(m).score?.away }}</span>
                   <span class="text-gray-400 font-normal text-xs"> in {{ scoreCard(m).home }} vs {{ scoreCard(m).away }}</span>
                 </p>
-                <p class="text-[11.5px] text-gray-500 mt-1">
+                <p class="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">
                   {{ scoreCard(m).evidenceAttached ? 'Evidence attached 🖼 · ' : '' }}The opponent confirms or counter-reports with evidence.
                 </p>
 
                 <!-- Interactive opponent actions -->
                 <div
                   v-if="isOpponentOfCard(m)"
-                  class="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-gray-200 dark:border-white/10"
+                  class="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-gray-200/60 dark:border-white/[0.08]"
                 >
                   <UButton
                     size="xs"
@@ -1222,7 +1262,7 @@ function onScoreModalSubmitted(result: { state: string }) {
                 <!-- If viewer is the submitter -->
                 <div
                   v-else-if="isSubmitterOfCard(m)"
-                  class="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-200 dark:border-white/10 text-[11.5px] text-gray-500"
+                  class="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-200/60 dark:border-white/[0.08] text-[11.5px] text-gray-500 dark:text-gray-400"
                 >
                   <span>Your submission · awaiting opponent</span>
                   <div class="flex items-center gap-2">
@@ -1245,11 +1285,11 @@ function onScoreModalSubmitted(result: { state: string }) {
                 </div>
 
                 <!-- Fallback link for third-party viewers -->
-                <div v-else-if="scoreCard(m).href" class="mt-2 flex items-center gap-2">
+                <div v-else-if="scoreCard(m).href" class="mt-2 flex items-center gap-2 pt-2 border-t border-gray-200/60 dark:border-white/[0.08]">
                   <NuxtLink
                     :to="cardTo(scoreCard(m).href)"
                     :external="isManage"
-                    class="inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
+                    class="inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-200/60 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
                   >
                     View fixture →
                   </NuxtLink>
@@ -1264,32 +1304,34 @@ function onScoreModalSubmitted(result: { state: string }) {
                 </div>
               </div>
 
-              <!-- result confirmed -->
+              <!-- result confirmed (Discord Embed style) -->
               <div
                 v-if="m.cardType === 'SCORE_CONFIRMED' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-3.5"
+                class="mt-2 max-w-md rounded-xl border border-gray-200/80 dark:border-white/[0.08] border-l-2 border-l-emerald-500/50 dark:border-l-emerald-400/40 bg-gray-50/90 dark:bg-[#16181f] p-3.5 shadow-xs"
               >
-                <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-1.5">
-                  ✓ Result confirmed{{ scoreCard(m).by === 'organizer' ? ' by the organizer' : '' }}
+                <p class="text-[10px] font-bold uppercase tracking-widest text-emerald-600/90 dark:text-emerald-400/80 mb-1.5 flex items-center gap-1">
+                  <span>✓</span> Result confirmed{{ scoreCard(m).by === 'organizer' ? ' by the organizer' : '' }}
                 </p>
                 <p class="text-sm font-bold text-gray-900 dark:text-white">
                   {{ scoreCard(m).home }}
-                  <span class="font-mono text-lg">{{ scoreCard(m).score?.home }} – {{ scoreCard(m).score?.away }}</span>
+                  <span class="font-mono text-lg font-bold text-gray-900 dark:text-white mx-1">{{ scoreCard(m).score?.home }} – {{ scoreCard(m).score?.away }}</span>
                   {{ scoreCard(m).away }}
                 </p>
-                <p class="text-[11.5px] text-gray-500 mt-1">{{ scoreCard(m).by === 'organizer' ? 'Verdict applied to the fixture.' : 'Both entries matched · fixture updated.' }}</p>
+                <p class="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">{{ scoreCard(m).by === 'organizer' ? 'Verdict applied to the fixture.' : 'Both entries matched · fixture updated.' }}</p>
               </div>
 
-              <!-- score conflict -->
+              <!-- score conflict (Discord Embed style) -->
               <div
                 v-if="m.cardType === 'SCORE_CONFLICT' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-3.5"
+                class="mt-2 max-w-md rounded-xl border border-gray-200/80 dark:border-white/[0.08] border-l-2 border-l-red-500/50 dark:border-l-red-400/40 bg-gray-50/90 dark:bg-[#16181f] p-3.5 shadow-xs"
               >
-                <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-700 dark:text-gray-300 mb-2">⚠ Score conflict — under review</p>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-red-600/90 dark:text-red-400/80 mb-2 flex items-center gap-1">
+                  <span>⚠</span> Score conflict — under review
+                </p>
                 <div
                   v-for="claim in scoreCard(m).claims"
                   :key="claim.participantName"
-                  class="flex items-center justify-between gap-3 py-1.5 text-[12.5px] border-t border-gray-100 dark:border-white/[0.06] first:border-t-0"
+                  class="flex items-center justify-between gap-3 py-1.5 text-[12.5px] border-t border-gray-200/60 dark:border-white/[0.06] first:border-t-0"
                 >
                   <span class="text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
                     <span>{{ claim.participantName }}'s entry</span>
@@ -1304,43 +1346,43 @@ function onScoreModalSubmitted(result: { state: string }) {
                   </span>
                   <span class="font-mono font-bold text-gray-900 dark:text-white tabular-nums">{{ claim.score.home }} – {{ claim.score.away }}</span>
                 </div>
-                <p class="text-[11.5px] text-gray-500 mt-2">Entries don't match — nothing is applied until the organizer decides.</p>
+                <p class="text-[11.5px] text-gray-500 dark:text-gray-400 mt-2">Entries don't match — nothing is applied until the organizer decides.</p>
                 <button
                   v-if="canModerate && scoreCard(m).fixtureId"
                   type="button"
-                  class="mt-2 inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
+                  class="mt-2 inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-200/60 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
                   @click="emit('review-dispute', scoreCard(m).fixtureId!)"
                 >Review dispute →</button>
               </div>
 
-              <!-- reaction chips -->
+              <!-- reaction chips (Discord pill style) -->
               <div
                 v-if="m.reactions?.length"
-                class="flex flex-wrap gap-1.5 mt-1.5"
+                class="flex flex-wrap gap-1.5 mt-2"
                 :class="isOwn(m) && 'justify-end'"
               >
                 <button
                   v-for="r in m.reactions"
                   :key="r.emoji"
                   type="button"
-                  class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[12px] transition-colors"
+                  class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-0.5 text-[12px] transition-all cursor-pointer"
                   :class="r.mine
-                    ? 'bg-gray-200 dark:bg-white/15 border-gray-400 dark:border-white/30 text-gray-900 dark:text-white font-semibold'
-                    : 'bg-gray-50 dark:bg-white/[0.04] border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-gray-400 dark:hover:border-white/20'"
+                    ? 'bg-primary-500/[0.08] dark:bg-primary-400/10 border-primary-500/30 dark:border-primary-400/30 text-primary-600 dark:text-primary-300 font-semibold shadow-xs hover:bg-primary-500/15'
+                    : 'bg-gray-100/70 dark:bg-white/[0.04] border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20 hover:bg-gray-200/60 dark:hover:bg-white/[0.08]'"
                   :disabled="!canPost"
                   :title="r.mine ? 'Remove your reaction' : 'React'"
                   @click="pickReaction(m, r.emoji)"
                 >
-                  <span>{{ r.emoji }}</span>
-                  <span class="font-mono text-[10.5px] font-bold tabular-nums">{{ r.count }}</span>
+                  <span class="text-sm leading-none">{{ r.emoji }}</span>
+                  <span class="font-mono text-[11px] font-bold tabular-nums">{{ r.count }}</span>
                 </button>
               </div>
             </div>
 
-            <!-- hover actions: react + reply (anyone who can post) + moderation -->
+            <!-- Discord-style floating hover actions toolbar -->
             <div
               v-if="canModerate || canPost"
-              class="absolute top-1.5 hidden group-hover:flex items-center gap-0.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-lg p-0.5 shadow-lg"
+              class="absolute -top-3.5 hidden group-hover:flex items-center gap-0.5 bg-white/95 dark:bg-[#1a1c23]/95 backdrop-blur-md border border-gray-200/90 dark:border-white/10 rounded-lg p-0.5 shadow-md shadow-black/10 dark:shadow-black/50 z-20"
               :class="isOwn(m) ? 'left-3' : 'right-3'"
             >
               <div v-if="canPost" class="relative">
@@ -1351,12 +1393,13 @@ function onScoreModalSubmitted(result: { state: string }) {
                   color="neutral"
                   icon="i-heroicons-face-smile"
                   title="React"
+                  class="hover:text-amber-500 transition-colors"
                   @click.stop="toggleReactPicker(m.id)"
                 />
                 <!-- emoji picker -->
                 <div
                   v-if="reactPickerFor === m.id"
-                  class="absolute bottom-full mb-1.5 z-20 flex gap-0.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-xl p-1 shadow-xl shadow-black/10 dark:shadow-black/50"
+                  class="absolute bottom-full mb-1.5 z-30 flex gap-1 bg-white dark:bg-[#1a1c23] border border-gray-200 dark:border-white/10 rounded-xl p-1.5 shadow-xl shadow-black/15 dark:shadow-black/60"
                   :class="isOwn(m) ? 'left-0' : 'right-0'"
                   @click.stop
                 >
@@ -1364,7 +1407,7 @@ function onScoreModalSubmitted(result: { state: string }) {
                     v-for="e in REACTION_EMOJIS"
                     :key="e"
                     type="button"
-                    class="w-7 h-7 rounded-lg text-[15px] hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                    class="w-8 h-8 rounded-lg text-[16px] hover:bg-gray-100 dark:hover:bg-white/10 hover:scale-110 active:scale-95 transition-all flex items-center justify-center cursor-pointer"
                     @click="pickReaction(m, e)"
                   >{{ e }}</button>
                 </div>
@@ -1377,6 +1420,7 @@ function onScoreModalSubmitted(result: { state: string }) {
                 color="neutral"
                 icon="i-heroicons-arrow-uturn-left"
                 title="Reply"
+                class="hover:text-primary-500 transition-colors"
                 @click="startReply(m)"
               />
               <template v-if="canModerate">
@@ -1387,6 +1431,7 @@ function onScoreModalSubmitted(result: { state: string }) {
                   color="neutral"
                   :icon="pinned?.id === m.id ? 'i-heroicons-bookmark-slash' : 'i-heroicons-bookmark'"
                   :title="pinned?.id === m.id ? 'Unpin' : 'Pin'"
+                  class="hover:text-amber-500 transition-colors"
                   @click="setPin(m.id, pinned?.id !== m.id)"
                 />
                 <UButton
@@ -1396,6 +1441,7 @@ function onScoreModalSubmitted(result: { state: string }) {
                   color="error"
                   icon="i-heroicons-trash"
                   title="Delete"
+                  class="hover:text-red-500 transition-colors"
                   @click="removeMessage(m.id)"
                 />
               </template>
@@ -1405,24 +1451,27 @@ function onScoreModalSubmitted(result: { state: string }) {
           <!-- Paragee thinking (LLM tier at work) — pinned to the end of the list -->
           <div
             v-if="botThinking"
-            class="flex gap-3 px-4 sm:px-5 py-2 bg-gray-50 dark:bg-white/[0.02] border-l-2 border-l-gray-300 dark:border-l-white/20"
+            class="flex gap-3 px-4 sm:px-5 py-2.5 bg-indigo-500/[0.015] dark:bg-indigo-400/[0.02] border-l-2 border-l-indigo-500/40 dark:border-l-indigo-400/40"
             aria-live="polite"
           >
             <span
-              class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white mt-0.5"
-              style="background: #4B5563"
+              class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white mt-0.5 ring-1 ring-indigo-500/30 shadow-xs"
+              style="background: linear-gradient(135deg, #475569 0%, #4338ca 100%)"
             >✨</span>
             <div class="flex-1 min-w-0">
-              <div class="flex items-baseline gap-2">
-                <span class="text-[13px] font-bold text-gray-900 dark:text-white">Paragee</span>
-                <span class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-white/10">AI · Paragee</span>
+              <div class="flex items-center gap-2">
+                <span class="text-[13px] font-semibold text-gray-900 dark:text-white">Paragee</span>
+                <span class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-600 dark:text-indigo-400/90 border border-indigo-500/20 dark:border-indigo-400/20">
+                  <UIcon name="i-heroicons-sparkles" class="w-3 h-3 text-indigo-500/80 dark:text-indigo-400/80" />
+                  AI · Paragee
+                </span>
               </div>
-              <p class="text-[13px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5">
+              <p class="text-[12.5px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2">
                 thinking
-                <span class="flex items-end gap-0.5 h-3">
-                  <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"></span>
-                  <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:120ms]"></span>
-                  <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:240ms]"></span>
+                <span class="flex items-end gap-1 h-3">
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:120ms]"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:240ms]"></span>
                 </span>
               </p>
             </div>
@@ -1442,7 +1491,7 @@ function onScoreModalSubmitted(result: { state: string }) {
             <span
               v-for="u in typingUsers"
               :key="u.name"
-              class="w-4 h-4 rounded-full shrink-0 overflow-hidden ring-2 ring-white dark:ring-gray-900 flex items-center justify-center text-[6.5px] font-bold text-white"
+              class="w-4 h-4 rounded-full shrink-0 overflow-hidden ring-2 ring-white dark:ring-gray-900 flex items-center justify-center text-[6.5px] font-bold text-white shadow-xs"
               :style="{ background: avatarColor(u.name) }"
               :title="u.name"
             >
@@ -1455,37 +1504,42 @@ function onScoreModalSubmitted(result: { state: string }) {
             <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:120ms]"></span>
             <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:240ms]"></span>
           </span>
-          {{ typingText }}
+          <span class="font-medium text-gray-500 dark:text-gray-400">{{ typingText }}</span>
         </span>
       </div>
 
       <!-- quick-ask chips -->
-      <div v-if="quickChips.length && canPost" class="flex gap-2 flex-wrap px-4 sm:px-5 pt-2.5" :class="fullscreen && 'max-w-3xl w-full mx-auto'">
+      <div v-if="quickChips.length && canPost" class="flex gap-2 flex-wrap px-4 sm:px-5 pt-2 pb-1" :class="fullscreen && 'max-w-3xl w-full mx-auto'">
         <button
           v-for="chip in quickChips"
           :key="chip"
           type="button"
-          class="text-[11px] font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10 rounded-full px-3 py-1.5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+          class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-700 dark:text-gray-300 bg-gray-100/80 dark:bg-white/[0.05] border border-gray-200/80 dark:border-white/10 rounded-full px-3 py-1 hover:bg-gray-200/80 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/20 transition-all cursor-pointer shadow-xs active:scale-95"
           @click="askChip(chip)"
-        >✨ {{ chip }}</button>
+        >
+          <span class="text-amber-500 text-xs">✨</span>
+          <span>{{ chip }}</span>
+        </button>
       </div>
 
       <!-- composer -->
       <div
         v-if="canPost"
-        class="relative border-t border-gray-100 dark:border-white/[0.06] px-4 sm:px-5 py-3.5 flex items-end gap-2.5 flex-wrap bg-gray-50/50 dark:bg-white/[0.015]"
+        class="relative border-t border-gray-200/80 dark:border-white/[0.06] px-4 sm:px-5 py-3 flex items-end gap-2.5 flex-wrap bg-gray-50/60 dark:bg-[#13151b]"
         :class="fullscreen && 'max-w-3xl w-full mx-auto pb-[max(env(safe-area-inset-bottom),0.875rem)]'"
       >
         <!-- replying-to bar -->
         <div
           v-if="replyTarget"
-          class="w-full flex items-center gap-2 rounded-lg border-l-2 border-gray-400 dark:border-white/30 bg-white dark:bg-white/[0.03] px-3 py-1.5"
+          class="w-full flex items-center justify-between gap-2 rounded-lg border-l-2 border-gray-400/60 dark:border-white/20 bg-gray-100/70 dark:bg-white/[0.03] px-3 py-1.5 mb-1 text-xs"
         >
-          <UIcon name="i-heroicons-arrow-uturn-left" class="w-3.5 h-3.5 text-gray-400 shrink-0" />
-          <span class="min-w-0 flex-1">
-            <span class="block text-[10.5px] font-bold text-gray-900 dark:text-white">Replying to {{ replyTarget.author.name }}</span>
-            <span class="block text-[11.5px] text-gray-500 dark:text-gray-400 truncate">{{ replyTarget.text }}</span>
-          </span>
+          <div class="flex items-center gap-2 min-w-0 flex-1">
+            <UIcon name="i-heroicons-arrow-uturn-left" class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+            <span class="min-w-0 flex-1">
+              <span class="block text-[11px] font-bold text-gray-900 dark:text-white">Replying to {{ replyTarget.author.name }}</span>
+              <span class="block text-[11.5px] text-gray-500 dark:text-gray-400 truncate">{{ replyTarget.text }}</span>
+            </span>
+          </div>
           <UButton
             type="button"
             size="xs"
@@ -1493,13 +1547,14 @@ function onScoreModalSubmitted(result: { state: string }) {
             color="neutral"
             icon="i-heroicons-x-mark"
             title="Cancel reply"
+            class="hover:bg-gray-200/60 dark:hover:bg-white/10"
             @click="cancelReply"
           />
         </div>
         <!-- @mention autocomplete -->
         <div
           v-if="mentionOpen"
-          class="absolute bottom-full left-4 sm:left-5 mb-2 w-72 max-w-[calc(100%-2rem)] rounded-xl border border-gray-200 dark:border-white/[0.12] bg-white dark:bg-gray-800 shadow-xl shadow-black/10 dark:shadow-black/50 overflow-hidden z-20"
+          class="absolute bottom-full left-4 sm:left-5 mb-2 w-72 max-w-[calc(100%-2rem)] rounded-xl border border-gray-200/90 dark:border-white/[0.12] bg-white dark:bg-[#1b1d24] shadow-xl shadow-black/15 dark:shadow-black/60 overflow-hidden z-30"
         >
           <p class="px-3 py-1.5 text-[9.5px] font-extrabold uppercase tracking-widest text-gray-400 border-b border-gray-100 dark:border-white/[0.06]">
             Mention
@@ -1508,14 +1563,14 @@ function onScoreModalSubmitted(result: { state: string }) {
             v-for="(m, i) in mentionMatches"
             :key="m.id"
             type="button"
-            class="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors"
+            class="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer"
             :class="i === mentionIndex ? 'bg-gray-100 dark:bg-white/10' : 'hover:bg-gray-50 dark:hover:bg-white/[0.04]'"
             @mousedown.prevent="selectMention(m)"
             @mouseenter="mentionIndex = i"
           >
             <span
-              class="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[8.5px] font-bold text-white"
-              :style="m.bot ? { background: '#4B5563' } : { background: avatarColor(m.name) }"
+              class="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[8.5px] font-bold text-white shadow-xs"
+              :style="m.bot ? { background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%)' } : { background: avatarColor(m.name) }"
             >{{ m.bot ? '✨' : initials(m.name) }}</span>
             <span class="min-w-0">
               <span class="block text-[12.5px] font-semibold text-gray-900 dark:text-white truncate">@{{ m.name }}</span>
