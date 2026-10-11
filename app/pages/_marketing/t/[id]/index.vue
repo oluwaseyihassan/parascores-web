@@ -1386,7 +1386,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :members="chatMembers"
               :fixtures="fixtures"
               :tournament="tournament"
-              @score-submitted="refreshOverview"
+              @score-submitted="() => refreshOverview()"
             />
           </div>
         </div>

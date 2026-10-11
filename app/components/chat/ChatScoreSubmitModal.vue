@@ -139,6 +139,8 @@ function onWindowPaste(e: ClipboardEvent) {
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
+    if (!item) continue
+
     if (item.type.startsWith('image/')) {
       const file = item.getAsFile()
       if (file) {
