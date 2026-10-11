@@ -27,6 +27,26 @@ export function useChatNotifications(options: UseChatNotificationsOptions) {
     return import.meta.client && 'Notification' in window
   })
 
+  // Track unread messages arriving while the tab is blurred/backgrounded
+  let unreadBackgroundCount = 0
+  const resetBackgroundCount = () => {
+    if (typeof document !== 'undefined' && !document.hidden && document.hasFocus()) {
+      unreadBackgroundCount = 0
+    }
+  }
+
+  if (import.meta.client) {
+    window.addEventListener('focus', resetBackgroundCount)
+    document.addEventListener('visibilitychange', resetBackgroundCount)
+  }
+
+  onUnmounted(() => {
+    if (import.meta.client) {
+      window.removeEventListener('focus', resetBackgroundCount)
+      document.removeEventListener('visibilitychange', resetBackgroundCount)
+    }
+  })
+
   // Load preferences for this tournament from localStorage
   function loadPreferences() {
     if (!import.meta.client) return
@@ -53,6 +73,7 @@ export function useChatNotifications(options: UseChatNotificationsOptions) {
   watch(
     () => toValue(options.tournamentId),
     () => {
+      unreadBackgroundCount = 0
       loadPreferences()
     },
     { immediate: true },
@@ -304,20 +325,27 @@ export function useChatNotifications(options: UseChatNotificationsOptions) {
 
     // 2. Desktop OS notification:
     // Only fire desktop notification if user is NOT actively looking at the tab
-    if (isTabActive) return
+    if (isTabActive) {
+      unreadBackgroundCount = 0
+      return
+    }
 
     if (permission.value !== 'granted') return
+
+    unreadBackgroundCount++
 
     const now = Date.now()
     if (now - lastNotificationTime < 1000) return
     lastNotificationTime = now
 
     const tId = toValue(options.tournamentId)
+    const notificationTitle = unreadBackgroundCount > 1 ? `(${unreadBackgroundCount}) ${title}` : title
+
     const optionsPayload: NotificationOptions & { renotify?: boolean } = {
       body,
       icon: toValue(options.tournamentLogo) || '/pwa-192x192.png',
       badge: '/pwa-192x192.png',
-      tag: `chat-${tId}-${message.id}`,
+      tag: `chat-${tId}`,
       data: {
         url: `/t/${tId}?tab=chat#chatmsg-${message.id}`,
         tournamentId: tId,
@@ -331,7 +359,7 @@ export function useChatNotifications(options: UseChatNotificationsOptions) {
       try {
         const reg = await navigator.serviceWorker.ready
         if (reg && 'showNotification' in reg) {
-          await reg.showNotification(title, optionsPayload)
+          await reg.showNotification(notificationTitle, optionsPayload)
           return
         }
       } catch {
@@ -340,7 +368,7 @@ export function useChatNotifications(options: UseChatNotificationsOptions) {
     }
 
     try {
-      const n = new Notification(title, optionsPayload)
+      const n = new Notification(notificationTitle, optionsPayload)
       n.onclick = () => {
         window.focus()
         n.close()
