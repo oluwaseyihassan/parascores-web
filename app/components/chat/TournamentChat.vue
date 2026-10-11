@@ -345,7 +345,7 @@ function textParts(text: string) {
   return parts
 }
 
-const avatarColors = ['#312E81', '#136332', '#0E7490', '#B45309', '#374151', '#7c2d12']
+const avatarColors = ['#374151', '#4B5563', '#1F2937', '#525252', '#404040', '#475569']
 function avatarColor(name: string) {
   let h = 0
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0
@@ -364,13 +364,13 @@ function railClass(m: ChatMessage) {
   const own = isOwn(m)
   if (m.authorType === 'ORGANIZER') {
     return own
-      ? 'bg-amber-500/[0.04] border-r-[2.5px] border-r-amber-400/60'
-      : 'bg-amber-500/[0.04] border-l-[2.5px] border-l-amber-400/60'
+      ? 'bg-gray-100/70 dark:bg-white/[0.04] border-r-2 border-r-gray-400 dark:border-r-white/40'
+      : 'bg-gray-100/70 dark:bg-white/[0.04] border-l-2 border-l-gray-400 dark:border-l-white/40'
   }
   if (m.authorType === 'BOT' || m.authorType === 'SYSTEM') {
-    return 'bg-indigo-500/[0.04] border-l-[2.5px] border-l-indigo-400/60'
+    return 'bg-gray-50 dark:bg-white/[0.02] border-l-2 border-l-gray-300 dark:border-l-white/20'
   }
-  return own ? 'bg-emerald-500/[0.03] border-r-[2.5px] border-r-emerald-400/50' : ''
+  return own ? 'bg-gray-50/50 dark:bg-white/[0.02] border-r-2 border-r-gray-300 dark:border-r-white/20' : ''
 }
 
 // Structured bot cards (cardType) — FIXTURE renders per the approved design;
@@ -461,21 +461,21 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
     <!-- disabled notice -->
     <div
       v-if="chatDisabled"
-      class="m-4 p-6 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-500/25 text-center"
+      class="m-4 p-6 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 text-center"
     >
-      <UIcon name="i-heroicons-chat-bubble-left-right" class="w-8 h-8 mx-auto text-amber-500 mb-2" />
-      <p class="text-sm font-semibold text-amber-700 dark:text-amber-400">Chat is off for this tournament</p>
-      <p class="text-xs text-amber-600/80 dark:text-amber-400/70 mt-1">
+      <UIcon name="i-heroicons-chat-bubble-left-right" class="w-8 h-8 mx-auto text-gray-400 mb-2" />
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">Chat is off for this tournament</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
         {{ canModerate ? 'Enable it to give participants a room to coordinate — lobby codes, schedules, score reports.' : 'The organizer has disabled the chat for this tournament.' }}
       </p>
       <UButton
         v-if="canModerate"
         type="button"
-        color="primary"
+        color="neutral"
         size="sm"
         icon="i-heroicons-bolt"
         label="Enable chat"
-        class="mt-3"
+        class="mt-3 font-semibold"
         @click="emit('enable-chat')"
       />
     </div>
@@ -484,12 +484,12 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
       <!-- pinned -->
       <div
         v-if="pinned"
-        class="flex items-start gap-2.5 px-4 sm:px-5 py-3 bg-amber-500/5 border-b border-amber-500/20 text-[13px] leading-relaxed"
+        class="flex items-start gap-2.5 px-4 sm:px-5 py-3 bg-gray-50 dark:bg-white/[0.03] border-b border-gray-200 dark:border-white/10 text-[13px] leading-relaxed"
         :class="fullscreen && 'max-w-3xl w-full mx-auto'"
       >
-        <span class="text-amber-500 shrink-0 mt-px">📌</span>
+        <span class="text-gray-400 shrink-0 mt-px">📌</span>
         <div class="text-gray-700 dark:text-gray-200">
-          <b class="text-amber-600 dark:text-amber-400">Pinned:</b> {{ pinned.text }}
+          <b class="text-gray-900 dark:text-white">Pinned:</b> {{ pinned.text }}
         </div>
       </div>
 
@@ -506,17 +506,17 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
 
         <!-- load failure (transient API issues) — never leave skeletons hanging -->
         <div v-else-if="loadError" class="p-6 text-center">
-          <UIcon name="i-heroicons-exclamation-triangle" class="w-8 h-8 mx-auto text-amber-500 mb-2" />
+          <UIcon name="i-heroicons-exclamation-triangle" class="w-8 h-8 mx-auto text-gray-400 mb-2" />
           <p class="text-sm font-semibold text-gray-900 dark:text-white">Couldn't load the chat</p>
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">The server didn't answer — it may be restarting.</p>
           <UButton
             type="button"
             size="sm"
-            color="primary"
+            color="neutral"
             variant="soft"
             icon="i-heroicons-arrow-path"
             label="Retry"
-            class="mt-3"
+            class="mt-3 font-semibold"
             :loading="loading"
             @click="loadInitial"
           />
@@ -537,7 +537,7 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
           <div v-if="nextCursor" class="px-4 pt-1 pb-2">
             <button
               type="button"
-              class="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 hover:underline disabled:opacity-50"
+              class="text-[11px] font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:underline disabled:opacity-50"
               :disabled="loadingMore"
               @click="loadOlderAnchored"
             >
@@ -550,13 +550,13 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
             :key="m.id"
             :id="`chatmsg-${m.id}`"
             class="group relative flex gap-3 px-4 sm:px-5 py-2 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.025]"
-            :class="[isOwn(m) && 'flex-row-reverse', railClass(m), flashId === m.id && 'bg-indigo-500/[0.08] dark:bg-indigo-500/[0.12]']"
+            :class="[isOwn(m) && 'flex-row-reverse', railClass(m), flashId === m.id && 'bg-gray-200/60 dark:bg-white/[0.08]']"
           >
             <!-- avatar -->
             <span
               class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white overflow-hidden mt-0.5"
               :style="m.authorType === 'BOT' || m.authorType === 'SYSTEM'
-                ? { background: 'linear-gradient(135deg,#312E81,#136332)' }
+                ? { background: '#4B5563' }
                 : { background: avatarColor(m.author.name) }"
             >
               <img v-if="m.author.avatarUrl" :src="m.author.avatarUrl" class="w-full h-full object-cover" alt="" />
@@ -568,11 +568,11 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
                 <span class="text-[13px] font-bold text-gray-900 dark:text-white">{{ isOwn(m) ? 'You' : m.author.name }}</span>
                 <span
                   v-if="m.authorType === 'ORGANIZER'"
-                  class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                  class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-white/10"
                 >Organizer</span>
                 <span
                   v-else-if="m.authorType === 'BOT'"
-                  class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-300 border border-indigo-500/30"
+                  class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-white/10"
                 >AI · Paragee</span>
                 <span
                   v-else-if="m.author.teamName"
@@ -585,14 +585,14 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
               <button
                 v-if="m.replyTo"
                 type="button"
-                class="mt-0.5 mb-1 flex items-center gap-2 max-w-full text-left rounded-lg border-l-2 border-indigo-400/50 bg-gray-50 dark:bg-white/[0.03] px-2.5 py-1.5 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors"
+                class="mt-0.5 mb-1 flex items-center gap-2 max-w-full text-left rounded-lg border-l-2 border-gray-400 dark:border-white/30 bg-gray-50 dark:bg-white/[0.03] px-2.5 py-1.5 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors"
                 :class="isOwn(m) && 'border-l-0 border-r-2 text-right'"
                 title="Jump to original message"
                 @click="jumpTo(m.replyTo!.id)"
               >
-                <UIcon name="i-heroicons-arrow-uturn-left" class="w-3 h-3 text-indigo-400 shrink-0" />
+                <UIcon name="i-heroicons-arrow-uturn-left" class="w-3 h-3 text-gray-400 shrink-0" />
                 <span class="min-w-0">
-                  <span class="block text-[10.5px] font-bold text-indigo-500 dark:text-indigo-300 truncate">{{ m.replyTo.authorName }}</span>
+                  <span class="block text-[10.5px] font-bold text-gray-900 dark:text-white truncate">{{ m.replyTo.authorName }}</span>
                   <span v-if="m.replyTo.deleted" class="block text-[11.5px] italic text-gray-400 dark:text-gray-500 truncate">Original message was deleted</span>
                   <span v-else class="block text-[11.5px] text-gray-500 dark:text-gray-400 truncate">{{ m.replyTo.text }}</span>
                 </span>
@@ -613,9 +613,9 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
               <!-- structured card (bot answers / score reports) -->
               <div
                 v-if="m.cardType === 'FIXTURE' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-indigo-500/25 bg-indigo-500/[0.04] p-3.5"
+                class="mt-2 max-w-md rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-3.5"
               >
-                <p class="text-[10px] font-extrabold uppercase tracking-widest text-indigo-500 dark:text-indigo-300 mb-1.5">
+                <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
                   {{ fixtureCard(m).label }}
                 </p>
                 <p class="text-sm font-bold text-gray-900 dark:text-white">
@@ -626,16 +626,16 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
                   v-if="fixtureCard(m).href"
                   :to="cardTo(fixtureCard(m).href)"
                   :external="isManage"
-                  class="inline-flex items-center gap-1 mt-2 text-[11.5px] font-bold text-indigo-500 dark:text-indigo-300 bg-indigo-500/10 border border-indigo-500/25 rounded-lg px-2.5 py-1"
+                  class="inline-flex items-center gap-1 mt-2 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
                 >View fixture →</NuxtLink>
               </div>
 
               <!-- ranked rows card (table / top scorers) -->
               <div
                 v-if="(m.cardType === 'TABLE' || m.cardType === 'STATS') && m.cardPayload"
-                class="mt-2 max-w-sm rounded-xl border border-indigo-500/25 bg-indigo-500/[0.04] p-3.5"
+                class="mt-2 max-w-sm rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-3.5"
               >
-                <p class="text-[10px] font-extrabold uppercase tracking-widest text-indigo-500 dark:text-indigo-300 mb-2">
+                <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
                   {{ rowsCard(m).title }}
                 </p>
                 <div
@@ -645,8 +645,7 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
                 >
                   <span class="flex items-center gap-2 min-w-0">
                     <span
-                      class="font-mono font-bold w-4 text-center"
-                      :class="row.rank === 1 ? 'text-amber-400' : row.rank === 2 ? 'text-slate-300' : row.rank === 3 ? 'text-amber-600' : 'text-gray-400'"
+                      class="font-mono font-bold w-4 text-center text-gray-500 dark:text-gray-400"
                     >{{ row.rank }}</span>
                     <span class="font-semibold text-gray-900 dark:text-white truncate">{{ row.name }}</span>
                   </span>
@@ -657,9 +656,9 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
               <!-- score submitted (awaiting opponent) -->
               <div
                 v-if="m.cardType === 'SCORE_SUBMITTED' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-amber-500/30 bg-amber-500/[0.05] p-3.5"
+                class="mt-2 max-w-md rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-3.5"
               >
-                <p class="text-[10px] font-extrabold uppercase tracking-widest text-amber-500 mb-1.5">⏳ Score submitted — awaiting opponent</p>
+                <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">⏳ Score submitted — awaiting opponent</p>
                 <p class="text-sm font-bold text-gray-900 dark:text-white">
                   {{ scoreCard(m).submittedBy }} <span class="text-gray-400 font-normal text-xs">reports</span>
                   <span class="font-mono text-lg mx-1">{{ scoreCard(m).score?.home }} – {{ scoreCard(m).score?.away }}</span>
@@ -672,17 +671,17 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
                   v-if="scoreCard(m).href"
                   :to="cardTo(scoreCard(m).href)"
                   :external="isManage"
-                  class="inline-flex items-center gap-1 mt-2 text-[11.5px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1"
+                  class="inline-flex items-center gap-1 mt-2 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
                 >Submit your score →</NuxtLink>
               </div>
 
               <!-- result confirmed -->
               <div
                 v-if="m.cardType === 'SCORE_CONFIRMED' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-emerald-500/30 bg-emerald-500/[0.05] p-3.5"
+                class="mt-2 max-w-md rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-3.5"
               >
-                <p class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-500 mb-1.5">
-                  ✅ Result confirmed{{ scoreCard(m).by === 'organizer' ? ' by the organizer' : '' }}
+                <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-1.5">
+                  ✓ Result confirmed{{ scoreCard(m).by === 'organizer' ? ' by the organizer' : '' }}
                 </p>
                 <p class="text-sm font-bold text-gray-900 dark:text-white">
                   {{ scoreCard(m).home }}
@@ -695,9 +694,9 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
               <!-- score conflict -->
               <div
                 v-if="m.cardType === 'SCORE_CONFLICT' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-red-500/30 bg-red-500/[0.05] p-3.5"
+                class="mt-2 max-w-md rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-3.5"
               >
-                <p class="text-[10px] font-extrabold uppercase tracking-widest text-red-500 mb-2">⚠ Score conflict — under review</p>
+                <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-700 dark:text-gray-300 mb-2">⚠ Score conflict — under review</p>
                 <div
                   v-for="claim in scoreCard(m).claims"
                   :key="claim.participantName"
@@ -706,13 +705,13 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
                   <span class="text-gray-700 dark:text-gray-300">
                     {{ claim.participantName }}'s entry <span v-if="claim.evidenceUrl" class="text-gray-400">· 🖼</span>
                   </span>
-                  <span class="font-mono font-bold text-red-500 tabular-nums">{{ claim.score.home }} – {{ claim.score.away }}</span>
+                  <span class="font-mono font-bold text-gray-900 dark:text-white tabular-nums">{{ claim.score.home }} – {{ claim.score.away }}</span>
                 </div>
                 <p class="text-[11.5px] text-gray-500 mt-2">Entries don't match — nothing is applied until the organizer decides.</p>
                 <button
                   v-if="canModerate && scoreCard(m).fixtureId"
                   type="button"
-                  class="mt-2 inline-flex items-center gap-1 text-[11.5px] font-bold text-red-500 bg-red-500/10 border border-red-500/30 rounded-lg px-2.5 py-1 hover:bg-red-500/15 transition-colors"
+                  class="mt-2 inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
                   @click="emit('review-dispute', scoreCard(m).fixtureId!)"
                 >Review dispute →</button>
               </div>
@@ -729,8 +728,8 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
                   type="button"
                   class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[12px] transition-colors"
                   :class="r.mine
-                    ? 'bg-indigo-500/15 border-indigo-400/50 text-indigo-600 dark:text-indigo-300'
-                    : 'bg-gray-50 dark:bg-white/[0.04] border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-indigo-400/40'"
+                    ? 'bg-gray-200 dark:bg-white/15 border-gray-400 dark:border-white/30 text-gray-900 dark:text-white font-semibold'
+                    : 'bg-gray-50 dark:bg-white/[0.04] border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-gray-400 dark:hover:border-white/20'"
                   :disabled="!canPost"
                   :title="r.mine ? 'Remove your reaction' : 'React'"
                   @click="pickReaction(m, r.emoji)"
@@ -809,24 +808,24 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
           <!-- Paragee thinking (LLM tier at work) — pinned to the end of the list -->
           <div
             v-if="botThinking"
-            class="flex gap-3 px-4 sm:px-5 py-2 bg-indigo-500/[0.04] border-l-[2.5px] border-l-indigo-400/60"
+            class="flex gap-3 px-4 sm:px-5 py-2 bg-gray-50 dark:bg-white/[0.02] border-l-2 border-l-gray-300 dark:border-l-white/20"
             aria-live="polite"
           >
             <span
               class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white mt-0.5"
-              style="background: linear-gradient(135deg,#312E81,#136332)"
+              style="background: #4B5563"
             >✨</span>
             <div class="flex-1 min-w-0">
               <div class="flex items-baseline gap-2">
                 <span class="text-[13px] font-bold text-gray-900 dark:text-white">Paragee</span>
-                <span class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-300 border border-indigo-500/30">AI · Paragee</span>
+                <span class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-white/10">AI · Paragee</span>
               </div>
               <p class="text-[13px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5">
                 thinking
                 <span class="flex items-end gap-0.5 h-3">
-                  <span class="w-1 h-1 rounded-full bg-indigo-400 animate-bounce"></span>
-                  <span class="w-1 h-1 rounded-full bg-indigo-400 animate-bounce [animation-delay:120ms]"></span>
-                  <span class="w-1 h-1 rounded-full bg-indigo-400 animate-bounce [animation-delay:240ms]"></span>
+                  <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"></span>
+                  <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:120ms]"></span>
+                  <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:240ms]"></span>
                 </span>
               </p>
             </div>
@@ -855,9 +854,9 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
             </span>
           </span>
           <span class="flex items-end gap-0.5 h-3">
-            <span class="w-1 h-1 rounded-full bg-indigo-400 animate-bounce"></span>
-            <span class="w-1 h-1 rounded-full bg-indigo-400 animate-bounce [animation-delay:120ms]"></span>
-            <span class="w-1 h-1 rounded-full bg-indigo-400 animate-bounce [animation-delay:240ms]"></span>
+            <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"></span>
+            <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:120ms]"></span>
+            <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:240ms]"></span>
           </span>
           {{ typingText }}
         </span>
@@ -869,7 +868,7 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
           v-for="chip in quickChips"
           :key="chip"
           type="button"
-          class="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 bg-indigo-500/[0.07] border border-indigo-500/25 rounded-full px-3 py-1.5 hover:bg-indigo-500/15 transition-colors"
+          class="text-[11px] font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10 rounded-full px-3 py-1.5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
           @click="askChip(chip)"
         >✨ {{ chip }}</button>
       </div>
@@ -883,11 +882,11 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
         <!-- replying-to bar -->
         <div
           v-if="replyTarget"
-          class="w-full flex items-center gap-2 rounded-lg border-l-2 border-indigo-400/60 bg-white dark:bg-white/[0.03] px-3 py-1.5"
+          class="w-full flex items-center gap-2 rounded-lg border-l-2 border-gray-400 dark:border-white/30 bg-white dark:bg-white/[0.03] px-3 py-1.5"
         >
-          <UIcon name="i-heroicons-arrow-uturn-left" class="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+          <UIcon name="i-heroicons-arrow-uturn-left" class="w-3.5 h-3.5 text-gray-400 shrink-0" />
           <span class="min-w-0 flex-1">
-            <span class="block text-[10.5px] font-bold text-indigo-500 dark:text-indigo-300">Replying to {{ replyTarget.author.name }}</span>
+            <span class="block text-[10.5px] font-bold text-gray-900 dark:text-white">Replying to {{ replyTarget.author.name }}</span>
             <span class="block text-[11.5px] text-gray-500 dark:text-gray-400 truncate">{{ replyTarget.text }}</span>
           </span>
           <UButton
@@ -913,13 +912,13 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
             :key="m.id"
             type="button"
             class="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors"
-            :class="i === mentionIndex ? 'bg-indigo-500/10' : 'hover:bg-gray-50 dark:hover:bg-white/[0.04]'"
+            :class="i === mentionIndex ? 'bg-gray-100 dark:bg-white/10' : 'hover:bg-gray-50 dark:hover:bg-white/[0.04]'"
             @mousedown.prevent="selectMention(m)"
             @mouseenter="mentionIndex = i"
           >
             <span
               class="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[8.5px] font-bold text-white"
-              :style="m.bot ? { background: 'linear-gradient(135deg,#312E81,#136332)' } : { background: avatarColor(m.name) }"
+              :style="m.bot ? { background: '#4B5563' } : { background: avatarColor(m.name) }"
             >{{ m.bot ? '✨' : initials(m.name) }}</span>
             <span class="min-w-0">
               <span class="block text-[12.5px] font-semibold text-gray-900 dark:text-white truncate">@{{ m.name }}</span>
@@ -964,7 +963,7 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
           type="button"
           size="xs"
           variant="outline"
-          color="primary"
+          color="neutral"
           label="Join tournament to chat"
           trailing-icon="i-heroicons-arrow-right"
           :to="joinUrl"
@@ -984,7 +983,7 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
         <button
           v-if="!isNearBottom && cardVisible"
           type="button"
-          class="fixed bottom-24 md:bottom-8 z-40 w-10 h-10 rounded-full bg-indigo-600 border border-indigo-400/50 shadow-lg shadow-indigo-950/30 flex items-center justify-center text-white hover:bg-indigo-500 transition-colors"
+          class="fixed bottom-24 md:bottom-8 z-40 w-10 h-10 rounded-full bg-gray-900 dark:bg-white border border-gray-700 dark:border-gray-200 shadow-lg shadow-black/20 flex items-center justify-center text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
           :style="{ right: `${fabRight}px` }"
           title="Scroll to latest messages"
           aria-label="Scroll to latest messages"

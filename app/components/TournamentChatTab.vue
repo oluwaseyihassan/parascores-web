@@ -211,10 +211,10 @@ const botToggleRows = [
           <div class="flex items-center gap-2">
             <span
               v-if="(tournament?.botCalls ?? 0) > 0"
-              class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 dark:text-indigo-300 border border-indigo-500/25 tabular-nums"
+              class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 tabular-nums"
               title="Times Paragee has answered a question in this room"
             >{{ tournament!.botCalls }} {{ tournament!.botCalls === 1 ? 'call' : 'calls' }}</span>
-            <span class="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 dark:text-indigo-300 border border-indigo-500/25">Template tier</span>
+            <span class="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10">Template tier</span>
           </div>
         </div>
         <div class="p-4 sm:p-5 space-y-3">
@@ -222,7 +222,7 @@ const botToggleRows = [
             <div class="flex-1 pr-3">
               <p class="font-medium text-sm text-gray-900 dark:text-white">Bot enabled</p>
               <p class="text-[11px] text-gray-500 mt-0.5">
-                Answers player questions from live tournament data. Posts as <span class="font-semibold text-indigo-500 dark:text-indigo-300">Paragee</span> with an indigo rail.
+                Answers player questions from live tournament data. Posts as <span class="font-semibold text-gray-900 dark:text-white">Paragee</span> with a distinct message rail.
               </p>
             </div>
             <USwitch v-model="form.parageeBot.enabled" />
