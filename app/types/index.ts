@@ -632,3 +632,16 @@ export interface PaginatedResponse<T> {
   };
   timestamp: string;
 }
+
+declare global {
+  interface NotificationOptions {
+    renotify?: boolean;
+    image?: string;
+    vibrate?: number | number[];
+    actions?: Array<{
+      action: string;
+      title: string;
+      icon?: string;
+    }>;
+  }
+}

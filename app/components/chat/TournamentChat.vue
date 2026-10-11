@@ -31,6 +31,76 @@ const props = withDefaults(
 
 const { handleError } = useErrors()
 const toast = useToast()
+const authStore = useAuthStore()
+const route = useRoute()
+
+// Own messages go right: organizers own their ORGANIZER posts (manage),
+// participants own messages authored as their participant identity (fan)
+function isOwn(m: ChatMessage) {
+  if (props.canPost === 'organizer') return m.authorType === 'ORGANIZER'
+  if (props.canPost === 'participant') return !!props.viewerParticipantId && m.author.participantId === props.viewerParticipantId
+  return false
+}
+
+// Notifications & audio chimes
+const {
+  level: notifyLevel,
+  soundEnabled: notifySound,
+  permission: notifyPermission,
+  setLevel: setNotifyLevel,
+  toggleSound: toggleNotifySound,
+  notifyMessage,
+} = useChatNotifications({
+  tournamentId: toRef(props, 'tournamentId'),
+  tournamentName: computed(() => props.tournament?.name),
+  tournamentLogo: computed(() => props.tournament?.logoUrl),
+  viewerParticipantId: toRef(props, 'viewerParticipantId'),
+  viewerName: computed(() => {
+    if (props.viewerParticipantId && props.members?.length) {
+      const p = props.members.find((m) => m.id === props.viewerParticipantId)
+      if (p) return p.name
+    }
+    return authStore.user?.name || null
+  }),
+  isOrganizer: computed(() => props.canPost === 'organizer'),
+})
+
+const notificationMenuItems = computed(() => [
+  [
+    {
+      label: 'Notification preferences',
+      type: 'label' as const,
+      disabled: true,
+    },
+  ],
+  [
+    {
+      label: 'Mentions & Highlights',
+      icon: notifyLevel.value === 'mentions' ? 'i-heroicons-check' : 'i-heroicons-at-symbol',
+      active: notifyLevel.value === 'mentions',
+      onSelect: () => setNotifyLevel('mentions'),
+    },
+    {
+      label: 'All messages',
+      icon: notifyLevel.value === 'all' ? 'i-heroicons-check' : 'i-heroicons-chat-bubble-left-right',
+      active: notifyLevel.value === 'all',
+      onSelect: () => setNotifyLevel('all'),
+    },
+    {
+      label: 'Mute notifications',
+      icon: notifyLevel.value === 'none' ? 'i-heroicons-check' : 'i-heroicons-bell-slash',
+      active: notifyLevel.value === 'none',
+      onSelect: () => setNotifyLevel('none'),
+    },
+  ],
+  [
+    {
+      label: notifySound.value ? 'Sound effects (On)' : 'Sound effects (Muted)',
+      icon: notifySound.value ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
+      onSelect: () => toggleNotifySound(),
+    },
+  ],
+])
 
 const {
   messages,
@@ -52,7 +122,11 @@ const {
   removeMessage,
   setPin,
   react,
-} = useTournamentChat(toRef(props, 'tournamentId'))
+} = useTournamentChat(toRef(props, 'tournamentId'), {
+  onNewMessage: (msg) => {
+    notifyMessage(msg, isOwn(msg))
+  },
+})
 
 const draft = ref('')
 const listEl = ref<HTMLElement | null>(null)
@@ -292,16 +366,30 @@ let anchoring = false
 watch(
   () => messages.value.length,
   () => {
-    // First non-empty render after mount: always open at the latest message
-    // (history arrives async, so the plain onMounted scroll fires on an empty list)
+    // First non-empty render after mount: open at latest message or jumped hash message
     if (!initialScrolled.value) {
       if (messages.value.length === 0) return
       initialScrolled.value = true
-      scrollToBottom(true)
+      if (route.hash && route.hash.startsWith('#chatmsg-')) {
+        const targetId = route.hash.replace('#chatmsg-', '')
+        nextTick(() => jumpTo(targetId))
+      } else {
+        scrollToBottom(true)
+      }
       return
     }
     // live arrivals glide; prepends (load-earlier) are handled by the anchor
     if (!anchoring) scrollToBottom(false, true)
+  },
+)
+
+watch(
+  () => route.hash,
+  (newHash) => {
+    if (newHash && newHash.startsWith('#chatmsg-')) {
+      const targetId = newHash.replace('#chatmsg-', '')
+      jumpTo(targetId)
+    }
   },
 )
 const initialScrolled = ref(false)
@@ -384,13 +472,6 @@ function avatarColor(name: string) {
   return avatarColors[h % avatarColors.length]
 }
 
-// Own messages go right: organizers own their ORGANIZER posts (manage),
-// participants own messages authored as their participant identity (fan)
-function isOwn(m: ChatMessage) {
-  if (props.canPost === 'organizer') return m.authorType === 'ORGANIZER'
-  if (props.canPost === 'participant') return !!props.viewerParticipantId && m.author.participantId === props.viewerParticipantId
-  return false
-}
 
 function railClass(m: ChatMessage) {
   const own = isOwn(m)
@@ -819,12 +900,24 @@ function onScoreModalSubmitted(result: { state: string }) {
           Approved participants and organizers can post · everyone can read
         </p>
       </div>
-      <div class="flex items-center gap-3 text-[11px] text-gray-400">
+      <div class="flex items-center gap-2 sm:gap-3 text-[11px] text-gray-400">
         <span class="flex items-center gap-1.5">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
           {{ online }} online
         </span>
-        <span v-if="memberCount != null">{{ memberCount }} members</span>
+        <span v-if="memberCount != null" class="hidden sm:inline">{{ memberCount }} members</span>
+        <UDropdownMenu :items="notificationMenuItems" :content="{ align: 'end', side: 'bottom', sideOffset: 6 }">
+          <UButton
+            type="button"
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            :class="notifyLevel === 'none' ? 'opacity-40 hover:opacity-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'"
+            :icon="notifyLevel === 'none' ? 'i-heroicons-bell-slash' : (notifyLevel === 'all' ? 'i-heroicons-bell-alert' : 'i-heroicons-bell')"
+            :title="notifyLevel === 'none' ? 'Chat notifications: Muted' : (notifyLevel === 'all' ? 'Chat notifications: All messages' : 'Chat notifications: Mentions & highlights')"
+            :aria-label="notifyLevel === 'none' ? 'Chat notifications: Muted' : (notifyLevel === 'all' ? 'Chat notifications: All messages' : 'Chat notifications: Mentions & highlights')"
+          />
+        </UDropdownMenu>
         <UButton
           type="button"
           size="xs"
