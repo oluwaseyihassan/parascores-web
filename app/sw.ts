@@ -45,19 +45,30 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
-  const urlToOpen = event.notification.data?.url || '/'
+  const rawUrl = event.notification.data?.url || '/'
+  const targetUrl = new URL(rawUrl, self.location.origin).href
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if there is already a window open with this URL
+      // 1. Check if there is already a window open on the same origin
       for (const client of windowClients) {
-        if (client.url.endsWith(urlToOpen) && 'focus' in client) {
-          return client.focus()
+        try {
+          const clientUrl = new URL(client.url)
+          if (clientUrl.origin === self.location.origin && 'focus' in client) {
+            client.focus()
+            if ('navigate' in client && client.url !== targetUrl) {
+              return client.navigate(targetUrl)
+            }
+            return
+          }
+        } catch (err) {
+          console.error('Error matching window client:', err)
         }
       }
-      // If not, open a new window
+
+      // 2. If no window open, open a new window
       if (self.clients.openWindow) {
-        return self.clients.openWindow(urlToOpen)
+        return self.clients.openWindow(targetUrl)
       }
     })
   )

@@ -10,12 +10,19 @@ interface ChatListResponse {
   }
 }
 
+export interface UseTournamentChatOptions {
+  onNewMessage?: (message: ChatMessage) => void
+}
+
 /**
  * Realtime tournament chat — one instance per room mount.
  * History via REST (cursor pagination), live updates via Socket.IO
  * (namespace /chat, cookie auth for posters, anonymous read-only on public rooms).
  */
-export function useTournamentChat(tournamentId: Ref<string>) {
+export function useTournamentChat(
+  tournamentId: Ref<string>,
+  options?: UseTournamentChatOptions,
+) {
   const runtimeConfig = useRuntimeConfig()
   const { handleError } = useErrors()
   const toast = useToast()
@@ -179,6 +186,7 @@ export function useTournamentChat(tournamentId: Ref<string>) {
       messages.value.push(message)
       // the bot's answer landed — clear the thinking state
       if (message.authorType === 'BOT' || message.authorType === 'SYSTEM') botThinking.value = false
+      options?.onNewMessage?.(message)
     })
     socket.on('chat:deleted', ({ id }: { id: string }) => {
       messages.value = messages.value.filter((m) => m.id !== id)
