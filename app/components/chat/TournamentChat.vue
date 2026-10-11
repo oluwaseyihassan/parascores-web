@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ParageeBotFlags, ChatMessage } from '~/types'
+import type { ParageeBotFlags, ChatMessage, Fixture, Tournament } from '~/types'
 import { REACTION_EMOJIS } from '~/types'
 
 const props = withDefaults(
@@ -15,9 +15,22 @@ const props = withDefaults(
     members?: { id: string; name: string; teamName?: string | null; href?: string | null }[]
     // viewer's participant id — their messages render right-aligned
     viewerParticipantId?: string | null
+    // optional fixtures & tournament for esports match HUD & direct score reporting
+    fixtures?: any[]
+    tournament?: Tournament | any | null
   }>(),
-  { canModerate: false, parageeBot: null, members: () => [], viewerParticipantId: null },
+  {
+    canModerate: false,
+    parageeBot: null,
+    members: () => [],
+    viewerParticipantId: null,
+    fixtures: () => [],
+    tournament: null,
+  },
 )
+
+const { handleError } = useErrors()
+const toast = useToast()
 
 const {
   messages,
@@ -66,26 +79,45 @@ onBeforeUnmount(() => {
 
 const botActive = computed(() => !!props.parageeBot?.enabled)
 
-const quickChips = computed(() =>
-  botActive.value && props.parageeBot?.quickChips
-    ? ['My next match', 'Current table', 'Top scorer', 'Rules']
-    : [],
-)
+const quickChips = computed(() => {
+  const chips: string[] = []
+  if (viewerActiveFixture.value && viewerFixtureState.value !== 'awaitingOpponent' && props.canPost === 'participant') {
+    chips.push('Submit score')
+  }
+  if (botActive.value && props.parageeBot?.quickChips) {
+    chips.push('My next match', 'Current table', 'Top scorer', 'Rules')
+  }
+  return chips
+})
 
 // Composer hint: only tease @paragee when the bot can actually answer
 const composerPlaceholder = computed(() => {
   if (props.canPost === 'organizer') return 'Post as Organizer — announcements get a gold rail…'
   return botActive.value
-    ? 'Message the room… (Enter to send · @ to mention · @paragee to ask the bot)'
-    : 'Message the room… (Enter to send · @ to mention)'
+    ? 'Message the room… (Enter to send · @ to mention · /score to report score)'
+    : 'Message the room… (Enter to send · @ to mention · /score to report score)'
 })
 
 function askChip(label: string) {
+  if (label === 'Submit score') {
+    openSubmitModalForActive()
+    return
+  }
   draft.value = `@paragee ${label === 'Rules' ? 'what are the rules?' : label.toLowerCase()}?`
   sendDraft()
 }
 
 async function sendDraft() {
+  const trimmed = draft.value.trim()
+  if (trimmed === '/score') {
+    draft.value = ''
+    if (viewerActiveFixture.value) {
+      openSubmitModalForActive()
+    } else {
+      toast.add({ title: 'No active match found to submit score for', color: 'neutral' })
+    }
+    return
+  }
   const ok = await send(draft.value, replyTarget.value?.id ?? null)
   if (ok) {
     draft.value = ''
@@ -379,7 +411,11 @@ function railClass(m: ChatMessage) {
 function fixtureCard(m: ChatMessage) {
   const p = m.cardPayload ?? {}
   return {
+    fixtureId: p.fixtureId ?? null,
+    homeTeamId: p.homeTeamId ?? null,
+    awayTeamId: p.awayTeamId ?? null,
     label: p.round ?? 'Fixture',
+    round: p.round ?? 'Fixture',
     home: p.home ?? 'TBD',
     away: p.away ?? 'TBD',
     meta: p.meta ?? '',
@@ -403,7 +439,11 @@ function scoreCard(m: ChatMessage) {
     away: p.away ?? 'TBD',
     score: p.score as { home: number; away: number } | undefined,
     submittedBy: p.submittedBy ?? '',
+    submittedParticipantId: p.submittedParticipantId ?? null,
+    homeTeamId: p.homeTeamId ?? null,
+    awayTeamId: p.awayTeamId ?? null,
     evidenceAttached: !!p.evidenceAttached,
+    evidenceUrl: p.evidenceUrl ?? null,
     by: p.by ?? 'players',
     href: p.href ?? null,
     claims: (p.claims ?? []) as { participantName: string; score: { home: number; away: number }; evidenceUrl?: string | null }[],
@@ -411,12 +451,350 @@ function scoreCard(m: ChatMessage) {
   }
 }
 
-const emit = defineEmits<{ (e: 'review-dispute', fixtureId: string): void; (e: 'enable-chat'): void }>()
+const emit = defineEmits<{
+  (e: 'review-dispute', fixtureId: string): void
+  (e: 'enable-chat'): void
+  (e: 'score-submitted', result: { state: string }): void
+}>()
 
 // Card hrefs are site paths; from the manage host they must become absolute
 // main-site URLs (the marketing routes don't exist under manage.*)
 const { toMain, isManage } = useHost()
 const cardTo = (href: string | null) => (href ? toMain(href) : null)
+
+// ─── Esports Score Submissions & Active Match HUD ──────────────────
+interface Submission {
+  id: string
+  participantId: string
+  participantName: string
+  homeScore: number
+  awayScore: number
+  evidenceUrl?: string | null
+  note?: string | null
+  status: 'PENDING' | 'MATCHED' | 'CONFLICT' | 'APPLIED' | 'DISMISSED'
+}
+
+const internalFixtures = ref<any[]>([])
+const loadedFixtures = computed(() => {
+  if (props.fixtures && props.fixtures.length > 0) return props.fixtures
+  return internalFixtures.value
+})
+
+async function ensureFixturesLoaded() {
+  if (props.fixtures?.length || !props.tournamentId) return
+  try {
+    const res = await $api<{ success: boolean; data: any }>(`/tournaments/${props.tournamentId}/overview`)
+    if (res.data?.fixtures) {
+      internalFixtures.value = res.data.fixtures
+    }
+  } catch {
+    // ignore
+  }
+}
+onMounted(ensureFixturesLoaded)
+
+const viewerOpenFixtures = computed(() => {
+  if (!props.viewerParticipantId) return []
+  return (loadedFixtures.value || []).filter((f: any) => {
+    const isParticipant = f.homeTeamId === props.viewerParticipantId || f.awayTeamId === props.viewerParticipantId
+    const isOpen = f.status !== 'COMPLETED' && f.status !== 'CANCELLED'
+    return isParticipant && isOpen
+  })
+})
+
+const activeFixtureIndex = ref(0)
+const viewerActiveFixture = computed(() => {
+  if (!viewerOpenFixtures.value.length) return null
+  const idx = Math.min(activeFixtureIndex.value, viewerOpenFixtures.value.length - 1)
+  return viewerOpenFixtures.value[idx] || viewerOpenFixtures.value[0]
+})
+
+function cycleNextFixture() {
+  if (viewerOpenFixtures.value.length <= 1) return
+  activeFixtureIndex.value = (activeFixtureIndex.value + 1) % viewerOpenFixtures.value.length
+  loadFixtureSubmissions()
+}
+
+const activeSubmissions = ref<Submission[]>([])
+const loadingActiveSubmissions = ref(false)
+
+async function loadFixtureSubmissions() {
+  if (!viewerActiveFixture.value?.id) {
+    activeSubmissions.value = []
+    return
+  }
+  try {
+    loadingActiveSubmissions.value = true
+    const res = await $api<{ success: boolean; data: { submissions: Submission[] } }>(
+      `/fixtures/${viewerActiveFixture.value.id}/score-submissions`,
+    )
+    activeSubmissions.value = res.data?.submissions || []
+  } catch {
+    activeSubmissions.value = []
+  } finally {
+    loadingActiveSubmissions.value = false
+  }
+}
+
+watch(
+  () => viewerActiveFixture.value?.id,
+  () => {
+    loadFixtureSubmissions()
+  },
+  { immediate: true },
+)
+
+// Watch incoming messages to refresh submission state when a score card arrives
+watch(
+  () => messages.value.length,
+  () => {
+    const latest = messages.value[messages.value.length - 1]
+    if (
+      latest &&
+      (latest.cardType === 'SCORE_SUBMITTED' ||
+        latest.cardType === 'SCORE_CONFIRMED' ||
+        latest.cardType === 'SCORE_CONFLICT')
+    ) {
+      loadFixtureSubmissions()
+    }
+  },
+)
+
+const myActiveEntry = computed(() =>
+  activeSubmissions.value.find(
+    (s) => s.participantId === props.viewerParticipantId && (s.status === 'PENDING' || s.status === 'CONFLICT'),
+  ),
+)
+
+const opponentActiveEntry = computed(() =>
+  activeSubmissions.value.find(
+    (s) => s.participantId !== props.viewerParticipantId && (s.status === 'PENDING' || s.status === 'CONFLICT'),
+  ),
+)
+
+const activeHasConflict = computed(() =>
+  activeSubmissions.value.some((s) => s.status === 'CONFLICT'),
+)
+
+const viewerFixtureState = computed<'none' | 'awaitingOpponent' | 'awaitingMe' | 'conflict'>(() => {
+  if (activeHasConflict.value) return 'conflict'
+  if (myActiveEntry.value && !opponentActiveEntry.value) return 'awaitingOpponent'
+  if (!myActiveEntry.value && opponentActiveEntry.value) return 'awaitingMe'
+  return 'none'
+})
+
+const isViewerHome = computed(() => {
+  return viewerActiveFixture.value?.homeTeamId === props.viewerParticipantId
+})
+
+const activeHomeName = computed(() => {
+  const f = viewerActiveFixture.value
+  return f?.homeTeam?.customName ?? f?.homeTeam?.team?.name ?? 'Home'
+})
+
+const activeAwayName = computed(() => {
+  const f = viewerActiveFixture.value
+  return f?.awayTeam?.customName ?? f?.awayTeam?.team?.name ?? 'Away'
+})
+
+// Modals state
+const scoreModalOpen = ref(false)
+const scoreModalFixture = ref<any>(null)
+const scoreModalPrefill = ref<{ home?: number | null; away?: number | null; note?: string } | null>(null)
+const scoreModalMode = ref<'submit' | 'dispute' | 'edit'>('submit')
+
+const proofLightboxOpen = ref(false)
+const proofLightboxUrl = ref<string | null>(null)
+const proofLightboxTitle = ref<string>('')
+
+function openProof(url: string | null, title = 'Screenshot evidence') {
+  if (!url) return
+  proofLightboxUrl.value = url
+  proofLightboxTitle.value = title
+  proofLightboxOpen.value = true
+}
+
+function openSubmitModalForActive() {
+  if (!viewerActiveFixture.value) return
+  scoreModalFixture.value = viewerActiveFixture.value
+  scoreModalMode.value = myActiveEntry.value ? 'edit' : 'submit'
+  scoreModalPrefill.value = myActiveEntry.value
+    ? { home: myActiveEntry.value.homeScore, away: myActiveEntry.value.awayScore, note: myActiveEntry.value.note || '' }
+    : null
+  scoreModalOpen.value = true
+}
+
+function openDisputeModalForActive() {
+  if (!viewerActiveFixture.value) return
+  scoreModalFixture.value = viewerActiveFixture.value
+  scoreModalMode.value = 'dispute'
+  scoreModalPrefill.value = opponentActiveEntry.value
+    ? { home: opponentActiveEntry.value.homeScore, away: opponentActiveEntry.value.awayScore }
+    : null
+  scoreModalOpen.value = true
+}
+
+const quickConfirming = ref(false)
+async function confirmOpponentScore() {
+  if (!viewerActiveFixture.value?.id || !opponentActiveEntry.value) return
+  quickConfirming.value = true
+  try {
+    const res = await $api<{ success: boolean; data: { state: string } }>(
+      `/fixtures/${viewerActiveFixture.value.id}/score-submissions`,
+      {
+        method: 'POST',
+        body: {
+          homeScore: opponentActiveEntry.value.homeScore,
+          awayScore: opponentActiveEntry.value.awayScore,
+        },
+      },
+    )
+    toast.add({
+      title: 'Result confirmed ✅ Match verified!',
+      color: 'success',
+    })
+    await loadFixtureSubmissions()
+  } catch (err: any) {
+    handleError(err, { title: 'Confirmation failed' })
+  } finally {
+    quickConfirming.value = false
+  }
+}
+
+function getCardFixture(card: ReturnType<typeof scoreCard>) {
+  if (!card.fixtureId) return null
+  return (loadedFixtures.value || []).find((f: any) => f.id === card.fixtureId) || null
+}
+
+function isOpponentOfCard(m: ChatMessage) {
+  if (!props.viewerParticipantId) return false
+  const card = scoreCard(m)
+
+  if (card.submittedParticipantId && (card.homeTeamId || card.awayTeamId)) {
+    const isParticipant = props.viewerParticipantId === card.homeTeamId || props.viewerParticipantId === card.awayTeamId
+    const isSubmitter = props.viewerParticipantId === card.submittedParticipantId
+    return isParticipant && !isSubmitter
+  }
+
+  const f = getCardFixture(card)
+  if (f) {
+    const isParticipant = f.homeTeamId === props.viewerParticipantId || f.awayTeamId === props.viewerParticipantId
+    const isSubmitter =
+      (myActiveEntry.value && f.id === viewerActiveFixture.value?.id) ||
+      card.submittedParticipantId === props.viewerParticipantId
+    return isParticipant && !isSubmitter
+  }
+
+  return false
+}
+
+function isSubmitterOfCard(m: ChatMessage) {
+  if (!props.viewerParticipantId) return false
+  const card = scoreCard(m)
+  if (card.submittedParticipantId) {
+    return card.submittedParticipantId === props.viewerParticipantId
+  }
+  const f = getCardFixture(card)
+  if (f && f.id === viewerActiveFixture.value?.id && myActiveEntry.value) {
+    return true
+  }
+  return false
+}
+
+const cardConfirmingFixtureId = ref<string | null>(null)
+async function confirmCardScore(card: ReturnType<typeof scoreCard>) {
+  if (!card.fixtureId || !card.score) return
+  cardConfirmingFixtureId.value = card.fixtureId
+  try {
+    const res = await $api<{ success: boolean; data: { state: string } }>(
+      `/fixtures/${card.fixtureId}/score-submissions`,
+      {
+        method: 'POST',
+        body: {
+          homeScore: card.score.home,
+          awayScore: card.score.away,
+        },
+      },
+    )
+    toast.add({
+      title: 'Result confirmed ✅ Match verified!',
+      color: 'success',
+    })
+    await loadFixtureSubmissions()
+  } catch (err: any) {
+    handleError(err, { title: 'Confirmation failed' })
+  } finally {
+    cardConfirmingFixtureId.value = null
+  }
+}
+
+function disputeCardScore(card: ReturnType<typeof scoreCard>) {
+  const f = getCardFixture(card) || {
+    id: card.fixtureId,
+    homeTeam: { customName: card.home },
+    awayTeam: { customName: card.away },
+    homeTeamId: card.homeTeamId,
+    awayTeamId: card.awayTeamId,
+    roundName: 'Match',
+    round: 1,
+  }
+  scoreModalFixture.value = f
+  scoreModalMode.value = 'dispute'
+  scoreModalPrefill.value = card.score ? { home: card.score.home, away: card.score.away } : null
+  scoreModalOpen.value = true
+}
+
+function openSubmitModalForCard(card: ReturnType<typeof scoreCard>) {
+  const f = getCardFixture(card) || {
+    id: card.fixtureId,
+    homeTeam: { customName: card.home },
+    awayTeam: { customName: card.away },
+    homeTeamId: card.homeTeamId,
+    awayTeamId: card.awayTeamId,
+    roundName: 'Match',
+    round: 1,
+  }
+  scoreModalFixture.value = f
+  scoreModalMode.value = 'edit'
+  scoreModalPrefill.value = card.score ? { home: card.score.home, away: card.score.away } : null
+  scoreModalOpen.value = true
+}
+
+function canSubmitForFixtureCard(m: ChatMessage) {
+  if (!props.viewerParticipantId) return false
+  const p = m.cardPayload ?? {}
+  if (p.homeTeamId === props.viewerParticipantId || p.awayTeamId === props.viewerParticipantId) {
+    return true
+  }
+  const f = (loadedFixtures.value || []).find((x: any) => x.id === p.fixtureId)
+  if (f && (f.homeTeamId === props.viewerParticipantId || f.awayTeamId === props.viewerParticipantId)) {
+    return f.status !== 'COMPLETED' && f.status !== 'CANCELLED'
+  }
+  return false
+}
+
+function openSubmitModalForFixtureCard(m: ChatMessage) {
+  const p = m.cardPayload ?? {}
+  const card = fixtureCard(m)
+  const f = (loadedFixtures.value || []).find((x: any) => x.id === p.fixtureId) || {
+    id: p.fixtureId,
+    homeTeam: { customName: card.home },
+    awayTeam: { customName: card.away },
+    homeTeamId: p.homeTeamId,
+    awayTeamId: p.awayTeamId,
+    roundName: card.round,
+    round: 1,
+  }
+  scoreModalFixture.value = f
+  scoreModalMode.value = 'submit'
+  scoreModalPrefill.value = null
+  scoreModalOpen.value = true
+}
+
+function onScoreModalSubmitted(result: { state: string }) {
+  loadFixtureSubmissions()
+  emit('score-submitted', result)
+}
 </script>
 
 <template>
@@ -455,6 +833,128 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
           :aria-label="fullscreen ? 'Exit full screen' : 'Full screen'"
           @click="toggleFullscreen"
         />
+      </div>
+    </div>
+
+    <!-- Active Esports Match HUD -->
+    <div
+      v-if="viewerActiveFixture && !isManage && !chatDisabled"
+      class="border-b border-gray-200 dark:border-white/10 bg-gray-50/75 dark:bg-white/[0.02] px-4 py-2.5 sm:px-5 flex flex-wrap items-center justify-between gap-3 text-xs"
+      :class="fullscreen && 'max-w-3xl w-full mx-auto border-x-0'"
+    >
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gray-200/70 dark:bg-white/10 text-xs shrink-0 font-mono">
+          🎮
+        </span>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              {{ viewerActiveFixture.roundName || `Round ${viewerActiveFixture.round}` }}
+            </span>
+            <span
+              v-if="viewerFixtureState === 'awaitingOpponent'"
+              class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full"
+            >
+              ⏳ Awaiting opponent
+            </span>
+            <span
+              v-else-if="viewerFixtureState === 'awaitingMe'"
+              class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full"
+            >
+              ⚡ Opponent reported
+            </span>
+            <span
+              v-else-if="viewerFixtureState === 'conflict'"
+              class="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded-full"
+            >
+              ⚠ Score mismatch
+            </span>
+          </div>
+          <p class="font-bold text-gray-900 dark:text-white truncate mt-0.5">
+            <span :class="isViewerHome ? 'underline decoration-gray-400 underline-offset-2' : ''">{{ activeHomeName }}</span>
+            <span v-if="isViewerHome" class="text-[9px] font-bold text-gray-500 ml-0.5">(You)</span>
+            <span class="mx-1 text-gray-400 font-normal">vs</span>
+            <span :class="!isViewerHome ? 'underline decoration-gray-400 underline-offset-2' : ''">{{ activeAwayName }}</span>
+            <span v-if="!isViewerHome" class="text-[9px] font-bold text-gray-500 ml-0.5">(You)</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Action buttons based on state -->
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Case 1: Opponent reported, awaiting viewer to confirm/dispute -->
+        <template v-if="viewerFixtureState === 'awaitingMe'">
+          <span class="font-mono font-bold text-gray-900 dark:text-white tabular-nums px-1 text-sm">
+            {{ opponentActiveEntry?.homeScore }} – {{ opponentActiveEntry?.awayScore }}
+          </span>
+          <UButton
+            size="xs"
+            color="primary"
+            icon="i-heroicons-check"
+            :loading="quickConfirming"
+            label="Confirm"
+            @click="confirmOpponentScore"
+          />
+          <UButton
+            size="xs"
+            variant="outline"
+            color="neutral"
+            icon="i-heroicons-exclamation-triangle"
+            label="Dispute"
+            @click="openDisputeModalForActive"
+          />
+          <button
+            v-if="opponentActiveEntry?.evidenceUrl"
+            type="button"
+            class="text-gray-500 hover:text-gray-900 dark:hover:text-white text-[11px] font-medium"
+            @click="openProof(opponentActiveEntry.evidenceUrl, `${opponentActiveEntry.participantName}'s proof`)"
+          >
+            🖼 Proof
+          </button>
+        </template>
+
+        <!-- Case 2: Viewer submitted, waiting for opponent -->
+        <template v-else-if="viewerFixtureState === 'awaitingOpponent'">
+          <span class="font-mono font-bold text-gray-900 dark:text-white tabular-nums px-1 text-sm">
+            {{ myActiveEntry?.homeScore }} – {{ myActiveEntry?.awayScore }}
+          </span>
+          <UButton
+            size="xs"
+            variant="outline"
+            color="neutral"
+            icon="i-heroicons-pencil"
+            label="Edit"
+            @click="openSubmitModalForActive"
+          />
+        </template>
+
+        <!-- Case 3: Conflict -->
+        <template v-else-if="viewerFixtureState === 'conflict'">
+          <span class="text-xs text-red-500 font-medium">Under admin review</span>
+        </template>
+
+        <!-- Case 4: Due (not submitted yet) -->
+        <template v-else>
+          <UButton
+            size="xs"
+            color="primary"
+            icon="i-heroicons-trophy"
+            label="Submit score"
+            @click="openSubmitModalForActive"
+          />
+        </template>
+
+        <!-- Multiple fixtures switcher if player has more than 1 open fixture -->
+        <div v-if="viewerOpenFixtures.length > 1" class="relative">
+          <button
+            type="button"
+            class="text-[11px] font-semibold text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-1 py-0.5"
+            title="Switch match"
+            @click="cycleNextFixture"
+          >
+            ({{ activeFixtureIndex + 1 }}/{{ viewerOpenFixtures.length }}) ↻
+          </button>
+        </div>
       </div>
     </div>
 
@@ -622,12 +1122,22 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
                   {{ fixtureCard(m).home }} <span class="font-mono text-xs text-gray-400 font-normal">vs</span> {{ fixtureCard(m).away }}
                 </p>
                 <p v-if="fixtureCard(m).meta" class="text-[11.5px] text-gray-500 mt-1">{{ fixtureCard(m).meta }}</p>
-                <NuxtLink
-                  v-if="fixtureCard(m).href"
-                  :to="cardTo(fixtureCard(m).href)"
-                  :external="isManage"
-                  class="inline-flex items-center gap-1 mt-2 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
-                >View fixture →</NuxtLink>
+                <div class="flex items-center gap-2 mt-2">
+                  <NuxtLink
+                    v-if="fixtureCard(m).href"
+                    :to="cardTo(fixtureCard(m).href)"
+                    :external="isManage"
+                    class="inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
+                  >View fixture →</NuxtLink>
+                  <UButton
+                    v-if="canSubmitForFixtureCard(m)"
+                    size="xs"
+                    color="primary"
+                    icon="i-heroicons-trophy"
+                    label="Submit score"
+                    @click="openSubmitModalForFixtureCard(m)"
+                  />
+                </div>
               </div>
 
               <!-- ranked rows card (table / top scorers) -->
@@ -658,21 +1168,100 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
                 v-if="m.cardType === 'SCORE_SUBMITTED' && m.cardPayload"
                 class="mt-2 max-w-md rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-3.5"
               >
-                <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">⏳ Score submitted — awaiting opponent</p>
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                  <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                    ⏳ Score submitted — awaiting opponent
+                  </p>
+                  <span
+                    v-if="isOpponentOfCard(m)"
+                    class="text-[9.5px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full"
+                  >
+                    Your response needed
+                  </span>
+                </div>
                 <p class="text-sm font-bold text-gray-900 dark:text-white">
                   {{ scoreCard(m).submittedBy }} <span class="text-gray-400 font-normal text-xs">reports</span>
-                  <span class="font-mono text-lg mx-1">{{ scoreCard(m).score?.home }} – {{ scoreCard(m).score?.away }}</span>
+                  <span class="font-mono text-lg mx-1 tabular-nums">{{ scoreCard(m).score?.home }} – {{ scoreCard(m).score?.away }}</span>
                   <span class="text-gray-400 font-normal text-xs"> in {{ scoreCard(m).home }} vs {{ scoreCard(m).away }}</span>
                 </p>
                 <p class="text-[11.5px] text-gray-500 mt-1">
-                  {{ scoreCard(m).evidenceAttached ? 'Evidence attached 🖼 · ' : '' }}The opponent submits their own score — if it matches, the result goes official.
+                  {{ scoreCard(m).evidenceAttached ? 'Evidence attached 🖼 · ' : '' }}The opponent confirms or counter-reports with evidence.
                 </p>
-                <NuxtLink
-                  v-if="scoreCard(m).href"
-                  :to="cardTo(scoreCard(m).href)"
-                  :external="isManage"
-                  class="inline-flex items-center gap-1 mt-2 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
-                >Submit your score →</NuxtLink>
+
+                <!-- Interactive opponent actions -->
+                <div
+                  v-if="isOpponentOfCard(m)"
+                  class="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-gray-200 dark:border-white/10"
+                >
+                  <UButton
+                    size="xs"
+                    color="primary"
+                    icon="i-heroicons-check"
+                    :loading="cardConfirmingFixtureId === scoreCard(m).fixtureId"
+                    :label="`Confirm ${scoreCard(m).score?.home}–${scoreCard(m).score?.away}`"
+                    @click="confirmCardScore(scoreCard(m))"
+                  />
+                  <UButton
+                    size="xs"
+                    variant="outline"
+                    color="neutral"
+                    icon="i-heroicons-exclamation-triangle"
+                    label="Dispute / Counter"
+                    @click="disputeCardScore(scoreCard(m))"
+                  />
+                  <button
+                    v-if="scoreCard(m).evidenceUrl"
+                    type="button"
+                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-1.5 py-1"
+                    @click="openProof(scoreCard(m).evidenceUrl, `${scoreCard(m).submittedBy}'s proof`)"
+                  >
+                    🖼 View proof
+                  </button>
+                </div>
+
+                <!-- If viewer is the submitter -->
+                <div
+                  v-else-if="isSubmitterOfCard(m)"
+                  class="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-200 dark:border-white/10 text-[11.5px] text-gray-500"
+                >
+                  <span>Your submission · awaiting opponent</span>
+                  <div class="flex items-center gap-2">
+                    <button
+                      v-if="scoreCard(m).evidenceUrl"
+                      type="button"
+                      class="text-[11px] font-semibold text-gray-600 dark:text-gray-400 hover:underline"
+                      @click="openProof(scoreCard(m).evidenceUrl, 'Your proof screenshot')"
+                    >
+                      🖼 Proof
+                    </button>
+                    <button
+                      type="button"
+                      class="text-[11px] font-semibold text-gray-800 dark:text-gray-200 hover:underline"
+                      @click="openSubmitModalForCard(scoreCard(m))"
+                    >
+                      Edit score
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Fallback link for third-party viewers -->
+                <div v-else-if="scoreCard(m).href" class="mt-2 flex items-center gap-2">
+                  <NuxtLink
+                    :to="cardTo(scoreCard(m).href)"
+                    :external="isManage"
+                    class="inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
+                  >
+                    View fixture →
+                  </NuxtLink>
+                  <button
+                    v-if="scoreCard(m).evidenceUrl"
+                    type="button"
+                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 dark:text-gray-300 hover:underline px-1.5 py-1"
+                    @click="openProof(scoreCard(m).evidenceUrl, `${scoreCard(m).submittedBy}'s proof`)"
+                  >
+                    🖼 Proof
+                  </button>
+                </div>
               </div>
 
               <!-- result confirmed -->
@@ -700,10 +1289,18 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
                 <div
                   v-for="claim in scoreCard(m).claims"
                   :key="claim.participantName"
-                  class="flex items-center justify-between gap-3 py-1 text-[12.5px] border-t border-gray-100 dark:border-white/[0.06] first:border-t-0"
+                  class="flex items-center justify-between gap-3 py-1.5 text-[12.5px] border-t border-gray-100 dark:border-white/[0.06] first:border-t-0"
                 >
-                  <span class="text-gray-700 dark:text-gray-300">
-                    {{ claim.participantName }}'s entry <span v-if="claim.evidenceUrl" class="text-gray-400">· 🖼</span>
+                  <span class="text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                    <span>{{ claim.participantName }}'s entry</span>
+                    <button
+                      v-if="claim.evidenceUrl"
+                      type="button"
+                      class="text-[11px] font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white inline-flex items-center gap-0.5 ml-1"
+                      @click="openProof(claim.evidenceUrl, `${claim.participantName}'s proof`)"
+                    >
+                      · 🖼 View proof
+                    </button>
                   </span>
                   <span class="font-mono font-bold text-gray-900 dark:text-white tabular-nums">{{ claim.score.home }} – {{ claim.score.away }}</span>
                 </div>
@@ -939,6 +1536,16 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
           @keydown="onComposerKeydown"
         />
         <UButton
+          v-if="viewerActiveFixture && !isManage"
+          type="button"
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-trophy"
+          title="Report match score"
+          @click="openSubmitModalForActive"
+        />
+        <UButton
           type="button"
           color="primary"
           icon="i-heroicons-paper-airplane"
@@ -992,6 +1599,23 @@ const cardTo = (href: string | null) => (href ? toMain(href) : null)
           <UIcon name="i-heroicons-chevron-double-down" class="w-5 h-5" />
         </button>
       </Transition>
+      <!-- Esports Score Submit Modal -->
+      <ChatScoreSubmitModal
+        v-model:open="scoreModalOpen"
+        :fixture="scoreModalFixture"
+        :tournament="tournament"
+        :viewer-participant-id="viewerParticipantId"
+        :prefill="scoreModalPrefill"
+        :mode="scoreModalMode"
+        @submitted="onScoreModalSubmitted"
+      />
+
+      <!-- Screenshot Proof Lightbox Modal -->
+      <ChatProofLightboxModal
+        v-model:open="proofLightboxOpen"
+        :image-url="proofLightboxUrl"
+        :title="proofLightboxTitle"
+      />
     </template>
   </div>
 </template>

@@ -133,7 +133,7 @@ onBeforeUnmount(() => {
 // are present in the initial HTML for social media scrapers.
 const runtimeConfig = useRuntimeConfig()
 
-const { data: overviewData, status, error: fetchError } = await useAsyncData(
+const { data: overviewData, status, error: fetchError, refresh: refreshOverview } = await useAsyncData(
   `tournament-overview-${tournamentId}`,
   () => $fetch<{
     success: boolean;
@@ -1384,6 +1384,9 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :paragee-bot="tournament.parageeBot"
               :member-count="participants.length || undefined"
               :members="chatMembers"
+              :fixtures="fixtures"
+              :tournament="tournament"
+              @score-submitted="refreshOverview"
             />
           </div>
         </div>
