@@ -142,6 +142,7 @@ const botToggleRows = [
       :paragee-bot="form.parageeBot"
       :member-count="participants.length || undefined"
       :members="chatMembers"
+      :tournament="tournament"
       @review-dispute="reviewDispute"
       @enable-chat="enableChat"
     />
