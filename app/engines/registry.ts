@@ -12,6 +12,7 @@ import { swimmingEngine } from '~/engines/swimming'
 import { cyclingEngine } from '~/engines/cycling'
 import { weightliftingEngine } from '~/engines/weightlifting'
 import { boxingEngine, judoEngine, taekwondoEngine, wrestlingEngine } from '~/engines/combat'
+import { esportsEngine } from '~/engines/esports'
 
 const engines: Record<string, SportEngine> = {
   football: footballEngine,
@@ -30,7 +31,30 @@ const engines: Record<string, SportEngine> = {
   judo: judoEngine,
   taekwondo: taekwondoEngine,
   wrestling: wrestlingEngine,
+  esports: esportsEngine,
 }
+
+const ESPORTS_ALIASES = new Set([
+  'esports',
+  'esport',
+  'fifa',
+  'efootball',
+  'eafc',
+  'pes',
+  'valorant',
+  'cod',
+  'callofduty',
+  'rocketleague',
+  'tekken',
+  'streetfighter',
+  'pubg',
+  'apex',
+  'fortnite',
+  'lol',
+  'dota',
+  'nba2k',
+  'madden',
+])
 
 /**
  * Resolve the sport engine for a tournament's `sport` string.
@@ -40,6 +64,7 @@ const engines: Record<string, SportEngine> = {
 export function resolveEngine(sport?: string | null): SportEngine {
   // Normalize: "Table Tennis" / "table-tennis" / "TableTennis" → "tabletennis"
   const key = (sport ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  if (ESPORTS_ALIASES.has(key)) return esportsEngine
   return engines[key] ?? footballEngine
 }
 

@@ -30,6 +30,7 @@ const tabInactiveClass = computed(() =>
 // State
 const tournament = ref<Tournament | null>(null);
 const fixture = ref<Fixture | null>(null);
+const { allowsSelfReporting } = useTournamentFeatures(tournament);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const activeTab = ref<"events" | "info" | "lineups" | "highlights">("events");
@@ -987,7 +988,7 @@ const awaySubs = computed(() => {
 
       <!-- Score submissions (esports double-entry — renders only for fixture participants) -->
       <MarketingSubmitScoreCard
-        v-if="fixture && tournament"
+        v-if="allowsSelfReporting && fixture && tournament"
         :fixture="fixture"
         :tournament="tournament"
         @updated="fetchData"
