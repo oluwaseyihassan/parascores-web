@@ -335,7 +335,7 @@ export function useChatNotifications(options: UseChatNotificationsOptions) {
     unreadBackgroundCount++
 
     const now = Date.now()
-    if (now - lastNotificationTime < 1000) return
+    if (now - lastNotificationTime < 400) return
     lastNotificationTime = now
 
     const tId = toValue(options.tournamentId)
@@ -354,10 +354,16 @@ export function useChatNotifications(options: UseChatNotificationsOptions) {
       renotify: true,
     }
 
-    // Prefer service worker showNotification for robust background clicks & PWA support
+    // Prefer service worker showNotification for robust background clicks & PWA support.
+    // Use getRegistration / timeout race so it never hangs if a service worker is not active.
     if ('serviceWorker' in navigator) {
       try {
-        const reg = await navigator.serviceWorker.ready
+        const reg =
+          (await navigator.serviceWorker.getRegistration()) ||
+          (await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 400)),
+          ]))
         if (reg && 'showNotification' in reg) {
           await reg.showNotification(notificationTitle, optionsPayload)
           return
