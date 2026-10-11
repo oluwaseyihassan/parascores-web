@@ -127,11 +127,10 @@ async function enableChat() {
 }
 
 const botToggleRows = [
-  { key: 'fixtures', label: 'Fixtures & schedule', hint: '"When is my next match?" — fixture card answers' },
-  { key: 'standings', label: 'Standings & stats', hint: '"Who\'s top scorer?" · "Show the table"' },
-  { key: 'rules', label: 'House rules', hint: 'Answers from your rules text' },
-  { key: 'quickChips', label: 'Quick-ask chips', hint: 'Tap-to-ask suggestions above the fan composer' },
-  { key: 'llm', label: 'Free-form AI answers', hint: 'Grounded AI for open questions — requires AI_API_KEY on the server' },
+  { key: 'fixtures', label: 'Fixtures & schedule', hint: 'Answers /next and "When is my next match?" with live fixture cards' },
+  { key: 'standings', label: 'Standings & stats', hint: 'Answers /table and top scorers with instant table snapshot' },
+  { key: 'rules', label: 'House rules', hint: 'Answers /rules directly from your official tournament rules' },
+  { key: 'quickChips', label: 'Quick-action chips', hint: 'Shows tap-to-ask chips and slash commands (/next, /table, /score) above composer' },
 ] as const
 </script>
 
@@ -209,17 +208,17 @@ const botToggleRows = [
         </div>
       </section>
 
-      <!-- Paragee -->
+      <!-- Tournament Assistant -->
       <section class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
         <div class="px-4 sm:px-5 py-3.5 border-b border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">✨ Paragee</h2>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">🤖 Tournament Bot</h2>
           <div class="flex items-center gap-2">
             <span
               v-if="(tournament?.botCalls ?? 0) > 0"
               class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 tabular-nums"
-              title="Times Paragee has answered a question in this room"
+              title="Times the bot has answered a question in this room"
             >{{ tournament!.botCalls }} {{ tournament!.botCalls === 1 ? 'call' : 'calls' }}</span>
-            <span class="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10">Template tier</span>
+            <span class="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Fast Ops</span>
           </div>
         </div>
         <div class="p-4 sm:p-5 space-y-3">
@@ -227,7 +226,7 @@ const botToggleRows = [
             <div class="flex-1 pr-3">
               <p class="font-medium text-sm text-gray-900 dark:text-white">Bot enabled</p>
               <p class="text-[11px] text-gray-500 mt-0.5">
-                Answers player questions from live tournament data. Posts as <span class="font-semibold text-gray-900 dark:text-white">Paragee</span> with a distinct message rail.
+                Answers player schedule, standing, and rule questions instantly from tournament data. Posts as <span class="font-semibold text-gray-900 dark:text-white">Paragee</span>.
               </p>
             </div>
             <USwitch v-model="form.parageeBot.enabled" />
@@ -244,7 +243,7 @@ const botToggleRows = [
           </div>
 
           <p class="text-[11px] text-gray-400 dark:text-gray-500">
-            Template answers (fixtures, table, top scorers, rules) never invent data. With Free-form AI on, open questions get grounded answers from live tournament data — sensitive topics always go to you.
+            All answers (fixtures, standings, rules) are 100% deterministic and pulled live from tournament data with zero external AI latency or hallucinations.
           </p>
           <div class="flex justify-end">
             <UButton type="button" color="primary" size="sm" label="Save settings" icon="i-heroicons-check" :loading="saving" @click="saveSettings" />

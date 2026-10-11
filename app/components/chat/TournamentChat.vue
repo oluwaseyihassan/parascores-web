@@ -165,12 +165,12 @@ const quickChips = computed(() => {
   return chips
 })
 
-// Composer hint: only tease @paragee when the bot can actually answer
+// Composer hint: show slash command support when bot or self-reporting is active
 const composerPlaceholder = computed(() => {
   if (props.canPost === 'organizer') return 'Post as Organizer — announcements get a gold rail…'
-  return botActive.value
-    ? 'Message the room… (Enter to send · @ to mention · /score to report score)'
-    : 'Message the room… (Enter to send · @ to mention · /score to report score)'
+  return botActive.value || allowsSelfReporting.value
+    ? 'Message the room… (Type / for commands · @ to mention)'
+    : 'Message the room… (Enter to send · @ to mention)'
 })
 
 function askChip(label: string) {
@@ -178,19 +178,17 @@ function askChip(label: string) {
     openSubmitModalForActive()
     return
   }
-  draft.value = `@paragee ${label === 'Rules' ? 'what are the rules?' : label.toLowerCase()}?`
+  draft.value = `@paragee ${label === 'Rules' ? 'rules' : label.toLowerCase()}`
   sendDraft()
 }
 
 async function sendDraft() {
   const trimmed = draft.value.trim()
-  if (trimmed === '/score') {
+  const matchCmd = availableSlashCommands.value.find((c) => c.cmd.toLowerCase() === trimmed.toLowerCase())
+  if (matchCmd) {
     draft.value = ''
-    if (viewerActiveFixture.value) {
-      openSubmitModalForActive()
-    } else {
-      toast.add({ title: 'No active match found to submit score for', color: 'neutral' })
-    }
+    closeSlash()
+    matchCmd.action()
     return
   }
   const ok = await send(draft.value, replyTarget.value?.id ?? null)
@@ -232,8 +230,125 @@ function jumpTo(id: string) {
   setTimeout(() => { if (flashId.value === id) flashId.value = null }, 1200)
 }
 
+// ─── Slash command autocomplete ─────────────────────────
+interface SlashCommand {
+  cmd: string
+  label: string
+  desc: string
+  icon: string
+  action: () => void
+}
+
+const slashOpen = ref(false)
+const slashIndex = ref(0)
+const slashQuery = ref('')
+
+const availableSlashCommands = computed<SlashCommand[]>(() => {
+  const cmds: SlashCommand[] = [
+    {
+      cmd: '/next',
+      label: '/next',
+      desc: 'Next match countdown & opponent',
+      icon: 'i-heroicons-clock',
+      action: () => {
+        draft.value = '@paragee my next match'
+        sendDraft()
+      },
+    },
+    {
+      cmd: '/table',
+      label: '/table',
+      desc: 'Current standings table snapshot',
+      icon: 'i-heroicons-table-cells',
+      action: () => {
+        draft.value = '@paragee current table'
+        sendDraft()
+      },
+    },
+    {
+      cmd: '/topscorer',
+      label: '/topscorer',
+      desc: 'Top scorers leaderboard',
+      icon: 'i-heroicons-chart-bar',
+      action: () => {
+        draft.value = '@paragee top scorer'
+        sendDraft()
+      },
+    },
+    {
+      cmd: '/rules',
+      label: '/rules',
+      desc: 'Official tournament house rules',
+      icon: 'i-heroicons-document-text',
+      action: () => {
+        draft.value = '@paragee rules'
+        sendDraft()
+      },
+    },
+  ]
+
+  if (allowsSelfReporting.value) {
+    cmds.unshift({
+      cmd: '/score',
+      label: '/score',
+      desc: 'Submit or verify match score',
+      icon: 'i-heroicons-trophy',
+      action: () => {
+        draft.value = ''
+        if (viewerActiveFixture.value) {
+          openSubmitModalForActive()
+        } else {
+          toast.add({ title: 'No active match found to submit score for', color: 'neutral' })
+        }
+      },
+    })
+  }
+
+  const q = slashQuery.value.toLowerCase().trim()
+  if (!q) return cmds
+  return cmds.filter((c) => c.cmd.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q))
+})
+
+function executeSlash(c: SlashCommand) {
+  closeSlash()
+  c.action()
+}
+
+function closeSlash() {
+  slashOpen.value = false
+  slashQuery.value = ''
+  slashIndex.value = 0
+}
+
 function onComposerKeydown(e: KeyboardEvent) {
-  // mention autocomplete navigation takes precedence
+  // slash command navigation takes precedence when slash menu is open
+  if (slashOpen.value) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      slashIndex.value = (slashIndex.value + 1) % availableSlashCommands.value.length
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      slashIndex.value = (slashIndex.value - 1 + availableSlashCommands.value.length) % availableSlashCommands.value.length
+      return
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      const c = availableSlashCommands.value[slashIndex.value]
+      if (c) {
+        e.preventDefault()
+        executeSlash(c)
+        return
+      }
+    }
+    if (e.key === 'Escape') {
+      e.stopPropagation()
+      closeSlash()
+      return
+    }
+  }
+
+  // mention autocomplete navigation
   if (mentionOpen.value) {
     if (e.key === 'ArrowDown') { e.preventDefault(); mentionIndex.value = (mentionIndex.value + 1) % mentionMatches.value.length; return }
     if (e.key === 'ArrowUp') { e.preventDefault(); mentionIndex.value = (mentionIndex.value - 1 + mentionMatches.value.length) % mentionMatches.value.length; return }
@@ -263,7 +378,7 @@ const mentionMatches = computed<MentionItem[]>(() => {
   const q = mentionQuery.value.toLowerCase().trim()
   const list: MentionItem[] = []
   if (props.parageeBot?.enabled && (!q || 'paragee'.includes(q))) {
-    list.push({ id: 'paragee', name: 'paragee', sub: 'AI bot — fixtures, table, top scorer, rules', bot: true })
+    list.push({ id: 'paragee', name: 'paragee', sub: 'Tournament bot — schedule, table, top scorers, rules', bot: true })
   }
   for (const m of props.members) {
     if (!q || m.name.toLowerCase().includes(q)) {
@@ -281,6 +396,18 @@ function composerTextarea(): HTMLTextAreaElement | null {
 
 watch(draft, (val) => {
   emitTyping(!!val.trim())
+
+  // Slash commands trigger when text begins with '/' without spaces
+  if (val.startsWith('/') && !val.includes(' ') && !val.includes('\n')) {
+    slashQuery.value = val.slice(1)
+    slashOpen.value = availableSlashCommands.value.length > 0
+    slashIndex.value = 0
+    closeMention()
+    return
+  } else {
+    closeSlash()
+  }
+
   if (skipMentionWatch) { skipMentionWatch = false; return }
   const el = composerTextarea()
   const caret = el?.selectionStart ?? val.length
@@ -1646,6 +1773,35 @@ function onScoreModalSubmitted(result: { state: string }) {
             @click="cancelReply"
           />
         </div>
+        <!-- Slash command autocomplete -->
+        <div
+          v-if="slashOpen"
+          class="absolute bottom-full left-4 sm:left-5 mb-2 w-72 max-w-[calc(100%-2rem)] rounded-xl border border-gray-200/90 dark:border-white/[0.12] bg-white dark:bg-[#1b1d24] shadow-xl shadow-black/15 dark:shadow-black/60 overflow-hidden z-30"
+        >
+          <p class="px-3 py-1.5 text-[9.5px] font-extrabold uppercase tracking-widest text-gray-400 border-b border-gray-100 dark:border-white/[0.06]">
+            Commands
+          </p>
+          <button
+            v-for="(c, i) in availableSlashCommands"
+            :key="c.cmd"
+            type="button"
+            class="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer"
+            :class="i === slashIndex ? 'bg-gray-100 dark:bg-white/10' : 'hover:bg-gray-50 dark:hover:bg-white/[0.04]'"
+            @mousedown.prevent="executeSlash(c)"
+            @mouseenter="slashIndex = i"
+          >
+            <span
+              class="w-6 h-6 rounded-lg shrink-0 flex items-center justify-center text-xs bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300"
+            >
+              <UIcon :name="c.icon" class="w-3.5 h-3.5" />
+            </span>
+            <span class="min-w-0">
+              <span class="block text-[12.5px] font-semibold text-gray-900 dark:text-white truncate font-mono">{{ c.label }}</span>
+              <span class="block text-[10.5px] text-gray-400 truncate">{{ c.desc }}</span>
+            </span>
+          </button>
+        </div>
+
         <!-- @mention autocomplete -->
         <div
           v-if="mentionOpen"
