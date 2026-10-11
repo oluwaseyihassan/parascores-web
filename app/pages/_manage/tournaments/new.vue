@@ -417,7 +417,7 @@ function applyAiDraft(d: Record<string, any>) {
     const q = String(d.sport).toLowerCase().replace(/[^a-z0-9]/g, '')
     const engine = engineSports.find((e) => e.key === q || e.label.toLowerCase().replace(/[^a-z0-9]/g, '') === q)
     if (engine) state.sport = engine.label
-    else if (/fifa|efootball|esport|pes/.test(q) && extraSports.includes('Esports')) state.sport = 'Esports'
+    else if (/fifa|efootball|esport|pes|cod|valorant|rocketleague/.test(q)) state.sport = 'Esports'
     else if (extraSports.some((s) => s.toLowerCase() === String(d.sport).toLowerCase())) state.sport = extraSports.find((s) => s.toLowerCase() === String(d.sport).toLowerCase())!
   }
   if (d.type) state.type = d.type
@@ -585,9 +585,8 @@ const visibilityOptions = [
 ]
 
 // Sport options come from the engine registry (registered engines get tailored
-// control surfaces); extras fall back to the default (football) surface
 const engineSports = listEngines()
-const extraSports = ['Cricket', 'Rugby', 'Esports', 'Other']
+const extraSports = ['Cricket', 'Rugby', 'Other']
 
 // Decorative tile icons per engine key (monogram fallback when unmapped)
 const SPORT_ICONS: Record<string, string> = {
@@ -606,6 +605,7 @@ const SPORT_ICONS: Record<string, string> = {
   judo: 'i-lucide-swords',
   taekwondo: 'i-lucide-swords',
   wrestling: 'i-lucide-swords',
+  esports: 'i-lucide-gamepad-2',
 }
 
 const sportIcon = (key: string) => SPORT_ICONS[key] || null

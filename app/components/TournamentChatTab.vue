@@ -12,6 +12,7 @@ const { handleError } = useErrors()
 const toast = useToast()
 
 const tournamentId = computed(() => tournament.value?.id ?? '')
+const { allowsSelfReporting } = useTournamentFeatures(tournament)
 
 // ─── Rail form state (initialized from the tournament) ───
 const form = reactive({
@@ -80,7 +81,10 @@ const disputeModalOpen = ref(false)
 const disputeFixtureId = ref<string | null>(null)
 
 async function loadDisputes() {
-  if (!tournamentId.value) return
+  if (!tournamentId.value || !allowsSelfReporting.value) {
+    disputes.value = []
+    return
+  }
   disputesLoading.value = true
   try {
     const res = await $api<{ success: boolean; data: Dispute[] }>(
@@ -151,7 +155,7 @@ const botToggleRows = [
     <div class="flex flex-col gap-4 sm:gap-5">
       <!-- Open score disputes -->
       <section
-        v-if="disputes.length > 0 || disputesLoading"
+        v-if="allowsSelfReporting && (disputes.length > 0 || disputesLoading)"
         class="bg-white dark:bg-gray-900 border border-red-200 dark:border-red-500/25 rounded-2xl overflow-hidden"
       >
         <div class="px-4 sm:px-5 py-3.5 border-b border-red-100 dark:border-red-500/10 flex items-center justify-between">
@@ -251,6 +255,7 @@ const botToggleRows = [
 
     <!-- Dispute review modal -->
     <ScoreDisputeReviewModal
+      v-if="allowsSelfReporting"
       v-model:open="disputeModalOpen"
       :fixture-id="disputeFixtureId"
       @resolved="loadDisputes"

@@ -33,6 +33,14 @@ export interface SportEngineCapabilities {
   cards: boolean
   /** Man-of-the-match voting */
   motm: boolean
+  /** Whether players can self-report scores via double-entry verification */
+  selfReporting?: boolean
+  /** Whether score submissions support/require image proof (screenshots) */
+  proofEvidence?: boolean
+  /** Whether double-entry conflicts trigger organizer dispute workflows */
+  disputes?: boolean
+  /** Whether participant identity includes gamer tags (PSN, Xbox, Riot ID, Steam) */
+  gamerTags?: boolean
 }
 
 export interface SportEngine {

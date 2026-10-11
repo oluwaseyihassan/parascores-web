@@ -33,6 +33,7 @@ const { handleError } = useErrors()
 const toast = useToast()
 const authStore = useAuthStore()
 const route = useRoute()
+const { allowsSelfReporting } = useTournamentFeatures(toRef(props, 'tournament'))
 
 // Own messages go right: organizers own their ORGANIZER posts (manage),
 // participants own messages authored as their participant identity (fan)
@@ -587,6 +588,7 @@ const viewerOpenFixtures = computed(() => {
 
 const activeFixtureIndex = ref(0)
 const viewerActiveFixture = computed(() => {
+  if (!allowsSelfReporting.value) return null
   if (!viewerOpenFixtures.value.length) return null
   const idx = Math.min(activeFixtureIndex.value, viewerOpenFixtures.value.length - 1)
   return viewerOpenFixtures.value[idx] || viewerOpenFixtures.value[0]
@@ -1748,22 +1750,24 @@ function onScoreModalSubmitted(result: { state: string }) {
         </button>
       </Transition>
       <!-- Esports Score Submit Modal -->
-      <ChatScoreSubmitModal
-        v-model:open="scoreModalOpen"
-        :fixture="scoreModalFixture"
-        :tournament="tournament"
-        :viewer-participant-id="viewerParticipantId"
-        :prefill="scoreModalPrefill"
-        :mode="scoreModalMode"
-        @submitted="onScoreModalSubmitted"
-      />
+      <template v-if="allowsSelfReporting">
+        <ChatScoreSubmitModal
+          v-model:open="scoreModalOpen"
+          :fixture="scoreModalFixture"
+          :tournament="tournament"
+          :viewer-participant-id="viewerParticipantId"
+          :prefill="scoreModalPrefill"
+          :mode="scoreModalMode"
+          @submitted="onScoreModalSubmitted"
+        />
 
-      <!-- Screenshot Proof Lightbox Modal -->
-      <ChatProofLightboxModal
-        v-model:open="proofLightboxOpen"
-        :image-url="proofLightboxUrl"
-        :title="proofLightboxTitle"
-      />
+        <!-- Screenshot Proof Lightbox Modal -->
+        <ChatProofLightboxModal
+          v-model:open="proofLightboxOpen"
+          :image-url="proofLightboxUrl"
+          :title="proofLightboxTitle"
+        />
+      </template>
     </template>
   </div>
 </template>
