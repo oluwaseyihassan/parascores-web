@@ -352,10 +352,10 @@ const sortGroupFixtures = (roundFixtures: Fixture[]) =>
         a.matchNumber - b.matchNumber,
     );
 
-// Groups: live rounds pinned on top, then newest rounds first
+// Groups: live rounds pinned on top, then chronological round order (Matchday 1 first)
 const sortFixtureGroups = (groups: FixtureGroup[]) =>
   groups.sort(
-    (a, b) => Number(b.hasLive) - Number(a.hasLive) || b.round - a.round,
+    (a, b) => Number(b.hasLive) - Number(a.hasLive) || a.round - b.round,
   );
 
 const todayFiltered = (roundFixtures: Fixture[]): Fixture[] => {

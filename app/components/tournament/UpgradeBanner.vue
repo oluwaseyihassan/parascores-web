@@ -116,7 +116,7 @@ async function handleUpgradeTournament() {
         variant="outline"
         color="neutral"
         class="font-bold flex-1 sm:flex-none"
-        to="/billing"
+        to="/billing?tab=plans"
       >
         View plans
       </UButton>

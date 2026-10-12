@@ -131,11 +131,38 @@ const plans = computed<BillingPlan[]>(() => [
   }
 ])
 
+const route = useRoute()
+const router = useRouter()
+
 // Page tabs
 const billingTabs = [
   { label: 'Earnings', value: 'earnings', slot: 'earnings', icon: 'i-heroicons-banknotes' },
   { label: 'Plan & Pricing', value: 'plans', slot: 'plans', icon: 'i-heroicons-sparkles' },
 ]
+
+function resolveTab(tabParam?: unknown): string {
+  const t = String(tabParam ?? '').toLowerCase()
+  return t === 'plans' || t === 'plan' || t === 'pricing' ? 'plans' : 'earnings'
+}
+
+const activeTab = ref(resolveTab(route.query.tab))
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    activeTab.value = resolveTab(newTab)
+  }
+)
+
+function onTabChange(val: string | number) {
+  let next = String(val)
+  if (val === 0 || val === '0') next = 'earnings'
+  else if (val === 1 || val === '1') next = 'plans'
+  activeTab.value = next
+  if (route.query.tab !== next) {
+    router.replace({ query: { ...route.query, tab: next } })
+  }
+}
 
 // Fetch subscription + payment history on mount
 onMounted(async () => {
@@ -327,7 +354,13 @@ function scrollToPlans() {
       />
     </div>
 
-    <UTabs :items="billingTabs" default-value="earnings" variant="link" class="w-full">
+    <UTabs
+      :model-value="activeTab"
+      :items="billingTabs"
+      variant="link"
+      class="w-full"
+      @update:model-value="onTabChange"
+    >
       <!-- ═══ Earnings tab ═══ -->
       <template #earnings>
         <div class="mt-4 flex flex-col gap-3 pb-8">

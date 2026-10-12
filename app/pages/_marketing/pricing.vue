@@ -139,7 +139,7 @@ const isYearly = ref(true)
 function getCtaLink(tier: any) {
   if (tier.name === 'Pro') return undefined
   if (tier.name === 'Enterprise') return '/contact?subject=Enterprise Inquiry'
-  if (authStore.isOrganizer) return toManage('/billing')
+  if (authStore.isOrganizer) return toManage('/billing?tab=plans')
   return '/signup'
 }
 
