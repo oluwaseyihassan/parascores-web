@@ -263,13 +263,13 @@ export function useChatNotifications(options: UseChatNotificationsOptions) {
     }
 
     // Build notification titles & bodies
-    let title = `💬 ${message.author.name} · ${tName}`
+    let title = `⚡ ${message.author.name} · ${tName}`
     if (isOrganizerPost) {
       title = `📢 Announcement · ${tName}`
     } else if (isNameMention || isBroadcast) {
-      title = `💬 @${message.author.name} mentioned you`
+      title = `⚡ @${message.author.name} mentioned you`
     } else if (isReply) {
-      title = `💬 @${message.author.name} replied to you`
+      title = `⚡ @${message.author.name} replied to you`
     } else if (isMyMatch) {
       if (message.cardType === 'SCORE_CONFIRMED') {
         title = `✅ Match score confirmed · ${tName}`

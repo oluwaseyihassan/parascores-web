@@ -279,11 +279,11 @@ const tabItems = computed(() => {
     });
   }
 
-  // Chat tab (esports package — always visible so organizers can enable the room)
+  // Match Hub tab (esports & operations — announcements, self-reporting & results)
   items.push({
     slot: "chat",
-    label: "Chat",
-    icon: "i-heroicons-chat-bubble-left-right",
+    label: "Match Hub",
+    icon: "i-heroicons-bolt",
   });
 
   // Add settings tab

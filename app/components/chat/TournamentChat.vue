@@ -154,6 +154,40 @@ onBeforeUnmount(() => {
 
 const botActive = computed(() => !!props.parageeBot?.enabled)
 
+// Feed activity filter: all, announcements only, match results & disputes only
+const activeFilter = ref<'all' | 'announcements' | 'results'>('all')
+
+const filteredMessages = computed(() => {
+  if (activeFilter.value === 'announcements') {
+    return messages.value.filter((m) => m.authorType === 'ORGANIZER' || !!m.pinnedAt)
+  }
+  if (activeFilter.value === 'results') {
+    return messages.value.filter(
+      (m) =>
+        m.cardType === 'SCORE_SUBMITTED' ||
+        m.cardType === 'SCORE_CONFIRMED' ||
+        m.cardType === 'SCORE_CONFLICT',
+    )
+  }
+  return messages.value
+})
+
+const announcementsCount = computed(
+  () => messages.value.filter((m) => m.authorType === 'ORGANIZER' || !!m.pinnedAt).length,
+)
+const resultsCount = computed(
+  () =>
+    messages.value.filter(
+      (m) =>
+        m.cardType === 'SCORE_SUBMITTED' ||
+        m.cardType === 'SCORE_CONFIRMED' ||
+        m.cardType === 'SCORE_CONFLICT',
+    ).length,
+)
+
+// Expandable house rules & info banner
+const showRules = ref(false)
+
 const quickChips = computed(() => {
   const chips: string[] = []
   if (viewerActiveFixture.value && viewerFixtureState.value !== 'awaitingOpponent' && props.canPost === 'participant') {
@@ -167,10 +201,10 @@ const quickChips = computed(() => {
 
 // Composer hint: show slash command support when bot or self-reporting is active
 const composerPlaceholder = computed(() => {
-  if (props.canPost === 'organizer') return 'Post as Organizer — announcements get a gold rail…'
+  if (props.canPost === 'organizer') return 'Broadcast official announcement to participants…'
   return botActive.value || allowsSelfReporting.value
-    ? 'Message the room… (Type / for commands · @ to mention)'
-    : 'Message the room… (Enter to send · @ to mention)'
+    ? 'Report score, ask bot (/rules, /next, /table) or message organizers…'
+    : 'Message tournament organizers or ask about rules…'
 })
 
 function askChip(label: string) {
@@ -318,6 +352,18 @@ function closeSlash() {
   slashOpen.value = false
   slashQuery.value = ''
   slashIndex.value = 0
+}
+
+function openSlashMenu() {
+  if (slashOpen.value) {
+    closeSlash()
+    return
+  }
+  closeMention()
+  slashQuery.value = ''
+  slashOpen.value = true
+  slashIndex.value = 0
+  nextTick(() => composerTextarea()?.focus())
 }
 
 function onComposerKeydown(e: KeyboardEvent) {
@@ -1011,40 +1057,57 @@ function onScoreModalSubmitted(result: { state: string }) {
 
 <template>
   <div
-    class="bg-white dark:bg-[#111216] border border-gray-200 dark:border-white/[0.08] overflow-hidden flex flex-col shadow-sm"
+    class="bg-page border border-subtle overflow-hidden flex flex-col shadow-xs"
     :class="fullscreen
       ? 'fixed inset-0 z-[60] rounded-none border-0' // above the mobile bottom nav (z-50)
       : 'rounded-2xl'"
   >
-    <!-- header -->
+    <!-- LAYER 1: Header & Context -->
     <div
-      class="px-4 sm:px-5 py-3 border-b border-gray-200/80 dark:border-white/[0.06] bg-gray-50/50 dark:bg-[#14161b] flex items-center justify-between gap-3 flex-wrap"
+      class="px-4 sm:px-5 py-3 border-b border-subtle bg-surface flex items-center justify-between gap-3 flex-wrap"
       :class="fullscreen && 'max-w-3xl w-full mx-auto border-x-0'"
     >
-      <div>
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          💬 Tournament chat
-        </h2>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Approved participants and organizers can post · everyone can read
-        </p>
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 rounded-lg bg-default border border-subtle flex items-center justify-center shrink-0 text-heading">
+          <UIcon name="i-heroicons-bolt" class="w-4 h-4 text-heading" />
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-semibold text-heading truncate">
+              Match Hub
+            </h2>
+            <span class="inline-flex items-center gap-1.5 text-xs text-muted">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
+              <span>{{ online }} online</span>
+            </span>
+            <span v-if="memberCount != null" class="hidden sm:inline text-xs text-muted">· {{ memberCount }} members</span>
+          </div>
+          <p class="text-[11px] text-muted truncate">
+            Official bulletins, score reports & live ops
+          </p>
+        </div>
       </div>
-      <div class="flex items-center gap-2 sm:gap-3 text-[11px] text-gray-400">
-        <span class="flex items-center gap-1.5">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
-          {{ online }} online
-        </span>
-        <span v-if="memberCount != null" class="hidden sm:inline">{{ memberCount }} members</span>
+
+      <div class="flex items-center gap-1 sm:gap-1.5 text-xs">
+        <UButton
+          type="button"
+          size="xs"
+          :variant="showRules ? 'soft' : 'ghost'"
+          :color="showRules ? 'primary' : 'neutral'"
+          icon="i-heroicons-document-text"
+          label="Rules"
+          title="Official tournament rules & guidelines"
+          @click="showRules = !showRules"
+        />
         <UDropdownMenu :items="notificationMenuItems" :content="{ align: 'end', side: 'bottom', sideOffset: 6 }">
           <UButton
             type="button"
             size="xs"
             variant="ghost"
             color="neutral"
-            :class="notifyLevel === 'none' ? 'opacity-40 hover:opacity-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'"
             :icon="notifyLevel === 'none' ? 'i-heroicons-bell-slash' : (notifyLevel === 'all' ? 'i-heroicons-bell-alert' : 'i-heroicons-bell')"
-            :title="notifyLevel === 'none' ? 'Chat notifications: Muted' : (notifyLevel === 'all' ? 'Chat notifications: All messages' : 'Chat notifications: Mentions & highlights')"
-            :aria-label="notifyLevel === 'none' ? 'Chat notifications: Muted' : (notifyLevel === 'all' ? 'Chat notifications: All messages' : 'Chat notifications: Mentions & highlights')"
+            :title="notifyLevel === 'none' ? 'Notifications: Muted' : (notifyLevel === 'all' ? 'Notifications: All activity' : 'Notifications: Mentions only')"
+            :aria-label="notifyLevel === 'none' ? 'Notifications: Muted' : (notifyLevel === 'all' ? 'Notifications: All activity' : 'Notifications: Mentions only')"
           />
         </UDropdownMenu>
         <UButton
@@ -1053,131 +1116,147 @@ function onScoreModalSubmitted(result: { state: string }) {
           variant="ghost"
           color="neutral"
           :icon="fullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
-          :title="fullscreen ? 'Exit full screen (Esc)' : 'Full screen'"
-          :aria-label="fullscreen ? 'Exit full screen' : 'Full screen'"
+          :title="fullscreen ? 'Exit full screen (Esc)' : 'Full screen focus'"
+          :aria-label="fullscreen ? 'Exit full screen' : 'Full screen focus'"
           @click="toggleFullscreen"
         />
       </div>
     </div>
 
-    <!-- Active Esports Match HUD -->
+    <!-- Active Esports Match: Single Prominent Primary Action Card -->
     <div
       v-if="viewerActiveFixture && !isManage && !chatDisabled"
-      class="border-b border-gray-200 dark:border-white/10 bg-gray-50/75 dark:bg-white/[0.02] px-4 py-2.5 sm:px-5 flex flex-wrap items-center justify-between gap-3 text-xs"
+      class="border-b border-subtle bg-surface px-4 py-3 sm:px-5"
       :class="fullscreen && 'max-w-3xl w-full mx-auto border-x-0'"
     >
-      <div class="flex items-center gap-2.5 min-w-0">
-        <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gray-200/70 dark:bg-white/10 text-xs shrink-0 font-mono">
-          🎮
-        </span>
-        <div class="min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="font-extrabold text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              {{ viewerActiveFixture.roundName || `Round ${viewerActiveFixture.round}` }}
-            </span>
-            <span
-              v-if="viewerFixtureState === 'awaitingOpponent'"
-              class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full"
-            >
-              ⏳ Awaiting opponent
-            </span>
-            <span
-              v-else-if="viewerFixtureState === 'awaitingMe'"
-              class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full"
-            >
-              ⚡ Opponent reported
-            </span>
-            <span
-              v-else-if="viewerFixtureState === 'conflict'"
-              class="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded-full"
-            >
-              ⚠ Score mismatch
-            </span>
+      <div class="p-3 sm:p-3.5 rounded-xl border border-subtle bg-default flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+        <div class="min-w-0 flex items-start sm:items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-surface border border-subtle flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 text-heading">
+            <UIcon name="i-heroicons-trophy" class="w-4 h-4 text-heading" />
           </div>
-          <p class="font-bold text-gray-900 dark:text-white truncate mt-0.5">
-            <span :class="isViewerHome ? 'underline decoration-gray-400 underline-offset-2' : ''">{{ activeHomeName }}</span>
-            <span v-if="isViewerHome" class="text-[9px] font-bold text-gray-500 ml-0.5">(You)</span>
-            <span class="mx-1 text-gray-400 font-normal">vs</span>
-            <span :class="!isViewerHome ? 'underline decoration-gray-400 underline-offset-2' : ''">{{ activeAwayName }}</span>
-            <span v-if="!isViewerHome" class="text-[9px] font-bold text-gray-500 ml-0.5">(You)</span>
-          </p>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-muted">
+                {{ viewerActiveFixture.roundName || `Round ${viewerActiveFixture.round}` }}
+              </span>
+              <UBadge
+                v-if="viewerFixtureState === 'awaitingOpponent'"
+                color="warning"
+                variant="subtle"
+                size="xs"
+                label="Awaiting opponent"
+              />
+              <UBadge
+                v-else-if="viewerFixtureState === 'awaitingMe'"
+                color="primary"
+                variant="subtle"
+                size="xs"
+                label="Opponent reported score"
+              />
+              <UBadge
+                v-else-if="viewerFixtureState === 'conflict'"
+                color="error"
+                variant="subtle"
+                size="xs"
+                label="Score mismatch"
+              />
+              <UBadge
+                v-else
+                color="neutral"
+                variant="subtle"
+                size="xs"
+                label="Ready to report"
+              />
+            </div>
+            <p class="font-semibold text-sm text-heading truncate mt-0.5">
+              <span :class="isViewerHome ? 'text-heading font-bold' : 'text-body'">{{ activeHomeName }}</span>
+              <span v-if="isViewerHome" class="text-[10px] text-muted ml-0.5 font-medium">(You)</span>
+              <span class="mx-1.5 text-muted font-normal text-xs">vs</span>
+              <span :class="!isViewerHome ? 'text-heading font-bold' : 'text-body'">{{ activeAwayName }}</span>
+              <span v-if="!isViewerHome" class="text-[10px] text-muted ml-0.5 font-medium">(You)</span>
+            </p>
+          </div>
         </div>
-      </div>
 
-      <!-- Action buttons based on state -->
-      <div class="flex items-center gap-2 shrink-0">
-        <!-- Case 1: Opponent reported, awaiting viewer to confirm/dispute -->
-        <template v-if="viewerFixtureState === 'awaitingMe'">
-          <span class="font-mono font-bold text-gray-900 dark:text-white tabular-nums px-1 text-sm">
-            {{ opponentActiveEntry?.homeScore }} – {{ opponentActiveEntry?.awayScore }}
-          </span>
+        <!-- Action buttons based on state: One clear primary CTA -->
+        <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+          <!-- Case 1: Opponent reported, awaiting viewer to confirm/dispute -->
+          <template v-if="viewerFixtureState === 'awaitingMe'">
+            <span class="font-mono font-bold text-heading tabular-nums px-1 text-sm">
+              {{ opponentActiveEntry?.homeScore }} – {{ opponentActiveEntry?.awayScore }}
+            </span>
+            <UButton
+              size="xs"
+              color="primary"
+              icon="i-heroicons-check"
+              :loading="quickConfirming"
+              label="Confirm"
+              @click="confirmOpponentScore"
+            />
+            <UButton
+              size="xs"
+              variant="outline"
+              color="neutral"
+              icon="i-heroicons-exclamation-triangle"
+              label="Dispute"
+              @click="openDisputeModalForActive"
+            />
+            <UButton
+              v-if="opponentActiveEntry?.evidenceUrl"
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-photo"
+              title="View opponent proof"
+              @click="openProof(opponentActiveEntry.evidenceUrl, `${opponentActiveEntry.participantName}'s proof`)"
+            />
+          </template>
+
+          <!-- Case 2: Viewer submitted, waiting for opponent -->
+          <template v-else-if="viewerFixtureState === 'awaitingOpponent'">
+            <span class="font-mono font-bold text-heading tabular-nums px-1 text-sm">
+              {{ myActiveEntry?.homeScore }} – {{ myActiveEntry?.awayScore }}
+            </span>
+            <UButton
+              size="xs"
+              variant="outline"
+              color="neutral"
+              icon="i-heroicons-pencil-square"
+              label="Edit"
+              @click="openSubmitModalForActive"
+            />
+          </template>
+
+          <!-- Case 3: Conflict -->
+          <template v-else-if="viewerFixtureState === 'conflict'">
+            <span class="text-xs text-error font-medium flex items-center gap-1">
+              <UIcon name="i-heroicons-shield-exclamation" class="w-4 h-4 text-error" />
+              Under admin review
+            </span>
+          </template>
+
+          <!-- Case 4: Due (not submitted yet) -->
+          <template v-else>
+            <UButton
+              size="xs"
+              color="primary"
+              icon="i-heroicons-trophy"
+              label="Submit score"
+              @click="openSubmitModalForActive"
+            />
+          </template>
+
+          <!-- Multiple fixtures switcher if player has more than 1 open fixture -->
           <UButton
+            v-if="viewerOpenFixtures.length > 1"
             size="xs"
-            color="primary"
-            icon="i-heroicons-check"
-            :loading="quickConfirming"
-            label="Confirm"
-            @click="confirmOpponentScore"
-          />
-          <UButton
-            size="xs"
-            variant="outline"
+            variant="ghost"
             color="neutral"
-            icon="i-heroicons-exclamation-triangle"
-            label="Dispute"
-            @click="openDisputeModalForActive"
-          />
-          <button
-            v-if="opponentActiveEntry?.evidenceUrl"
-            type="button"
-            class="text-gray-500 hover:text-gray-900 dark:hover:text-white text-[11px] font-medium"
-            @click="openProof(opponentActiveEntry.evidenceUrl, `${opponentActiveEntry.participantName}'s proof`)"
-          >
-            🖼 Proof
-          </button>
-        </template>
-
-        <!-- Case 2: Viewer submitted, waiting for opponent -->
-        <template v-else-if="viewerFixtureState === 'awaitingOpponent'">
-          <span class="font-mono font-bold text-gray-900 dark:text-white tabular-nums px-1 text-sm">
-            {{ myActiveEntry?.homeScore }} – {{ myActiveEntry?.awayScore }}
-          </span>
-          <UButton
-            size="xs"
-            variant="outline"
-            color="neutral"
-            icon="i-heroicons-pencil"
-            label="Edit"
-            @click="openSubmitModalForActive"
-          />
-        </template>
-
-        <!-- Case 3: Conflict -->
-        <template v-else-if="viewerFixtureState === 'conflict'">
-          <span class="text-xs text-red-500 font-medium">Under admin review</span>
-        </template>
-
-        <!-- Case 4: Due (not submitted yet) -->
-        <template v-else>
-          <UButton
-            size="xs"
-            color="primary"
-            icon="i-heroicons-trophy"
-            label="Submit score"
-            @click="openSubmitModalForActive"
-          />
-        </template>
-
-        <!-- Multiple fixtures switcher if player has more than 1 open fixture -->
-        <div v-if="viewerOpenFixtures.length > 1" class="relative">
-          <button
-            type="button"
-            class="text-[11px] font-semibold text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-1 py-0.5"
-            title="Switch match"
+            :label="`${activeFixtureIndex + 1}/${viewerOpenFixtures.length}`"
+            trailing-icon="i-heroicons-chevron-right"
+            title="Next match"
             @click="cycleNextFixture"
-          >
-            ({{ activeFixtureIndex + 1 }}/{{ viewerOpenFixtures.length }}) ↻
-          </button>
+          />
         </div>
       </div>
     </div>
@@ -1185,12 +1264,12 @@ function onScoreModalSubmitted(result: { state: string }) {
     <!-- disabled notice -->
     <div
       v-if="chatDisabled"
-      class="m-4 p-6 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 text-center"
+      class="m-4 p-6 rounded-xl bg-surface border border-subtle text-center"
     >
-      <UIcon name="i-heroicons-chat-bubble-left-right" class="w-8 h-8 mx-auto text-gray-400 mb-2" />
-      <p class="text-sm font-semibold text-gray-900 dark:text-white">Chat is off for this tournament</p>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-        {{ canModerate ? 'Enable it to give participants a room to coordinate — lobby codes, schedules, score reports.' : 'The organizer has disabled the chat for this tournament.' }}
+      <UIcon name="i-heroicons-bolt-slash" class="w-8 h-8 mx-auto text-muted mb-2" />
+      <p class="text-sm font-semibold text-heading">Match Hub is off for this tournament</p>
+      <p class="text-xs text-muted mt-1">
+        {{ canModerate ? 'Enable it to give participants a centralized hub to coordinate matches, check schedules, and submit scores.' : 'The organizer has disabled the Match Hub for this tournament.' }}
       </p>
       <UButton
         v-if="canModerate"
@@ -1198,41 +1277,110 @@ function onScoreModalSubmitted(result: { state: string }) {
         color="neutral"
         size="sm"
         icon="i-heroicons-bolt"
-        label="Enable chat"
+        label="Enable Match Hub"
         class="mt-3 font-semibold"
         @click="emit('enable-chat')"
       />
     </div>
 
     <template v-else>
-      <!-- pinned -->
+      <!-- Official House Rules Banner -->
       <div
-        v-if="pinned"
-        class="flex items-start gap-2.5 px-4 sm:px-5 py-3 bg-gray-50 dark:bg-white/[0.03] border-b border-gray-200 dark:border-white/10 text-[13px] leading-relaxed"
+        v-if="showRules"
+        class="px-4 sm:px-5 py-3 border-b border-subtle bg-surface text-xs"
         :class="fullscreen && 'max-w-3xl w-full mx-auto'"
       >
-        <span class="text-gray-400 shrink-0 mt-px">📌</span>
-        <div class="text-gray-700 dark:text-gray-200">
-          <b class="text-gray-900 dark:text-white">Pinned:</b> {{ pinned.text }}
+        <div class="flex items-center justify-between gap-2 mb-1.5">
+          <span class="font-semibold text-heading flex items-center gap-1.5 text-xs">
+            <UIcon name="i-heroicons-document-text" class="w-4 h-4 text-muted" />
+            Official Tournament Rules & Guidelines
+          </span>
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-x-mark"
+            title="Close rules"
+            @click="showRules = false"
+          />
+        </div>
+        <p class="text-body leading-relaxed whitespace-pre-wrap text-xs">
+          {{ tournament?.chatRules || tournament?.rules || 'No specific house rules posted. Be on time for scheduled fixtures and submit match results with screenshot proof.' }}
+        </p>
+      </div>
+
+      <!-- Feed Filter Control -->
+      <div
+        class="px-4 sm:px-5 py-2 border-b border-subtle bg-surface flex items-center gap-1.5 overflow-x-auto hide-scrollbar text-xs"
+        :class="fullscreen && 'max-w-3xl w-full mx-auto'"
+      >
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+          :class="activeFilter === 'all'
+            ? 'bg-page text-heading shadow-xs font-semibold'
+            : 'text-muted hover:text-heading'"
+          @click="activeFilter = 'all'"
+        >
+          All Activity
+          <span class="text-[10px] opacity-75 tabular-nums">({{ messages.length }})</span>
+        </button>
+
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+          :class="activeFilter === 'announcements'
+            ? 'bg-page text-heading shadow-xs font-semibold'
+            : 'text-muted hover:text-heading'"
+          @click="activeFilter = 'announcements'"
+        >
+          <UIcon name="i-heroicons-megaphone" class="w-3.5 h-3.5 text-amber-500" />
+          Announcements
+          <span v-if="announcementsCount" class="text-[10px] tabular-nums font-semibold">({{ announcementsCount }})</span>
+        </button>
+
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+          :class="activeFilter === 'results'
+            ? 'bg-page text-heading shadow-xs font-semibold'
+            : 'text-muted hover:text-heading'"
+          @click="activeFilter = 'results'"
+        >
+          <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-emerald-500" />
+          Match Results
+          <span v-if="resultsCount" class="text-[10px] tabular-nums font-semibold">({{ resultsCount }})</span>
+        </button>
+      </div>
+
+      <!-- pinned -->
+      <div
+        v-if="pinned && activeFilter !== 'results'"
+        class="flex items-start gap-2.5 px-4 sm:px-5 py-2.5 bg-surface border-b border-subtle text-xs leading-relaxed"
+        :class="fullscreen && 'max-w-3xl w-full mx-auto'"
+      >
+        <UIcon name="i-heroicons-bookmark-square" class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+        <div class="text-body flex-1 min-w-0">
+          <b class="text-heading">Pinned:</b> {{ pinned.text }}
         </div>
       </div>
 
-      <!-- messages -->
+      <!-- LAYER 2: Activity Feed (The Hero) -->
       <div
         ref="listEl"
-        class="flex-1 overflow-y-auto min-h-[220px] py-2"
+        class="flex-1 overflow-y-auto min-h-[240px] py-2 bg-page"
         :class="[fullscreen ? 'max-w-3xl w-full mx-auto' : 'max-h-[520px]']"
         @scroll.passive="onListScroll"
       >
         <div v-if="loading" class="space-y-3 p-4">
-          <USkeleton v-for="i in 4" :key="i" class="h-12 w-full rounded-xl bg-gray-100 dark:bg-white/5" />
+          <USkeleton v-for="i in 4" :key="i" class="h-12 w-full rounded-xl bg-surface" />
         </div>
 
-        <!-- load failure (transient API issues) — never leave skeletons hanging -->
+        <!-- load failure -->
         <div v-else-if="loadError" class="p-6 text-center">
-          <UIcon name="i-heroicons-exclamation-triangle" class="w-8 h-8 mx-auto text-gray-400 mb-2" />
-          <p class="text-sm font-semibold text-gray-900 dark:text-white">Couldn't load the chat</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">The server didn't answer — it may be restarting.</p>
+          <UIcon name="i-heroicons-exclamation-triangle" class="w-8 h-8 mx-auto text-muted mb-2" />
+          <p class="text-sm font-semibold text-heading">Couldn't load activity</p>
+          <p class="text-xs text-muted mt-1">The server didn't answer — it may be restarting.</p>
           <UButton
             type="button"
             size="sm"
@@ -1247,21 +1395,36 @@ function onScoreModalSubmitted(result: { state: string }) {
         </div>
 
         <div
-          v-else-if="messages.length === 0"
+          v-else-if="filteredMessages.length === 0"
           class="text-center py-10 px-6"
         >
-          <div class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-gray-100 dark:bg-white/5 mb-3">
-            <UIcon name="i-heroicons-chat-bubble-left-right" class="w-5 h-5 text-gray-400" />
+          <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-surface border border-subtle mb-3">
+            <UIcon
+              :name="activeFilter === 'announcements'
+                ? 'i-heroicons-megaphone'
+                : (activeFilter === 'results' ? 'i-heroicons-trophy' : 'i-heroicons-queue-list')"
+              class="w-5 h-5 text-muted"
+            />
           </div>
-          <p class="text-sm font-medium text-gray-900 dark:text-white">No messages yet</p>
-          <p class="text-xs text-gray-500 mt-1">Organizers usually kick things off with house rules or lobby details.</p>
+          <p class="text-sm font-medium text-heading">
+            {{ activeFilter === 'announcements'
+              ? 'No announcements yet'
+              : (activeFilter === 'results' ? 'No match results reported yet' : 'No activity recorded yet') }}
+          </p>
+          <p class="text-xs text-muted mt-1 max-w-sm mx-auto">
+            {{ activeFilter === 'announcements'
+              ? 'Official announcements, round updates, and organizer broadcasts will appear here.'
+              : (activeFilter === 'results'
+                  ? 'Score submissions and verification logs will appear here as matches finish.'
+                  : 'Official announcements and match score reports will appear here in real time.') }}
+          </p>
         </div>
 
         <template v-else>
           <div v-if="nextCursor" class="px-4 pt-1 pb-2">
             <button
               type="button"
-              class="text-[11px] font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:underline disabled:opacity-50"
+              class="text-xs font-semibold text-muted hover:text-heading hover:underline disabled:opacity-50 cursor-pointer"
               :disabled="loadingMore"
               @click="loadOlderAnchored"
             >
@@ -1270,14 +1433,14 @@ function onScoreModalSubmitted(result: { state: string }) {
           </div>
 
           <div
-            v-for="m in messages"
+            v-for="m in filteredMessages"
             :key="m.id"
             :id="`chatmsg-${m.id}`"
             class="group relative flex gap-3 px-4 sm:px-5 py-2.5 transition-colors duration-150"
             :class="[
               isOwn(m) && 'flex-row-reverse',
               railClass(m),
-              flashId === m.id ? 'bg-primary-500/15 dark:bg-primary-400/20 ring-1 ring-primary-500/40' : 'hover:bg-gray-50/80 dark:hover:bg-white/[0.03]'
+              flashId === m.id ? 'bg-primary-500/10 ring-1 ring-primary-500/40' : 'hover:bg-surface/60'
             ]"
           >
             <!-- avatar -->
@@ -1298,38 +1461,41 @@ function onScoreModalSubmitted(result: { state: string }) {
             <div class="flex-1 min-w-0" :class="isOwn(m) && 'flex flex-col items-end'">
               <!-- message author header -->
               <div class="flex items-center gap-2 flex-wrap" :class="isOwn(m) && 'flex-row-reverse'">
-                <span class="text-[13px] font-semibold text-gray-900 dark:text-white hover:underline cursor-pointer">
+                <span class="text-xs font-semibold text-heading hover:underline cursor-pointer">
                   {{ isOwn(m) ? 'You' : m.author.name }}
                 </span>
 
                 <!-- Organizer badge -->
-                <span
+                <UBadge
                   v-if="m.authorType === 'ORGANIZER'"
-                  class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400/90 border border-amber-500/20 dark:border-amber-400/20"
-                >
-                  <UIcon name="i-heroicons-shield-check" class="w-3 h-3 text-amber-500/80 dark:text-amber-400/80" />
-                  Organizer
-                </span>
+                  color="warning"
+                  variant="subtle"
+                  size="xs"
+                  icon="i-heroicons-shield-check"
+                  label="Organizer"
+                />
 
                 <!-- Bot badge -->
-                <span
+                <UBadge
                   v-else-if="m.authorType === 'BOT'"
-                  class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-600 dark:text-indigo-400/90 border border-indigo-500/20 dark:border-indigo-400/20"
-                >
-                  <UIcon name="i-heroicons-sparkles" class="w-3 h-3 text-indigo-500/80 dark:text-indigo-400/80" />
-                  AI · Paragee
-                </span>
+                  color="primary"
+                  variant="subtle"
+                  size="xs"
+                  icon="i-heroicons-sparkles"
+                  label="Paragee"
+                />
 
                 <!-- Team badge -->
-                <span
+                <UBadge
                   v-else-if="m.author.teamName"
-                  class="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 border border-gray-200/80 dark:border-white/[0.08]"
-                >
-                  <UIcon name="i-heroicons-user-group" class="w-2.5 h-2.5 text-gray-400" />
-                  {{ m.author.teamName }}
-                </span>
+                  color="neutral"
+                  variant="subtle"
+                  size="xs"
+                  icon="i-heroicons-user-group"
+                  :label="m.author.teamName"
+                />
 
-                <span class="text-[11px] text-gray-400 dark:text-gray-500 font-normal tabular-nums">
+                <span class="text-[11px] text-muted font-normal tabular-nums">
                   {{ formatTime(m.createdAt) }}
                 </span>
               </div>
@@ -1338,20 +1504,20 @@ function onScoreModalSubmitted(result: { state: string }) {
               <button
                 v-if="m.replyTo"
                 type="button"
-                class="mt-1 mb-1.5 flex items-center gap-2 max-w-full text-left rounded-lg border-l-2 border-gray-400/50 dark:border-white/20 bg-gray-100/60 dark:bg-white/[0.03] px-2.5 py-1 hover:bg-gray-200/60 dark:hover:bg-white/[0.06] transition-colors group/reply cursor-pointer"
-                :class="isOwn(m) && 'border-l-0 border-r-2 border-r-gray-400/50 dark:border-r-white/20 text-right'"
+                class="mt-1 mb-1.5 flex items-center gap-2 max-w-full text-left rounded-lg border border-subtle bg-surface px-2.5 py-1 hover:bg-default transition-colors group/reply cursor-pointer"
+                :class="isOwn(m) && 'text-right'"
                 title="Jump to original message"
                 @click="jumpTo(m.replyTo!.id)"
               >
-                <UIcon name="i-heroicons-arrow-uturn-left" class="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0 group-hover/reply:-translate-x-0.5 transition-transform" />
+                <UIcon name="i-heroicons-arrow-uturn-left" class="w-3 h-3 text-muted shrink-0 group-hover/reply:-translate-x-0.5 transition-transform" />
                 <span class="min-w-0 flex-1">
-                  <span class="block text-[11px] font-semibold text-gray-900 dark:text-gray-100 truncate">
+                  <span class="block text-[11px] font-semibold text-heading truncate">
                     {{ m.replyTo.authorName }}
                   </span>
-                  <span v-if="m.replyTo.deleted" class="block text-[11.5px] italic text-gray-400 dark:text-gray-500 truncate">
+                  <span v-if="m.replyTo.deleted" class="block text-[11.5px] italic text-muted truncate">
                     Original message was deleted
                   </span>
-                  <span v-else class="block text-[11.5px] text-gray-500 dark:text-gray-400 truncate">
+                  <span v-else class="block text-[11.5px] text-muted truncate">
                     {{ m.replyTo.text }}
                   </span>
                 </span>
@@ -1359,7 +1525,7 @@ function onScoreModalSubmitted(result: { state: string }) {
 
               <!-- message text -->
               <p
-                class="text-[13.5px] leading-relaxed text-gray-800 dark:text-gray-200 mt-0.5 break-words whitespace-pre-wrap select-text font-normal"
+                class="text-[13px] leading-relaxed text-body mt-0.5 break-words whitespace-pre-wrap select-text font-normal"
                 :class="isOwn(m) && 'text-right'"
               >
                 <template v-for="(part, i) in textParts(m.text)" :key="i"><ChatMentionChip
@@ -1370,25 +1536,25 @@ function onScoreModalSubmitted(result: { state: string }) {
                 /><template v-else>{{ part.text }}</template></template>
               </p>
 
-              <!-- structured card: fixture (Discord Embed style) -->
+              <!-- structured card: fixture -->
               <div
                 v-if="m.cardType === 'FIXTURE' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-gray-200/80 dark:border-white/[0.08] border-l-2 border-l-primary-500/50 dark:border-l-primary-400/40 bg-gray-50/90 dark:bg-[#16181f] p-3.5 shadow-xs"
+                class="mt-2 max-w-md rounded-xl border border-subtle bg-surface p-3 shadow-2xs"
               >
-                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1.5">
-                  <UIcon name="i-heroicons-calendar" class="w-3 h-3" />
+                <p class="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5 flex items-center gap-1.5">
+                  <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5" />
                   {{ fixtureCard(m).label }}
                 </p>
-                <p class="text-sm font-bold text-gray-900 dark:text-white">
-                  {{ fixtureCard(m).home }} <span class="font-mono text-xs text-gray-400 font-normal mx-1">vs</span> {{ fixtureCard(m).away }}
+                <p class="text-sm font-semibold text-heading">
+                  {{ fixtureCard(m).home }} <span class="font-mono text-xs text-muted font-normal mx-1">vs</span> {{ fixtureCard(m).away }}
                 </p>
-                <p v-if="fixtureCard(m).meta" class="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">{{ fixtureCard(m).meta }}</p>
-                <div class="flex items-center gap-2 mt-2.5 pt-2 border-t border-gray-200/60 dark:border-white/[0.06]">
+                <p v-if="fixtureCard(m).meta" class="text-xs text-muted mt-1">{{ fixtureCard(m).meta }}</p>
+                <div class="flex items-center gap-2 mt-2.5 pt-2 border-t border-subtle">
                   <NuxtLink
                     v-if="fixtureCard(m).href"
                     :to="cardTo(fixtureCard(m).href)"
                     :external="isManage"
-                    class="inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-200/60 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
+                    class="text-xs font-semibold text-heading hover:underline"
                   >View fixture →</NuxtLink>
                   <UButton
                     v-if="canSubmitForFixtureCard(m)"
@@ -1401,59 +1567,61 @@ function onScoreModalSubmitted(result: { state: string }) {
                 </div>
               </div>
 
-              <!-- ranked rows card: table / stats (Discord Embed style) -->
+              <!-- ranked rows card: table / stats -->
               <div
                 v-if="(m.cardType === 'TABLE' || m.cardType === 'STATS') && m.cardPayload"
-                class="mt-2 max-w-sm rounded-xl border border-gray-200/80 dark:border-white/[0.08] border-l-2 border-l-indigo-500/50 dark:border-l-indigo-400/40 bg-gray-50/90 dark:bg-[#16181f] p-3.5 shadow-xs"
+                class="mt-2 max-w-sm rounded-xl border border-subtle bg-surface p-3 shadow-2xs"
               >
-                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
-                  <UIcon :name="m.cardType === 'TABLE' ? 'i-heroicons-table-cells' : 'i-heroicons-chart-bar'" class="w-3 h-3" />
+                <p class="text-[10px] font-bold uppercase tracking-wider text-muted mb-2 flex items-center gap-1.5">
+                  <UIcon :name="m.cardType === 'TABLE' ? 'i-heroicons-table-cells' : 'i-heroicons-chart-bar'" class="w-3.5 h-3.5" />
                   {{ rowsCard(m).title }}
                 </p>
                 <div
                   v-for="row in rowsCard(m).rows"
                   :key="row.rank ?? row.name"
-                  class="flex items-center justify-between gap-3 py-1 text-[12.5px] hover:bg-black/[0.02] dark:hover:bg-white/[0.02] rounded px-1 transition-colors"
+                  class="flex items-center justify-between gap-3 py-1 text-xs hover:bg-default rounded px-1 transition-colors"
                 >
                   <span class="flex items-center gap-2 min-w-0">
                     <span
-                      class="font-mono font-bold w-4 text-center text-gray-500 dark:text-gray-400 text-xs"
+                      class="font-mono font-bold w-4 text-center text-muted text-xs"
                     >{{ row.rank }}</span>
-                    <span class="font-semibold text-gray-900 dark:text-white truncate">{{ row.name }}</span>
+                    <span class="font-medium text-heading truncate">{{ row.name }}</span>
                   </span>
-                  <span class="font-mono font-bold text-gray-700 dark:text-gray-200 tabular-nums">{{ row.value }}</span>
+                  <span class="font-mono font-bold text-heading tabular-nums">{{ row.value }}</span>
                 </div>
               </div>
 
-              <!-- score submitted: awaiting opponent (Discord Embed style) -->
+              <!-- score submitted: awaiting opponent -->
               <div
                 v-if="m.cardType === 'SCORE_SUBMITTED' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-gray-200/80 dark:border-white/[0.08] border-l-2 border-l-amber-500/50 dark:border-l-amber-400/40 bg-gray-50/90 dark:bg-[#16181f] p-3.5 shadow-xs"
+                class="mt-2 max-w-md rounded-xl border border-subtle bg-surface p-3.5 shadow-2xs"
               >
                 <div class="flex items-center justify-between gap-2 mb-1.5">
-                  <p class="text-[10px] font-bold uppercase tracking-widest text-amber-600/90 dark:text-amber-400/80 flex items-center gap-1">
-                    <span>⏳</span> Score submitted — awaiting opponent
+                  <p class="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <UIcon name="i-heroicons-clock" class="w-3.5 h-3.5" />
+                    Score submitted — awaiting verification
                   </p>
-                  <span
+                  <UBadge
                     v-if="isOpponentOfCard(m)"
-                    class="text-[9.5px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full"
-                  >
-                    Your response needed
-                  </span>
+                    color="warning"
+                    variant="subtle"
+                    size="xs"
+                    label="Action required"
+                  />
                 </div>
-                <p class="text-sm font-bold text-gray-900 dark:text-white">
-                  {{ scoreCard(m).submittedBy }} <span class="text-gray-400 font-normal text-xs">reports</span>
-                  <span class="font-mono text-lg mx-1 tabular-nums font-bold text-gray-900 dark:text-white">{{ scoreCard(m).score?.home }} – {{ scoreCard(m).score?.away }}</span>
-                  <span class="text-gray-400 font-normal text-xs"> in {{ scoreCard(m).home }} vs {{ scoreCard(m).away }}</span>
+                <p class="text-sm font-semibold text-heading">
+                  {{ scoreCard(m).submittedBy }} <span class="text-muted font-normal text-xs">reports</span>
+                  <span class="font-mono text-base mx-1 tabular-nums font-bold text-heading">{{ scoreCard(m).score?.home }} – {{ scoreCard(m).score?.away }}</span>
+                  <span class="text-muted font-normal text-xs"> in {{ scoreCard(m).home }} vs {{ scoreCard(m).away }}</span>
                 </p>
-                <p class="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">
-                  {{ scoreCard(m).evidenceAttached ? 'Evidence attached 🖼 · ' : '' }}The opponent confirms or counter-reports with evidence.
+                <p class="text-xs text-muted mt-1">
+                  {{ scoreCard(m).evidenceAttached ? 'Evidence attached · ' : '' }}The opponent confirms or counter-reports with evidence.
                 </p>
 
                 <!-- Interactive opponent actions -->
                 <div
                   v-if="isOpponentOfCard(m)"
-                  class="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-gray-200/60 dark:border-white/[0.08]"
+                  class="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-subtle"
                 >
                   <UButton
                     size="xs"
@@ -1471,34 +1639,36 @@ function onScoreModalSubmitted(result: { state: string }) {
                     label="Dispute / Counter"
                     @click="disputeCardScore(scoreCard(m))"
                   />
-                  <button
+                  <UButton
                     v-if="scoreCard(m).evidenceUrl"
-                    type="button"
-                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-1.5 py-1"
+                    size="xs"
+                    variant="ghost"
+                    color="neutral"
+                    icon="i-heroicons-photo"
+                    label="View proof"
                     @click="openProof(scoreCard(m).evidenceUrl, `${scoreCard(m).submittedBy}'s proof`)"
-                  >
-                    🖼 View proof
-                  </button>
+                  />
                 </div>
 
                 <!-- If viewer is the submitter -->
                 <div
                   v-else-if="isSubmitterOfCard(m)"
-                  class="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-200/60 dark:border-white/[0.08] text-[11.5px] text-gray-500 dark:text-gray-400"
+                  class="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-subtle text-xs text-muted"
                 >
                   <span>Your submission · awaiting opponent</span>
                   <div class="flex items-center gap-2">
                     <button
                       v-if="scoreCard(m).evidenceUrl"
                       type="button"
-                      class="text-[11px] font-semibold text-gray-600 dark:text-gray-400 hover:underline"
+                      class="text-xs font-semibold text-body hover:underline flex items-center gap-1 cursor-pointer"
                       @click="openProof(scoreCard(m).evidenceUrl, 'Your proof screenshot')"
                     >
-                      🖼 Proof
+                      <UIcon name="i-heroicons-photo" class="w-3.5 h-3.5" />
+                      Proof
                     </button>
                     <button
                       type="button"
-                      class="text-[11px] font-semibold text-gray-800 dark:text-gray-200 hover:underline"
+                      class="text-xs font-semibold text-heading hover:underline cursor-pointer"
                       @click="openSubmitModalForCard(scoreCard(m))"
                     >
                       Edit score
@@ -1507,104 +1677,112 @@ function onScoreModalSubmitted(result: { state: string }) {
                 </div>
 
                 <!-- Fallback link for third-party viewers -->
-                <div v-else-if="scoreCard(m).href" class="mt-2 flex items-center gap-2 pt-2 border-t border-gray-200/60 dark:border-white/[0.08]">
+                <div v-else-if="scoreCard(m).href" class="mt-2 flex items-center gap-2 pt-2 border-t border-subtle">
                   <NuxtLink
                     :to="cardTo(scoreCard(m).href)"
                     :external="isManage"
-                    class="inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-200/60 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
+                    class="text-xs font-semibold text-heading hover:underline"
                   >
                     View fixture →
                   </NuxtLink>
                   <button
                     v-if="scoreCard(m).evidenceUrl"
                     type="button"
-                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 dark:text-gray-300 hover:underline px-1.5 py-1"
+                    class="text-xs font-semibold text-muted hover:text-heading cursor-pointer flex items-center gap-1"
                     @click="openProof(scoreCard(m).evidenceUrl, `${scoreCard(m).submittedBy}'s proof`)"
                   >
-                    🖼 Proof
+                    <UIcon name="i-heroicons-photo" class="w-3.5 h-3.5" />
+                    Proof
                   </button>
                 </div>
               </div>
 
-              <!-- result confirmed (Discord Embed style) -->
+              <!-- result confirmed -->
               <div
                 v-if="m.cardType === 'SCORE_CONFIRMED' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-gray-200/80 dark:border-white/[0.08] border-l-2 border-l-emerald-500/50 dark:border-l-emerald-400/40 bg-gray-50/90 dark:bg-[#16181f] p-3.5 shadow-xs"
+                class="mt-2 max-w-md rounded-xl border border-subtle bg-surface p-3.5 shadow-2xs"
               >
-                <p class="text-[10px] font-bold uppercase tracking-widest text-emerald-600/90 dark:text-emerald-400/80 mb-1.5 flex items-center gap-1">
-                  <span>✓</span> Result confirmed{{ scoreCard(m).by === 'organizer' ? ' by the organizer' : '' }}
+                <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1.5 flex items-center gap-1">
+                  <UIcon name="i-heroicons-check-circle" class="w-3.5 h-3.5" />
+                  Result confirmed{{ scoreCard(m).by === 'organizer' ? ' by the organizer' : '' }}
                 </p>
-                <p class="text-sm font-bold text-gray-900 dark:text-white">
+                <p class="text-sm font-semibold text-heading">
                   {{ scoreCard(m).home }}
-                  <span class="font-mono text-lg font-bold text-gray-900 dark:text-white mx-1">{{ scoreCard(m).score?.home }} – {{ scoreCard(m).score?.away }}</span>
+                  <span class="font-mono text-base font-bold text-heading mx-1">{{ scoreCard(m).score?.home }} – {{ scoreCard(m).score?.away }}</span>
                   {{ scoreCard(m).away }}
                 </p>
-                <p class="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">{{ scoreCard(m).by === 'organizer' ? 'Verdict applied to the fixture.' : 'Both entries matched · fixture updated.' }}</p>
+                <p class="text-xs text-muted mt-1">{{ scoreCard(m).by === 'organizer' ? 'Verdict applied to the fixture.' : 'Both entries matched · fixture updated.' }}</p>
               </div>
 
-              <!-- score conflict (Discord Embed style) -->
+              <!-- score conflict -->
               <div
                 v-if="m.cardType === 'SCORE_CONFLICT' && m.cardPayload"
-                class="mt-2 max-w-md rounded-xl border border-gray-200/80 dark:border-white/[0.08] border-l-2 border-l-red-500/50 dark:border-l-red-400/40 bg-gray-50/90 dark:bg-[#16181f] p-3.5 shadow-xs"
+                class="mt-2 max-w-md rounded-xl border border-subtle bg-surface p-3.5 shadow-2xs"
               >
-                <p class="text-[10px] font-bold uppercase tracking-widest text-red-600/90 dark:text-red-400/80 mb-2 flex items-center gap-1">
-                  <span>⚠</span> Score conflict — under review
+                <p class="text-[10px] font-bold uppercase tracking-wider text-error mb-2 flex items-center gap-1">
+                  <UIcon name="i-heroicons-exclamation-triangle" class="w-3.5 h-3.5" />
+                  Score conflict — under review
                 </p>
                 <div
                   v-for="claim in scoreCard(m).claims"
                   :key="claim.participantName"
-                  class="flex items-center justify-between gap-3 py-1.5 text-[12.5px] border-t border-gray-200/60 dark:border-white/[0.06] first:border-t-0"
+                  class="flex items-center justify-between gap-3 py-1.5 text-xs border-t border-subtle first:border-t-0"
                 >
-                  <span class="text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <span class="text-body flex items-center gap-1.5">
                     <span>{{ claim.participantName }}'s entry</span>
                     <button
                       v-if="claim.evidenceUrl"
                       type="button"
-                      class="text-[11px] font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white inline-flex items-center gap-0.5 ml-1"
+                      class="text-xs font-semibold text-muted hover:text-heading inline-flex items-center gap-0.5 ml-1 cursor-pointer"
                       @click="openProof(claim.evidenceUrl, `${claim.participantName}'s proof`)"
                     >
-                      · 🖼 View proof
+                      <UIcon name="i-heroicons-photo" class="w-3 h-3" />
+                      Proof
                     </button>
                   </span>
-                  <span class="font-mono font-bold text-gray-900 dark:text-white tabular-nums">{{ claim.score.home }} – {{ claim.score.away }}</span>
+                  <span class="font-mono font-bold text-heading tabular-nums">{{ claim.score.home }} – {{ claim.score.away }}</span>
                 </div>
-                <p class="text-[11.5px] text-gray-500 dark:text-gray-400 mt-2">Entries don't match — nothing is applied until the organizer decides.</p>
-                <button
-                  v-if="canModerate && scoreCard(m).fixtureId"
-                  type="button"
-                  class="mt-2 inline-flex items-center gap-1 text-[11.5px] font-bold text-gray-800 dark:text-gray-200 bg-gray-200/60 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
-                  @click="emit('review-dispute', scoreCard(m).fixtureId!)"
-                >Review dispute →</button>
+                <p class="text-xs text-muted mt-2">Entries don't match — nothing is applied until the organizer decides.</p>
+                <div v-if="canModerate && scoreCard(m).fixtureId" class="mt-2.5 pt-2 border-t border-subtle">
+                  <UButton
+                    size="xs"
+                    color="error"
+                    variant="soft"
+                    icon="i-heroicons-scale"
+                    label="Review dispute"
+                    @click="emit('review-dispute', scoreCard(m).fixtureId!)"
+                  />
+                </div>
               </div>
 
-              <!-- reaction chips (Discord pill style) -->
+              <!-- reaction chips -->
               <div
                 v-if="m.reactions?.length"
-                class="flex flex-wrap gap-1.5 mt-2"
+                class="flex flex-wrap gap-1 mt-2"
                 :class="isOwn(m) && 'justify-end'"
               >
                 <button
                   v-for="r in m.reactions"
                   :key="r.emoji"
                   type="button"
-                  class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-0.5 text-[12px] transition-all cursor-pointer"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-subtle bg-surface px-2 py-0.5 text-xs transition-all cursor-pointer"
                   :class="r.mine
-                    ? 'bg-primary-500/[0.08] dark:bg-primary-400/10 border-primary-500/30 dark:border-primary-400/30 text-primary-600 dark:text-primary-300 font-semibold shadow-xs hover:bg-primary-500/15'
-                    : 'bg-gray-100/70 dark:bg-white/[0.04] border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20 hover:bg-gray-200/60 dark:hover:bg-white/[0.08]'"
+                    ? 'bg-primary-500/10 border-primary-500/30 text-primary-500 font-semibold'
+                    : 'text-body hover:text-heading hover:bg-default'"
                   :disabled="!canPost"
                   :title="r.mine ? 'Remove your reaction' : 'React'"
                   @click="pickReaction(m, r.emoji)"
                 >
-                  <span class="text-sm leading-none">{{ r.emoji }}</span>
+                  <span class="text-xs leading-none">{{ r.emoji }}</span>
                   <span class="font-mono text-[11px] font-bold tabular-nums">{{ r.count }}</span>
                 </button>
               </div>
             </div>
 
-            <!-- Discord-style floating hover actions toolbar -->
+            <!-- Floating hover actions toolbar -->
             <div
               v-if="canModerate || canPost"
-              class="absolute -top-3.5 hidden group-hover:flex items-center gap-0.5 bg-white/95 dark:bg-[#1a1c23]/95 backdrop-blur-md border border-gray-200/90 dark:border-white/10 rounded-lg p-0.5 shadow-md shadow-black/10 dark:shadow-black/50 z-20"
+              class="absolute -top-3.5 hidden group-hover:flex items-center gap-0.5 bg-page/95 backdrop-blur-md border border-subtle rounded-lg p-0.5 shadow-md z-20"
               :class="isOwn(m) ? 'left-3' : 'right-3'"
             >
               <div v-if="canPost" class="relative">
@@ -1621,7 +1799,7 @@ function onScoreModalSubmitted(result: { state: string }) {
                 <!-- emoji picker -->
                 <div
                   v-if="reactPickerFor === m.id"
-                  class="absolute bottom-full mb-1.5 z-30 flex gap-1 bg-white dark:bg-[#1a1c23] border border-gray-200 dark:border-white/10 rounded-xl p-1.5 shadow-xl shadow-black/15 dark:shadow-black/60"
+                  class="absolute bottom-full mb-1.5 z-30 flex gap-1 bg-page border border-subtle rounded-xl p-1.5 shadow-xl"
                   :class="isOwn(m) ? 'left-0' : 'right-0'"
                   @click.stop
                 >
@@ -1629,7 +1807,7 @@ function onScoreModalSubmitted(result: { state: string }) {
                     v-for="e in REACTION_EMOJIS"
                     :key="e"
                     type="button"
-                    class="w-8 h-8 rounded-lg text-[16px] hover:bg-gray-100 dark:hover:bg-white/10 hover:scale-110 active:scale-95 transition-all flex items-center justify-center cursor-pointer"
+                    class="w-8 h-8 rounded-lg text-[16px] hover:bg-surface hover:scale-110 active:scale-95 transition-all flex items-center justify-center cursor-pointer"
                     @click="pickReaction(m, e)"
                   >{{ e }}</button>
                 </div>
@@ -1670,30 +1848,26 @@ function onScoreModalSubmitted(result: { state: string }) {
             </div>
           </div>
 
-          <!-- Paragee thinking (LLM tier at work) — pinned to the end of the list -->
+          <!-- Paragee thinking -->
           <div
             v-if="botThinking"
-            class="flex gap-3 px-4 sm:px-5 py-2.5 bg-indigo-500/[0.015] dark:bg-indigo-400/[0.02] border-l-2 border-l-indigo-500/40 dark:border-l-indigo-400/40"
+            class="flex gap-3 px-4 sm:px-5 py-2.5 bg-surface border-l-2 border-l-primary-500"
             aria-live="polite"
           >
-            <span
-              class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white mt-0.5 ring-1 ring-indigo-500/30 shadow-xs"
-              style="background: linear-gradient(135deg, #475569 0%, #4338ca 100%)"
-            >✨</span>
+            <div class="w-8 h-8 rounded-full bg-primary-500/10 border border-primary-500/20 flex items-center justify-center shrink-0">
+              <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-primary-500" />
+            </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
-                <span class="text-[13px] font-semibold text-gray-900 dark:text-white">Paragee</span>
-                <span class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-600 dark:text-indigo-400/90 border border-indigo-500/20 dark:border-indigo-400/20">
-                  <UIcon name="i-heroicons-sparkles" class="w-3 h-3 text-indigo-500/80 dark:text-indigo-400/80" />
-                  AI · Paragee
-                </span>
+                <span class="text-xs font-semibold text-heading">Paragee</span>
+                <UBadge color="primary" variant="subtle" size="xs" label="AI Assistant" />
               </div>
-              <p class="text-[12.5px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2">
-                thinking
-                <span class="flex items-end gap-1 h-3">
-                  <span class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"></span>
-                  <span class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:120ms]"></span>
-                  <span class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:240ms]"></span>
+              <p class="text-xs text-muted mt-0.5 flex items-center gap-1.5">
+                Thinking
+                <span class="flex items-end gap-0.5 h-3">
+                  <span class="w-1 h-1 rounded-full bg-muted animate-bounce" />
+                  <span class="w-1 h-1 rounded-full bg-muted animate-bounce [animation-delay:120ms]" />
+                  <span class="w-1 h-1 rounded-full bg-muted animate-bounce [animation-delay:240ms]" />
                 </span>
               </p>
             </div>
@@ -1701,65 +1875,47 @@ function onScoreModalSubmitted(result: { state: string }) {
         </template>
       </div>
 
-      <!-- typing indicator (fixed height — no layout shift) -->
+      <!-- typing indicator -->
       <div
-        class="h-6 px-4 sm:px-5 flex items-center gap-2 text-[11px] text-gray-400 dark:text-gray-500 transition-opacity duration-200"
+        class="h-6 px-4 sm:px-5 flex items-center gap-2 text-[11px] text-muted transition-opacity duration-200"
         :class="[fullscreen && 'max-w-3xl w-full mx-auto', typingText ? 'opacity-100' : 'opacity-0']"
         aria-live="polite"
       >
         <span v-if="typingText" class="flex items-center gap-1.5">
-          <!-- stacked avatars (newest typer in front) -->
-          <span class="flex items-center -space-x-1.5">
-            <span
-              v-for="u in typingUsers"
-              :key="u.name"
-              class="w-4 h-4 rounded-full shrink-0 overflow-hidden ring-2 ring-white dark:ring-gray-900 flex items-center justify-center text-[6.5px] font-bold text-white shadow-xs"
-              :style="{ background: avatarColor(u.name) }"
-              :title="u.name"
-            >
-              <img v-if="u.avatarUrl" :src="u.avatarUrl" class="w-full h-full object-cover" alt="" />
-              <template v-else>{{ initials(u.name) }}</template>
-            </span>
-          </span>
           <span class="flex items-end gap-0.5 h-3">
-            <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"></span>
-            <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:120ms]"></span>
-            <span class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce [animation-delay:240ms]"></span>
+            <span class="w-1 h-1 rounded-full bg-muted animate-bounce" />
+            <span class="w-1 h-1 rounded-full bg-muted animate-bounce [animation-delay:120ms]" />
+            <span class="w-1 h-1 rounded-full bg-muted animate-bounce [animation-delay:240ms]" />
           </span>
-          <span class="font-medium text-gray-500 dark:text-gray-400">{{ typingText }}</span>
+          <span class="font-medium text-body">{{ typingText }}</span>
         </span>
       </div>
 
-      <!-- quick-ask chips -->
-      <div v-if="quickChips.length && canPost" class="flex gap-2 flex-wrap px-4 sm:px-5 pt-2 pb-1" :class="fullscreen && 'max-w-3xl w-full mx-auto'">
-        <button
-          v-for="chip in quickChips"
-          :key="chip"
-          type="button"
-          class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-700 dark:text-gray-300 bg-gray-100/80 dark:bg-white/[0.05] border border-gray-200/80 dark:border-white/10 rounded-full px-3 py-1 hover:bg-gray-200/80 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/20 transition-all cursor-pointer shadow-xs active:scale-95"
-          @click="askChip(chip)"
-        >
-          <span class="text-amber-500 text-xs">✨</span>
-          <span>{{ chip }}</span>
-        </button>
-      </div>
-
-      <!-- composer -->
+      <!-- LAYER 3: Composer / Task Bar -->
       <div
         v-if="canPost"
-        class="relative border-t border-gray-200/80 dark:border-white/[0.06] px-4 sm:px-5 py-3 flex items-end gap-2.5 flex-wrap bg-gray-50/60 dark:bg-[#13151b]"
+        class="relative border-t border-subtle px-4 sm:px-5 py-2.5 flex items-end gap-2 flex-wrap bg-surface"
         :class="fullscreen && 'max-w-3xl w-full mx-auto pb-[max(env(safe-area-inset-bottom),0.875rem)]'"
       >
+        <!-- Organizer announcement banner -->
+        <div
+          v-if="canPost === 'organizer'"
+          class="w-full flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 pb-0.5"
+        >
+          <UIcon name="i-heroicons-megaphone" class="w-3.5 h-3.5 text-amber-500" />
+          <span>Official Organizer Broadcast (highlighted & pinned)</span>
+        </div>
+
         <!-- replying-to bar -->
         <div
           v-if="replyTarget"
-          class="w-full flex items-center justify-between gap-2 rounded-lg border-l-2 border-gray-400/60 dark:border-white/20 bg-gray-100/70 dark:bg-white/[0.03] px-3 py-1.5 mb-1 text-xs"
+          class="w-full flex items-center justify-between gap-2 rounded-lg border border-subtle bg-default px-3 py-1.5 mb-1 text-xs"
         >
           <div class="flex items-center gap-2 min-w-0 flex-1">
-            <UIcon name="i-heroicons-arrow-uturn-left" class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+            <UIcon name="i-heroicons-arrow-uturn-left" class="w-3.5 h-3.5 text-muted shrink-0" />
             <span class="min-w-0 flex-1">
-              <span class="block text-[11px] font-bold text-gray-900 dark:text-white">Replying to {{ replyTarget.author.name }}</span>
-              <span class="block text-[11.5px] text-gray-500 dark:text-gray-400 truncate">{{ replyTarget.text }}</span>
+              <span class="block text-[11px] font-semibold text-heading truncate">Replying to {{ replyTarget.author.name }}</span>
+              <span class="block text-[11.5px] text-muted truncate">{{ replyTarget.text }}</span>
             </span>
           </div>
           <UButton
@@ -1769,16 +1925,16 @@ function onScoreModalSubmitted(result: { state: string }) {
             color="neutral"
             icon="i-heroicons-x-mark"
             title="Cancel reply"
-            class="hover:bg-gray-200/60 dark:hover:bg-white/10"
             @click="cancelReply"
           />
         </div>
-        <!-- Slash command autocomplete -->
+
+        <!-- Slash command autocomplete menu -->
         <div
           v-if="slashOpen"
-          class="absolute bottom-full left-4 sm:left-5 mb-2 w-72 max-w-[calc(100%-2rem)] rounded-xl border border-gray-200/90 dark:border-white/[0.12] bg-white dark:bg-[#1b1d24] shadow-xl shadow-black/15 dark:shadow-black/60 overflow-hidden z-30"
+          class="absolute bottom-full left-4 sm:left-5 mb-2 w-72 max-w-[calc(100%-2rem)] rounded-xl border border-subtle bg-page shadow-xl overflow-hidden z-30"
         >
-          <p class="px-3 py-1.5 text-[9.5px] font-extrabold uppercase tracking-widest text-gray-400 border-b border-gray-100 dark:border-white/[0.06]">
+          <p class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted border-b border-subtle">
             Commands
           </p>
           <button
@@ -1786,28 +1942,26 @@ function onScoreModalSubmitted(result: { state: string }) {
             :key="c.cmd"
             type="button"
             class="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer"
-            :class="i === slashIndex ? 'bg-gray-100 dark:bg-white/10' : 'hover:bg-gray-50 dark:hover:bg-white/[0.04]'"
+            :class="i === slashIndex ? 'bg-surface' : 'hover:bg-surface/50'"
             @mousedown.prevent="executeSlash(c)"
             @mouseenter="slashIndex = i"
           >
-            <span
-              class="w-6 h-6 rounded-lg shrink-0 flex items-center justify-center text-xs bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300"
-            >
+            <span class="w-6 h-6 rounded-lg shrink-0 flex items-center justify-center text-xs bg-surface border border-subtle text-heading">
               <UIcon :name="c.icon" class="w-3.5 h-3.5" />
             </span>
             <span class="min-w-0">
-              <span class="block text-[12.5px] font-semibold text-gray-900 dark:text-white truncate font-mono">{{ c.label }}</span>
-              <span class="block text-[10.5px] text-gray-400 truncate">{{ c.desc }}</span>
+              <span class="block text-xs font-semibold text-heading truncate font-mono">{{ c.label }}</span>
+              <span class="block text-[10px] text-muted truncate">{{ c.desc }}</span>
             </span>
           </button>
         </div>
 
-        <!-- @mention autocomplete -->
+        <!-- @mention autocomplete menu -->
         <div
           v-if="mentionOpen"
-          class="absolute bottom-full left-4 sm:left-5 mb-2 w-72 max-w-[calc(100%-2rem)] rounded-xl border border-gray-200/90 dark:border-white/[0.12] bg-white dark:bg-[#1b1d24] shadow-xl shadow-black/15 dark:shadow-black/60 overflow-hidden z-30"
+          class="absolute bottom-full left-4 sm:left-5 mb-2 w-72 max-w-[calc(100%-2rem)] rounded-xl border border-subtle bg-page shadow-xl overflow-hidden z-30"
         >
-          <p class="px-3 py-1.5 text-[9.5px] font-extrabold uppercase tracking-widest text-gray-400 border-b border-gray-100 dark:border-white/[0.06]">
+          <p class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted border-b border-subtle">
             Mention
           </p>
           <button
@@ -1815,7 +1969,7 @@ function onScoreModalSubmitted(result: { state: string }) {
             :key="m.id"
             type="button"
             class="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer"
-            :class="i === mentionIndex ? 'bg-gray-100 dark:bg-white/10' : 'hover:bg-gray-50 dark:hover:bg-white/[0.04]'"
+            :class="i === mentionIndex ? 'bg-surface' : 'hover:bg-surface/50'"
             @mousedown.prevent="selectMention(m)"
             @mouseenter="mentionIndex = i"
           >
@@ -1824,11 +1978,23 @@ function onScoreModalSubmitted(result: { state: string }) {
               :style="m.bot ? { background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%)' } : { background: avatarColor(m.name) }"
             >{{ m.bot ? '✨' : initials(m.name) }}</span>
             <span class="min-w-0">
-              <span class="block text-[12.5px] font-semibold text-gray-900 dark:text-white truncate">@{{ m.name }}</span>
-              <span v-if="m.sub" class="block text-[10.5px] text-gray-400 truncate">{{ m.sub }}</span>
+              <span class="block text-xs font-semibold text-heading truncate">@{{ m.name }}</span>
+              <span v-if="m.sub" class="block text-[10px] text-muted truncate">{{ m.sub }}</span>
             </span>
           </button>
         </div>
+
+        <!-- Slash command trigger button -->
+        <UButton
+          type="button"
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          class="font-mono font-bold text-xs px-2 shrink-0"
+          label="/"
+          title="Commands (/score, /next, /table, /rules)"
+          @click="openSlashMenu"
+        />
 
         <UTextarea
           ref="composerEl"
@@ -1837,20 +2003,11 @@ function onScoreModalSubmitted(result: { state: string }) {
           :rows="1"
           autoresize
           :maxrows="4"
-          class="flex-1"
+          class="flex-1 min-w-0"
           :disabled="sending"
           @keydown="onComposerKeydown"
         />
-        <UButton
-          v-if="viewerActiveFixture && !isManage"
-          type="button"
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-trophy"
-          title="Report match score"
-          @click="openSubmitModalForActive"
-        />
+
         <UButton
           type="button"
           color="primary"
@@ -1864,12 +2021,12 @@ function onScoreModalSubmitted(result: { state: string }) {
       <!-- locked composer -->
       <div
         v-else
-        class="border-t border-gray-100 dark:border-white/[0.06] px-4 sm:px-5 py-3.5 flex items-center justify-between gap-3 flex-wrap bg-gray-50/50 dark:bg-white/[0.015]"
+        class="border-t border-subtle px-4 sm:px-5 py-3 flex items-center justify-between gap-3 flex-wrap bg-surface"
         :class="fullscreen && 'max-w-3xl w-full mx-auto'"
       >
-        <div class="flex items-center gap-2.5 text-[12.5px] text-gray-500 dark:text-gray-400">
-          <span class="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center shrink-0">🔒</span>
-          Only approved participants and organizers can post.
+        <div class="flex items-center gap-2 text-xs text-muted">
+          <UIcon name="i-heroicons-lock-closed" class="w-4 h-4 shrink-0" />
+          <span>Only approved participants and organizers can submit scores and post updates.</span>
         </div>
         <UButton
           v-if="joinUrl"
@@ -1877,14 +2034,13 @@ function onScoreModalSubmitted(result: { state: string }) {
           size="xs"
           variant="outline"
           color="neutral"
-          label="Join tournament to chat"
+          label="Join tournament to participate"
           trailing-icon="i-heroicons-arrow-right"
           :to="joinUrl"
         />
       </div>
 
-      <!-- scroll-to-bottom FAB — fixed to the viewport so it's reachable even when
-           the card's bottom edge is below the fold; hidden when the card is off-screen -->
+      <!-- scroll-to-bottom FAB -->
       <Transition
         enter-active-class="transition duration-200 ease-out"
         enter-from-class="opacity-0 translate-y-2"
@@ -1896,15 +2052,16 @@ function onScoreModalSubmitted(result: { state: string }) {
         <button
           v-if="!isNearBottom && cardVisible"
           type="button"
-          class="fixed bottom-24 md:bottom-8 z-40 w-10 h-10 rounded-full bg-gray-900 dark:bg-white border border-gray-700 dark:border-gray-200 shadow-lg shadow-black/20 flex items-center justify-center text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+          class="fixed bottom-24 md:bottom-8 z-40 w-10 h-10 rounded-full bg-heading border border-subtle shadow-lg flex items-center justify-center text-page hover:opacity-90 transition-opacity"
           :style="{ right: `${fabRight}px` }"
           title="Scroll to latest messages"
           aria-label="Scroll to latest messages"
           @click="scrollToBottom(true, true)"
         >
-          <UIcon name="i-heroicons-chevron-double-down" class="w-5 h-5" />
+          <UIcon name="i-heroicons-chevron-double-down" class="w-5 h-5 text-page" />
         </button>
       </Transition>
+
       <!-- Esports Score Submit Modal -->
       <template v-if="allowsSelfReporting">
         <ChatScoreSubmitModal

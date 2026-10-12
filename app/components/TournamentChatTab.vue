@@ -130,8 +130,9 @@ const botToggleRows = [
   { key: 'fixtures', label: 'Fixtures & schedule', hint: 'Answers /next and "When is my next match?" with live fixture cards' },
   { key: 'standings', label: 'Standings & stats', hint: 'Answers /table and top scorers with instant table snapshot' },
   { key: 'rules', label: 'House rules', hint: 'Answers /rules directly from your official tournament rules' },
-  { key: 'quickChips', label: 'Quick-action chips', hint: 'Shows tap-to-ask chips and slash commands (/next, /table, /score) above composer' },
 ] as const
+
+const automationOpen = ref(false)
 </script>
 
 <template>
@@ -150,103 +151,140 @@ const botToggleRows = [
       @enable-chat="enableChat"
     />
 
-    <!-- Rail -->
+    <!-- Rail: Ops Queue & Hub Controls -->
     <div class="flex flex-col gap-4 sm:gap-5">
-      <!-- Open score disputes -->
+      <!-- Ops Queue: Score disputes (double-entry conflicts) -->
       <section
-        v-if="allowsSelfReporting && (disputes.length > 0 || disputesLoading)"
-        class="bg-white dark:bg-gray-900 border border-red-200 dark:border-red-500/25 rounded-2xl overflow-hidden"
+        v-if="allowsSelfReporting"
+        class="bg-surface border border-subtle rounded-2xl overflow-hidden shadow-2xs"
       >
-        <div class="px-4 sm:px-5 py-3.5 border-b border-red-100 dark:border-red-500/10 flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-red-600 dark:text-red-400">Score conflicts</h2>
-          <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/25">{{ disputes.length }} open</span>
-        </div>
-        <div class="p-4 sm:p-5 space-y-2.5">
-          <div v-if="disputesLoading" class="flex justify-center py-3">
-            <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 animate-spin text-gray-400" />
+        <div class="px-4 sm:px-5 py-3.5 border-b border-subtle flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-scale" class="w-4 h-4 text-heading" />
+            <h2 class="text-sm font-semibold text-heading">Ops Queue</h2>
           </div>
-          <div
-            v-for="d in disputes"
-            :key="d.fixtureId"
-            class="flex items-center justify-between gap-3 p-3 rounded-xl bg-red-500/[0.04] border border-red-500/20"
-          >
-            <div class="min-w-0">
-              <p class="text-[13px] font-semibold text-gray-900 dark:text-white truncate">{{ d.home }} vs {{ d.away }}</p>
-              <p class="text-[11px] text-gray-500 mt-0.5">
-                {{ d.round }} · {{ d.submissions.map((s) => `${s.homeScore}–${s.awayScore}`).join(' vs ') }}
-              </p>
+          <UBadge
+            :color="disputes.length > 0 ? 'error' : 'neutral'"
+            variant="subtle"
+            size="xs"
+            :label="disputes.length > 0 ? `${disputes.length} open conflict${disputes.length === 1 ? '' : 's'}` : 'All clear'"
+          />
+        </div>
+        <div class="p-4 sm:p-5">
+          <div v-if="disputesLoading" class="flex justify-center py-4">
+            <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 animate-spin text-muted" />
+          </div>
+          <div v-else-if="disputes.length > 0" class="space-y-2.5">
+            <div
+              v-for="d in disputes"
+              :key="d.fixtureId"
+              class="flex items-center justify-between gap-3 p-3 rounded-xl bg-default border border-subtle"
+            >
+              <div class="min-w-0">
+                <p class="text-xs font-semibold text-heading truncate">{{ d.home }} vs {{ d.away }}</p>
+                <p class="text-[11px] text-muted mt-0.5">
+                  {{ d.round }} · {{ d.submissions.map((s) => `${s.homeScore}–${s.awayScore}`).join(' vs ') }}
+                </p>
+              </div>
+              <UButton type="button" size="xs" color="error" variant="soft" label="Review" @click="reviewDispute(d.fixtureId)" />
             </div>
-            <UButton type="button" size="xs" color="error" variant="soft" label="Review" @click="reviewDispute(d.fixtureId)" />
+          </div>
+          <div v-else class="text-center py-4 px-2">
+            <UIcon name="i-heroicons-check-circle" class="w-6 h-6 mx-auto text-emerald-500 mb-1.5 opacity-80" />
+            <p class="text-xs font-semibold text-heading">No open score conflicts</p>
+            <p class="text-[11px] text-muted mt-0.5">Reported match scores are verified or automatically matched.</p>
           </div>
         </div>
       </section>
 
-      <!-- Chat settings -->
-      <section class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
-        <div class="px-4 sm:px-5 py-3.5 border-b border-gray-100 dark:border-white/[0.06]">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Chat settings</h2>
-          <p class="text-xs text-gray-500 mt-0.5">The room lives on the fan page — public read.</p>
+      <!-- Match Hub & Automation Settings -->
+      <section class="bg-surface border border-subtle rounded-2xl overflow-hidden shadow-2xs">
+        <div class="px-4 sm:px-5 py-3.5 border-b border-subtle">
+          <h2 class="text-sm font-semibold text-heading">Hub Controls</h2>
+          <p class="text-xs text-muted mt-0.5">Status, rules & automation settings for this tournament.</p>
         </div>
-        <div class="p-4 sm:p-5 space-y-3">
-          <div class="flex items-center justify-between p-3.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.05]">
+        <div class="p-4 sm:p-5 space-y-4">
+          <!-- Hub Status Toggle -->
+          <div class="flex items-center justify-between p-3 rounded-xl bg-default border border-subtle">
             <div class="flex-1 pr-3">
-              <p class="font-medium text-sm text-gray-900 dark:text-white">Chat enabled</p>
-              <p class="text-[11px] text-gray-500 mt-0.5">Shows the Chat tab on the fan page and opens the room.</p>
+              <p class="font-medium text-xs sm:text-sm text-heading">Match Hub enabled</p>
+              <p class="text-[11px] text-muted mt-0.5">Enables the live hub tab for bulletins & score reporting.</p>
             </div>
             <USwitch v-model="form.chatEnabled" />
           </div>
-          <div class="p-3.5 rounded-xl border border-dashed border-gray-200 dark:border-white/[0.1]">
-            <p class="font-medium text-sm text-gray-900 dark:text-white">Who can post</p>
-            <p class="text-[11px] text-gray-500 mt-0.5">Approved participants + organizers. Everyone else reads; the fan page shows a locked composer.</p>
-          </div>
-          <UFormField label="House rules" description="Shown to players; Paragee answers rule questions from this text.">
-            <UTextarea v-model="form.chatRules" :rows="3" placeholder="Be respectful. Report scores with screenshots." class="w-full" />
+
+          <!-- Official House Rules -->
+          <UFormField label="Official house rules" description="Paragee answers /rules from this text and it is shown in the rules drawer.">
+            <UTextarea
+              v-model="form.chatRules"
+              :rows="3"
+              placeholder="Be respectful. Report scores with screenshots. Match starts within 15 mins of call."
+              class="w-full"
+            />
           </UFormField>
-          <div class="flex justify-end">
-            <UButton type="button" color="primary" size="sm" label="Save settings" icon="i-heroicons-check" :loading="saving" @click="saveSettings" />
-          </div>
-        </div>
-      </section>
 
-      <!-- Tournament Assistant -->
-      <section class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
-        <div class="px-4 sm:px-5 py-3.5 border-b border-gray-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">🤖 Tournament Bot</h2>
-          <div class="flex items-center gap-2">
-            <span
-              v-if="(tournament?.botCalls ?? 0) > 0"
-              class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 tabular-nums"
-              title="Times the bot has answered a question in this room"
-            >{{ tournament!.botCalls }} {{ tournament!.botCalls === 1 ? 'call' : 'calls' }}</span>
-            <span class="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Fast Ops</span>
-          </div>
-        </div>
-        <div class="p-4 sm:p-5 space-y-3">
-          <div class="flex items-center justify-between p-3.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.05]">
-            <div class="flex-1 pr-3">
-              <p class="font-medium text-sm text-gray-900 dark:text-white">Bot enabled</p>
-              <p class="text-[11px] text-gray-500 mt-0.5">
-                Answers player schedule, standing, and rule questions instantly from tournament data. Posts as <span class="font-semibold text-gray-900 dark:text-white">Paragee</span>.
-              </p>
-            </div>
-            <USwitch v-model="form.parageeBot.enabled" />
-          </div>
-
-          <div class="divide-y divide-gray-100 dark:divide-white/[0.05]">
-            <div v-for="row in botToggleRows" :key="row.key" class="flex items-center justify-between gap-3 py-2.5">
-              <div class="flex-1 min-w-0">
-                <p class="text-[13px] font-semibold text-gray-900 dark:text-white">{{ row.label }}</p>
-                <p class="text-[11px] text-gray-500 mt-0.5">{{ row.hint }}</p>
+          <!-- Automation (Paragee Bot) Collapsible -->
+          <div class="rounded-xl border border-subtle bg-default overflow-hidden">
+            <button
+              type="button"
+              class="w-full px-3.5 py-3 flex items-center justify-between gap-2 hover:bg-surface transition-colors cursor-pointer text-left"
+              @click="automationOpen = !automationOpen"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-heading shrink-0" />
+                <span class="text-xs font-semibold text-heading truncate">Automation (Paragee Bot)</span>
+                <span
+                  v-if="(tournament?.botCalls ?? 0) > 0"
+                  class="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-surface text-muted border border-subtle tabular-nums shrink-0"
+                >{{ tournament!.botCalls }}</span>
               </div>
-              <USwitch v-model="form.parageeBot[row.key]" :disabled="!form.parageeBot.enabled" />
+              <div class="flex items-center gap-1.5 shrink-0">
+                <UBadge
+                  :color="form.parageeBot.enabled ? 'primary' : 'neutral'"
+                  variant="subtle"
+                  size="xs"
+                  :label="form.parageeBot.enabled ? 'Active' : 'Off'"
+                />
+                <UIcon
+                  :name="automationOpen ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
+                  class="w-4 h-4 text-muted"
+                />
+              </div>
+            </button>
+
+            <div v-if="automationOpen" class="px-3.5 pb-3.5 pt-1 border-t border-subtle space-y-3">
+              <div class="flex items-center justify-between py-2 border-b border-subtle">
+                <div class="flex-1 pr-2">
+                  <p class="text-xs font-semibold text-heading">Enable Bot</p>
+                  <p class="text-[11px] text-muted">Answers player questions deterministically from data.</p>
+                </div>
+                <USwitch v-model="form.parageeBot.enabled" />
+              </div>
+
+              <div class="divide-y divide-subtle">
+                <div v-for="row in botToggleRows" :key="row.key" class="flex items-center justify-between gap-3 py-2">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-medium text-heading">{{ row.label }}</p>
+                    <p class="text-[10px] text-muted truncate">{{ row.hint }}</p>
+                  </div>
+                  <USwitch v-model="form.parageeBot[row.key]" :disabled="!form.parageeBot.enabled" size="sm" />
+                </div>
+              </div>
             </div>
           </div>
 
-          <p class="text-[11px] text-gray-400 dark:text-gray-500">
-            All answers (fixtures, standings, rules) are 100% deterministic and pulled live from tournament data with zero external AI latency or hallucinations.
-          </p>
-          <div class="flex justify-end">
-            <UButton type="button" color="primary" size="sm" label="Save settings" icon="i-heroicons-check" :loading="saving" @click="saveSettings" />
+          <!-- Single Unified Save Action -->
+          <div class="pt-1">
+            <UButton
+              type="button"
+              color="primary"
+              size="sm"
+              class="w-full justify-center"
+              label="Save settings"
+              icon="i-heroicons-check"
+              :loading="saving"
+              @click="saveSettings"
+            />
           </div>
         </div>
       </section>
