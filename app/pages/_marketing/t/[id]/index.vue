@@ -886,14 +886,14 @@ function getTeamCards(fixture: any, isHome: boolean) {
               v-if="tournament?.chatEnabled"
               @click="activeTab = 'chat'"
               :class="[
-                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
+                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-1.5',
                 activeTab === 'chat'
                   ? 'text-gray-900 border-gray-900 dark:text-white dark:border-white'
                   : 'text-gray-500 border-transparent hover:text-gray-700 dark:hover:text-gray-300'
               ]"
             >
-               Chat
-               <span class="text-[10px] opacity-70" title="Only approved participants can post">🔒</span>
+              <UIcon name="i-heroicons-bolt" class="w-4 h-4 text-amber-500 dark:text-amber-400" />
+              <span>Match Hub</span>
             </button>
           </nav>
         </div>
