@@ -492,13 +492,27 @@ const statusColors: Record<
             title="Reject"
             />
             </div>
-            <UBadge
-            v-else
-            :color="statusColors[participant.status]"
-            variant="subtle"
-            size="sm"
+            <UTooltip
+              v-else-if="participant.status === ParticipantStatus.CONFIRMED"
+              text="Confirmed participant"
             >
-            {{ participant.status }}
+              <UBadge
+                color="success"
+                variant="subtle"
+                size="xs"
+                class="p-1"
+              >
+                <UIcon name="i-heroicons-check" class="w-3.5 h-3.5" />
+              </UBadge>
+            </UTooltip>
+            <UBadge
+              v-else
+              :color="statusColors[participant.status]"
+              variant="subtle"
+              size="xs"
+              class="capitalize"
+            >
+              {{ participant.status.toLowerCase() }}
             </UBadge>
             <UDropdownMenu
             :items="[

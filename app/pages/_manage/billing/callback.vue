@@ -83,7 +83,7 @@ const backLink = computed(() => {
       <div class="flex items-center gap-3">
         <UButton
           label="Go to Billing"
-          to="/billing"
+          to="/billing?tab=plans"
           color="primary"
           size="lg"
           icon="i-heroicons-credit-card"
@@ -116,7 +116,7 @@ const backLink = computed(() => {
       <div class="flex items-center gap-3">
         <UButton
           label="Try Again"
-          to="/billing"
+          to="/billing?tab=plans"
           color="primary"
           size="lg"
           icon="i-heroicons-arrow-path"
