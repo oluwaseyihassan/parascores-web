@@ -502,20 +502,8 @@ function scrollToBottom(force = false, smooth = false) {
   })
 }
 
-// FAB visibility: user has scrolled away from the latest message AND the
-// chat card is actually on screen (viewport-fixed FAB must not float over
-// other sections when the page is scrolled past the room)
+// User has scrolled away from the latest message
 const isNearBottom = ref(true)
-const cardVisible = ref(true)
-// Keep the FAB horizontally aligned with the chat card (not the viewport
-// corner) — the card is centered on wide screens
-const fabRight = ref(16)
-function updateFabRight() {
-  const el = listEl.value
-  if (!el) return
-  fabRight.value = Math.max(window.innerWidth - el.getBoundingClientRect().right + 16, 16)
-}
-let cardObserver: IntersectionObserver | null = null
 function onListScroll() {
   const el = listEl.value
   if (!el) return
@@ -573,26 +561,6 @@ watch(botThinking, (v) => { if (v) scrollToBottom(false, true) })
 
 onMounted(() => {
   scrollToBottom(true)
-  // listEl may already be populated at mount (SSR hydration) or render later
-  // (loading branch swaps) — attach once, whichever happens first
-  cardObserver = new IntersectionObserver(
-    (entries) => { cardVisible.value = entries[0]?.isIntersecting ?? true },
-    { threshold: 0.05 },
-  )
-  let listAttached = false
-  const attachList = (el: HTMLElement | null) => {
-    if (!el || listAttached) return
-    listAttached = true
-    cardObserver?.observe(el)
-    updateFabRight()
-  }
-  watch(listEl, attachList)
-  attachList(listEl.value)
-  window.addEventListener('resize', updateFabRight)
-})
-onUnmounted(() => {
-  cardObserver?.disconnect()
-  window.removeEventListener('resize', updateFabRight)
 })
 
 // ─── Display helpers ─────────────────────────────────────
@@ -1367,11 +1335,15 @@ function onScoreModalSubmitted(result: { state: string }) {
 
       <!-- LAYER 2: Activity Feed (The Hero) -->
       <div
-        ref="listEl"
-        class="flex-1 overflow-y-auto min-h-[240px] py-2 bg-page"
-        :class="[fullscreen ? 'max-w-3xl w-full mx-auto' : 'max-h-[520px]']"
-        @scroll.passive="onListScroll"
+        class="relative flex-1 min-h-0 flex flex-col"
+        :class="fullscreen && 'max-w-3xl w-full mx-auto'"
       >
+        <div
+          ref="listEl"
+          class="flex-1 overflow-y-auto min-h-[240px] py-2 bg-page"
+          :class="!fullscreen && 'max-h-[520px]'"
+          @scroll.passive="onListScroll"
+        >
         <div v-if="loading" class="space-y-3 p-4">
           <USkeleton v-for="i in 4" :key="i" class="h-12 w-full rounded-xl bg-surface" />
         </div>
@@ -1873,6 +1845,28 @@ function onScoreModalSubmitted(result: { state: string }) {
             </div>
           </div>
         </template>
+        </div>
+
+        <!-- scroll-to-bottom FAB: anchored inside the feed area above the composer -->
+        <Transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="opacity-0 translate-y-2 scale-90"
+          enter-to-class="opacity-100 translate-y-0 scale-100"
+          leave-active-class="transition duration-150 ease-in"
+          leave-from-class="opacity-100 translate-y-0 scale-100"
+          leave-to-class="opacity-0 translate-y-2 scale-90"
+        >
+          <button
+            v-if="!isNearBottom"
+            type="button"
+            class="absolute bottom-2 right-3 sm:right-4 z-20 w-8 h-8 rounded-full bg-page/95 backdrop-blur-xs border border-subtle shadow-md hover:bg-surface flex items-center justify-center text-heading transition-all cursor-pointer hover:shadow-lg active:scale-95"
+            title="Scroll to latest messages"
+            aria-label="Scroll to latest messages"
+            @click="scrollToBottom(true, true)"
+          >
+            <UIcon name="i-heroicons-chevron-double-down" class="w-4 h-4 text-heading" />
+          </button>
+        </Transition>
       </div>
 
       <!-- typing indicator -->
@@ -2040,27 +2034,7 @@ function onScoreModalSubmitted(result: { state: string }) {
         />
       </div>
 
-      <!-- scroll-to-bottom FAB -->
-      <Transition
-        enter-active-class="transition duration-200 ease-out"
-        enter-from-class="opacity-0 translate-y-2"
-        enter-to-class="opacity-100 translate-y-0"
-        leave-active-class="transition duration-150 ease-in"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 translate-y-2"
-      >
-        <button
-          v-if="!isNearBottom && cardVisible"
-          type="button"
-          class="fixed bottom-24 md:bottom-8 z-40 w-10 h-10 rounded-full bg-heading border border-subtle shadow-lg flex items-center justify-center text-page hover:opacity-90 transition-opacity"
-          :style="{ right: `${fabRight}px` }"
-          title="Scroll to latest messages"
-          aria-label="Scroll to latest messages"
-          @click="scrollToBottom(true, true)"
-        >
-          <UIcon name="i-heroicons-chevron-double-down" class="w-5 h-5 text-page" />
-        </button>
-      </Transition>
+
 
       <!-- Esports Score Submit Modal -->
       <template v-if="allowsSelfReporting">
