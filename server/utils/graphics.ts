@@ -92,8 +92,8 @@ export const getAbsoluteFooter = (socials: any[]) => {
             props: {
                 style: {
                     position: 'absolute',
-                    bottom: '20px',
-                    left: '25px',
+                    bottom: '24px',
+                    left: '32px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '8px'
@@ -181,8 +181,8 @@ export const getAbsoluteFooter = (socials: any[]) => {
             props: {
                 style: {
                     position: 'absolute',
-                    bottom: '16px',
-                    right: '25px',
+                    bottom: '24px',
+                    right: '32px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px'

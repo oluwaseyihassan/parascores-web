@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
     const width = 1200
     const headerHeight = 220
     const fixtureRowHeight = 90
-    const footerHeight = (sponsors && sponsors.length > 0) ? 140 : 60
+    const footerHeight = (sponsors && sponsors.length > 0) ? 140 : 96
     const height = headerHeight + (fixtures.length * fixtureRowHeight) + footerHeight
 
     // Background layers
