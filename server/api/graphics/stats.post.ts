@@ -260,13 +260,13 @@ export default defineEventHandler(async (event) => {
                           ].filter(Boolean)
                       }
                   },
-                  {
+                  (sponsors && sponsors.length > 0) ? {
                     type: 'div',
                     props: {
-                        style: { display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 'auto', paddingTop: '50px', paddingBottom: '80px', gap: '16px', width: '100%' },
+                        style: { display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '20px', paddingBottom: '20px', gap: '16px', width: '100%' },
                         children: [ getSponsorsRow(sponsors) ].filter(Boolean)
                     }
-                  },
+                  } : null,
                   ...getAbsoluteFooter(socials)
               ].filter(Boolean)
             }
