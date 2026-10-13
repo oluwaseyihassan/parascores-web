@@ -1,6 +1,6 @@
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
-import { getSponsorsRow, getAbsoluteFooter } from '../../utils/graphics'
+import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers } from '../../utils/graphics'
 import { useGraphicsCache } from '../../utils/cache'
 
 export default defineEventHandler(async (event) => {
@@ -81,7 +81,9 @@ export default defineEventHandler(async (event) => {
   const height = baseHeight
 
   const backgroundLayers = []
-  if (!transparent) {
+  if (transparent) {
+      backgroundLayers.push(...getGlassBackgroundLayers())
+  } else {
       if (tournament.bannerUrl) {
           backgroundLayers.push({
               type: 'img',
@@ -173,7 +175,7 @@ export default defineEventHandler(async (event) => {
     {
       type: 'div',
       props: {
-        style: { display: 'flex', height: '100%', width: '100%', position: 'relative', overflow: 'hidden', backgroundColor: transparent ? 'transparent' : '#111827', fontFamily: 'Inter' },
+        style: { display: 'flex', height: '100%', width: '100%', position: 'relative', overflow: 'hidden', backgroundColor: transparent ? 'transparent' : '#111827', borderRadius: transparent ? '24px' : '0px', fontFamily: 'Inter' },
         children: [
           ...backgroundLayers,
           {

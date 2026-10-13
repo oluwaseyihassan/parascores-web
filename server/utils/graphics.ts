@@ -207,3 +207,25 @@ export const getAbsoluteFooter = (socials: any[]) => {
         }
     ].filter(Boolean)
 }
+
+export const getGlassBackgroundLayers = () => {
+    return [
+        {
+            type: 'div',
+            props: {
+                style: {
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                    backgroundImage: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(15, 23, 42, 0.78) 100%)',
+                    border: '1.5px solid rgba(255, 255, 255, 0.16)',
+                    borderTop: '2px solid rgba(255, 255, 255, 0.32)',
+                    borderRadius: '24px',
+                }
+            }
+        }
+    ]
+}

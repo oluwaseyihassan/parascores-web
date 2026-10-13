@@ -2,7 +2,7 @@
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
 import type { Fixture, Participant } from '~/types'
-import { getSponsorsRow, getAbsoluteFooter } from '../../utils/graphics'
+import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers } from '../../utils/graphics'
 import { useGraphicsCache } from '../../utils/cache'
 
 // Social Icons Map (Simple Icons & Heroicons)
@@ -65,7 +65,9 @@ export default defineEventHandler(async (event) => {
 
     // Background Layers
     const backgroundLayers = []
-    if (!transparent) {
+    if (transparent) {
+        backgroundLayers.push(...getGlassBackgroundLayers())
+    } else {
         if (tournament.bannerUrl) {
             backgroundLayers.push({
               type: 'img',
@@ -303,6 +305,8 @@ export default defineEventHandler(async (event) => {
             width: '100%',
             height: '100%',
             backgroundColor: transparent ? 'transparent' : '#111827',
+            borderRadius: transparent ? '24px' : '0px',
+            overflow: 'hidden',
             fontFamily: 'Inter',
             position: 'relative'
           },

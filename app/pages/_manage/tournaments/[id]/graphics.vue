@@ -560,7 +560,7 @@ watch(selectedStatType, () => {
 
 watch(isTransparent, () => {
   if (canGenerate.value) {
-    generatePreview()
+    generatePreview(true)
   }
 })
 
@@ -676,8 +676,8 @@ onUnmounted(() => {
               <UFormGroup>
                 <div class="flex items-center justify-between">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Transparent Background</label>
-                    <p class="text-xs text-gray-500">Remove background for overlaying on your own graphics</p>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Glass / Transparent Background</label>
+                    <p class="text-xs text-gray-500">Frosted glass backdrop for overlaying on your own graphics</p>
                   </div>
                   <USwitch v-model="isTransparent" />
                 </div>
@@ -852,7 +852,12 @@ onUnmounted(() => {
             </div>
           </template>
 
-          <div class="flex-1 flex items-center justify-center bg-gray-100 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-800 min-h-[400px] overflow-hidden relative">
+          <div 
+            class="flex-1 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-800 min-h-[400px] overflow-hidden relative transition-all"
+            :class="isTransparent 
+              ? 'bg-slate-950 [background-image:radial-gradient(rgba(99,102,241,0.25)_1.5px,transparent_1.5px)] [background-size:24px_24px]' 
+              : 'bg-gray-100 dark:bg-gray-900'"
+          >
              <!-- Placeholder (Match Mode) -->
              <div v-if="(graphicType === 'match' || graphicType === 'lineup') && !selectedFixtureId" class="text-center text-gray-400">
                 <UIcon name="i-heroicons-cursor-arrow-rays" class="w-12 h-12 mx-auto mb-2" />
