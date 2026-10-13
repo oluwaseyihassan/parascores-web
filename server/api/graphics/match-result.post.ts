@@ -1,7 +1,7 @@
 
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
-import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers } from '../../utils/graphics'
+import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers, truncateText } from '../../utils/graphics'
 import { useGraphicsCache } from '../../utils/cache'
 
 export default defineEventHandler(async (event) => {
@@ -16,8 +16,10 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    const homeName = homeTeam?.customShortName || homeTeam?.customName || match.homeTeamPlaceholder || 'Home Team'
-    const awayName = awayTeam?.customShortName || awayTeam?.customName || match.awayTeamPlaceholder || 'Away Team'
+    const rawHomeName = homeTeam?.customShortName || homeTeam?.customName || match.homeTeamPlaceholder || 'Home Team'
+    const rawAwayName = awayTeam?.customShortName || awayTeam?.customName || match.awayTeamPlaceholder || 'Away Team'
+    const homeName = truncateText(rawHomeName, 18)
+    const awayName = truncateText(rawAwayName, 18)
     const homeLogo = homeTeam?.logoUrl
     const awayLogo = awayTeam?.logoUrl
 
@@ -263,7 +265,7 @@ export default defineEventHandler(async (event) => {
                                             type: 'span',
                                             props: {
                                                 children: homeName,
-                                                style: { fontSize: '32px', fontWeight: 'bold', textAlign: 'center' }
+                                                style: { fontSize: homeName.length > 14 ? '26px' : '32px', fontWeight: 'bold', textAlign: 'center', maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
                                             }
                                         }
                                     ]
@@ -358,7 +360,7 @@ export default defineEventHandler(async (event) => {
                                             type: 'span',
                                             props: {
                                                 children: awayName,
-                                                style: { fontSize: '32px', fontWeight: 'bold', textAlign: 'center' }
+                                                style: { fontSize: awayName.length > 14 ? '26px' : '32px', fontWeight: 'bold', textAlign: 'center', maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
                                             }
                                         }
                                     ]

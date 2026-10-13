@@ -5,7 +5,7 @@
  */
 definePageMeta({
   middleware: ['require-organizer'],
-  layout: 'dashboard-v2'
+  layout: 'dashboard'
 })
 
 await navigateTo('/', { replace: true })

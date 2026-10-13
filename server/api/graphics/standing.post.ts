@@ -1,7 +1,7 @@
 
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
-import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers } from '../../utils/graphics'
+import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers, truncateText } from '../../utils/graphics'
 import { useGraphicsCache } from '../../utils/cache'
 
 export default defineEventHandler(async (event) => {
@@ -127,7 +127,8 @@ export default defineEventHandler(async (event) => {
   // Helper to render a single table row
   const renderTableRow = (row: any, index: number) => {
       const isTop4 = (row.position || index + 1) <= 4
-      const teamName = row.participant?.customShortName || row.participant?.customName || row.participantName || 'Team'
+      const rawTeamName = row.participant?.customShortName || row.participant?.customName || row.participantName || 'Team'
+      const teamName = truncateText(rawTeamName, 22)
       return {
           type: 'div',
           props: {
@@ -173,7 +174,7 @@ export default defineEventHandler(async (event) => {
                   {
                       type: 'div',
                       props: {
-                          style: { flex: 1, display: 'flex', alignItems: 'center', gap: '16px', paddingLeft: '16px' },
+                          style: { flex: 1, display: 'flex', alignItems: 'center', gap: '16px', paddingLeft: '16px', minWidth: 0, overflow: 'hidden' },
                           children: [
                                row.participant?.logoUrl ? {
                                   type: 'img',
@@ -181,7 +182,7 @@ export default defineEventHandler(async (event) => {
                                       src: row.participant.logoUrl,
                                       width: 40,
                                       height: 40,
-                                      style: { objectFit: 'contain' }
+                                      style: { objectFit: 'contain', flexShrink: 0 }
                                   }
                               } : {
                                   type: 'div',
@@ -195,16 +196,25 @@ export default defineEventHandler(async (event) => {
                                           alignItems: 'center',
                                           justifyContent: 'center',
                                           fontWeight: 'bold',
-                                          color: 'white'
+                                          color: 'white',
+                                          flexShrink: 0
                                       },
-                                      children: teamName.charAt(0).toUpperCase()
+                                      children: rawTeamName.charAt(0).toUpperCase()
                                   }
                               },
                               {
                                   type: 'span',
                                   props: {
                                       children: teamName,
-                                      style: { fontSize: '24px', fontWeight: 600, color: 'white' }
+                                      style: {
+                                          fontSize: teamName.length > 18 ? '21px' : '24px',
+                                          fontWeight: 600,
+                                          color: 'white',
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          maxWidth: '380px'
+                                      }
                                   }
                               }
                           ]
@@ -354,8 +364,8 @@ export default defineEventHandler(async (event) => {
                                     {
                                         type: 'span',
                                         props: {
-                                            children: tournament.name,
-                                            style: { fontSize: '48px', fontWeight: 800, color: 'white' }
+                                            children: truncateText(tournament.name, 36),
+                                            style: { fontSize: '48px', fontWeight: 800, color: 'white', maxWidth: '850px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
                                         }
                                     }
                                 ]
@@ -386,7 +396,7 @@ export default defineEventHandler(async (event) => {
                           },
                           children: [
                               { type: 'div', props: { style: { width: '60px', display: 'flex', justifyContent: 'center' }, children: 'Pos' } },
-                              { type: 'div', props: { style: { flex: 1, display: 'flex', paddingLeft: '16px' }, children: 'Team' } },
+                              { type: 'div', props: { style: { flex: 1, display: 'flex', paddingLeft: '16px', minWidth: 0, overflow: 'hidden' }, children: 'Team' } },
                               { type: 'div', props: { style: { width: '80px', display: 'flex', justifyContent: 'center' }, children: 'P' } },
                               { type: 'div', props: { style: { width: '80px', display: 'flex', justifyContent: 'center' }, children: 'W' } },
                               { type: 'div', props: { style: { width: '80px', display: 'flex', justifyContent: 'center' }, children: 'D' } },

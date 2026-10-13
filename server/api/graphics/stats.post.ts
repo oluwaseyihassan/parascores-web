@@ -1,6 +1,6 @@
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
-import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers } from '../../utils/graphics'
+import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers, truncateText } from '../../utils/graphics'
 import { useGraphicsCache } from '../../utils/cache'
 
 export default defineEventHandler(async (event) => {
@@ -140,7 +140,7 @@ export default defineEventHandler(async (event) => {
                                   props: {
                                       style: { display: 'flex', alignItems: 'center', gap: '8px' },
                                       children: [
-                                          { type: 'span', props: { children: item.player.name, style: { color: 'white', fontSize: '20px', fontWeight: 600 } } },
+                                          { type: 'span', props: { children: truncateText(item.player.name, 20), style: { color: 'white', fontSize: '20px', fontWeight: 600, maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } } },
                                           item.player.number ? { type: 'span', props: { children: `#${item.player.number}`, style: { color: '#6b7280', fontSize: '14px', fontFamily: 'Roboto Mono' } } } : null
                                       ].filter(Boolean)
                                   }
@@ -151,7 +151,7 @@ export default defineEventHandler(async (event) => {
                                       style: { display: 'flex', alignItems: 'center', gap: '8px' },
                                       children: [
                                           item.teamLogoUrl ? { type: 'img', props: { src: item.teamLogoUrl, width: 20, height: 20, style: { objectFit: 'cover', borderRadius: '10px' } } } : null,
-                                          { type: 'span', props: { children: item.teamName, style: { color: '#9ca3af', fontSize: '14px' } } }
+                                          { type: 'span', props: { children: truncateText(item.teamName, 22), style: { color: '#9ca3af', fontSize: '14px', maxWidth: '260px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } } }
                                       ].filter(Boolean)
                                   }
                               }

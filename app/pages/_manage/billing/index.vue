@@ -5,7 +5,7 @@ import type { BillingPlan } from '~/types/billing'
 
 definePageMeta({
   middleware: ['require-organizer'],
-  layout: 'dashboard-v2'
+  layout: 'dashboard'
 })
 
 useSeoMeta({

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Organizations — workspace switcher + per-org management.
- * Master–detail layout (dashboard-v2): pick any workspace on the left and
+ * Master–detail layout: pick any workspace on the left and
  * manage it on the right (Members / Branding / Socials / Danger tabs).
  * Role gates (OWNER/ADMIN/MEMBER) mirror the backend — see docs/platform-roles.md.
  */
@@ -13,7 +13,7 @@ import {
 
 definePageMeta({
   middleware: ["require-organizer"],
-  layout: "dashboard-v2",
+  layout: "dashboard",
 });
 
 useSeoMeta({ title: "Organizations — ParaScores" });

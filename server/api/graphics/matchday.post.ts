@@ -1,7 +1,7 @@
 
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
-import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers } from '../../utils/graphics'
+import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers, truncateText } from '../../utils/graphics'
 import { useGraphicsCache } from '../../utils/cache'
 
 export default defineEventHandler(async (event) => {
@@ -254,7 +254,7 @@ export default defineEventHandler(async (event) => {
                                 {
                                     type: 'span',
                                     props: {
-                                        children: homeTeam?.customShortName || homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD',
+                                        children: truncateText(homeTeam?.customShortName || homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD', 20),
                                         style: { fontSize: '22px', fontWeight: 600, color: 'white', textAlign: 'right', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
                                     }
                                 },
@@ -278,7 +278,7 @@ export default defineEventHandler(async (event) => {
                             style: { 
                                 display: 'flex', 
                                 alignItems: 'center', 
-                                justifyContent: 'center',
+                                justifyContent: 'center', 
                                 width: '160px',
                             },
                             children: [centerContent]
@@ -303,7 +303,7 @@ export default defineEventHandler(async (event) => {
                                 {
                                     type: 'span',
                                     props: {
-                                        children: awayTeam?.customShortName || awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD',
+                                        children: truncateText(awayTeam?.customShortName || awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD', 20),
                                         style: { fontSize: '22px', fontWeight: 600, color: 'white', textAlign: 'left', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
                                     }
                                 }
