@@ -45,23 +45,24 @@ export default defineEventHandler(async (event) => {
   )
   const hasMultipleGroups = distinctGroups.length > 1
 
-  // Dynamic content-based height calculation (avoids excessive blank space before footer)
+  // Dynamic content-based height calculation with balanced breathing room
   const topPadding = 48
-  const headerHeight = 132
-  const tableHeaderHeight = 52
-  const rowHeight = 68
-  const groupHeaderHeight = 48
-  const sponsorsHeight = (sponsors && sponsors.length > 0) ? 75 : 0
-  const socialsHeight = (socials && socials.length > 0) ? (Math.min(socials.length, 4) * 48) : 0
-  const bottomPadding = Math.max(48, socialsHeight + 24)
+  const headerHeight = 138
+  const tableHeaderHeight = 58
+  const rowHeight = 69
+  const groupHeadersHeight = hasMultipleGroups ? (47 + (distinctGroups.length - 1) * 63) : 0
+  const sponsorsHeight = (sponsors && sponsors.length > 0) ? 76 : 0
+  const socialsHeight = (socials && socials.length > 0) ? (Math.min(socials.length, 4) * 50) : 0
+  // 96px buffer gives ~48px breathing room between the table and Powered by ParaScores
+  const footerBuffer = Math.max(96, socialsHeight + 36)
 
   const height = topPadding
     + headerHeight
     + tableHeaderHeight
     + (standings.length * rowHeight)
-    + (hasMultipleGroups ? distinctGroups.length * groupHeaderHeight : 0)
+    + groupHeadersHeight
     + sponsorsHeight
-    + bottomPadding
+    + footerBuffer
   const width = 1200
   
   // Background Strategy
@@ -317,7 +318,7 @@ export default defineEventHandler(async (event) => {
                 width: '100%',
                 position: 'relative', // Stack on top of background
                 color: 'white',
-                padding: '48px 60px 48px 60px'
+                padding: '48px 60px 0px 60px'
               },
               children: [
                   // Tournament Header
