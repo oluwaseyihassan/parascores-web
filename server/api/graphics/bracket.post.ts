@@ -2,7 +2,7 @@
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
 import type { Fixture, Participant } from '~/types'
-import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers } from '../../utils/graphics'
+import { getSponsorsRow, getAbsoluteFooter, getGlassBackgroundLayers, truncateText } from '../../utils/graphics'
 import { useGraphicsCache } from '../../utils/cache'
 
 // Social Icons Map (Simple Icons & Heroicons)
@@ -407,10 +407,8 @@ export default defineEventHandler(async (event) => {
 // Helpers
 function getTeamName(matchup: any, isHome: boolean) {
     const team = isHome ? matchup.homeTeam : matchup.awayTeam
-    if (team?.customShortName) return team.customShortName
-    if (team?.customName) return team.customName
-    const placeholder = isHome ? matchup.homeTeamPlaceholder : matchup.awayTeamPlaceholder
-    return placeholder || 'TBD'
+    const raw = team?.customShortName || team?.customName || (isHome ? matchup.homeTeamPlaceholder : matchup.awayTeamPlaceholder) || 'TBD'
+    return truncateText(raw, 18)
 }
 
 function getScore(matchup: any, isHome: boolean) {
