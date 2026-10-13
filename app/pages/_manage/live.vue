@@ -8,7 +8,7 @@ import type { Fixture } from '~/types'
 
 definePageMeta({
   middleware: ['require-organizer'],
-  layout: 'dashboard-v2'
+  layout: 'dashboard'
 })
 
 useSeoMeta({ title: 'Live Control — ParaScores' })

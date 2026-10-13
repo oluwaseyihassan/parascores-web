@@ -8,7 +8,7 @@ import type { PayoutAccountStatus } from '~/stores/payment'
 
 definePageMeta({
   middleware: ['require-organizer'],
-  layout: 'dashboard-v2'
+  layout: 'dashboard'
 })
 
 useSeoMeta({ title: 'New Tournament — ParaScores' })

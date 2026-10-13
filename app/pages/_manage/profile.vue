@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   middleware: ['require-organizer'],
-  layout: 'dashboard-v2'
+  layout: 'dashboard'
 })
 
 useSeoMeta({ title: 'My Profile — ParaScores' })
