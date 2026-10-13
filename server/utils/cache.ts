@@ -21,14 +21,18 @@ if (!existsSync(CACHE_DIR)) {
 export async function useGraphicsCache(event: any, generator: (body: any) => Promise<Buffer | Blob>, suffix: string = 'graphic') {
     // 1. Read the body
     const body = await readBody(event)
+    const query = getQuery(event)
+    const force = Boolean(body?.force || query?.force)
     
-    // 2. Generate a hash of the body
-    const hash = createHash('sha256').update(JSON.stringify(body || {})).digest('hex')
+    // 2. Generate a hash of the body (excluding force parameter)
+    const bodyForHash = body && typeof body === 'object' ? { ...body } : {}
+    delete bodyForHash.force
+    const hash = createHash('sha256').update(JSON.stringify(bodyForHash || {})).digest('hex')
     const filename = `${hash}-${suffix}.png`
     const filepath = join(CACHE_DIR, filename)
     
-    // 3. Check if cached file exists
-    if (existsSync(filepath)) {
+    // 3. Check if cached file exists (unless force is set)
+    if (!force && existsSync(filepath)) {
         // console.log(`[Graphics Cache] Hit: ${filename}`)
         const buffer = readFileSync(filepath)
         setResponseHeader(event, 'Content-Type', 'image/png')

@@ -59,9 +59,13 @@ export const useStandingStore = defineStore('standing', () => {
   // Getters
   const getStandingsByGroup = computed(() => {
     const grouped: Record<string, Standing[]> = {}
+    const groupStore = useGroupStore()
     
     standings.value.forEach(standing => {
-      const group = standing.group || 'default'
+      const group = standing.group || 
+        standing.participant?.group?.name || 
+        (standing.participant?.groupId ? groupStore.groups.find(g => g.id === standing.participant?.groupId)?.name : null) || 
+        'default'
       if (!grouped[group]) {
         grouped[group] = []
       }
