@@ -15,6 +15,7 @@ const standingStore = useStandingStore()
 const sponsorStore = useSponsorStore()
 const socialStore = useSocialStore()
 const authStore = useAuthStore()
+const groupStore = useGroupStore()
 
 // State
 const tournament = ref<Tournament | null>(null)
@@ -57,14 +58,34 @@ const groupOptions = computed(() => {
   const groups = standingStore.getStandingsByGroup || {}
   const keys = Object.keys(groups)
   
-  // If no standings, return empty or default
-  if (keys.length === 0) return []
+  // Also collect known groups from groupStore and tournament
+  const knownGroupNames = new Set(keys)
+  if (groupStore.groups?.length) {
+    groupStore.groups.forEach(g => {
+      if (g.name) knownGroupNames.add(g.name)
+    })
+  }
+  if (tournament.value?.groups?.length) {
+    tournament.value.groups.forEach((g: any) => {
+      if (g.name) knownGroupNames.add(g.name)
+    })
+  }
 
-  // Map groups to options
-  const options = keys.map(g => ({ 
-      label: g === 'default' ? 'Main Table' : g, 
+  // If no standings and no groups, return empty
+  if (knownGroupNames.size === 0) return []
+
+  // Map groups to options (sorted alphabetically so Group A comes before Group B)
+  const options = Array.from(knownGroupNames)
+    .filter(g => g !== 'default')
+    .sort((a, b) => a.localeCompare(b))
+    .map(g => ({ 
+      label: g, 
       value: g 
-  }))
+    }))
+
+  if (knownGroupNames.has('default')) {
+    options.unshift({ label: 'Main Table', value: 'default' })
+  }
   
   // Always add "All Groups" option
   return [
@@ -204,16 +225,23 @@ const canGenerate = computed(() => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const [tournRes, fixRes, partRes] = await Promise.all([
-      $api<any>(`/tournaments/${tournamentId}`),
-      $api<any>(`/fixtures/tournaments/${tournamentId}`),
-      $api<any>(`/participants/tournaments/${tournamentId}`)
-    ])
+    const overviewRes = await $api<{
+      success: boolean
+      data: {
+        tournament: Tournament
+        participants: any[]
+        fixtures: any[]
+        standings: any[]
+        sponsors: any[]
+        socials: any[]
+        venues: any[]
+      }
+    }>(`/tournaments/${tournamentId}/overview`)
 
-    tournament.value = tournRes.data || tournRes
+    const data = overviewRes.data || (overviewRes as any)
+    tournament.value = data.tournament
 
-    // Access control: these endpoints are public (they also power the
-    // marketing site), so verify the tournament belongs to an organization
+    // Access control: verify the tournament belongs to an organization
     // the user is a member of before rendering the graphics studio.
     const isOrgMember = authStore.organizations.some(
       (org) => org.organizationId === tournament.value?.organization_id,
@@ -229,25 +257,32 @@ const fetchData = async () => {
       return
     }
 
-    // Load standings, sponsors, and socials too
-    await Promise.all([
-      standingStore.fetchStandings(tournamentId),
-      sponsorStore.fetchSponsors(tournamentId),
-      socialStore.fetchSocials(tournamentId)
-    ])
+    // Set standings directly from canonical overview response
+    standingStore.standings = data.standings || []
+
+    // Sponsors & Socials
+    sponsorStore.sponsors = data.sponsors || []
+    socialStore.socials = data.socials || []
+
+    // Sync groups
+    if (data.tournament?.groups) {
+      groupStore.groups = data.tournament.groups
+    } else {
+      groupStore.fetchGroups(tournamentId).catch(() => {})
+    }
 
     // Handle fixtures
-    const fixturesData = fixRes.data || fixRes
-    if (fixturesData && fixturesData.rounds) {
-      fixtures.value = fixturesData.rounds.flatMap((r: any) => r.fixtures)
+    const fixturesData = data.fixtures || []
+    if (fixturesData && (fixturesData as any).rounds) {
+      fixtures.value = (fixturesData as any).rounds.flatMap((r: any) => r.fixtures)
     } else if (Array.isArray(fixturesData)) {
       fixtures.value = fixturesData
     } else {
       fixtures.value = []
     }
-    
+
     // Map teams
-    const participants = partRes.data || []
+    const participants = data.participants || []
     fixtures.value.forEach((f: any) => {
       if (!f.homeTeam && f.homeTeamId) {
         f.homeTeam = participants.find((p: any) => p.id === f.homeTeamId)
@@ -256,6 +291,15 @@ const fetchData = async () => {
         f.awayTeam = participants.find((p: any) => p.id === f.awayTeamId)
       }
     })
+
+    // If overview had no standings rows (e.g. before fixtures), attempt fallback fetch
+    if (standingStore.standings.length === 0) {
+      try {
+        await standingStore.fetchStandings(tournamentId)
+      } catch {
+        // ignore
+      }
+    }
 
     // Load player stats if applicable
     if (tournament.value?.participantType === 'TEAM') {
@@ -274,7 +318,7 @@ const fetchData = async () => {
   }
 }
 
-const generatePreview = async () => {
+const generatePreview = async (force = false) => {
   if (!tournament.value) return
   if ((graphicType.value === 'match' || graphicType.value === 'lineup') && !selectedFixture.value) return
   
@@ -308,7 +352,8 @@ const generatePreview = async () => {
                 events: matchEvents,
                 sponsors: sponsorStore.sponsors,
                 socials: socialStore.socials,
-                transparent: isTransparent.value
+                transparent: isTransparent.value,
+                force
             },
             responseType: 'blob'
         })
@@ -320,7 +365,8 @@ const generatePreview = async () => {
                 tournament: tournament.value,
                 sponsors: sponsorStore.sponsors,
                 socials: socialStore.socials,
-                transparent: isTransparent.value
+                transparent: isTransparent.value,
+                force
             },
             responseType: 'blob'
         })
@@ -349,7 +395,8 @@ const generatePreview = async () => {
                 rounds,
                 sponsors: sponsorStore.sponsors,
                 socials: socialStore.socials,
-                transparent: isTransparent.value
+                transparent: isTransparent.value,
+                force
             },
             responseType: 'blob'
         })
@@ -365,7 +412,8 @@ const generatePreview = async () => {
                 round: selectedMatchdayData.value.label,
                 sponsors: sponsorStore.sponsors,
                 socials: socialStore.socials,
-                transparent: isTransparent.value
+                transparent: isTransparent.value,
+                force
             },
             responseType: 'blob'
         })
@@ -378,7 +426,8 @@ const generatePreview = async () => {
                 tournament: tournament.value,
                 sponsors: sponsorStore.sponsors,
                 socials: socialStore.socials,
-                transparent: isTransparent.value
+                transparent: isTransparent.value,
+                force
             },
             responseType: 'blob'
         })
@@ -400,7 +449,8 @@ const generatePreview = async () => {
                 title,
                 sponsors: sponsorStore.sponsors,
                 socials: socialStore.socials,
-                transparent: isTransparent.value
+                transparent: isTransparent.value,
+                force
             },
             responseType: 'blob'
         })
@@ -485,6 +535,27 @@ watch(selectedFixtureId, () => {
 watch(graphicType, () => {
     previewUrl.value = null
     error.value = null
+    if (canGenerate.value) {
+      generatePreview()
+    }
+})
+
+watch(selectedGroup, () => {
+  if (graphicType.value === 'standing' && canGenerate.value) {
+    generatePreview()
+  }
+})
+
+watch(selectedRound, () => {
+  if (graphicType.value === 'matchday' && canGenerate.value) {
+    generatePreview()
+  }
+})
+
+watch(selectedStatType, () => {
+  if (graphicType.value === 'stats' && canGenerate.value) {
+    generatePreview()
+  }
 })
 
 watch(isTransparent, () => {
@@ -741,7 +812,7 @@ onUnmounted(() => {
             variant="soft"
             :loading="generating"
             :disabled="!canGenerate"
-            @click="generatePreview"
+            @click="generatePreview(true)"
           />
         </UCard>
       </div>

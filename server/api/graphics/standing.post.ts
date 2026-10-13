@@ -39,8 +39,14 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-  // Calculate height based on number of rows (approx 80px per row + 650px header/padding/footer)
-  const height = 650 + (standings.length * 80)
+  // Detect multiple groups
+  const distinctGroups = Array.from(
+    new Set(standings.map((s: any) => s.group || s.participant?.group?.name).filter(Boolean))
+  )
+  const hasMultipleGroups = distinctGroups.length > 1
+
+  // Calculate height based on number of rows (approx 80px per row + 650px header/padding/footer + group subheaders)
+  const height = 650 + (standings.length * 80) + (hasMultipleGroups ? distinctGroups.length * 60 : 0)
   const width = 1200
   
   // Background Strategy
@@ -100,9 +106,10 @@ export default defineEventHandler(async (event) => {
       }
   }
 
-  // Generate Table Rows
-  const tableRows = standings.map((row: any, index: number) => {
+  // Helper to render a single table row
+  const renderTableRow = (row: any, index: number) => {
       const isTop4 = (row.position || index + 1) <= 4
+      const teamName = row.participant?.customShortName || row.participant?.customName || row.participantName || 'Team'
       return {
           type: 'div',
           props: {
@@ -172,13 +179,13 @@ export default defineEventHandler(async (event) => {
                                           fontWeight: 'bold',
                                           color: 'white'
                                       },
-                                      children: (row.participant?.customShortName || row.participant?.customName || 'T').charAt(0).toUpperCase()
+                                      children: teamName.charAt(0).toUpperCase()
                                   }
                               },
                               {
                                   type: 'span',
                                   props: {
-                                      children: row.participant?.customShortName || row.participant?.customName || 'Team',
+                                      children: teamName,
                                       style: { fontSize: '24px', fontWeight: 600, color: 'white' }
                                   }
                               }
@@ -222,21 +229,52 @@ export default defineEventHandler(async (event) => {
                        type: 'div',
                       props: {
                           style: { width: '100px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '24px', fontWeight: 600, color: (row.goalDiff > 0 ? '#4ade80' : row.goalDiff < 0 ? '#f87171' : '#9ca3af') },
-                          children: row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff
+                          children: row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff ?? 0
                       }
                   },
                   // Pts
                    {
                        type: 'div',
                       props: {
-                          style: { width: '100px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px', fontWeight: 800, color: 'white' }, // fixed typo #white -> white
+                          style: { width: '100px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px', fontWeight: 800, color: 'white' },
                           children: row.points ?? 0
                       }
                   },
               ]
           }
       }
-  })
+  }
+
+  // Generate Table Content (group-separated if multi-group)
+  let tableContent: any[] = []
+  if (hasMultipleGroups) {
+      distinctGroups.forEach((groupName: any, gIdx: number) => {
+          const groupRows = standings.filter((s: any) => (s.group || s.participant?.group?.name) === groupName)
+          tableContent.push({
+              type: 'div',
+              props: {
+                  style: {
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '12px 24px',
+                      backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                      borderTop: gIdx > 0 ? '2px solid rgba(255,255,255,0.15)' : 'none',
+                      borderBottom: '1px solid rgba(255,255,255,0.1)',
+                      marginTop: gIdx > 0 ? '16px' : '0px',
+                      fontSize: '22px',
+                      fontWeight: 700,
+                      color: '#a5b4fc',
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase'
+                  },
+                  children: groupName
+              }
+          })
+          tableContent.push(...groupRows.map((row: any, index: number) => renderTableRow(row, index)))
+      })
+  } else {
+      tableContent = standings.map((row: any, index: number) => renderTableRow(row, index))
+  }
 
   const svg = await satori(
     {
@@ -349,7 +387,7 @@ export default defineEventHandler(async (event) => {
                               flexDirection: 'column',
                               width: '100%',
                           },
-                          children: tableRows
+                          children: tableContent
                       }
                   },
                   // Footer with Sponsors and Socials
