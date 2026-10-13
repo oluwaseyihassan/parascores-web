@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
     const width = 1200
     const headerHeight = 220
     const fixtureRowHeight = 90
-    const footerHeight = 160
+    const footerHeight = (sponsors && sponsors.length > 0) ? 140 : 60
     const height = headerHeight + (fixtures.length * fixtureRowHeight) + footerHeight
 
     // Background layers
@@ -419,26 +419,25 @@ export default defineEventHandler(async (event) => {
                         }
                     },
                     // Footer with Sponsors
-                    {
+                    (sponsors && sponsors.length > 0) ? {
                       type: 'div',
                       props: {
                           style: { 
-                            marginTop: 'auto',
+                            marginTop: '20px',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             gap: '16px',
                             width: '100%',
-                            paddingTop: '50px',
-                            paddingBottom: '80px'
+                            paddingBottom: '20px'
                           },
                           children: [
                             getSponsorsRow(sponsors),
                           ].filter(Boolean)
                       }
-                    },
+                    } : null,
                     ...getAbsoluteFooter(socials)
-                ]
+                ].filter(Boolean)
               }
             }
           ]

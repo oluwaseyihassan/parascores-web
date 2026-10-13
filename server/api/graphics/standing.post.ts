@@ -45,8 +45,23 @@ export default defineEventHandler(async (event) => {
   )
   const hasMultipleGroups = distinctGroups.length > 1
 
-  // Calculate height based on number of rows (approx 80px per row + 650px header/padding/footer + group subheaders)
-  const height = 650 + (standings.length * 80) + (hasMultipleGroups ? distinctGroups.length * 60 : 0)
+  // Dynamic content-based height calculation (avoids excessive blank space before footer)
+  const topPadding = 48
+  const headerHeight = 132
+  const tableHeaderHeight = 52
+  const rowHeight = 68
+  const groupHeaderHeight = 48
+  const sponsorsHeight = (sponsors && sponsors.length > 0) ? 75 : 0
+  const socialsHeight = (socials && socials.length > 0) ? (Math.min(socials.length, 4) * 48) : 0
+  const bottomPadding = Math.max(48, socialsHeight + 24)
+
+  const height = topPadding
+    + headerHeight
+    + tableHeaderHeight
+    + (standings.length * rowHeight)
+    + (hasMultipleGroups ? distinctGroups.length * groupHeaderHeight : 0)
+    + sponsorsHeight
+    + bottomPadding
   const width = 1200
   
   // Background Strategy
@@ -116,7 +131,7 @@ export default defineEventHandler(async (event) => {
               style: {
                   display: 'flex',
                   alignItems: 'center',
-                  padding: '16px 24px',
+                  padding: '14px 24px',
                   borderBottom: '1px solid rgba(255,255,255,0.1)',
                   backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'
               },
@@ -256,12 +271,12 @@ export default defineEventHandler(async (event) => {
                   style: {
                       display: 'flex',
                       alignItems: 'center',
-                      padding: '12px 24px',
+                      padding: '10px 24px',
                       backgroundColor: 'rgba(99, 102, 241, 0.2)',
                       borderTop: gIdx > 0 ? '2px solid rgba(255,255,255,0.15)' : 'none',
                       borderBottom: '1px solid rgba(255,255,255,0.1)',
-                      marginTop: gIdx > 0 ? '16px' : '0px',
-                      fontSize: '22px',
+                      marginTop: gIdx > 0 ? '14px' : '0px',
+                      fontSize: '20px',
                       fontWeight: 700,
                       color: '#a5b4fc',
                       letterSpacing: '0.05em',
@@ -300,10 +315,9 @@ export default defineEventHandler(async (event) => {
                 flexDirection: 'column',
                 alignItems: 'center',
                 width: '100%',
-                height: '100%',
                 position: 'relative', // Stack on top of background
                 color: 'white',
-                padding: '60px'
+                padding: '48px 60px 48px 60px'
               },
               children: [
                   // Tournament Header
@@ -314,8 +328,8 @@ export default defineEventHandler(async (event) => {
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        gap: '16px',
-                        marginBottom: '60px',
+                        gap: '12px',
+                        marginBottom: '32px',
                         width: '100%'
                       },
                       children: [
@@ -360,9 +374,9 @@ export default defineEventHandler(async (event) => {
                           style: {
                               display: 'flex',
                               width: '100%',
-                              padding: '16px 24px',
+                              padding: '14px 24px',
                               borderBottom: '2px solid rgba(255,255,255,0.2)',
-                              fontSize: '24px',
+                              fontSize: '22px',
                               fontWeight: 700,
                               color: '#d1d5db'
                           },
@@ -391,26 +405,25 @@ export default defineEventHandler(async (event) => {
                       }
                   },
                   // Footer with Sponsors and Socials
-                  {
+                  (sponsors && sponsors.length > 0) ? {
                     type: 'div',
                     props: {
                         style: { 
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          marginTop: 'auto',
-                          paddingTop: '50px',
-                          paddingBottom: '80px',
-                          gap: '16px',
+                          marginTop: '20px',
+                          marginBottom: '8px',
+                          gap: '12px',
                           width: '100%'
                         },
                         children: [
                           getSponsorsRow(sponsors),
                         ].filter(Boolean)
                     }
-                  },
+                  } : null,
                   ...getAbsoluteFooter(socials)
-              ]
+              ].filter(Boolean)
             }
           }
         ]
