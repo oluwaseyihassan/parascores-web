@@ -92,6 +92,32 @@ const toggleTheme = () => {
   colorMode.preference = colorMode.preference === 'dark' ? 'light' : 'dark'
 }
 
+// ---------- Sidebar Collapse ----------
+const sidebarCollapsed = ref(false)
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('parascores_manage_sidebar_collapsed')
+    if (saved !== null) {
+      sidebarCollapsed.value = saved === 'true'
+    }
+  }
+})
+
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('parascores_manage_sidebar_collapsed', String(sidebarCollapsed.value))
+  }
+}
+
+const sidebarNavRef = ref<HTMLElement | null>(null)
+const onSidebarWheel = (e: WheelEvent) => {
+  if (!sidebarNavRef.value) return
+  if (sidebarNavRef.value.contains(e.target as Node)) return
+  sidebarNavRef.value.scrollTop += e.deltaY
+}
+
 // ---------- Mobile ----------
 const mobileMenuOpen = ref(false)
 
@@ -157,89 +183,210 @@ const handleLogout = async () => {
     <AuthLoadingOverlay :show="authLoading" />
 
     <!-- ================= DESKTOP ================= -->
-    <div class="hidden md:grid h-screen overflow-hidden" style="grid-template-columns: 244px 1fr;">
+    <div class="hidden md:flex h-screen overflow-hidden">
 
       <!-- Sidebar -->
-      <aside class="flex flex-col h-full bg-default border-r border-subtle px-3.5 py-4">
+      <aside
+        :class="sidebarCollapsed ? 'w-[68px] px-2 py-3' : 'w-[244px] px-3.5 py-3.5'"
+        class="flex flex-col h-full bg-default border-r border-subtle shrink-0 transition-all duration-300 ease-in-out select-none overflow-y-auto overflow-x-hidden no-scrollbar"
+        @wheel="onSidebarWheel"
+      >
         <!-- Brand -->
-        <NuxtLink to="/" class="flex items-center gap-2.5 px-2 pb-4">
-          <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1780327900/parascores-logo.png" alt="ParaScores" class="h-7 w-7 rounded-md object-contain" />
-          <span class="font-extrabold tracking-wider text-sm text-heading">PARASCORES</span>
-        </NuxtLink>
+        <div
+          class="flex items-center transition-all shrink-0"
+          :class="sidebarCollapsed ? 'flex-col gap-2 pb-2 justify-center' : 'justify-between px-2 pb-3.5'"
+        >
+          <NuxtLink to="/" class="flex items-center gap-2.5 min-w-0" :title="sidebarCollapsed ? 'ParaScores' : undefined">
+            <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1780327900/parascores-logo.png" alt="ParaScores" class="h-7 w-7 rounded-md object-contain shrink-0" />
+            <span v-if="!sidebarCollapsed" class="font-extrabold tracking-wider text-sm text-heading truncate">PARASCORES</span>
+          </NuxtLink>
+
+          <button
+            type="button"
+            class="p-1.5 rounded-lg text-muted hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-all shrink-0 cursor-pointer"
+            :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            @click="toggleSidebar"
+          >
+            <UIcon :name="sidebarCollapsed ? 'i-heroicons-chevron-double-right' : 'i-heroicons-chevron-double-left'" class="w-4 h-4" />
+          </button>
+        </div>
 
         <!-- Org switcher -->
         <template v-if="authStore.currentOrganization">
-          <UDropdownMenu :items="orgMenuItems" :content="{ align: 'start', side: 'bottom', sideOffset: 8 }" :ui="{ content: 'w-72' }">
-            <button class="w-full flex items-center gap-2.5 px-2.5 py-2 mb-4 rounded-xl bg-surface border border-subtle hover:border-white/[0.14] hover:bg-white/[0.04] transition-all text-left group">
-              <UAvatar v-if="authStore.currentOrganization.logoUrl" :src="authStore.currentOrganization.logoUrl" size="xs" class="rounded-md" />
-              <span v-else class="w-6.5 h-6.5 min-w-6.5 rounded-lg bg-[#136332] text-white text-[11px] font-extrabold flex items-center justify-center">
+          <!-- Expanded Org Switcher -->
+          <UDropdownMenu
+            v-if="!sidebarCollapsed"
+            :items="orgMenuItems"
+            :content="{ align: 'start', side: 'bottom', sideOffset: 8 }"
+            :ui="{ content: 'w-72' }"
+          >
+            <button class="w-full flex items-center gap-2.5 px-2.5 py-2 mb-3 rounded-xl bg-surface border border-subtle hover:border-white/[0.14] hover:bg-white/[0.04] transition-all text-left group cursor-pointer shrink-0">
+              <UAvatar v-if="authStore.currentOrganization.logoUrl" :src="authStore.currentOrganization.logoUrl" size="xs" class="rounded-md shrink-0" />
+              <span v-else class="w-6.5 h-6.5 min-w-6.5 rounded-lg bg-[#136332] text-white text-[11px] font-extrabold flex items-center justify-center shrink-0">
                 {{ authStore.currentOrganization.name?.charAt(0).toUpperCase() }}
               </span>
               <span class="text-[13px] font-semibold text-heading leading-tight truncate">{{ authStore.currentOrganization.name }}</span>
               <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 ml-auto text-muted group-hover:text-body transition-colors shrink-0" />
             </button>
           </UDropdownMenu>
+
+          <!-- Collapsed Org Switcher -->
+          <div v-else class="flex justify-center mb-2 shrink-0">
+            <UDropdownMenu
+              :items="orgMenuItems"
+              :content="{ align: 'start', side: 'right', sideOffset: 12 }"
+              :ui="{ content: 'w-72' }"
+            >
+              <UTooltip :text="authStore.currentOrganization.name" :content="{ side: 'right' }">
+                <button class="w-9 h-9 flex items-center justify-center rounded-xl bg-surface border border-subtle hover:border-white/[0.14] hover:bg-white/[0.04] transition-all group cursor-pointer">
+                  <UAvatar v-if="authStore.currentOrganization.logoUrl" :src="authStore.currentOrganization.logoUrl" size="xs" class="rounded-md" />
+                  <span v-else class="w-6 h-6 rounded-lg bg-[#136332] text-white text-[10px] font-extrabold flex items-center justify-center">
+                    {{ authStore.currentOrganization.name?.charAt(0).toUpperCase() }}
+                  </span>
+                </button>
+              </UTooltip>
+            </UDropdownMenu>
+          </div>
         </template>
 
-        <!-- Primary nav -->
-        <p class="px-2 pb-1.5 text-[10px] font-bold tracking-[0.14em] text-muted">MANAGE</p>
-        <nav class="flex flex-col gap-0.5">
-          <NuxtLink
-            v-for="link in mainNav"
-            :key="link.to"
-            :to="link.to"
-            class="relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] font-medium transition-all"
-            :class="isActive(link)
-              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
-              : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'"
-          >
-            <span
-              v-if="isActive(link)"
-              class="absolute -left-3.5 top-2 bottom-2 w-[3px] rounded-r bg-emerald-500"
-            ></span>
-            <span v-if="link.live" class="w-[18px] h-[18px] flex items-center justify-center shrink-0">
-              <span class="w-[7px] h-[7px] rounded-full bg-red-500" :class="liveCount > 0 ? 'animate-pulse' : 'opacity-60'"></span>
-            </span>
-            <UIcon v-else :name="link.icon" class="w-[18px] h-[18px] shrink-0 opacity-90" />
-            {{ link.label }}
-            <span
-              v-if="link.badge"
-              class="ml-auto font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-              :class="link.live
-                ? 'bg-red-500/15 text-red-500 border border-red-500/40'
-                : 'bg-black/5 dark:bg-white/[0.07] text-body'"
-            >{{ link.live ? `${link.badge} LIVE` : link.badge }}</span>
-          </NuxtLink>
-        </nav>
+        <!-- Middle scrollable section: Primary nav & My tournaments -->
+        <div ref="sidebarNavRef" class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar flex flex-col min-h-0">
+          <!-- Primary nav header / divider -->
+          <p v-if="!sidebarCollapsed" class="px-2 pb-1.5 text-[10px] font-bold tracking-[0.14em] text-muted shrink-0">MANAGE</p>
+          <div v-else class="w-7 mx-auto my-1.5 border-t border-subtle shrink-0"></div>
 
-        <!-- My tournaments -->
-        <p class="px-2 pt-4 pb-1.5 text-[10px] font-bold tracking-[0.14em] text-muted">MY TOURNAMENTS</p>
-        <div class="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-0.5 min-h-0">
-          <NuxtLink
-            v-for="t in sideTournaments"
-            :key="t.id"
-            :to="`/tournaments/${t.customName || t.id}`"
-            class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-all group"
-          >
-            <UAvatar v-if="t.logoUrl" :src="t.logoUrl" size="xs" class="rounded-md" />
-            <span v-else class="w-6 h-6 min-w-6 rounded-md bg-[#136332] text-white text-[10px] font-extrabold flex items-center justify-center">
-              {{ t.name.split(/\s+/).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() }}
-            </span>
-            <span class="truncate">{{ t.name }}</span>
-            <span
-              class="ml-auto w-[7px] h-[7px] rounded-full shrink-0"
-              :class="{
-                'bg-red-500 animate-pulse': tournamentStatus(t) === 'live',
-                'bg-emerald-400': tournamentStatus(t) === 'ongoing',
-                'bg-gray-500': tournamentStatus(t) === 'done',
-              }"
-            ></span>
-          </NuxtLink>
+          <!-- Primary nav -->
+          <nav class="flex flex-col gap-0.5 shrink-0">
+            <template v-for="link in mainNav" :key="link.to">
+              <!-- Expanded Link -->
+              <NuxtLink
+                v-if="!sidebarCollapsed"
+                :to="link.to"
+                class="relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] font-medium transition-all"
+                :class="isActive(link)
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
+                  : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'"
+              >
+                <span
+                  v-if="isActive(link)"
+                  class="absolute -left-3.5 top-2 bottom-2 w-[3px] rounded-r bg-emerald-500"
+                ></span>
+                <span v-if="link.live" class="w-[18px] h-[18px] flex items-center justify-center shrink-0">
+                  <span class="w-[7px] h-[7px] rounded-full bg-red-500" :class="liveCount > 0 ? 'animate-pulse' : 'opacity-60'"></span>
+                </span>
+                <UIcon v-else :name="link.icon" class="w-[18px] h-[18px] shrink-0 opacity-90" />
+                <span class="truncate">{{ link.label }}</span>
+                <span
+                  v-if="link.badge"
+                  class="ml-auto font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                  :class="link.live
+                    ? 'bg-red-500/15 text-red-500 border border-red-500/40'
+                    : 'bg-black/5 dark:bg-white/[0.07] text-body'"
+                >{{ link.live ? `${link.badge} LIVE` : link.badge }}</span>
+              </NuxtLink>
+
+              <!-- Collapsed Link with Tooltip -->
+              <UTooltip
+                v-else
+                :text="link.badge ? `${link.label} (${link.badge})` : link.label"
+                :content="{ side: 'right' }"
+              >
+                <NuxtLink
+                  :to="link.to"
+                  class="relative flex items-center justify-center w-9 h-9 mx-auto rounded-xl text-[13.5px] font-medium transition-all"
+                  :class="isActive(link)
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold shadow-xs'
+                    : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'"
+                >
+                  <span
+                    v-if="isActive(link)"
+                    class="absolute -left-2 top-2 bottom-2 w-[3px] rounded-r bg-emerald-500"
+                  ></span>
+                  <div class="relative flex items-center justify-center shrink-0">
+                    <UIcon :name="link.icon" class="w-[18px] h-[18px] opacity-90" />
+                    <span
+                      v-if="link.live"
+                      class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border border-white dark:border-[#050505]"
+                      :class="liveCount > 0 ? 'animate-pulse' : ''"
+                    ></span>
+                    <span
+                      v-else-if="link.badge"
+                      class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-[#050505]"
+                    ></span>
+                  </div>
+                </NuxtLink>
+              </UTooltip>
+            </template>
+          </nav>
+
+          <!-- My tournaments (only when there are tournaments) -->
+          <template v-if="sideTournaments.length > 0">
+            <p v-if="!sidebarCollapsed" class="px-2 pt-3.5 pb-1.5 text-[10px] font-bold tracking-[0.14em] text-muted shrink-0">MY TOURNAMENTS</p>
+            <div v-else class="w-7 mx-auto my-2 border-t border-subtle shrink-0"></div>
+
+            <div class="flex flex-col gap-0.5">
+              <template v-for="t in sideTournaments" :key="t.id">
+                <!-- Expanded Tournament Item -->
+                <NuxtLink
+                  v-if="!sidebarCollapsed"
+                  :to="`/tournaments/${t.customName || t.id}`"
+                  class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-all group shrink-0"
+                >
+                  <UAvatar v-if="t.logoUrl" :src="t.logoUrl" size="xs" class="rounded-md shrink-0" />
+                  <span v-else class="w-6 h-6 min-w-6 rounded-md bg-[#136332] text-white text-[10px] font-extrabold flex items-center justify-center shrink-0">
+                    {{ t.name.split(/\s+/).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() }}
+                  </span>
+                  <span class="truncate">{{ t.name }}</span>
+                  <span
+                    class="ml-auto w-[7px] h-[7px] rounded-full shrink-0"
+                    :class="{
+                      'bg-red-500 animate-pulse': tournamentStatus(t) === 'live',
+                      'bg-emerald-400': tournamentStatus(t) === 'ongoing',
+                      'bg-gray-500': tournamentStatus(t) === 'done',
+                    }"
+                  ></span>
+                </NuxtLink>
+
+                <!-- Collapsed Tournament Item with Tooltip -->
+                <UTooltip
+                  v-else
+                  :text="t.name"
+                  :content="{ side: 'right' }"
+                >
+                  <NuxtLink
+                    :to="`/tournaments/${t.customName || t.id}`"
+                    class="flex items-center justify-center w-9 h-9 mx-auto rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-all group shrink-0"
+                  >
+                    <div class="relative flex items-center justify-center shrink-0">
+                      <UAvatar v-if="t.logoUrl" :src="t.logoUrl" size="xs" class="rounded-md shrink-0" />
+                      <span v-else class="w-6 h-6 rounded-md bg-[#136332] text-white text-[10px] font-extrabold flex items-center justify-center shrink-0">
+                        {{ t.name.split(/\s+/).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() }}
+                      </span>
+                      <span
+                        class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white dark:border-[#050505]"
+                        :class="{
+                          'bg-red-500 animate-pulse': tournamentStatus(t) === 'live',
+                          'bg-emerald-400': tournamentStatus(t) === 'ongoing',
+                          'bg-gray-500': tournamentStatus(t) === 'done',
+                        }"
+                      ></span>
+                    </div>
+                  </NuxtLink>
+                </UTooltip>
+              </template>
+            </div>
+          </template>
         </div>
 
         <!-- Sidebar footer -->
-        <div class="pt-3 mt-2 border-t border-subtle flex flex-col gap-0.5">
+        <div
+          class="mt-auto pt-2.5 border-t border-subtle flex flex-col gap-0.5 shrink-0"
+          :class="sidebarCollapsed ? 'items-center' : ''"
+        >
+          <!-- Billing -->
           <NuxtLink
+            v-if="!sidebarCollapsed"
             to="/billing"
             class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] font-medium text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-all"
             :class="{ 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400': route.path.startsWith('/billing') }"
@@ -247,8 +394,19 @@ const handleLogout = async () => {
             <UIcon name="i-heroicons-sparkles" class="w-[18px] h-[18px] opacity-90" />
             Billing &amp; plan
           </NuxtLink>
+          <UTooltip v-else text="Billing & plan" :content="{ side: 'right' }">
+            <NuxtLink
+              to="/billing"
+              class="flex items-center justify-center w-9 h-9 rounded-xl text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+              :class="{ 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400': route.path.startsWith('/billing') }"
+            >
+              <UIcon name="i-heroicons-sparkles" class="w-[18px] h-[18px] opacity-90" />
+            </NuxtLink>
+          </UTooltip>
 
+          <!-- Settings -->
           <NuxtLink
+            v-if="!sidebarCollapsed"
             to="/profile"
             class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] font-medium text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-all"
             :class="{ 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400': route.path.startsWith('/profile') }"
@@ -256,24 +414,59 @@ const handleLogout = async () => {
             <UIcon name="i-heroicons-cog-6-tooth" class="w-[18px] h-[18px] opacity-90" />
             Settings
           </NuxtLink>
+          <UTooltip v-else text="Settings" :content="{ side: 'right' }">
+            <NuxtLink
+              to="/profile"
+              class="flex items-center justify-center w-9 h-9 rounded-xl text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+              :class="{ 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400': route.path.startsWith('/profile') }"
+            >
+              <UIcon name="i-heroicons-cog-6-tooth" class="w-[18px] h-[18px] opacity-90" />
+            </NuxtLink>
+          </UTooltip>
 
-          <UDropdownMenu :items="profileMenuItems" :content="{ align: 'start', side: 'top', sideOffset: 8 }">
-            <button class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-all text-left">
-              <UAvatar v-if="authStore.user?.picture" :src="authStore.user.picture" size="sm" />
-              <UAvatar v-else :text="authStore.user?.name?.charAt(0).toUpperCase()" size="sm" />
+          <!-- Profile / Account -->
+          <UDropdownMenu
+            v-if="!sidebarCollapsed"
+            :items="profileMenuItems"
+            :content="{ align: 'start', side: 'top', sideOffset: 8 }"
+          >
+            <button class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-all text-left cursor-pointer">
+              <UAvatar v-if="authStore.user?.picture" :src="authStore.user.picture" size="sm" class="shrink-0" />
+              <UAvatar v-else :text="authStore.user?.name?.charAt(0).toUpperCase()" size="sm" class="shrink-0" />
               <span class="min-w-0">
                 <span class="block text-[13px] font-semibold text-heading truncate">{{ authStore.user?.name || 'Account' }}</span>
                 <span class="block text-[11px] text-muted truncate">Owner</span>
               </span>
             </button>
           </UDropdownMenu>
+          <UDropdownMenu
+            v-else
+            :items="profileMenuItems"
+            :content="{ align: 'start', side: 'right', sideOffset: 12 }"
+          >
+            <UTooltip :text="authStore.user?.name || 'Account'" :content="{ side: 'right' }">
+              <button class="flex items-center justify-center w-9 h-9 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer">
+                <UAvatar v-if="authStore.user?.picture" :src="authStore.user.picture" size="xs" />
+                <UAvatar v-else :text="authStore.user?.name?.charAt(0).toUpperCase()" size="xs" />
+              </button>
+            </UTooltip>
+          </UDropdownMenu>
         </div>
       </aside>
 
       <!-- Main column -->
-      <div class="flex flex-col min-w-0 min-h-0 h-full">
+      <div class="flex-1 flex flex-col min-w-0 min-h-0 h-full">
         <!-- Topbar -->
-        <header class="flex items-center gap-4 px-7 py-3.5 border-b border-subtle bg-page/75 backdrop-blur-xl z-40">
+        <header class="flex items-center gap-3.5 px-5 sm:px-7 py-3.5 border-b border-subtle bg-page/75 backdrop-blur-xl z-40">
+          <button
+            type="button"
+            class="w-8 h-8 flex items-center justify-center rounded-lg border border-subtle text-muted hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
+            :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            @click="toggleSidebar"
+          >
+            <UIcon :name="sidebarCollapsed ? 'i-heroicons-bars-3' : 'i-heroicons-bars-3-bottom-left'" class="w-4.5 h-4.5" />
+          </button>
           <h1 class="text-base font-bold text-heading">{{ pageTitle }}</h1>
 
           <button class="hidden lg:flex items-center gap-2 ml-2 flex-1 max-w-sm px-3 py-2 rounded-lg bg-surface border border-subtle text-muted text-[13px] hover:border-white/[0.14] transition-all text-left">
