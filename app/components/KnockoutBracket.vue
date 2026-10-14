@@ -198,6 +198,47 @@ const formatMatchTime = (dateStr: string | null | undefined): string | null => {
   } catch { return null }
 }
 
+const hasFooter = (matchup: any) => {
+  if (
+    matchup.status === FixtureStatus.LIVE ||
+    matchup.status === FixtureStatus.NORMAL_TIME_ENDED ||
+    matchup.status === FixtureStatus.EXTRATIME ||
+    matchup.status === FixtureStatus.COMPLETED ||
+    hasNoWinner(matchup)
+  ) {
+    return true
+  }
+
+  if (!props.readonly) {
+    if (matchup.fixtures.length === 1) {
+      if (
+        (matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId) ||
+        matchup.status === FixtureStatus.LIVE ||
+        matchup.status === FixtureStatus.NORMAL_TIME_ENDED ||
+        matchup.status === FixtureStatus.EXTRATIME ||
+        matchup.status === FixtureStatus.COMPLETED
+      ) {
+        return true
+      }
+    } else {
+      if (
+        matchup.fixtures.some(
+          (leg: any) =>
+            (leg.status === FixtureStatus.SCHEDULED && leg.homeTeamId && leg.awayTeamId) ||
+            leg.status === FixtureStatus.LIVE ||
+            leg.status === FixtureStatus.NORMAL_TIME_ENDED ||
+            leg.status === FixtureStatus.EXTRATIME ||
+            leg.status === FixtureStatus.COMPLETED
+        )
+      ) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
 // Zoom logic
 const scale = ref(1.0)
 const zoomIn = () => {
@@ -363,7 +404,7 @@ const resetZoom = () => {
                   </div>
 
                   <!-- Footer: status + actions -->
-                  <div class="match-footer">
+                  <div v-if="hasFooter(matchup)" class="match-footer">
                     <!-- Live indicator -->
                     <div v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME" class="status-live">
                       <span class="live-dot" />
@@ -376,10 +417,6 @@ const resetZoom = () => {
                     <div v-else-if="hasNoWinner(matchup)" class="status-warn">
                       <UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3" />
                       <span>No winner</span>
-                    </div>
-                    <div v-else class="status-sched">
-                      <UIcon name="i-heroicons-clock" class="w-3 h-3" />
-                      <span>Scheduled</span>
                     </div>
 
                     <!-- Actions -->
@@ -519,11 +556,10 @@ const resetZoom = () => {
                 {{ getMatchVenue(matchup) }}
               </span>
             </div>
-            <div class="match-footer">
+            <div v-if="hasFooter(matchup)" class="match-footer">
               <div v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME" class="status-live"><span class="live-dot" /><span>{{ matchup.status === FixtureStatus.EXTRATIME ? 'ET' : matchup.status === FixtureStatus.NORMAL_TIME_ENDED ? 'FT' : 'Live' }}</span></div>
               <div v-else-if="matchup.status === FixtureStatus.COMPLETED && !hasNoWinner(matchup)" class="status-done"><UIcon name="i-heroicons-check-circle" class="w-3 h-3" /><span>FT</span></div>
               <div v-else-if="hasNoWinner(matchup)" class="status-warn"><UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3" /><span>No winner</span></div>
-              <div v-else class="status-sched"><UIcon name="i-heroicons-clock" class="w-3 h-3" /><span>Scheduled</span></div>
               <div v-if="!readonly" class="match-actions">
                 <button
                   v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
@@ -858,6 +894,7 @@ const resetZoom = () => {
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  margin-left: auto;
 }
 
 .action-btn {
