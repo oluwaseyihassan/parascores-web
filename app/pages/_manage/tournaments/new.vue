@@ -894,7 +894,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                     @click="triggerBannerInput"
                     :disabled="uploadingBanner"
                   >
-                    <img v-if="state.bannerUrl" :src="state.bannerUrl" alt="Banner preview" class="absolute inset-0 w-full h-full object-cover" />
+                    <img v-if="state.bannerUrl" :src="state.bannerUrl" alt="Banner preview" class="absolute inset-0 w-full h-full object-cover object-top" />
                     <div v-else class="w-full h-full min-h-24 flex flex-col items-center justify-center gap-1.5 text-muted group-hover:text-emerald-500 transition-colors">
                       <UIcon name="i-heroicons-photo" class="w-6 h-6" />
                       <span class="text-[10px] font-bold">Add cover banner</span>
@@ -1269,7 +1269,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               <!-- Fan-page hero preview -->
               <div class="relative">
                 <div class="h-24 sm:h-28 bg-black/[0.03] dark:bg-white/[0.03] relative overflow-hidden">
-                  <img v-if="state.bannerUrl" :src="state.bannerUrl" class="w-full h-full object-cover" />
+                  <img v-if="state.bannerUrl" :src="state.bannerUrl" class="w-full h-full object-cover object-top" />
                   <div v-else class="w-full h-full bg-gradient-to-br from-emerald-900/60 via-emerald-800/40 to-teal-800/50"></div>
                 </div>
                 <div class="absolute -bottom-6 left-4 w-16 h-16 rounded-2xl border-4 border-white dark:border-gray-900 bg-white dark:bg-gray-900 shadow-lg overflow-hidden">

@@ -53,6 +53,9 @@ export interface GenerateFixturesOptions {
   doubleRoundRobin?: boolean;
   groupAssignments?: Record<string, string[]>;
   useExistingGroups?: boolean;
+  generateKnockoutStage?: boolean;
+  advancingPerGroup?: number;
+  hasThirdPlace?: boolean;
 }
 
 export const useFixtureStore = defineStore("fixture", () => {
