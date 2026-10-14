@@ -711,7 +711,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
       <section class="relative border-b border-gray-200 dark:border-white/[0.05] bg-white dark:bg-[#0A0A0A]">
         <!-- Banner Background top strictly 200-250px -->
         <div class="h-48 md:h-64 relative w-full overflow-hidden">
-          <img v-if="tournament.bannerUrl" :src="tournament.bannerUrl" class="w-full h-full object-cover" />
+          <img v-if="tournament.bannerUrl" :src="tournament.bannerUrl" class="w-full h-full object-cover object-top" />
           <div v-else class="w-full h-full bg-gray-200 dark:bg-gray-800/80"></div>
           
           <!-- Gradient overlay to blend and fade the bottom of the banner into the page background -->

@@ -149,7 +149,7 @@ const PLACEHOLDER_BANNER =
       <img
         :src="tournament.bannerUrl || PLACEHOLDER_BANNER"
         :alt="tournament.name"
-        class="w-full h-full object-cover opacity-60"
+        class="w-full h-full object-cover object-top opacity-60"
       />
       <div
         class="absolute inset-0 bg-gradient-to-t from-gray-900/30 to-transparent dark:from-black/50"

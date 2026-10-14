@@ -350,7 +350,7 @@
                 v-if="tournament.bannerUrl"
                 :src="tournament.bannerUrl"
                 :alt="tournament.name"
-                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                class="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
               />
               <div
                 v-else
@@ -504,7 +504,7 @@
                 v-if="tournament.bannerUrl"
                 :src="tournament.bannerUrl"
                 :alt="tournament.name"
-                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                class="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
               />
               <div
                 v-else

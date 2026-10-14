@@ -1023,7 +1023,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                     <img
                       :src="bannerPreview"
                       alt="Banner preview"
-                      class="w-full h-full object-cover"
+                      class="w-full h-full object-cover object-top"
                     />
                     <div
                       v-if="uploadingBanner"

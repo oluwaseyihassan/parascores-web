@@ -24,11 +24,62 @@ const toast = useToast()
 // LocalStorage key scoped to this tournament
 const STORAGE_KEY = `gsw-progress-${props.tournament.id}`
 
+const isHybrid = computed(() => props.tournament.type === TournamentType.HYBRID)
+
 const config = reactive({
   assignmentMethod: 'auto' as 'existing' | 'auto',
   numberOfGroups: props.tournament.type === TournamentType.ROUND_ROBIN ? 1 : (props.tournament.numberOfGroups || 2),
   shuffleParticipants: false,
-  schedulingMethod: 'auto' as 'auto' | 'manual'
+  schedulingMethod: 'auto' as 'auto' | 'manual',
+  generateKnockout: props.tournament.type === TournamentType.HYBRID,
+  advancingPerGroup: 2,
+  hasThirdPlace: false
+})
+
+const totalAdvancingTeams = computed(() => {
+  return config.numberOfGroups * config.advancingPerGroup
+})
+
+const startingKnockoutRoundName = computed(() => {
+  const teams = totalAdvancingTeams.value
+  if (teams <= 2) return 'Final'
+  if (teams <= 4) return 'Semifinals'
+  if (teams <= 8) return 'Quarterfinals'
+  if (teams <= 16) return 'Round of 16'
+  if (teams <= 32) return 'Round of 32'
+  return `${teams}-Team Playoff`
+})
+
+const knockoutPairingPreview = computed(() => {
+  if (!isHybrid.value || !config.generateKnockout) return []
+  const numGroups = config.numberOfGroups
+  const adv = config.advancingPerGroup
+  const pairs: { home: string; away: string }[] = []
+
+  if (numGroups === 2 && adv === 2) {
+    pairs.push({ home: 'Winner Group A', away: 'Runner-up Group B' })
+    pairs.push({ home: 'Winner Group B', away: 'Runner-up Group A' })
+  } else if (numGroups === 4 && adv === 2) {
+    pairs.push({ home: 'Winner Group A', away: 'Runner-up Group B' })
+    pairs.push({ home: 'Winner Group C', away: 'Runner-up Group D' })
+    pairs.push({ home: 'Winner Group B', away: 'Runner-up Group A' })
+    pairs.push({ home: 'Winner Group D', away: 'Runner-up Group C' })
+  } else if (adv === 1) {
+    for (let i = 0; i < numGroups; i += 2) {
+      const g1 = String.fromCharCode(65 + i)
+      const g2 = i + 1 < numGroups ? String.fromCharCode(65 + i + 1) : null
+      pairs.push({ home: `Winner Group ${g1}`, away: g2 ? `Winner Group ${g2}` : 'BYE' })
+    }
+  } else {
+    for (let i = 0; i < numGroups; i++) {
+      const gHome = String.fromCharCode(65 + i)
+      const targetGroupIndex = (i + 1) % numGroups
+      const gAway = String.fromCharCode(65 + targetGroupIndex)
+      pairs.push({ home: `Winner Group ${gHome}`, away: `Runner-up Group ${gAway}` })
+    }
+  }
+
+  return pairs
 })
 
 // Manual Schedule State
@@ -334,7 +385,10 @@ const handleFinish = async (force = false) => {
         numberOfGroups: config.numberOfGroups,
         groupAssignments: groupAssignments.value,
         shuffleParticipants: false,
-        clearExisting: true
+        clearExisting: true,
+        generateKnockoutStage: isHybrid.value && config.generateKnockout,
+        advancingPerGroup: config.advancingPerGroup,
+        hasThirdPlace: config.hasThirdPlace
       })
     } else {
       // Clear existing first
@@ -511,10 +565,80 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                    <p class="text-xs text-gray-500">Shuffle teams before distributing them into groups.</p>
                 </div>
             </div>
+
+            <!-- Knockout Progression (Hybrid Tournaments) -->
+            <div v-if="isHybrid" class="p-4 rounded-xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 space-y-4">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                    <UIcon name="i-heroicons-trophy" class="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold text-gray-900 dark:text-white">Knockout Stage Progression</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Pre-generate the playoff bracket with group placeholders</p>
+                  </div>
+                </div>
+                <USwitch v-model="config.generateKnockout" />
+              </div>
+
+              <div v-if="config.generateKnockout" class="space-y-3.5 pt-3 border-t border-amber-500/15">
+                <UFormField label="Advancing per group" required>
+                  <USelect
+                    v-model.number="config.advancingPerGroup"
+                    :items="[
+                      { label: 'Top 1 (Winner only)', value: 1 },
+                      { label: 'Top 2 (Winner & Runner-up)', value: 2 },
+                      { label: 'Top 3 (Top 3 teams)', value: 3 },
+                      { label: 'Top 4 (Top 4 teams)', value: 4 }
+                    ]"
+                    class="w-full"
+                  />
+                </UFormField>
+
+                <div class="flex items-center justify-between p-2.5 rounded-lg bg-white/70 dark:bg-black/30 border border-amber-500/10 text-xs">
+                  <span class="text-gray-500 dark:text-gray-400">Bracket format:</span>
+                  <span class="font-bold text-gray-900 dark:text-white">{{ totalAdvancingTeams }} teams · Starts at {{ startingKnockoutRoundName }}</span>
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                  <div>
+                    <p class="text-xs font-semibold text-gray-900 dark:text-white">3rd Place Playoff</p>
+                    <p class="text-[11px] text-gray-500">Include a bronze medal match for semifinal losers</p>
+                  </div>
+                  <USwitch v-model="config.hasThirdPlace" />
+                </div>
+
+                <div v-if="knockoutPairingPreview.length > 0" class="pt-2">
+                  <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">First Round Matchups</p>
+                  <div class="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                    <div
+                      v-for="(pair, idx) in knockoutPairingPreview"
+                      :key="idx"
+                      class="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-white dark:bg-gray-800/80 text-xs border border-gray-100 dark:border-white/5"
+                    >
+                      <span class="font-medium text-emerald-600 dark:text-emerald-400">{{ pair.home }}</span>
+                      <span class="text-[9px] text-gray-400 font-bold px-1.5">VS</span>
+                      <span class="font-medium text-gray-700 dark:text-gray-300">{{ pair.away }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Step 2: Review -->
           <div v-if="step === 2" class="space-y-5 sm:space-y-6">
+            <!-- Knockout Roadmap Summary (Hybrid) -->
+            <div v-if="isHybrid && config.generateKnockout" class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-amber-500 shrink-0" />
+                <div>
+                  <p class="text-xs font-bold text-gray-900 dark:text-white">Knockout Stage will be generated with placeholders</p>
+                  <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ totalAdvancingTeams }} teams (Top {{ config.advancingPerGroup }} per group) · Starts at {{ startingKnockoutRoundName }}</p>
+                </div>
+              </div>
+              <UBadge color="warning" variant="subtle" size="xs">Roadmap Active</UBadge>
+            </div>
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                <div class="min-w-0">
                   <h4 class="font-bold text-gray-900 dark:text-white">Review Group Structure</h4>
