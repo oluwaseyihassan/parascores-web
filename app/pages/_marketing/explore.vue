@@ -101,16 +101,17 @@
         </div>
 
         <!-- Loading State -->
-        <div v-if="loading && tournaments.length === 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="i in 6" :key="i" class="bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-white/10 rounded-xl overflow-hidden animate-pulse">
-            <div class="h-36 bg-gray-100 dark:bg-white/5"></div>
-            <div class="p-5">
-              <div class="h-4 bg-gray-100 dark:bg-white/5 rounded w-3/4 mb-3"></div>
-              <div class="h-3 bg-gray-100 dark:bg-white/5 rounded w-1/2 mb-4"></div>
-              <div class="flex gap-2">
-                <div class="h-6 bg-gray-100 dark:bg-white/5 rounded w-16"></div>
-                <div class="h-6 bg-gray-100 dark:bg-white/5 rounded w-20"></div>
-              </div>
+        <div v-if="loading && tournaments.length === 0" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          <div
+            v-for="i in 6"
+            :key="i"
+            class="bg-white dark:bg-[#0c111a] border border-gray-200 dark:border-white/[0.08] rounded-2xl p-3 sm:p-4 flex items-center gap-3.5 sm:gap-4 animate-pulse"
+          >
+            <div class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl sm:rounded-2xl bg-gray-200 dark:bg-white/5 shrink-0"></div>
+            <div class="flex-1 min-w-0 py-0.5">
+              <div class="h-3.5 bg-gray-200 dark:bg-white/5 rounded w-2/5 mb-2.5"></div>
+              <div class="h-5 sm:h-6 bg-gray-200 dark:bg-white/5 rounded w-3/4 mb-3"></div>
+              <div class="h-6 bg-gray-200 dark:bg-white/5 rounded-md w-24"></div>
             </div>
           </div>
         </div>
@@ -144,7 +145,7 @@
         </div>
 
         <!-- Tournament Grid -->
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
           <TournamentCard
             v-for="tournament in filteredTournaments"
             :key="tournament.id"

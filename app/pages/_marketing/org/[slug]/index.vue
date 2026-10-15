@@ -132,7 +132,7 @@
             
             <!-- Grid -->
             <div v-else>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
                 <TournamentCard 
                   v-for="tournament in tournaments" 
                   :key="tournament.id" 
