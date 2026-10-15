@@ -64,9 +64,6 @@ const goalsPerMatch = computed(() => (fixturesPlayed.value ? (goalsScored.value 
 const liveHere = computed(() =>
   tournament.value ? liveFixtures.value.filter((f) => f.tournament_id === tournament.value!.id) : [],
 );
-const miniStandings = computed(() =>
-  [...standings.value].sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff).slice(0, 5),
-);
 const topScorersMini = computed(() => (props.playerStats?.topScorers || []).slice(0, 3));
 
 // Race tournaments render fixtures as ranked events, not head-to-head cards.
@@ -771,7 +768,7 @@ const showAddEventModal = ref(false);
       </p>
     </UCard>
 
-    <div v-else class="grid gap-4 lg:grid-cols-[1.7fr_1fr] items-start mt-4">
+    <div v-else class="grid gap-4 items-start mt-4" :class="topScorersMini.length ? 'lg:grid-cols-[1.7fr_1fr]' : ''">
     <div class="min-w-0">
     <UCard>
       <template #header>
@@ -1063,34 +1060,8 @@ const showAddEventModal = ref(false);
     </UCard>
     </div>
 
-    <!-- Side rail (redesign): mini table + top scorers -->
-    <aside v-if="miniStandings.length || topScorersMini.length" class="flex flex-col gap-4">
-      <UCard v-if="miniStandings.length">
-        <template #header>
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-bold">Table</span>
-            <button class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline" @click="emit('go-to-tab', 'standings')">Full table →</button>
-          </div>
-        </template>
-        <div class="-my-2">
-          <div
-            v-for="(row, i) in miniStandings"
-            :key="row.id"
-            class="flex items-center gap-3 py-2 text-sm border-b border-gray-100 dark:border-white/5 last:border-b-0"
-          >
-            <span
-              class="font-mono text-xs font-bold w-4"
-              :class="i === 0 ? 'text-amber-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-500' : 'text-gray-500'"
-            >{{ i + 1 }}</span>
-            <span class="flex-1 truncate font-medium text-gray-900 dark:text-white">
-              {{ row.participant?.customShortName || row.participant?.customName || 'Team' }}
-            </span>
-            <span class="font-mono text-xs text-gray-500 dark:text-gray-400">{{ row.played }}</span>
-            <span class="font-mono text-xs" :class="row.goalDiff > 0 ? 'text-green-500' : row.goalDiff < 0 ? 'text-red-400' : 'text-gray-400'">{{ row.goalDiff > 0 ? '+' : '' }}{{ row.goalDiff }}</span>
-            <span class="font-mono text-sm font-bold text-gray-900 dark:text-white w-6 text-right">{{ row.points }}</span>
-          </div>
-        </div>
-      </UCard>
+    <!-- Side rail (redesign): top scorers -->
+    <aside v-if="topScorersMini.length" class="flex flex-col gap-4">
 
       <UCard v-if="topScorersMini.length">
         <template #header>

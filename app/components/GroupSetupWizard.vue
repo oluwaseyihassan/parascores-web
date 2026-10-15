@@ -33,7 +33,8 @@ const config = reactive({
   schedulingMethod: 'auto' as 'auto' | 'manual',
   generateKnockout: props.tournament.type === TournamentType.HYBRID,
   advancingPerGroup: 2,
-  hasThirdPlace: false
+  hasThirdPlace: props.tournament.thirdPlaceMatch ?? false,
+  doubleRoundRobin: props.tournament.doubleRoundRobin ?? false
 })
 
 const totalAdvancingTeams = computed(() => {
@@ -291,6 +292,9 @@ const loadProgress = (): boolean => {
     // Restore state
     step.value = data.step || 1
     Object.assign(config, data.config)
+    if (config.doubleRoundRobin === undefined) {
+      config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
+    }
     groupAssignments.value = data.groupAssignments || {}
     manualFixtures.value = data.manualFixtures || []
     if (data.knockoutMatchups?.length) {
@@ -303,6 +307,48 @@ const loadProgress = (): boolean => {
     return false
   }
 }
+
+onMounted(() => {
+  if (loadProgress()) {
+    if (config.doubleRoundRobin === undefined) {
+      config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
+    }
+    if (config.hasThirdPlace === undefined || (props.tournament.thirdPlaceMatch && !config.hasThirdPlace)) {
+      config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
+    }
+  } else {
+    config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
+    config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
+  }
+})
+
+watch(() => props.open, (isOpen) => {
+  if (isOpen) {
+    if (!loadProgress()) {
+      config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
+      config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
+    } else {
+      if (config.doubleRoundRobin === undefined) {
+        config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
+      }
+      if (props.tournament.thirdPlaceMatch && !config.hasThirdPlace) {
+        config.hasThirdPlace = true
+      }
+    }
+  }
+})
+
+watch(() => props.tournament.thirdPlaceMatch, (val) => {
+  if (val !== undefined) {
+    config.hasThirdPlace = val
+  }
+})
+
+watch(() => props.tournament.doubleRoundRobin, (val) => {
+  if (val !== undefined) {
+    config.doubleRoundRobin = val
+  }
+})
 
 const clearProgress = () => {
   try { localStorage.removeItem(STORAGE_KEY) } catch {}
@@ -328,7 +374,7 @@ const roundOptions = computed(() => {
   let expectedRounds = avgTeamsPerGroup % 2 === 0 ? avgTeamsPerGroup - 1 : avgTeamsPerGroup
   
   // Double the rounds if tournament is double round robin
-  if (props.tournament.doubleRoundRobin) {
+  if (config.doubleRoundRobin) {
     expectedRounds *= 2
   }
   
@@ -507,7 +553,7 @@ const expectedFixturesCount = computed(() => {
     const N = teamIds.length
     if (N < 2) continue
     let groupMatches = (N * (N - 1)) / 2
-    if (props.tournament.doubleRoundRobin) {
+    if (config.doubleRoundRobin) {
       groupMatches *= 2
     }
     count += groupMatches
@@ -560,6 +606,7 @@ const handleFinish = async (force = false) => {
         groupAssignments: groupAssignments.value,
         shuffleParticipants: false,
         clearExisting: true,
+        doubleRoundRobin: config.doubleRoundRobin,
         generateKnockoutStage: isHybrid.value && config.generateKnockout,
         advancingPerGroup: config.advancingPerGroup,
         hasThirdPlace: config.hasThirdPlace,
@@ -739,6 +786,25 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                    <p class="text-sm font-medium text-gray-900 dark:text-white">Randomize Initial Order</p>
                    <p class="text-xs text-gray-500">Shuffle teams before distributing them into groups.</p>
                 </div>
+            </div>
+
+            <!-- Double Round Robin Toggle -->
+            <div
+              v-if="[TournamentType.ROUND_ROBIN, TournamentType.GROUP, TournamentType.HYBRID, TournamentType.LEAGUE].includes(props.tournament.type as any)"
+              class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-white/[0.05]"
+            >
+              <div class="flex-1 pr-3">
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white">Double Round Robin</p>
+                  <UBadge size="xs" :color="config.doubleRoundRobin ? 'primary' : 'neutral'" variant="subtle">
+                    {{ config.doubleRoundRobin ? 'Home & Away (2 legs)' : 'Single round' }}
+                  </UBadge>
+                </div>
+                <p class="text-xs text-gray-500 mt-0.5">
+                  {{ config.doubleRoundRobin ? 'Each pairing plays twice (Home and Away fixtures generated).' : 'Teams play each opponent once.' }}
+                </p>
+              </div>
+              <USwitch v-model="config.doubleRoundRobin" />
             </div>
 
             <!-- Knockout Progression (Hybrid Tournaments) -->
