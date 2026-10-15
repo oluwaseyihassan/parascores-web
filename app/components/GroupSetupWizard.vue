@@ -50,11 +50,15 @@ const startingKnockoutRoundName = computed(() => {
   return `${teams}-Team Playoff`
 })
 
-const knockoutPairingPreview = computed(() => {
-  if (!isHybrid.value || !config.generateKnockout) return []
-  const numGroups = config.numberOfGroups
-  const adv = config.advancingPerGroup
-  const pairs: { home: string; away: string }[] = []
+interface KnockoutMatchup {
+  home: string
+  away: string
+}
+
+const knockoutMatchups = ref<KnockoutMatchup[]>([])
+
+const computeDefaultKnockoutMatchups = (numGroups: number, adv: number): KnockoutMatchup[] => {
+  const pairs: KnockoutMatchup[] = []
 
   if (numGroups === 2 && adv === 2) {
     pairs.push({ home: 'Winner Group A', away: 'Runner-up Group B' })
@@ -70,16 +74,172 @@ const knockoutPairingPreview = computed(() => {
       const g2 = i + 1 < numGroups ? String.fromCharCode(65 + i + 1) : null
       pairs.push({ home: `Winner Group ${g1}`, away: g2 ? `Winner Group ${g2}` : 'BYE' })
     }
-  } else {
+  } else if (adv === 2) {
     for (let i = 0; i < numGroups; i++) {
       const gHome = String.fromCharCode(65 + i)
       const targetGroupIndex = (i + 1) % numGroups
       const gAway = String.fromCharCode(65 + targetGroupIndex)
       pairs.push({ home: `Winner Group ${gHome}`, away: `Runner-up Group ${gAway}` })
     }
+  } else {
+    const allQualifiers: string[] = []
+    for (let g = 0; g < numGroups; g++) {
+      const gLetter = String.fromCharCode(65 + g)
+      allQualifiers.push(`Winner Group ${gLetter}`)
+      if (adv >= 2) allQualifiers.push(`Runner-up Group ${gLetter}`)
+      for (let p = 3; p <= adv; p++) {
+        const suffix = p === 3 ? 'rd' : 'th'
+        allQualifiers.push(`${p}${suffix} Place Group ${gLetter}`)
+      }
+    }
+    const matchCount = Math.ceil(allQualifiers.length / 2)
+    for (let i = 0; i < matchCount; i++) {
+      const home = allQualifiers[i] || 'BYE'
+      const away = allQualifiers[allQualifiers.length - 1 - i] || 'BYE'
+      pairs.push({ home, away })
+    }
   }
 
   return pairs
+}
+
+const initializeKnockoutMatchups = (force = false) => {
+  if (!isHybrid.value || !config.generateKnockout) {
+    knockoutMatchups.value = []
+    return
+  }
+  const defaults = computeDefaultKnockoutMatchups(config.numberOfGroups, config.advancingPerGroup)
+  if (force || knockoutMatchups.value.length === 0 || knockoutMatchups.value.length !== defaults.length) {
+    knockoutMatchups.value = defaults
+  }
+}
+
+const isMatchupsCustomized = computed(() => {
+  if (!isHybrid.value || !config.generateKnockout) return false
+  const defaults = computeDefaultKnockoutMatchups(config.numberOfGroups, config.advancingPerGroup)
+  if (knockoutMatchups.value.length !== defaults.length) return true
+  return knockoutMatchups.value.some((m, idx) => m.home !== defaults[idx]?.home || m.away !== defaults[idx]?.away)
+})
+
+const resetKnockoutMatchups = () => {
+  knockoutMatchups.value = computeDefaultKnockoutMatchups(config.numberOfGroups, config.advancingPerGroup)
+  toast.add({
+    title: 'Matchups Reset',
+    description: 'First round matchups restored to default cross-group pairings.',
+    color: 'neutral',
+    icon: 'i-heroicons-arrow-path'
+  })
+}
+
+const shuffleKnockoutMatchups = () => {
+  if (knockoutMatchups.value.length <= 1) return
+  const aways = knockoutMatchups.value.map(m => m.away)
+  for (let i = aways.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const temp = aways[i]!
+    aways[i] = aways[j]!
+    aways[j] = temp
+  }
+  knockoutMatchups.value.forEach((m, idx) => {
+    m.away = aways[idx]!
+  })
+  toast.add({
+    title: 'Matchups Shuffled',
+    description: 'Opponents randomly re-paired.',
+    icon: 'i-heroicons-arrows-right-left',
+    color: 'neutral'
+  })
+}
+
+const swapMatchupHomeAway = (index: number) => {
+  const m = knockoutMatchups.value[index]
+  if (!m) return
+  const temp = m.home
+  m.home = m.away
+  m.away = temp
+}
+
+const updateMatchupSlot = (matchIndex: number, side: 'home' | 'away', newValue: string) => {
+  if (!newValue) return
+  const trimmed = newValue.trim()
+  if (!trimmed) return
+
+  // Smart swap: if newValue already assigned in another slot (unless BYE)
+  if (trimmed.toUpperCase() !== 'BYE') {
+    for (let i = 0; i < knockoutMatchups.value.length; i++) {
+      const m = knockoutMatchups.value[i]!
+      if (i === matchIndex && side === 'home' && m.away === trimmed) {
+        m.away = m.home
+        m.home = trimmed
+        return
+      }
+      if (i === matchIndex && side === 'away' && m.home === trimmed) {
+        m.home = m.away
+        m.away = trimmed
+        return
+      }
+      if (i !== matchIndex) {
+        if (m.home === trimmed) {
+          const oldVal = knockoutMatchups.value[matchIndex]![side]
+          m.home = oldVal
+          knockoutMatchups.value[matchIndex]![side] = trimmed
+          return
+        }
+        if (m.away === trimmed) {
+          const oldVal = knockoutMatchups.value[matchIndex]![side]
+          m.away = oldVal
+          knockoutMatchups.value[matchIndex]![side] = trimmed
+          return
+        }
+      }
+    }
+  }
+
+  knockoutMatchups.value[matchIndex]![side] = trimmed
+}
+
+const getKnockoutMatchLabel = (index: number) => {
+  const roundName = startingKnockoutRoundName.value
+  let prefix = `Match ${index + 1}`
+  if (roundName === 'Quarterfinals') prefix = `QF ${index + 1}`
+  else if (roundName === 'Semifinals') prefix = `SF ${index + 1}`
+  else if (roundName === 'Round of 16') prefix = `R16 ${index + 1}`
+  else if (roundName === 'Round of 32') prefix = `R32 ${index + 1}`
+  else if (roundName === 'Final') prefix = 'Final'
+  return prefix
+}
+
+const qualifierOptions = computed(() => {
+  const options: { label: string; value: string }[] = []
+  const numGroups = config.numberOfGroups
+  const adv = config.advancingPerGroup
+
+  for (let i = 0; i < numGroups; i++) {
+    const letter = String.fromCharCode(65 + i)
+    options.push({ label: `Winner Group ${letter}`, value: `Winner Group ${letter}` })
+    if (adv >= 2) {
+      options.push({ label: `Runner-up Group ${letter}`, value: `Runner-up Group ${letter}` })
+    }
+    for (let p = 3; p <= adv; p++) {
+      const suffix = p === 3 ? 'rd' : 'th'
+      options.push({ label: `${p}${suffix} Place Group ${letter}`, value: `${p}${suffix} Place Group ${letter}` })
+    }
+  }
+
+  options.push({ label: 'BYE', value: 'BYE' })
+  options.push({ label: 'Best 3rd Place', value: 'Best 3rd Place' })
+
+  // Keep any custom placeholder values in the options list so they can be selected
+  knockoutMatchups.value.forEach(m => {
+    if (m.home && !options.some(o => o.value === m.home)) {
+      options.push({ label: m.home, value: m.home })
+    }
+    if (m.away && !options.some(o => o.value === m.away)) {
+      options.push({ label: m.away, value: m.away })
+    }
+  })
+
+  return options
 })
 
 // Manual Schedule State
@@ -111,6 +271,7 @@ const saveProgress = () => {
       config: { ...config },
       groupAssignments: groupAssignments.value,
       manualFixtures: manualFixtures.value,
+      knockoutMatchups: knockoutMatchups.value,
       savedAt: Date.now()
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
@@ -132,6 +293,11 @@ const loadProgress = (): boolean => {
     Object.assign(config, data.config)
     groupAssignments.value = data.groupAssignments || {}
     manualFixtures.value = data.manualFixtures || []
+    if (data.knockoutMatchups?.length) {
+      knockoutMatchups.value = data.knockoutMatchups
+    } else {
+      initializeKnockoutMatchups(true)
+    }
     return true
   } catch {
     return false
@@ -143,7 +309,7 @@ const clearProgress = () => {
 }
 
 // Auto-save whenever key state changes
-watch([step, config, groupAssignments, manualFixtures], () => {
+watch([step, config, groupAssignments, manualFixtures, knockoutMatchups], () => {
   if (props.open) saveProgress()
 }, { deep: true })
 
@@ -235,14 +401,22 @@ watch(() => props.open, (isOpen) => {
        }
     }
 
-    // Initialize groups
+    // Initialize groups and knockout matchups
     initializeGroups()
+    initializeKnockoutMatchups(true)
   }
 })
 
 // Re-initialize groups if essential config changes
 watch([() => config.assignmentMethod, () => config.numberOfGroups, () => config.shuffleParticipants], () => {
     initializeGroups()
+})
+
+// Re-initialize knockout matchups if group count, progression or hybrid status changes
+watch([() => config.numberOfGroups, () => config.advancingPerGroup, () => config.generateKnockout], () => {
+    if (isHybrid.value && config.generateKnockout) {
+      initializeKnockoutMatchups(true)
+    }
 })
 
 // Clear selected teams if they are already scheduled in the newly selected round
@@ -388,7 +562,8 @@ const handleFinish = async (force = false) => {
         clearExisting: true,
         generateKnockoutStage: isHybrid.value && config.generateKnockout,
         advancingPerGroup: config.advancingPerGroup,
-        hasThirdPlace: config.hasThirdPlace
+        hasThirdPlace: config.hasThirdPlace,
+        knockoutMatchups: isHybrid.value && config.generateKnockout ? knockoutMatchups.value : undefined
       })
     } else {
       // Clear existing first
@@ -608,17 +783,84 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                   <USwitch v-model="config.hasThirdPlace" />
                 </div>
 
-                <div v-if="knockoutPairingPreview.length > 0" class="pt-2">
-                  <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">First Round Matchups</p>
-                  <div class="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                <div v-if="knockoutMatchups.length > 0" class="pt-2">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-1.5">
+                      <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">First Round Matchups</p>
+                      <UBadge v-if="isMatchupsCustomized" color="primary" variant="subtle" size="xs">Customized</UBadge>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <UButton
+                        v-if="knockoutMatchups.length > 1"
+                        size="xs"
+                        variant="ghost"
+                        color="neutral"
+                        icon="i-heroicons-arrows-right-left"
+                        label="Shuffle"
+                        title="Randomly pair opponents"
+                        @click="shuffleKnockoutMatchups"
+                      />
+                      <UButton
+                        v-if="isMatchupsCustomized"
+                        size="xs"
+                        variant="ghost"
+                        color="neutral"
+                        icon="i-heroicons-arrow-path"
+                        label="Reset"
+                        title="Restore default pairings"
+                        @click="resetKnockoutMatchups"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="space-y-2 max-h-56 overflow-y-auto pr-1">
                     <div
-                      v-for="(pair, idx) in knockoutPairingPreview"
+                      v-for="(pair, idx) in knockoutMatchups"
                       :key="idx"
-                      class="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-white dark:bg-gray-800/80 text-xs border border-gray-100 dark:border-white/5"
+                      class="p-2.5 rounded-lg bg-white dark:bg-gray-900/80 border border-gray-200/80 dark:border-white/10 shadow-xs space-y-1.5 transition-all hover:border-gray-300 dark:hover:border-white/20"
                     >
-                      <span class="font-medium text-emerald-600 dark:text-emerald-400">{{ pair.home }}</span>
-                      <span class="text-[9px] text-gray-400 font-bold px-1.5">VS</span>
-                      <span class="font-medium text-gray-700 dark:text-gray-300">{{ pair.away }}</span>
+                      <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                          {{ getKnockoutMatchLabel(idx) }}
+                        </span>
+                        <button
+                          type="button"
+                          class="flex items-center gap-1 text-[10px] font-medium text-gray-400 hover:text-amber-500 transition-colors cursor-pointer"
+                          title="Swap Home and Away"
+                          @click="swapMatchupHomeAway(idx)"
+                        >
+                          <UIcon name="i-heroicons-arrows-right-left" class="w-3 h-3" />
+                          <span>Swap</span>
+                        </button>
+                      </div>
+
+                      <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+                        <USelectMenu
+                          :model-value="pair.home"
+                          :items="qualifierOptions"
+                          value-key="value"
+                          searchable
+                          :create-item="true"
+                          size="xs"
+                          class="w-full"
+                          :ui="{ base: 'font-medium text-emerald-600 dark:text-emerald-400 text-xs' }"
+                          @update:model-value="val => updateMatchupSlot(idx, 'home', val as string)"
+                          @create="val => updateMatchupSlot(idx, 'home', val)"
+                        />
+                        <span class="text-[9px] font-bold text-gray-400 px-0.5">VS</span>
+                        <USelectMenu
+                          :model-value="pair.away"
+                          :items="qualifierOptions"
+                          value-key="value"
+                          searchable
+                          :create-item="true"
+                          size="xs"
+                          class="w-full"
+                          :ui="{ base: 'font-medium text-gray-700 dark:text-gray-300 text-xs' }"
+                          @update:model-value="val => updateMatchupSlot(idx, 'away', val as string)"
+                          @create="val => updateMatchupSlot(idx, 'away', val)"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -629,15 +871,36 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
           <!-- Step 2: Review -->
           <div v-if="step === 2" class="space-y-5 sm:space-y-6">
             <!-- Knockout Roadmap Summary (Hybrid) -->
-            <div v-if="isHybrid && config.generateKnockout" class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-3">
-              <div class="flex items-center gap-2.5">
-                <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-amber-500 shrink-0" />
-                <div>
-                  <p class="text-xs font-bold text-gray-900 dark:text-white">Knockout Stage will be generated with placeholders</p>
-                  <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ totalAdvancingTeams }} teams (Top {{ config.advancingPerGroup }} per group) · Starts at {{ startingKnockoutRoundName }}</p>
+            <div v-if="isHybrid && config.generateKnockout" class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-3">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5">
+                  <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-amber-500 shrink-0" />
+                  <div>
+                    <p class="text-xs font-bold text-gray-900 dark:text-white">Knockout Stage will be generated with placeholders</p>
+                    <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ totalAdvancingTeams }} teams (Top {{ config.advancingPerGroup }} per group) · Starts at {{ startingKnockoutRoundName }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <UBadge v-if="isMatchupsCustomized" color="primary" variant="subtle" size="xs">Custom Matchups</UBadge>
+                  <UBadge color="warning" variant="subtle" size="xs">Roadmap Active</UBadge>
                 </div>
               </div>
-              <UBadge color="warning" variant="subtle" size="xs">Roadmap Active</UBadge>
+
+              <!-- Quick preview of first round matchups in review step -->
+              <div v-if="knockoutMatchups.length > 0" class="pt-2 border-t border-amber-500/15">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                  <div
+                    v-for="(pair, idx) in knockoutMatchups"
+                    :key="idx"
+                    class="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-white/70 dark:bg-black/30 border border-amber-500/10"
+                  >
+                    <span class="font-semibold text-[10px] text-gray-400 mr-1.5">{{ getKnockoutMatchLabel(idx) }}:</span>
+                    <span class="font-medium text-emerald-600 dark:text-emerald-400 truncate">{{ pair.home }}</span>
+                    <span class="text-[9px] text-gray-400 font-bold px-1 shrink-0">VS</span>
+                    <span class="font-medium text-gray-700 dark:text-gray-300 truncate">{{ pair.away }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                <div class="min-w-0">
