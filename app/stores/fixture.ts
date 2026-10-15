@@ -56,6 +56,7 @@ export interface GenerateFixturesOptions {
   generateKnockoutStage?: boolean;
   advancingPerGroup?: number;
   hasThirdPlace?: boolean;
+  knockoutMatchups?: { home: string; away: string }[];
 }
 
 export const useFixtureStore = defineStore("fixture", () => {
