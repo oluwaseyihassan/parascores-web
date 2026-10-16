@@ -210,6 +210,7 @@ export interface Tournament {
   twoLegsKnockout?: boolean;
   doubleRoundRobin?: boolean;
   thirdPlaceMatch?: boolean;
+  unifiedStandings?: boolean;
 
   // Venues
   venues?: Venue[];

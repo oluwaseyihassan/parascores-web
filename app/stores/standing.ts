@@ -60,12 +60,16 @@ export const useStandingStore = defineStore('standing', () => {
   const getStandingsByGroup = computed(() => {
     const grouped: Record<string, Standing[]> = {}
     const groupStore = useGroupStore()
+    const tournamentStore = useTournamentStore()
+    const isUnified = tournamentStore.currentTournament?.unifiedStandings
     
     standings.value.forEach(standing => {
-      const group = standing.group || 
-        standing.participant?.group?.name || 
-        (standing.participant?.groupId ? groupStore.groups.find(g => g.id === standing.participant?.groupId)?.name : null) || 
-        'default'
+      const group = isUnified
+        ? 'default'
+        : (standing.group || 
+           standing.participant?.group?.name || 
+           (standing.participant?.groupId ? groupStore.groups.find(g => g.id === standing.participant?.groupId)?.name : null) || 
+           'default')
       if (!grouped[group]) {
         grouped[group] = []
       }

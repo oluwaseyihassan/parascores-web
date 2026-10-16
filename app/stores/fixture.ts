@@ -57,6 +57,9 @@ export interface GenerateFixturesOptions {
   advancingPerGroup?: number;
   hasThirdPlace?: boolean;
   knockoutMatchups?: { home: string; away: string }[];
+  unifiedStandings?: boolean;
+  format?: 'ROUND_ROBIN' | 'CHAMPIONS_LEAGUE' | 'SWISS';
+  matchesPerPot?: number;
 }
 
 export const useFixtureStore = defineStore("fixture", () => {

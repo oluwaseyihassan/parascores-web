@@ -337,6 +337,7 @@ const schema = z.object({
   twoLegsKnockout: z.boolean().optional(),
   doubleRoundRobin: z.boolean().optional(),
   thirdPlaceMatch: z.boolean().optional(),
+  unifiedStandings: z.boolean().optional(),
   organization_id: z.string().min(1, 'Organization is required'),
   logoUrl: z.string().optional(),
   bannerUrl: z.string().optional(),
@@ -366,6 +367,7 @@ const state = reactive<Partial<Schema>>({
   twoLegsKnockout: false,
   doubleRoundRobin: false,
   thirdPlaceMatch: false,
+  unifiedStandings: false,
   organization_id: authStore.currentOrganization?.id || '',
   logoUrl: '',
   bannerUrl: '',
@@ -967,6 +969,23 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                       <p class="text-[10.5px] text-muted mt-0.5">{{ optionSupported('doubleRoundRobin') ? 'Each pairing plays home & away' : `Not available for ${creationEngine.label}` }}</p>
                     </div>
                     <USwitch v-model="state.doubleRoundRobin" :disabled="!optionSupported('doubleRoundRobin')" />
+                  </div>
+
+                  <!-- Unified League Table (Champions League / Swiss Format) -->
+                  <div
+                    v-if="[TournamentType.GROUP, TournamentType.HYBRID].includes(state.type as any)"
+                    class="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-subtle"
+                  >
+                    <div>
+                      <div class="flex items-center gap-1.5">
+                        <p class="text-[13px] font-semibold text-heading">Unified League Table</p>
+                        <UBadge size="xs" color="primary" variant="subtle">Champions League / Swiss</UBadge>
+                      </div>
+                      <p class="text-[10.5px] text-muted mt-0.5">
+                        {{ state.unifiedStandings ? 'All teams share a single unified table (silent groups/pots decide fixtures)' : 'Each group has its own separate table (traditional World Cup style)' }}
+                      </p>
+                    </div>
+                    <USwitch v-model="state.unifiedStandings" />
                   </div>
                 </template>
               </div>
