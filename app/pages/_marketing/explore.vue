@@ -105,7 +105,7 @@
           <div
             v-for="i in 6"
             :key="i"
-            class="bg-white dark:bg-[#0c111a] border border-gray-200 dark:border-white/[0.08] rounded-2xl p-3 sm:p-4 flex items-center gap-3.5 sm:gap-4 animate-pulse"
+            class="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-white/10 rounded-2xl p-3 sm:p-4 flex items-center gap-3.5 sm:gap-4 animate-pulse"
           >
             <div class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl sm:rounded-2xl bg-gray-200 dark:bg-white/5 shrink-0"></div>
             <div class="flex-1 min-w-0 py-0.5">
