@@ -4,7 +4,13 @@ import {
   MatchEventType,
   MatchHalf,
 } from "~/types";
-import type { Fixture, MatchEvent, Player } from "~/types";
+import type { Fixture, MatchEvent, Player, Highlight } from "~/types";
+import {
+  detectHighlightPlatform,
+  normalizeHighlightUrl,
+  getHighlightEmbedUrl,
+  getHighlightThumbnailUrl,
+} from "~/utils/highlights";
 
 export function useMatchEvents(options: {
   fixture: Ref<Fixture | null>;
@@ -13,7 +19,9 @@ export function useMatchEvents(options: {
   homePlayers: Ref<Player[]>;
   awayPlayers: Ref<Player[]>;
   updatingMatch: Ref<boolean>;
+  highlights?: Ref<Highlight[]>;
   onFixtureUpdated: (fixture: Fixture) => void;
+  onHighlightsUpdated?: () => Promise<void>;
 }) {
   const {
     fixture,
@@ -22,7 +30,9 @@ export function useMatchEvents(options: {
     homePlayers,
     awayPlayers,
     updatingMatch,
+    highlights,
     onFixtureUpdated,
+    onHighlightsUpdated,
   } = options;
 
   const fixtureStore = useFixtureStore();
@@ -35,6 +45,9 @@ export function useMatchEvents(options: {
     minute: null as number | null,
     playerId: undefined as string | undefined,
     relatedPlayerId: undefined as string | undefined,
+    highlightUrl: "",
+    selectedHighlightId: undefined as string | undefined,
+    highlightCaption: "",
   });
 
   const showDeleteEventModal = ref(false);
@@ -64,6 +77,9 @@ export function useMatchEvents(options: {
     editEventData.minute = event.minute ?? null;
     editEventData.playerId = event.playerId || undefined;
     editEventData.relatedPlayerId = event.relatedPlayerId || undefined;
+    editEventData.highlightUrl = event.metadata?.highlightUrl || "";
+    editEventData.selectedHighlightId = event.metadata?.highlightId || undefined;
+    editEventData.highlightCaption = event.metadata?.highlightCaption || "";
     showEditEventModal.value = true;
   };
 
@@ -73,6 +89,12 @@ export function useMatchEvents(options: {
     try {
       const isPenaltyShootout =
         eventBeingEdited.value.metadata?.isPenaltyShootout === true;
+      const isGoalEvent = [
+        MatchEventType.GOAL,
+        MatchEventType.PENALTY,
+        MatchEventType.OWN_GOAL,
+      ].includes(eventBeingEdited.value.type);
+
       const updateData: any = {
         playerId: editEventData.playerId,
         relatedPlayerId: editEventData.relatedPlayerId,
@@ -84,6 +106,72 @@ export function useMatchEvents(options: {
           eventBeingEdited.value.metadata,
         );
       }
+
+      if (isGoalEvent) {
+        const metadata = { ...(eventBeingEdited.value.metadata || {}) };
+
+        if (editEventData.selectedHighlightId) {
+          const existing = highlights?.value?.find(
+            (h) => h.id === editEventData.selectedHighlightId,
+          );
+          if (existing) {
+            metadata.highlightId = existing.id;
+            metadata.highlightUrl = existing.externalUrl;
+            metadata.highlightEmbedUrl = existing.embedUrl;
+            metadata.highlightPlatform = existing.platform;
+            metadata.highlightThumbnailUrl = existing.thumbnailUrl;
+            metadata.highlightCaption = existing.caption;
+          }
+        } else if (editEventData.highlightUrl.trim()) {
+          const normalized = normalizeHighlightUrl(editEventData.highlightUrl);
+          const platform = normalized ? detectHighlightPlatform(normalized) : null;
+          const embedUrl = normalized ? getHighlightEmbedUrl(normalized, platform) : null;
+          const thumbUrl = normalized ? getHighlightThumbnailUrl(normalized, platform) : null;
+
+          let createdHighlightId: string | undefined = undefined;
+          if (fixture.value?.id && normalized && platform) {
+            try {
+              const res = await fixtureStore.createHighlight(fixture.value.id, {
+                externalUrl: normalized,
+                platform: platform,
+                caption: editEventData.highlightCaption.trim() || undefined,
+              });
+              if (res?.data) {
+                createdHighlightId = res.data.id;
+                if (highlights?.value) {
+                  highlights.value.unshift(res.data);
+                }
+                if (onHighlightsUpdated) {
+                  await onHighlightsUpdated();
+                }
+              }
+            } catch (err) {
+              console.warn("Could not create fixture highlight record:", err);
+            }
+          }
+
+          if (normalized) {
+            metadata.highlightUrl = normalized;
+            metadata.highlightPlatform = platform || undefined;
+            metadata.highlightEmbedUrl = embedUrl || undefined;
+            metadata.highlightThumbnailUrl = thumbUrl || undefined;
+            if (createdHighlightId) {
+              metadata.highlightId = createdHighlightId;
+            }
+            metadata.highlightCaption = editEventData.highlightCaption.trim() || undefined;
+          }
+        } else {
+          delete metadata.highlightUrl;
+          delete metadata.highlightId;
+          delete metadata.highlightEmbedUrl;
+          delete metadata.highlightPlatform;
+          delete metadata.highlightThumbnailUrl;
+          delete metadata.highlightCaption;
+        }
+
+        updateData.metadata = metadata;
+      }
+
       await fixtureStore.updateMatchEvent(eventBeingEdited.value.id, updateData);
       showEditEventModal.value = false;
       await refreshMatchEvents();
@@ -415,6 +503,56 @@ export function useMatchEvents(options: {
     }
   };
 
+  const getEventHighlight = (event: MatchEvent | null | undefined) => {
+    if (!event) return null;
+    const meta = event.metadata;
+    if (!meta) return null;
+    if (meta.highlightUrl || meta.highlightId) {
+      return {
+        id: meta.highlightId as string | undefined,
+        externalUrl: meta.highlightUrl as string | undefined,
+        embedUrl:
+          (meta.highlightEmbedUrl as string | undefined) ||
+          (meta.highlightUrl
+            ? getHighlightEmbedUrl(meta.highlightUrl, meta.highlightPlatform)
+            : null),
+        platform: meta.highlightPlatform as string | undefined,
+        thumbnailUrl: meta.highlightThumbnailUrl as string | undefined,
+        caption: meta.highlightCaption as string | undefined,
+      };
+    }
+    return null;
+  };
+
+  const previewHighlightModalOpen = ref(false);
+  const highlightToPreview = ref<{
+    title?: string;
+    subtitle?: string;
+    highlight?: {
+      embedUrl?: string | null;
+      externalUrl?: string | null;
+      platform?: string | null;
+      caption?: string | null;
+      thumbnailUrl?: string | null;
+    } | null;
+  } | null>(null);
+
+  const openHighlightPreview = (event: MatchEvent) => {
+    const hl = getEventHighlight(event);
+    if (!hl) return;
+
+    const playerName = getPlayerName(event.playerId) || "Goal";
+    const minuteDisplay = getEventMinuteDisplay(event);
+    const teamName = getTeamName(event.participant_id);
+
+    highlightToPreview.value = {
+      title: `⚽ ${playerName}${minuteDisplay ? ` (${minuteDisplay})` : ""}`,
+      subtitle: teamName ? `${teamName} · Match Goal` : "Match Goal",
+      highlight: hl,
+    };
+    previewHighlightModalOpen.value = true;
+  };
+
   return {
     matchEvents,
     loadingEvents,
@@ -446,6 +584,10 @@ export function useMatchEvents(options: {
     getEventMinuteDisplay,
     groupedMatchEvents,
     refreshMatchEvents,
+    getEventHighlight,
+    previewHighlightModalOpen,
+    highlightToPreview,
+    openHighlightPreview,
   };
 }
 

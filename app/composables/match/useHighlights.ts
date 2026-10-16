@@ -1,5 +1,5 @@
 import type { InjectionKey, Ref } from "vue";
-import type { Highlight, HighlightPlatform } from "~/types";
+import type { Highlight, HighlightPlatform, MatchEvent } from "~/types";
 import {
   HIGHLIGHT_PLATFORMS,
   detectHighlightPlatform,
@@ -11,6 +11,8 @@ export function useHighlights(
   getFixtureId: () => string | undefined,
   highlights: Ref<Highlight[]>,
   loadingHighlights: Ref<boolean>,
+  matchEvents?: Ref<MatchEvent[]>,
+  onMatchEventsUpdated?: () => Promise<void>,
 ) {
   const fixtureStore = useFixtureStore();
   const { handleError } = useErrors();
@@ -21,6 +23,7 @@ export function useHighlights(
   const newHighlightPlatform = ref<HighlightPlatform | undefined>(undefined);
   const newHighlightCaption = ref<string>("");
   const newHighlightDuration = ref<number | undefined>(undefined);
+  const linkedGoalEventId = ref<string | undefined>(undefined);
 
   const highlightPlatformOptions = computed(() => {
     return HIGHLIGHT_PLATFORMS.map((p) => ({
@@ -38,6 +41,28 @@ export function useHighlights(
     if (!newHighlightUrl.value) return true;
     if (!newHighlightPlatform.value) return true;
     return !normalizeHighlightUrl(newHighlightUrl.value);
+  });
+
+  const goalEvents = computed(() => {
+    if (!matchEvents?.value) return [];
+    return matchEvents.value.filter((e) =>
+      ["GOAL", "PENALTY", "OWN_GOAL"].includes(e.type),
+    );
+  });
+
+  const goalEventSelectOptions = computed(() => {
+    return [
+      { label: "None (General Match Highlight)", value: "" },
+      ...goalEvents.value.map((e) => {
+        const min = e.minute ? `${e.minute}' ` : "";
+        const tag =
+          e.type === "OWN_GOAL" ? " (OG)" : e.type === "PENALTY" ? " (P)" : "";
+        return {
+          label: `⚽ ${min}${e.player?.name || "Goal"}${tag}`,
+          value: e.id,
+        };
+      }),
+    ];
   });
 
   watch(
@@ -102,12 +127,41 @@ export function useHighlights(
 
     savingHighlight.value = true;
     try {
-      await fixtureStore.createHighlight(fixtureId, {
+      const res = await fixtureStore.createHighlight(fixtureId, {
         externalUrl: normalized,
         platform: newHighlightPlatform.value,
         caption: newHighlightCaption.value || null,
         duration: newHighlightDuration.value || null,
       });
+
+      const created = res?.data;
+
+      // If linked to a goal event, update that goal event's metadata
+      if (linkedGoalEventId.value && created) {
+        try {
+          const targetEvent = matchEvents?.value.find(
+            (e) => e.id === linkedGoalEventId.value,
+          );
+          if (targetEvent) {
+            await fixtureStore.updateMatchEvent(targetEvent.id, {
+              metadata: {
+                ...(targetEvent.metadata || {}),
+                highlightId: created.id,
+                highlightUrl: created.externalUrl,
+                highlightEmbedUrl: created.embedUrl,
+                highlightPlatform: created.platform,
+                highlightThumbnailUrl: created.thumbnailUrl,
+                highlightCaption: created.caption,
+              },
+            });
+            if (onMatchEventsUpdated) {
+              await onMatchEventsUpdated();
+            }
+          }
+        } catch (err) {
+          console.warn("Could not link highlight to goal event:", err);
+        }
+      }
 
       resetHighlightForm();
 
@@ -149,6 +203,7 @@ export function useHighlights(
     newHighlightPlatform.value = undefined;
     newHighlightCaption.value = "";
     newHighlightDuration.value = undefined;
+    linkedGoalEventId.value = undefined;
   };
 
   return {
@@ -160,6 +215,8 @@ export function useHighlights(
     newHighlightPlatform,
     newHighlightCaption,
     newHighlightDuration,
+    linkedGoalEventId,
+    goalEventSelectOptions,
     highlightPlatformOptions,
     selectedHighlightPlatformInfo,
     isAddHighlightDisabled,

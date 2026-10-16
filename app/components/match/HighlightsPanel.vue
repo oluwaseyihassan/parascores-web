@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { HighlightsKey } from "~/composables/match/useHighlights";
+import { formatHighlightEmbedUrl } from "~/utils/highlights";
 
 const collapsed = defineModel<boolean>("collapsed", { default: false });
 
@@ -12,6 +13,8 @@ const {
   newHighlightPlatform,
   newHighlightCaption,
   newHighlightDuration,
+  linkedGoalEventId,
+  goalEventSelectOptions,
   highlightPlatformOptions,
   selectedHighlightPlatformInfo,
   isAddHighlightDisabled,
@@ -67,6 +70,18 @@ const {
             />
           </UFormField>
         </div>
+        <UFormField
+          v-if="goalEventSelectOptions.length > 1"
+          label="Link to Goal (optional)"
+        >
+          <USelect
+            v-model="linkedGoalEventId"
+            :items="goalEventSelectOptions"
+            placeholder="Select a goal..."
+            value-key="value"
+            class="w-full"
+          />
+        </UFormField>
         <div class="flex flex-col sm:flex-row gap-2 sm:items-end">
           <UFormField label="Caption (optional)" class="flex-1">
             <UInput
@@ -123,10 +138,11 @@ const {
             <div class="aspect-[9/16] max-h-[420px] w-full bg-black">
               <iframe
                 v-if="highlight.embedUrl"
-                :src="highlight.embedUrl"
+                :src="formatHighlightEmbedUrl(highlight.embedUrl)"
                 class="w-full h-full"
                 frameborder="0"
                 allowfullscreen
+                allow="fullscreen; accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 loading="lazy"
                 :title="highlight.caption || 'Match highlight'"
               />

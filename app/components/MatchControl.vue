@@ -12,6 +12,12 @@ import {
 } from "~/composables/useMatchTimer";
 import { resolveEngine } from "~/engines/registry";
 import { SportEngineKey } from "~/engines/types";
+import {
+  detectHighlightPlatform,
+  normalizeHighlightUrl,
+  getHighlightEmbedUrl,
+  getHighlightThumbnailUrl,
+} from "~/utils/highlights";
 
 const props = withDefaults(
   defineProps<{
@@ -73,6 +79,8 @@ const highlightsApi = useHighlights(
   () => selectedFixture.value?.id,
   highlights,
   loadingHighlights,
+  matchEvents,
+  () => eventsApi.refreshMatchEvents(),
 );
 provide(HighlightsKey, highlightsApi);
 
@@ -89,7 +97,9 @@ const eventsApi = useMatchEvents({
   homePlayers,
   awayPlayers,
   updatingMatch,
+  highlights,
   onFixtureUpdated: (fixture) => emit("fixture-updated", fixture),
+  onHighlightsUpdated: () => highlightsApi.refreshHighlights(),
 });
 provide(MatchEventsKey, eventsApi);
 
@@ -217,6 +227,9 @@ const goalData = reactive({
   scorerId: undefined as string | undefined,
   assisterId: undefined as string | undefined,
   minute: null as number | null,
+  highlightUrl: "",
+  selectedHighlightId: undefined as string | undefined,
+  highlightCaption: "",
 });
 
 // Card modal
@@ -599,6 +612,57 @@ const confirmGoal = async () => {
 
     // Create match event for the goal (skip for Individual tournaments)
     if (props.tournament?.participantType !== ParticipantType.INDIVIDUAL) {
+      let eventMetadata: Record<string, any> | undefined = undefined;
+
+      if (goalData.selectedHighlightId) {
+        const existing = highlights.value.find(
+          (h) => h.id === goalData.selectedHighlightId,
+        );
+        if (existing) {
+          eventMetadata = {
+            highlightId: existing.id,
+            highlightUrl: existing.externalUrl,
+            highlightEmbedUrl: existing.embedUrl,
+            highlightPlatform: existing.platform,
+            highlightThumbnailUrl: existing.thumbnailUrl,
+            highlightCaption: existing.caption,
+          };
+        }
+      } else if (goalData.highlightUrl.trim()) {
+        const normalized = normalizeHighlightUrl(goalData.highlightUrl);
+        const platform = normalized ? detectHighlightPlatform(normalized) : null;
+        const embedUrl = normalized ? getHighlightEmbedUrl(normalized, platform) : null;
+        const thumbUrl = normalized ? getHighlightThumbnailUrl(normalized, platform) : null;
+
+        let createdHighlightId: string | undefined = undefined;
+        if (selectedFixture.value.id && normalized && platform) {
+          try {
+            const res = await fixtureStore.createHighlight(selectedFixture.value.id, {
+              externalUrl: normalized,
+              platform: platform,
+              caption: goalData.highlightCaption.trim() || undefined,
+            });
+            if (res?.data) {
+              createdHighlightId = res.data.id;
+              highlights.value.unshift(res.data);
+            }
+          } catch (err) {
+            console.warn("Could not create fixture highlight record:", err);
+          }
+        }
+
+        if (normalized) {
+          eventMetadata = {
+            highlightUrl: normalized,
+            highlightPlatform: platform || undefined,
+            highlightEmbedUrl: embedUrl || undefined,
+            highlightThumbnailUrl: thumbUrl || undefined,
+            highlightId: createdHighlightId,
+            highlightCaption: goalData.highlightCaption.trim() || undefined,
+          };
+        }
+      }
+
       await fixtureStore.createMatchEvent({
         fixtureId: selectedFixture.value.id,
         participantId: participantId,
@@ -607,6 +671,7 @@ const confirmGoal = async () => {
         type: goalData.type,
         half: getMatchHalf(goalData.minute),
         minute: goalData.minute,
+        metadata: eventMetadata,
       });
     }
 
@@ -651,6 +716,9 @@ const openGoalModal = (
   goalData.type = type;
   goalData.scorerId = undefined;
   goalData.assisterId = undefined;
+  goalData.highlightUrl = "";
+  goalData.selectedHighlightId = undefined;
+  goalData.highlightCaption = "";
 
   const currentMin = isFixtureLiveStatus(selectedFixture.value?.status)
     ? (matchTimer.getMinute(selectedFixture.value) ?? null)
@@ -1260,6 +1328,10 @@ const downloadGraphic = async () => {
     v-model:minute="goalData.minute"
     v-model:scorer-id="goalData.scorerId"
     v-model:assister-id="goalData.assisterId"
+    v-model:highlight-url="goalData.highlightUrl"
+    v-model:selected-highlight-id="goalData.selectedHighlightId"
+    v-model:highlight-caption="goalData.highlightCaption"
+    :highlights="highlights"
     :fixture="selectedFixture"
     :team="scoringTeam"
     :scorer-options="scorerOptions"
@@ -1303,6 +1375,10 @@ const downloadGraphic = async () => {
     v-model:minute="editEventData.minute"
     v-model:player-id="editEventData.playerId"
     v-model:related-player-id="editEventData.relatedPlayerId"
+    v-model:highlight-url="editEventData.highlightUrl"
+    v-model:selected-highlight-id="editEventData.selectedHighlightId"
+    v-model:highlight-caption="editEventData.highlightCaption"
+    :highlights="highlights"
     :event="eventBeingEdited"
     :player-options="editEventPlayerOptions"
     :related-options="editEventRelatedPlayerOptions"
