@@ -28,7 +28,7 @@
         </div>
 
         <!-- Toolbar: Search + Controls -->
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <!-- Search Input -->
           <div class="relative flex-1">
             <UIcon
@@ -90,35 +90,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Format Filters Segmented Strip -->
-        <div class="flex items-center justify-between gap-3 overflow-x-auto no-scrollbar pt-1">
-          <div class="inline-flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-[#141414] border border-gray-200/80 dark:border-white/[0.06] shrink-0">
-            <button
-              v-for="filter in typeFilters"
-              :key="filter.value"
-              :class="[
-                'px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all',
-                selectedType === filter.value
-                  ? 'bg-white dark:bg-white/10 text-gray-950 dark:text-white shadow-2xs font-bold'
-                  : 'text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
-              ]"
-              @click="selectedType = filter.value"
-            >
-              {{ filter.label }}
-            </button>
-          </div>
-
-          <!-- Quick Reset if filtered -->
-          <button
-            v-if="searchQuery || selectedType !== 'ALL' || nearbyMode"
-            class="text-xs font-medium text-gray-500 hover:text-emerald-500 dark:text-neutral-400 dark:hover:text-emerald-400 transition-colors shrink-0 flex items-center gap-1.5"
-            @click="clearFilters"
-          >
-            <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5" />
-            Reset filters
-          </button>
-        </div>
       </div>
     </section>
 
@@ -154,19 +125,19 @@
           </div>
           <h3 class="text-xl font-bold mb-2">No tournaments found</h3>
           <p class="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-            <template v-if="searchQuery || selectedType !== 'ALL'">
-              Try adjusting your search or filters to find what you're looking for.
+            <template v-if="searchQuery || nearbyMode">
+              Try adjusting your search or location to find what you're looking for.
             </template>
             <template v-else>
               There are no public tournaments available right now. Check back soon!
             </template>
           </p>
           <button
-            v-if="searchQuery || selectedType !== 'ALL'"
+            v-if="searchQuery || nearbyMode"
             class="px-5 py-2.5 text-sm font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/10 transition-colors"
             @click="clearFilters"
           >
-            Clear Filters
+            Clear Search
           </button>
         </div>
 
@@ -246,7 +217,6 @@ useSeoMeta({
 const tournaments = ref<Tournament[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
-const selectedType = ref('ALL')
 const currentPage = ref(1)
 const totalPages = ref(0)
 const totalCount = ref(0)
@@ -260,21 +230,11 @@ watch(searchQuery, (val) => {
   searchTimer = setTimeout(() => { debouncedSearch.value = val }, 400)
 })
 
-// Re-fetch from page 1 whenever search or type filter changes
-watch([debouncedSearch, selectedType], () => {
+// Re-fetch from page 1 whenever search changes
+watch(debouncedSearch, () => {
   if (nearbyMode.value) return
   fetchPublicTournaments(1)
 })
-
-// Type filters
-const typeFilters = [
-  { label: 'All Types', value: 'ALL' },
-  { label: 'Knockout', value: 'KNOCKOUT' },
-  { label: 'Round Robin', value: 'ROUND_ROBIN' },
-  { label: 'Group', value: 'GROUP' },
-  { label: 'Hybrid', value: 'HYBRID' },
-  { label: 'Friendly', value: 'FRIENDLY' },
-]
 
 // Computed
 const hasMore = computed(() => !nearbyMode.value && currentPage.value < totalPages.value)
@@ -353,7 +313,6 @@ async function fetchPublicTournaments(page = 1, append = false) {
   try {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) })
     if (debouncedSearch.value.trim()) params.set('search', debouncedSearch.value.trim())
-    if (selectedType.value !== 'ALL') params.set('type', selectedType.value)
 
     const response = await $publicApi<PaginatedResponse<Tournament>>(
       `/tournaments/public?${params}`,
@@ -378,7 +337,6 @@ function clearFilters() {
   if (searchTimer) clearTimeout(searchTimer)
   searchQuery.value = ''
   debouncedSearch.value = ''
-  selectedType.value = 'ALL'
   if (nearbyMode.value) {
     nearbyMode.value = false
     fetchPublicTournaments(1)
