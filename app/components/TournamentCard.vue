@@ -1,7 +1,7 @@
 <template>
   <NuxtLink
     :to="toTournament(tournament)"
-    class="group relative bg-white dark:bg-[#0c111a] border border-gray-200 dark:border-white/[0.08] rounded-2xl p-3 sm:p-4 shadow-sm hover:border-emerald-500/50 dark:hover:border-emerald-500/40 hover:shadow-md dark:hover:shadow-emerald-950/20 transition-all duration-200 card-fade-in flex flex-row items-center gap-3.5 sm:gap-4 overflow-hidden"
+    class="group relative bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-white/10 rounded-2xl p-3 sm:p-4 shadow-sm hover:border-emerald-500/50 dark:hover:border-emerald-500/50 hover:shadow-md dark:hover:shadow-emerald-950/20 transition-all duration-200 card-fade-in flex flex-row items-center gap-3.5 sm:gap-4 overflow-hidden"
   >
     <!-- Practice Badge (Top Right Corner) -->
     <span
@@ -13,7 +13,7 @@
 
     <!-- Left Media Thumbnail -->
     <div
-      class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl sm:rounded-2xl overflow-hidden relative shrink-0 bg-slate-950 border border-gray-200/60 dark:border-white/[0.06] flex items-center justify-center shadow-inner"
+      class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl sm:rounded-2xl overflow-hidden relative shrink-0 bg-neutral-950 border border-gray-200/60 dark:border-white/10 flex items-center justify-center shadow-inner"
     >
       <!-- Background Banner / Photo -->
       <img
@@ -22,22 +22,22 @@
         :alt="tournament.name"
         class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
       />
-      <!-- Fallback sporting gradient -->
+      <!-- Fallback sporting neutral dark background -->
       <div
         v-else
-        class="absolute inset-0 bg-gradient-to-br from-slate-900 via-[#101726] to-[#070b13] flex items-center justify-center"
+        class="absolute inset-0 bg-gradient-to-br from-neutral-900 via-[#141414] to-black flex items-center justify-center"
       >
-        <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#34d399_1px,transparent_1px)] [background-size:12px_12px]"></div>
+        <div class="absolute inset-0 opacity-15 bg-[radial-gradient(#34d399_1px,transparent_1px)] [background-size:12px_12px]"></div>
       </div>
 
       <!-- Scrim overlay on banner photo -->
-      <div v-if="tournament.bannerUrl" class="absolute inset-0 bg-black/25"></div>
+      <div v-if="tournament.bannerUrl" class="absolute inset-0 bg-black/30"></div>
 
       <!-- Centered Crest / Logo Badge -->
       <div
         v-if="tournament.logoUrl"
         class="relative z-10 w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 rounded-xl flex items-center justify-center p-1.5 transition-transform duration-300 group-hover:scale-105"
-        :class="tournament.bannerUrl ? 'bg-black/40 backdrop-blur-md border border-white/15 shadow-lg' : ''"
+        :class="tournament.bannerUrl ? 'bg-black/50 backdrop-blur-md border border-white/15 shadow-lg' : ''"
       >
         <img
           :src="tournament.logoUrl"
@@ -59,7 +59,7 @@
     <!-- Right Content Info -->
     <div class="flex flex-col justify-center flex-1 min-w-0 py-0.5">
       <!-- Date Range (Top) -->
-      <div class="text-xs sm:text-[13px] text-gray-500 dark:text-[#8e9cae] font-medium leading-normal mb-1 sm:mb-1.5 truncate">
+      <div class="text-xs sm:text-[13px] text-gray-500 dark:text-neutral-400 font-medium leading-normal mb-1 sm:mb-1.5 truncate">
         {{ dateDisplay }}
       </div>
 
@@ -74,23 +74,23 @@
       <div class="mt-auto">
         <div
           v-if="tournament.location"
-          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] text-[11px] sm:text-xs font-medium text-gray-600 dark:text-[#94a3b8] max-w-full"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 text-[11px] sm:text-xs font-medium text-gray-600 dark:text-neutral-300 max-w-full"
         >
-          <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-gray-400 dark:text-gray-400 shrink-0" />
+          <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-gray-400 dark:text-neutral-400 shrink-0" />
           <span class="truncate">{{ tournament.location }}</span>
         </div>
         <div
           v-else-if="tournament.organization"
-          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] text-[11px] sm:text-xs font-medium text-gray-600 dark:text-[#94a3b8] max-w-full"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 text-[11px] sm:text-xs font-medium text-gray-600 dark:text-neutral-300 max-w-full"
         >
-          <UIcon name="i-heroicons-building-office-2" class="w-3.5 h-3.5 text-gray-400 shrink-0" />
+          <UIcon name="i-heroicons-building-office-2" class="w-3.5 h-3.5 text-gray-400 dark:text-neutral-400 shrink-0" />
           <span class="truncate">{{ tournament.organization.name }}</span>
         </div>
         <div
           v-else
-          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] text-[11px] sm:text-xs font-medium text-gray-600 dark:text-[#94a3b8] max-w-full"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 text-[11px] sm:text-xs font-medium text-gray-600 dark:text-neutral-300 max-w-full"
         >
-          <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-gray-400 shrink-0" />
+          <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-gray-400 dark:text-neutral-400 shrink-0" />
           <span class="capitalize">{{ tournament.sport }}</span>
         </div>
       </div>
