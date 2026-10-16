@@ -310,6 +310,7 @@ const schema = z.object({
   twoLegsKnockout: z.boolean().optional(),
   doubleRoundRobin: z.boolean().optional(),
   thirdPlaceMatch: z.boolean().optional(),
+  unifiedStandings: z.boolean().optional(),
   setsToWin: z.number().int().min(1).max(5).optional().nullable(),
   gamesPerSet: z.number().int().min(1).max(50).optional().nullable()
 })
@@ -341,6 +342,7 @@ const state = reactive<Partial<Schema>>({
   twoLegsKnockout: props.tournament.twoLegsKnockout ?? false,
   doubleRoundRobin: props.tournament.doubleRoundRobin ?? false,
   thirdPlaceMatch: props.tournament.thirdPlaceMatch ?? false,
+  unifiedStandings: props.tournament.unifiedStandings ?? false,
   setsToWin: props.tournament.scoringRules?.setsToWin ?? null,
   gamesPerSet: props.tournament.scoringRules?.gamesPerSet ?? null
 })
@@ -580,7 +582,7 @@ const SNAP_KEYS = [
   'name', 'customName', 'description', 'sport', 'type', 'participantType', 'visibility',
   'location', 'timezone', 'maxParticipants', 'autoApprove', 'isPaidRegistration',
   'registrationFee', 'registrationOpen', 'registrationClose', 'isPinned',
-  'twoLegsKnockout', 'doubleRoundRobin', 'thirdPlaceMatch', 'setsToWin', 'gamesPerSet',
+  'twoLegsKnockout', 'doubleRoundRobin', 'thirdPlaceMatch', 'unifiedStandings', 'setsToWin', 'gamesPerSet',
 ] as const
 
 function buildSnapshot() {
@@ -1306,6 +1308,19 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                       <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5">Teams will play each other twice (Home and Away)</p>
                     </div>
                     <USwitch v-model="state.doubleRoundRobin" />
+                  </div>
+
+                  <div v-if="[TournamentType.GROUP, TournamentType.HYBRID].includes(state.type as any)" class="flex items-center justify-between p-3.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.05]">
+                    <div class="flex-1 pr-3">
+                      <div class="flex items-center gap-1.5">
+                        <p class="font-medium text-sm text-gray-900 dark:text-white">Unified League Table</p>
+                        <UBadge size="xs" color="primary" variant="subtle">Champions League</UBadge>
+                      </div>
+                      <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5">
+                        {{ state.unifiedStandings ? 'All teams share a single unified table (silent groups/pots decide fixtures)' : 'Each group has its own separate table (traditional World Cup style)' }}
+                      </p>
+                    </div>
+                    <USwitch v-model="state.unifiedStandings" />
                   </div>
                 </div>
               </template>

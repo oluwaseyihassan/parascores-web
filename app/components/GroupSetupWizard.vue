@@ -34,7 +34,8 @@ const config = reactive({
   generateKnockout: props.tournament.type === TournamentType.HYBRID,
   advancingPerGroup: 2,
   hasThirdPlace: props.tournament.thirdPlaceMatch ?? false,
-  doubleRoundRobin: props.tournament.doubleRoundRobin ?? false
+  doubleRoundRobin: props.tournament.doubleRoundRobin ?? false,
+  unifiedStandings: props.tournament.unifiedStandings ?? false,
 })
 
 const totalAdvancingTeams = computed(() => {
@@ -60,6 +61,18 @@ const knockoutMatchups = ref<KnockoutMatchup[]>([])
 
 const computeDefaultKnockoutMatchups = (numGroups: number, adv: number): KnockoutMatchup[] => {
   const pairs: KnockoutMatchup[] = []
+
+  if (config.unifiedStandings) {
+    const totalAdvancing = numGroups * adv
+    const matchCount = Math.floor(totalAdvancing / 2)
+    for (let i = 0; i < matchCount; i++) {
+      pairs.push({
+        home: `Seed ${i + 1}`,
+        away: `Seed ${totalAdvancing - i}`
+      })
+    }
+    return pairs
+  }
 
   if (numGroups === 2 && adv === 2) {
     pairs.push({ home: 'Winner Group A', away: 'Runner-up Group B' })
@@ -215,15 +228,22 @@ const qualifierOptions = computed(() => {
   const numGroups = config.numberOfGroups
   const adv = config.advancingPerGroup
 
-  for (let i = 0; i < numGroups; i++) {
-    const letter = String.fromCharCode(65 + i)
-    options.push({ label: `Winner Group ${letter}`, value: `Winner Group ${letter}` })
-    if (adv >= 2) {
-      options.push({ label: `Runner-up Group ${letter}`, value: `Runner-up Group ${letter}` })
+  if (config.unifiedStandings) {
+    const total = numGroups * adv
+    for (let i = 1; i <= total; i++) {
+      options.push({ label: `Seed ${i}`, value: `Seed ${i}` })
     }
-    for (let p = 3; p <= adv; p++) {
-      const suffix = p === 3 ? 'rd' : 'th'
-      options.push({ label: `${p}${suffix} Place Group ${letter}`, value: `${p}${suffix} Place Group ${letter}` })
+  } else {
+    for (let i = 0; i < numGroups; i++) {
+      const letter = String.fromCharCode(65 + i)
+      options.push({ label: `Winner Group ${letter}`, value: `Winner Group ${letter}` })
+      if (adv >= 2) {
+        options.push({ label: `Runner-up Group ${letter}`, value: `Runner-up Group ${letter}` })
+      }
+      for (let p = 3; p <= adv; p++) {
+        const suffix = p === 3 ? 'rd' : 'th'
+        options.push({ label: `${p}${suffix} Place Group ${letter}`, value: `${p}${suffix} Place Group ${letter}` })
+      }
     }
   }
 
@@ -313,11 +333,15 @@ onMounted(() => {
     if (config.doubleRoundRobin === undefined) {
       config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
     }
+    if (config.unifiedStandings === undefined) {
+      config.unifiedStandings = props.tournament.unifiedStandings ?? false
+    }
     if (config.hasThirdPlace === undefined || (props.tournament.thirdPlaceMatch && !config.hasThirdPlace)) {
       config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
     }
   } else {
     config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
+    config.unifiedStandings = props.tournament.unifiedStandings ?? false
     config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
   }
 })
@@ -326,10 +350,14 @@ watch(() => props.open, (isOpen) => {
   if (isOpen) {
     if (!loadProgress()) {
       config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
+      config.unifiedStandings = props.tournament.unifiedStandings ?? false
       config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
     } else {
       if (config.doubleRoundRobin === undefined) {
         config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
+      }
+      if (config.unifiedStandings === undefined) {
+        config.unifiedStandings = props.tournament.unifiedStandings ?? false
       }
       if (props.tournament.thirdPlaceMatch && !config.hasThirdPlace) {
         config.hasThirdPlace = true
@@ -347,6 +375,12 @@ watch(() => props.tournament.thirdPlaceMatch, (val) => {
 watch(() => props.tournament.doubleRoundRobin, (val) => {
   if (val !== undefined) {
     config.doubleRoundRobin = val
+  }
+})
+
+watch(() => props.tournament.unifiedStandings, (val) => {
+  if (val !== undefined) {
+    config.unifiedStandings = val
   }
 })
 
@@ -459,7 +493,7 @@ watch([() => config.assignmentMethod, () => config.numberOfGroups, () => config.
 })
 
 // Re-initialize knockout matchups if group count, progression or hybrid status changes
-watch([() => config.numberOfGroups, () => config.advancingPerGroup, () => config.generateKnockout], () => {
+watch([() => config.numberOfGroups, () => config.advancingPerGroup, () => config.generateKnockout, () => config.unifiedStandings], () => {
     if (isHybrid.value && config.generateKnockout) {
       initializeKnockoutMatchups(true)
     }
@@ -607,6 +641,8 @@ const handleFinish = async (force = false) => {
         shuffleParticipants: false,
         clearExisting: true,
         doubleRoundRobin: config.doubleRoundRobin,
+        unifiedStandings: config.unifiedStandings,
+        format: config.unifiedStandings ? 'CHAMPIONS_LEAGUE' : undefined,
         generateKnockoutStage: isHybrid.value && config.generateKnockout,
         advancingPerGroup: config.advancingPerGroup,
         hasThirdPlace: config.hasThirdPlace,
@@ -805,6 +841,27 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                 </p>
               </div>
               <USwitch v-model="config.doubleRoundRobin" />
+            </div>
+
+            <!-- Unified Standings Toggle (Champions League Format) -->
+            <div
+              v-if="[TournamentType.GROUP, TournamentType.HYBRID].includes(props.tournament.type as any)"
+              class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-white/[0.05]"
+            >
+              <div class="flex-1 pr-3">
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white">Unified League Table</p>
+                  <UBadge size="xs" :color="config.unifiedStandings ? 'primary' : 'neutral'" variant="subtle">
+                    {{ config.unifiedStandings ? 'Champions League / Swiss' : 'Separate Groups' }}
+                  </UBadge>
+                </div>
+                <p class="text-xs text-gray-500 mt-0.5">
+                  {{ config.unifiedStandings
+                    ? 'All teams are ranked on ONE single table. Groups act as seeding pots for matchmaking.'
+                    : 'Traditional format where each group has its own independent standings table.' }}
+                </p>
+              </div>
+              <USwitch v-model="config.unifiedStandings" />
             </div>
 
             <!-- Knockout Progression (Hybrid Tournaments) -->
