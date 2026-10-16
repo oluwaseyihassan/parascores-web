@@ -3,7 +3,7 @@ import { useRoute } from "#imports";
 import type { Tournament, Fixture, MatchEvent, Highlight } from "~/types";
 import { FixtureStatus, MatchEventType, MatchHalf } from "~/types";
 import LivestreamEmbed from "~/components/marketing/LivestreamEmbed.vue";
-import { getHighlightPlatformInfo } from "~/utils/highlights";
+import { getHighlightPlatformInfo, formatHighlightEmbedUrl, getHighlightEmbedUrl } from "~/utils/highlights";
 
 const { toMain, isManage } = useHost();
 const toast = useToast();
@@ -37,6 +37,47 @@ const activeTab = ref<"events" | "info" | "lineups" | "highlights">("events");
 const activeMobileLineupTeam = ref<"home" | "away">("home");
 const highlights = ref<Highlight[]>([]);
 const loadingHighlights = ref(false);
+const selectedGoalHighlightModalOpen = ref(false);
+const activeGoalHighlight = ref<{
+  title?: string;
+  subtitle?: string;
+  highlight?: any;
+} | null>(null);
+
+function openGoalHighlight(event: any) {
+  const meta = event.metadata;
+  if (!meta?.highlightUrl && !meta?.highlightId) return;
+
+  const playerName =
+    event.player?.name || event.participant?.customName || "Goal";
+  const min = getEventMinuteDisplay(event);
+  const homeName =
+    fixture.value?.homeTeam?.customShortName ||
+    fixture.value?.homeTeam?.customName ||
+    "Home";
+  const awayName =
+    fixture.value?.awayTeam?.customShortName ||
+    fixture.value?.awayTeam?.customName ||
+    "Away";
+
+  activeGoalHighlight.value = {
+    title: `⚽ ${playerName}${min ? ` (${min})` : ""}`,
+    subtitle: `${homeName} vs ${awayName}`,
+    highlight: {
+      embedUrl:
+        formatHighlightEmbedUrl(meta.highlightEmbedUrl) ||
+        (meta.highlightUrl
+          ? getHighlightEmbedUrl(meta.highlightUrl, meta.highlightPlatform)
+          : null),
+      externalUrl: meta.highlightUrl,
+      platform: meta.highlightPlatform,
+      caption: meta.highlightCaption,
+      thumbnailUrl: meta.highlightThumbnailUrl,
+    },
+  };
+  selectedGoalHighlightModalOpen.value = true;
+}
+
 const route = useRoute();
 const isFullPage = computed(() => route.path.includes("/fixture/"));
 
@@ -1339,6 +1380,20 @@ const awaySubs = computed(() => {
                               >
                                 penalty by {{ event.relatedPlayer.name }}
                               </p>
+                              <!-- Linked Goal Highlight Button -->
+                              <div
+                                v-if="event.metadata?.highlightUrl || event.metadata?.highlightId"
+                                class="mt-1 flex justify-start md:justify-end"
+                              >
+                                <button
+                                  type="button"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:hover:bg-rose-500/30 border border-rose-500/20 transition-all cursor-pointer shadow-sm active:scale-95"
+                                  @click.stop="openGoalHighlight(event)"
+                                >
+                                  <UIcon name="i-heroicons-play-circle" class="w-3.5 h-3.5 text-rose-500" />
+                                  <span>Watch Goal</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1536,6 +1591,20 @@ const awaySubs = computed(() => {
                               >
                                 penalty by {{ event.relatedPlayer.name }}
                               </p>
+                              <!-- Linked Goal Highlight Button -->
+                              <div
+                                v-if="event.metadata?.highlightUrl || event.metadata?.highlightId"
+                                class="mt-1 flex justify-end md:justify-start"
+                              >
+                                <button
+                                  type="button"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:hover:bg-rose-500/30 border border-rose-500/20 transition-all cursor-pointer shadow-sm active:scale-95"
+                                  @click.stop="openGoalHighlight(event)"
+                                >
+                                  <UIcon name="i-heroicons-play-circle" class="w-3.5 h-3.5 text-rose-500" />
+                                  <span>Watch Goal</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -2662,10 +2731,11 @@ const awaySubs = computed(() => {
               <div class="aspect-[9/16] max-h-[480px] w-full bg-black">
                 <iframe
                   v-if="highlight.embedUrl"
-                  :src="highlight.embedUrl"
+                  :src="formatHighlightEmbedUrl(highlight.embedUrl)"
                   class="w-full h-full"
                   frameborder="0"
                   allowfullscreen
+                  allow="fullscreen; accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   loading="lazy"
                   :title="highlight.caption || 'Match highlight'"
                 />
@@ -2701,4 +2771,12 @@ const awaySubs = computed(() => {
       </section>
     </div>
   </div>
+
+  <!-- Goal Highlight Video Modal -->
+  <MatchHighlightVideoModal
+    v-model:open="selectedGoalHighlightModalOpen"
+    :title="activeGoalHighlight?.title"
+    :subtitle="activeGoalHighlight?.subtitle"
+    :highlight="activeGoalHighlight?.highlight"
+  />
 </template>

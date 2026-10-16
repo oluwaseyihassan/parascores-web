@@ -1,25 +1,43 @@
 <script setup lang="ts">
 import { MatchEventType } from "~/types";
-import type { Fixture } from "~/types";
+import type { Fixture, Highlight } from "~/types";
+import {
+  detectHighlightPlatform,
+  getHighlightPlatformInfo,
+  getHighlightEmbedUrl,
+  formatHighlightEmbedUrl,
+} from "~/utils/highlights";
 
 const open = defineModel<boolean>("open", { default: false });
 const type = defineModel<MatchEventType>("type", { required: true });
 const minute = defineModel<number | null>("minute", { default: null });
 const scorerId = defineModel<string | undefined>("scorerId");
 const assisterId = defineModel<string | undefined>("assisterId");
+const highlightUrl = defineModel<string>("highlightUrl", { default: "" });
+const selectedHighlightId = defineModel<string | undefined>("selectedHighlightId");
+const highlightCaption = defineModel<string>("highlightCaption", { default: "" });
 
-const props = defineProps<{
-  fixture: Fixture | null;
-  team: "home" | "away";
-  scorerOptions: Array<{ label: string; value: string }>;
-  assisterOptions: Array<{ label: string; value: string; disabled?: boolean }>;
-  noPlayers: boolean;
-  loading: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    fixture: Fixture | null;
+    team: "home" | "away";
+    scorerOptions: Array<{ label: string; value: string }>;
+    assisterOptions: Array<{ label: string; value: string; disabled?: boolean }>;
+    noPlayers: boolean;
+    loading: boolean;
+    highlights?: Highlight[];
+  }>(),
+  {
+    highlights: () => [],
+  },
+);
 
 const emit = defineEmits<{
   confirm: [];
 }>();
+
+const highlightMode = ref<"url" | "existing">("url");
+const showPreview = ref(false);
 
 const teamName = computed(() => {
   return props.team === "home"
@@ -27,6 +45,42 @@ const teamName = computed(() => {
         props.fixture?.homeTeam?.customName
     : props.fixture?.awayTeam?.customShortName ||
         props.fixture?.awayTeam?.customName;
+});
+
+const existingHighlightOptions = computed(() => {
+  return (props.highlights || []).map((h) => ({
+    label: h.caption || `${getHighlightPlatformInfo(h.platform)?.label || h.platform} clip`,
+    value: h.id,
+  }));
+});
+
+const detectedPlatform = computed(() => {
+  if (!highlightUrl.value) return null;
+  return detectHighlightPlatform(highlightUrl.value);
+});
+
+const detectedPlatformInfo = computed(() => {
+  return getHighlightPlatformInfo(detectedPlatform.value);
+});
+
+const previewEmbedUrl = computed(() => {
+  if (selectedHighlightId.value) {
+    const found = (props.highlights || []).find((h) => h.id === selectedHighlightId.value);
+    return formatHighlightEmbedUrl(found?.embedUrl || null);
+  }
+  if (highlightUrl.value && detectedPlatform.value) {
+    return getHighlightEmbedUrl(highlightUrl.value, detectedPlatform.value);
+  }
+  return null;
+});
+
+watch(selectedHighlightId, (id) => {
+  if (id) {
+    const found = (props.highlights || []).find((h) => h.id === id);
+    if (found && !highlightCaption.value) {
+      highlightCaption.value = found.caption || "";
+    }
+  }
 });
 </script>
 
@@ -120,6 +174,162 @@ const teamName = computed(() => {
               class="w-full"
             />
           </UFormField>
+
+          <!-- Goal Highlight Section -->
+          <div class="pt-3 border-t border-gray-100 dark:border-white/10 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <UIcon
+                  name="i-heroicons-video-camera"
+                  class="w-4 h-4 text-rose-500"
+                />
+                <span
+                  class="text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300"
+                >
+                  Goal Highlight (optional)
+                </span>
+              </div>
+
+              <!-- Mode toggle if fixture highlights exist -->
+              <div
+                v-if="existingHighlightOptions.length > 0"
+                class="flex items-center gap-1.5 text-xs"
+              >
+                <button
+                  type="button"
+                  class="px-2 py-0.5 rounded transition-colors cursor-pointer"
+                  :class="
+                    highlightMode === 'url'
+                      ? 'bg-rose-500/10 text-rose-500 font-semibold'
+                      : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                  "
+                  @click="
+                    highlightMode = 'url';
+                    selectedHighlightId = undefined;
+                  "
+                >
+                  New Link
+                </button>
+                <span class="text-gray-300 dark:text-gray-600">|</span>
+                <button
+                  type="button"
+                  class="px-2 py-0.5 rounded transition-colors cursor-pointer"
+                  :class="
+                    highlightMode === 'existing'
+                      ? 'bg-rose-500/10 text-rose-500 font-semibold'
+                      : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                  "
+                  @click="
+                    highlightMode = 'existing';
+                    highlightUrl = '';
+                  "
+                >
+                  From Highlights ({{ existingHighlightOptions.length }})
+                </button>
+              </div>
+            </div>
+
+            <!-- Existing highlight select -->
+            <div
+              v-if="highlightMode === 'existing' && existingHighlightOptions.length > 0"
+            >
+              <UFormField label="Select Match Highlight">
+                <USelect
+                  v-model="selectedHighlightId"
+                  :items="existingHighlightOptions"
+                  placeholder="Select a highlight..."
+                  value-key="value"
+                  class="w-full"
+                />
+              </UFormField>
+            </div>
+
+            <!-- New URL input -->
+            <div v-else class="space-y-2">
+              <UFormField
+                label="Highlight Video URL"
+                help="YouTube Shorts, Instagram Reel, or TikTok video link"
+              >
+                <div class="flex items-center gap-2">
+                  <UInput
+                    v-model="highlightUrl"
+                    placeholder="https://youtube.com/shorts/... or instagram.com/reel/..."
+                    icon="i-heroicons-link"
+                    class="flex-1"
+                  />
+                  <UButton
+                    v-if="highlightUrl"
+                    icon="i-heroicons-x-mark"
+                    variant="ghost"
+                    color="neutral"
+                    size="sm"
+                    aria-label="Clear highlight link"
+                    @click="highlightUrl = '';"
+                  />
+                </div>
+              </UFormField>
+
+              <!-- Detected platform info & preview toggle -->
+              <div
+                v-if="detectedPlatformInfo"
+                class="flex items-center justify-between text-xs pt-0.5"
+              >
+                <div class="flex items-center gap-1.5">
+                  <span class="text-gray-400">Platform:</span>
+                  <UBadge
+                    color="primary"
+                    variant="subtle"
+                    size="sm"
+                    class="flex items-center gap-1"
+                  >
+                    <UIcon :name="detectedPlatformInfo.icon" class="w-3.5 h-3.5" />
+                    <span>{{ detectedPlatformInfo.label }}</span>
+                  </UBadge>
+                </div>
+
+                <button
+                  v-if="previewEmbedUrl"
+                  type="button"
+                  class="text-xs text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 font-medium underline flex items-center gap-1 cursor-pointer"
+                  @click="showPreview = !showPreview"
+                >
+                  <UIcon name="i-heroicons-play-circle" class="w-3.5 h-3.5" />
+                  <span>{{ showPreview ? 'Hide preview' : 'Preview video' }}</span>
+                </button>
+              </div>
+
+              <!-- Inline Preview if toggled -->
+              <div
+                v-if="showPreview && previewEmbedUrl"
+                class="pt-2"
+              >
+                <div
+                  class="aspect-[9/16] max-h-[300px] w-full max-w-[220px] mx-auto rounded-lg overflow-hidden bg-black shadow-md ring-1 ring-white/10"
+                >
+                  <iframe
+                    :src="previewEmbedUrl"
+                    class="w-full h-full"
+                    frameborder="0"
+                    allowfullscreen
+                    allow="fullscreen; accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Optional Highlight Caption -->
+            <UFormField
+              v-if="highlightUrl || selectedHighlightId"
+              label="Highlight Caption (optional)"
+            >
+              <UInput
+                v-model="highlightCaption"
+                placeholder="e.g. Stunning volley into the top corner"
+                class="w-full"
+              />
+            </UFormField>
+          </div>
 
           <p v-if="noPlayers" class="text-sm text-gray-500">
             No players registered for this team. You can still record the goal

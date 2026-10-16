@@ -15,6 +15,10 @@ const {
   getEventColor,
   getPlayerName,
   getEventActionItems,
+  getEventHighlight,
+  previewHighlightModalOpen,
+  highlightToPreview,
+  openHighlightPreview,
 } = inject(MatchEventsKey)!;
 </script>
 
@@ -94,6 +98,17 @@ const {
                   >
                     off: {{ getPlayerName(event.relatedPlayerId) }}
                   </div>
+                  <!-- Linked Goal Highlight Button -->
+                  <div v-if="getEventHighlight(event)" class="mt-1 flex justify-end">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:hover:bg-rose-500/30 transition-colors cursor-pointer"
+                      @click.stop="openHighlightPreview(event)"
+                    >
+                      <UIcon name="i-heroicons-play-circle" class="w-3 h-3 text-rose-500" />
+                      <span>Highlight</span>
+                    </button>
+                  </div>
                 </div>
                 <IconsSoccerBallIcon
                   v-if="['GOAL', 'PENALTY', 'OWN_GOAL'].includes(event.type)"
@@ -147,6 +162,17 @@ const {
                   >
                     off: {{ getPlayerName(event.relatedPlayerId) }}
                   </div>
+                  <!-- Linked Goal Highlight Button -->
+                  <div v-if="getEventHighlight(event)" class="mt-1 flex justify-start">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:hover:bg-rose-500/30 transition-colors cursor-pointer"
+                      @click.stop="openHighlightPreview(event)"
+                    >
+                      <UIcon name="i-heroicons-play-circle" class="w-3 h-3 text-rose-500" />
+                      <span>Highlight</span>
+                    </button>
+                  </div>
                 </div>
                 <span class="mc-tl-spacer" />
                 <UDropdownMenu
@@ -168,4 +194,12 @@ const {
       </div>
     </div>
   </div>
+
+  <!-- Highlight Preview Modal -->
+  <MatchHighlightVideoModal
+    v-model:open="previewHighlightModalOpen"
+    :title="highlightToPreview?.title"
+    :subtitle="highlightToPreview?.subtitle"
+    :highlight="highlightToPreview?.highlight"
+  />
 </template>

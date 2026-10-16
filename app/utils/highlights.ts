@@ -83,10 +83,13 @@ export function getHighlightEmbedUrl(
     if (detected === HighlightPlatform.YOUTUBE_SHORTS) {
       const segments = parsed.pathname.split("/").filter(Boolean);
       const shortsIdx = segments.indexOf("shorts");
-      const videoId =
+      let videoId =
         shortsIdx !== -1
           ? segments[shortsIdx + 1]
           : parsed.searchParams.get("v");
+      if (!videoId && (parsed.hostname === "youtu.be" || parsed.hostname.endsWith(".youtu.be"))) {
+        videoId = segments[0];
+      }
       if (videoId) {
         return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
       }
@@ -102,10 +105,21 @@ export function getHighlightEmbedUrl(
     }
 
     if (detected === HighlightPlatform.TIKTOK) {
-      const segments = parsed.pathname.split("/").filter(Boolean);
-      const videoId = segments[segments.length - 1];
-      if (videoId && /^\d+$/.test(videoId)) {
-        return `https://www.tiktok.com/embed/${videoId}`;
+      const match = parsed.pathname.match(
+        /\/(?:video|v|embed(?:|v2)|player\/v1)\/(\d+)/i,
+      );
+      let videoId = match ? match[1] : null;
+
+      if (!videoId) {
+        const segments = parsed.pathname.split("/").filter(Boolean);
+        const last = segments[segments.length - 1];
+        if (last && /^\d+$/.test(last)) {
+          videoId = last;
+        }
+      }
+
+      if (videoId) {
+        return `https://www.tiktok.com/player/v1/${videoId}`;
       }
     }
   } catch {
@@ -113,6 +127,13 @@ export function getHighlightEmbedUrl(
   }
 
   return null;
+}
+
+export function formatHighlightEmbedUrl(
+  embedUrl?: string | null,
+): string | null {
+  if (!embedUrl) return null;
+  return embedUrl.replace(/tiktok\.com\/embed(?:\/v2)?\//i, "tiktok.com/player/v1/");
 }
 
 export function getHighlightThumbnailUrl(
@@ -130,10 +151,13 @@ export function getHighlightThumbnailUrl(
     if (detected === HighlightPlatform.YOUTUBE_SHORTS) {
       const segments = parsed.pathname.split("/").filter(Boolean);
       const shortsIdx = segments.indexOf("shorts");
-      const videoId =
+      let videoId =
         shortsIdx !== -1
           ? segments[shortsIdx + 1]
           : parsed.searchParams.get("v");
+      if (!videoId && (parsed.hostname === "youtu.be" || parsed.hostname.endsWith(".youtu.be"))) {
+        videoId = segments[0];
+      }
       if (videoId) {
         return `https://img.youtube.com/vi/${videoId}/0.jpg`;
       }

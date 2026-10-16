@@ -444,6 +444,7 @@ export const useFixtureStore = defineStore("fixture", () => {
       half?: string | null;
       minute?: number | null;
       description?: string | null;
+      metadata?: Record<string, any> | null;
     },
   ) {
     loading.value = true;
