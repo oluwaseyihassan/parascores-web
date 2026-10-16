@@ -10,7 +10,7 @@
               Explore Tournaments
             </h1>
             <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">
-              Find live matches, brackets, and public competitions.
+              Find live matches and public competitions.
             </p>
           </div>
 
@@ -208,9 +208,9 @@ interface PaginatedResponse<T> {
 // SEO
 useSeoMeta({
   title: 'Explore Tournaments | ParaScores',
-  description: 'Browse public tournaments from organizers around the world. View live scores, standings, brackets, and more.',
+  description: 'Browse public tournaments from organizers around the world. View live scores, standings, and more.',
   ogTitle: 'Explore Tournaments | ParaScores',
-  ogDescription: 'Browse public tournaments from organizers around the world. View live scores, standings, brackets, and more.',
+  ogDescription: 'Browse public tournaments from organizers around the world. View live scores, standings, and more.',
 })
 
 // State
