@@ -1,89 +1,94 @@
 <template>
   <div class="min-h-full text-gray-900 dark:text-white transition-colors">
-    <!-- Hero Section -->
-    <section class="relative pt-8 pb-12 overflow-x-hidden">
-      <div class="max-w-7xl mx-auto px-6 relative z-10">
-        <!-- Badge -->
-        <div class="inline-flex items-center gap-2 px-3 py-1.5 mb-6 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded">
-          <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-          EXPLORE
+    <!-- Header & Discovery Toolbar -->
+    <section class="pt-6 sm:pt-8 pb-6 border-b border-gray-200/80 dark:border-white/[0.06] mb-8">
+      <div class="max-w-7xl mx-auto px-6">
+        <!-- Top Row: Title & Stats -->
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+              Explore Tournaments
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">
+              Find live matches and public competitions.
+            </p>
+          </div>
+
+          <!-- Total Count Display -->
+          <div class="text-xs font-semibold text-gray-500 dark:text-neutral-400 shrink-0">
+            <span v-if="nearbyMode" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              {{ totalCount }} within {{ nearbyRadiusKm }} km
+            </span>
+            <span v-else-if="!loading" class="tabular-nums">
+              {{ totalCount }} tournament{{ totalCount === 1 ? '' : 's' }} available
+            </span>
+            <span v-else class="text-gray-400">Loading tournaments...</span>
+          </div>
         </div>
 
-        <!-- Headline -->
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-4 tracking-tight">
-          Discover <span class="text-emerald-500">Tournaments</span>
-        </h1>
-        <p class="text-lg text-gray-600 dark:text-gray-400 max-w-xl mb-10">
-          Browse public competitions from organizers around the world. Follow live scores, view standings, and stay up to date.
-        </p>
-
-        <!-- Search & Filters -->
-        <div class="flex flex-col sm:flex-row gap-4 mb-6">
-          <!-- Search -->
-          <div class="relative flex-1 max-w-md">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
+        <!-- Toolbar: Search + Controls -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <!-- Search Input -->
+          <div class="relative flex-1">
+            <UIcon
+              name="i-heroicons-magnifying-glass"
+              class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-neutral-500 pointer-events-none"
+            />
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Search tournaments..."
-              class="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-white/10 rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-emerald-500 shadow-sm focus:ring-1 focus:ring-emerald-500/20 transition-all"
+              placeholder="Search by tournament name, location, or sport..."
+              class="w-full pl-10 pr-9 py-2.5 bg-white dark:bg-[#111111] border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500/80 transition-colors shadow-2xs"
             />
+            <button
+              v-if="searchQuery"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+              @click="searchQuery = ''"
+            >
+              <UIcon name="i-heroicons-x-mark" class="w-4 h-4" />
+            </button>
           </div>
 
-          <!-- Near Me -->
-          <button
-            :disabled="locating"
-            :class="[
-              'inline-flex items-center gap-2 px-4 py-3 text-xs font-bold rounded-lg border transition-all duration-200 shadow-sm',
-              nearbyMode
-                ? 'bg-emerald-500 text-white border-emerald-500'
-                : 'bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-emerald-500/30 hover:text-emerald-600 dark:hover:text-white'
-            ]"
-            @click="toggleNearby"
-          >
-            <UIcon
-              :name="locating ? 'i-heroicons-arrow-path' : 'i-heroicons-map-pin'"
-              :class="['w-4 h-4', locating && 'animate-spin']"
-            />
-            {{ nearbyMode ? `Within ${nearbyRadiusKm} km` : 'Near Me' }}
-          </button>
-        </div>
+          <!-- Near Me Toggle -->
+          <div class="flex items-center gap-2 shrink-0">
+            <button
+              :disabled="locating"
+              :class="[
+                'inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold rounded-xl border transition-all duration-200 shadow-2xs',
+                nearbyMode
+                  ? 'bg-emerald-500 text-white border-emerald-500'
+                  : 'bg-white dark:bg-[#111111] border-gray-200 dark:border-white/10 text-gray-700 dark:text-neutral-300 hover:border-gray-300 dark:hover:border-white/20'
+              ]"
+              @click="toggleNearby"
+            >
+              <UIcon
+                :name="locating ? 'i-heroicons-arrow-path' : 'i-heroicons-map-pin'"
+                :class="['w-4 h-4', locating && 'animate-spin']"
+              />
+              {{ nearbyMode ? 'Near You' : 'Near Me' }}
+            </button>
 
-        <!-- Type Filters -->
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="filter in typeFilters"
-            :key="filter.value"
-            :class="[
-              'px-4 py-2 text-xs font-medium rounded-lg border transition-all duration-200',
-              selectedType === filter.value
-                ? 'bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                : 'bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-emerald-500/30 hover:text-emerald-600 dark:hover:text-white shadow-sm'
-            ]"
-            @click="selectedType = filter.value"
-          >
-            {{ filter.label }}
-          </button>
-        </div>
-
-        <!-- Radius Filters (nearby mode) -->
-        <div v-if="nearbyMode" class="flex flex-wrap items-center gap-2 mt-3">
-          <span class="text-xs text-gray-500 dark:text-gray-400">Radius:</span>
-          <button
-            v-for="r in radiusOptions"
-            :key="r"
-            :class="[
-              'px-3 py-1.5 text-xs font-medium rounded-lg border transition-all duration-200',
-              nearbyRadiusKm === r
-                ? 'bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                : 'bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-emerald-500/30 hover:text-emerald-600 dark:hover:text-white shadow-sm'
-            ]"
-            @click="nearbyRadiusKm = r"
-          >
-            {{ r }} km
-          </button>
+            <!-- Radius switcher when nearbyMode is active -->
+            <div
+              v-if="nearbyMode"
+              class="inline-flex items-center p-0.5 rounded-lg bg-gray-100 dark:bg-[#161616] border border-gray-200 dark:border-white/10"
+            >
+              <button
+                v-for="r in radiusOptions"
+                :key="r"
+                :class="[
+                  'px-2.5 py-1 text-[11px] font-bold rounded-md transition-all',
+                  nearbyRadiusKm === r
+                    ? 'bg-white dark:bg-white/15 text-gray-900 dark:text-white shadow-2xs'
+                    : 'text-gray-500 hover:text-gray-800 dark:text-neutral-400 dark:hover:text-white'
+                ]"
+                @click="nearbyRadiusKm = r"
+              >
+                {{ r }}km
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -91,14 +96,6 @@
     <!-- Results Section -->
     <section class="pb-24">
       <div class="max-w-7xl mx-auto px-6">
-        <!-- Results Count -->
-        <div class="flex items-center justify-between mb-6">
-          <p class="text-sm text-gray-600 dark:text-gray-500">
-            <span v-if="nearbyMode">{{ totalCount }} tournament{{ totalCount === 1 ? '' : 's' }} within {{ nearbyRadiusKm }} km of you, sorted by distance</span>
-            <span v-else-if="!loading">{{ totalCount }} tournament{{ totalCount === 1 ? '' : 's' }} found</span>
-            <span v-else>Loading tournaments...</span>
-          </p>
-        </div>
 
         <!-- Loading State -->
         <div v-if="loading && tournaments.length === 0" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
@@ -128,19 +125,19 @@
           </div>
           <h3 class="text-xl font-bold mb-2">No tournaments found</h3>
           <p class="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-            <template v-if="searchQuery || selectedType !== 'ALL'">
-              Try adjusting your search or filters to find what you're looking for.
+            <template v-if="searchQuery || nearbyMode">
+              Try adjusting your search or location to find what you're looking for.
             </template>
             <template v-else>
               There are no public tournaments available right now. Check back soon!
             </template>
           </p>
           <button
-            v-if="searchQuery || selectedType !== 'ALL'"
+            v-if="searchQuery || nearbyMode"
             class="px-5 py-2.5 text-sm font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/10 transition-colors"
             @click="clearFilters"
           >
-            Clear Filters
+            Clear Search
           </button>
         </div>
 
@@ -211,16 +208,15 @@ interface PaginatedResponse<T> {
 // SEO
 useSeoMeta({
   title: 'Explore Tournaments | ParaScores',
-  description: 'Browse public tournaments from organizers around the world. View live scores, standings, brackets, and more.',
+  description: 'Browse public tournaments from organizers around the world. View live scores, standings, and more.',
   ogTitle: 'Explore Tournaments | ParaScores',
-  ogDescription: 'Browse public tournaments from organizers around the world. View live scores, standings, brackets, and more.',
+  ogDescription: 'Browse public tournaments from organizers around the world. View live scores, standings, and more.',
 })
 
 // State
 const tournaments = ref<Tournament[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
-const selectedType = ref('ALL')
 const currentPage = ref(1)
 const totalPages = ref(0)
 const totalCount = ref(0)
@@ -234,21 +230,11 @@ watch(searchQuery, (val) => {
   searchTimer = setTimeout(() => { debouncedSearch.value = val }, 400)
 })
 
-// Re-fetch from page 1 whenever search or type filter changes
-watch([debouncedSearch, selectedType], () => {
+// Re-fetch from page 1 whenever search changes
+watch(debouncedSearch, () => {
   if (nearbyMode.value) return
   fetchPublicTournaments(1)
 })
-
-// Type filters
-const typeFilters = [
-  { label: 'All Types', value: 'ALL' },
-  { label: 'Knockout', value: 'KNOCKOUT' },
-  { label: 'Round Robin', value: 'ROUND_ROBIN' },
-  { label: 'Group', value: 'GROUP' },
-  { label: 'Hybrid', value: 'HYBRID' },
-  { label: 'Friendly', value: 'FRIENDLY' },
-]
 
 // Computed
 const hasMore = computed(() => !nearbyMode.value && currentPage.value < totalPages.value)
@@ -327,7 +313,6 @@ async function fetchPublicTournaments(page = 1, append = false) {
   try {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) })
     if (debouncedSearch.value.trim()) params.set('search', debouncedSearch.value.trim())
-    if (selectedType.value !== 'ALL') params.set('type', selectedType.value)
 
     const response = await $publicApi<PaginatedResponse<Tournament>>(
       `/tournaments/public?${params}`,
@@ -352,7 +337,10 @@ function clearFilters() {
   if (searchTimer) clearTimeout(searchTimer)
   searchQuery.value = ''
   debouncedSearch.value = ''
-  selectedType.value = 'ALL'
+  if (nearbyMode.value) {
+    nearbyMode.value = false
+    fetchPublicTournaments(1)
+  }
 }
 
 // Infinite scroll
