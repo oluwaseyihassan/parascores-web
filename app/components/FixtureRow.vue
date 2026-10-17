@@ -56,25 +56,6 @@ const leftLabel = computed(() => {
   return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 })
 
-// Status pill
-const pill = computed(() => {
-  switch (props.fixture.status) {
-    case FixtureStatus.LIVE:
-      return { label: 'Live', classes: 'text-red-500 border-red-500/40 bg-red-500/10' }
-    case FixtureStatus.EXTRATIME:
-      return { label: 'ET Live', classes: 'text-red-500 border-red-500/40 bg-red-500/10' }
-    case FixtureStatus.NORMAL_TIME_ENDED:
-      return { label: 'Full Time', classes: 'text-amber-500 border-amber-500/40 bg-amber-500/10' }
-    case FixtureStatus.COMPLETED:
-      return { label: 'Full Time', classes: 'text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10' }
-    case FixtureStatus.CANCELLED:
-      return { label: 'Cancelled', classes: 'text-gray-500 border-gray-400/30 bg-gray-500/10' }
-    default:
-      return props.fixture.startTime
-        ? { label: 'Upcoming', classes: 'text-gray-500 dark:text-gray-400 border-gray-300 dark:border-white/10 bg-gray-500/5 dark:bg-white/5' }
-        : { label: 'TBD', classes: 'text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10' }
-  }
-})
 
 const homeScore = computed(() => props.fixture.homeScore ?? 0)
 const awayScore = computed(() => props.fixture.awayScore ?? 0)
@@ -134,10 +115,7 @@ const awayShort = computed(() => getShort(props.fixture.awayTeam, awayTeamName.v
         {{ fixture.resultEntries?.length ? `${fixture.resultEntries.length} results recorded` : 'Ranked by recorded results' }}
       </p>
     </div>
-    <span
-      class="shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-      :class="pill.classes"
-    >{{ fixture.status === FixtureStatus.COMPLETED ? 'Official' : fixture.status }}</span>
+
     <UButton
       size="xs"
       color="primary"
@@ -231,11 +209,6 @@ const awayShort = computed(() => getShort(props.fixture.awayTeam, awayTeamName.v
       title="Livestream available"
     />
 
-    <!-- Status pill -->
-    <span
-      class="shrink-0 hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-      :class="pill.classes"
-    >{{ pill.label }}</span>
 
     <!-- Primary action + delete -->
     <div v-if="hasActions" class="flex items-center gap-1 shrink-0">
