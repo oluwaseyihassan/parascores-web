@@ -723,10 +723,10 @@ const handleFinish = async (force = false) => {
       // Clear existing first
       await fixtureStore.deleteAllFixtures(props.tournament.id)
 
-      // Create each fixture
-      await Promise.all(manualFixtures.value.map(f =>
-        fixtureStore.createFixture({
-          tournament_id: props.tournament.id,
+      // Create all fixtures in a single bulk request
+      await fixtureStore.createBulkFixtures(
+        props.tournament.id,
+        manualFixtures.value.map(f => ({
           homeTeamId: f.homeTeamId,
           awayTeamId: f.awayTeamId,
           round: f.round,
@@ -734,8 +734,8 @@ const handleFinish = async (force = false) => {
           venue: f.venue,
           roundName: `Matchday ${f.round}`,
           stage: props.tournament.type === TournamentType.KNOCKOUT ? 'KNOCKOUT' : 'GROUP_STAGE'
-        })
-      ))
+        }))
+      )
     }
     
     toast.add({
