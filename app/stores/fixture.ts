@@ -346,6 +346,32 @@ export const useFixtureStore = defineStore("fixture", () => {
     }
   }
 
+  // Update knockout fixture pairings (e.g. custom playoff matches)
+  async function updateKnockoutPairings(
+    tournamentId: string,
+    pairings: Array<{ fixtureId: string; homeTeamId: string; awayTeamId: string }>,
+  ) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const response = await $api<ApiResponse<{ message: string }>>(
+        `/fixtures/tournaments/${tournamentId}/knockout/pairings`,
+        {
+          method: "PATCH",
+          body: { pairings },
+        },
+      );
+      await fetchFixtures(tournamentId);
+      return response;
+    } catch (err: any) {
+      error.value = extractErrorMessage(err);
+      console.error("Update knockout pairings failed:", error.value);
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   // Update a fixture (e.g., enter scores)
   async function updateFixture(id: string, updates: UpdateFixtureData) {
     loading.value = true;
@@ -755,6 +781,7 @@ export const useFixtureStore = defineStore("fixture", () => {
     deleteAllFixtures,
     deleteFixture,
     advanceToKnockout,
+    updateKnockoutPairings,
     createFixture,
     createBulkFixtures,
   };

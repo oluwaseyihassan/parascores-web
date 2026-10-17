@@ -21,6 +21,8 @@ const { participants } = storeToRefs(participantStore);
 const { fixtures, knockoutFixturesByRound, knockoutRounds } =
   storeToRefs(fixtureStore);
 
+const showPlayoffDraw = ref(false);
+
 const { handleClearKnockoutFixtures } = useFixtureMaintenance();
 </script>
 
@@ -35,6 +37,15 @@ const { handleClearKnockoutFixtures } = useFixtureMaintenance();
             <span class="text-sm font-bold">Knockout bracket</span>
           </div>
           <div class="flex items-center gap-2">
+            <UButton
+              v-if="tournament?.hasKnockoutPlayoffs && fixtures.some((f) => f.stage === 'KNOCKOUT')"
+              size="xs"
+              color="primary"
+              variant="soft"
+              icon="i-heroicons-sparkles"
+              label="Playoff Draw"
+              @click="showPlayoffDraw = true"
+            />
             <UButton
               v-if="!knockoutRounds.length && tournament?.type === TournamentType.KNOCKOUT"
               size="xs"
@@ -75,6 +86,15 @@ const { handleClearKnockoutFixtures } = useFixtureMaintenance();
         :updating-match="updatingMatch"
         @start-match="(f) => emit('start', f)"
         @control-match="(f) => emit('control', f)"
+        @open-playoff-draw="showPlayoffDraw = true"
+      />
+
+      <TournamentPlayoffDrawWizard
+        v-if="tournament"
+        v-model:open="showPlayoffDraw"
+        :tournament="tournament"
+        :participants="participants"
+        @saved="fixtureStore.fetchFixtures(tournament.id)"
       />
       <div v-else class="py-12 text-center">
         <UIcon name="i-heroicons-trophy" class="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-600" />

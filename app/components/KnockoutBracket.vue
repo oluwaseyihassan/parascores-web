@@ -17,6 +17,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'start-match': [fixture: Fixture]
   'control-match': [fixture: Fixture]
+  'open-playoff-draw': []
 }>()
 
 const getAggregateStatus = (fixtures: Fixture[]): FixtureStatus => {
@@ -438,6 +439,15 @@ const resetZoom = () => {
 
                     <!-- Actions -->
                     <div v-if="!readonly" class="match-actions">
+                      <button
+                        v-if="roundIndex === 0 && isPlayoffFirstRound && matchup.status === FixtureStatus.SCHEDULED"
+                        class="action-btn action-btn--edit"
+                        title="Edit playoff matchups"
+                        @click.stop="emit('open-playoff-draw')"
+                      >
+                        <UIcon name="i-heroicons-pencil-square" class="w-3 h-3" />
+                        Edit
+                      </button>
                       <template v-if="matchup.fixtures.length === 1">
                         <button
                           v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
@@ -973,6 +983,20 @@ const resetZoom = () => {
   color: #9ca3af;
   border-color: rgba(107,114,128,0.12);
   cursor: default;
+}
+
+.action-btn--edit {
+  background: rgba(16,185,129,0.12);
+  color: #059669;
+  border-color: rgba(16,185,129,0.25);
+}
+
+.action-btn--edit:hover {
+  background: rgba(16,185,129,0.22);
+}
+
+:root.dark .action-btn--edit {
+  color: #34d399;
 }
 
 /* ── Connectors ───────────────────────────────────────────── */
