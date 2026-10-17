@@ -95,6 +95,37 @@ const getShort = (p: { customShortName?: string | null, customName?: string | nu
 
 const homeShort = computed(() => getShort(props.fixture.homeTeam, homeTeamName.value))
 const awayShort = computed(() => getShort(props.fixture.awayTeam, awayTeamName.value))
+
+const rowMenuItems = computed(() => {
+  const items: any[][] = []
+
+  const secondaryGroup: any[] = []
+
+  // If primary action is 'Start', allow editing details/schedule from the menu
+  if (primaryAction.value.emit === 'start') {
+    secondaryGroup.push({
+      label: 'Edit details',
+      icon: 'i-heroicons-pencil-square',
+      onSelect: () => emit('control', props.fixture),
+    })
+  }
+
+  if (secondaryGroup.length) {
+    items.push(secondaryGroup)
+  }
+
+  // Destructive group: delete
+  items.push([
+    {
+      label: 'Delete fixture',
+      icon: 'i-heroicons-trash',
+      color: 'error' as const,
+      onSelect: () => emit('delete', props.fixture),
+    },
+  ])
+
+  return items
+})
 </script>
 
 <template>
@@ -123,17 +154,21 @@ const awayShort = computed(() => getShort(props.fixture.awayTeam, awayTeamName.v
       :label="primaryAction.label"
       @click.stop="emit('control', fixture)"
     />
-    <UButton
+    <UDropdownMenu
       v-if="hasActions"
-      size="xs"
-      color="neutral"
-      variant="ghost"
-      icon="i-heroicons-trash"
-      aria-label="Delete fixture"
-      title="Delete fixture"
-      class="shrink-0 text-gray-400 hover:text-red-500"
-      @click.stop="emit('delete', fixture)"
-    />
+      :items="rowMenuItems"
+      :content="{ align: 'end' }"
+    >
+      <UButton
+        size="xs"
+        color="neutral"
+        variant="ghost"
+        icon="i-heroicons-ellipsis-vertical"
+        aria-label="Fixture actions"
+        class="shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        @click.stop
+      />
+    </UDropdownMenu>
   </div>
 
   <!-- Head-to-head fixture: slim single-line row -->
@@ -240,16 +275,20 @@ const awayShort = computed(() => getShort(props.fixture.awayTeam, awayTeamName.v
         :label="primaryAction.label"
         @click.stop="emit('control', fixture)"
       />
-      <UButton
-        size="xs"
-        color="neutral"
-        variant="ghost"
-        icon="i-heroicons-trash"
-        aria-label="Delete fixture"
-        title="Delete fixture"
-        class="text-gray-400 hover:text-red-500"
-        @click.stop="emit('delete', fixture)"
-      />
+      <UDropdownMenu
+        :items="rowMenuItems"
+        :content="{ align: 'end' }"
+      >
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          icon="i-heroicons-ellipsis-vertical"
+          aria-label="Fixture actions"
+          class="shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          @click.stop
+        />
+      </UDropdownMenu>
     </div>
   </div>
 </template>
