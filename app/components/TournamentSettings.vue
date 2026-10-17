@@ -1371,7 +1371,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                         <UBadge size="xs" color="primary" variant="subtle">Champions League</UBadge>
                       </div>
                       <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5">
-                        {{ state.unifiedStandings ? 'All teams share a single unified table (silent groups/pots decide fixtures)' : 'Each group has its own separate table (traditional World Cup style)' }}
+                        {{ state.unifiedStandings ? 'All teams share a single unified table (teams seeded in pots decide fixtures)' : 'Each group has its own separate table (traditional World Cup style)' }}
                       </p>
                     </div>
                     <USwitch v-model="state.unifiedStandings" />

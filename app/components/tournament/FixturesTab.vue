@@ -123,9 +123,14 @@ const expectedRounds = computed(() => {
 
     // Check if we already have double round robin fixtures to decide how many to show
     const hasDoubleRoundRobin = tournament.value.doubleRoundRobin;
-    const roundCount = hasDoubleRoundRobin
+    let roundCount = hasDoubleRoundRobin
       ? 2 * oneWayRoundCount
       : oneWayRoundCount;
+
+    if (tournament.value.unifiedStandings) {
+      const numPots = Math.max(2, groupCounts.size);
+      roundCount = Math.max(roundCount, numPots * 2);
+    }
 
     for (let i = 1; i <= roundCount; i++) {
       items.push({
@@ -162,6 +167,11 @@ const expectedRounds = computed(() => {
       baseRoundOffset = hasDoubleRoundRobin
         ? 2 * gpOneWayRounds
         : gpOneWayRounds;
+
+      if (tournament.value.unifiedStandings) {
+        const numPots = Math.max(2, groupCounts.size);
+        baseRoundOffset = Math.max(baseRoundOffset, numPots * 2);
+      }
     }
 
     for (let i = 1; i <= totalRounds; i++) {
@@ -988,7 +998,7 @@ const showAddEventModal = ref(false);
                 <p
                   class="text-sm font-medium text-gray-900 dark:text-white"
                 >
-                  All group stage matches completed
+                  {{ tournament?.unifiedStandings ? 'All league phase matches completed' : 'All group stage matches completed' }}
                 </p>
                 <p class="text-xs text-gray-500">
                   Ready to generate the knockout bracket
