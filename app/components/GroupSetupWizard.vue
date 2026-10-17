@@ -402,6 +402,12 @@ const roundOptions = computed(() => {
   const groupsCount = config.numberOfGroups
   if (!groupsCount || teamsCount <= 1) return [{ label: 'Matchday 1', value: 1 }]
   
+  if (config.unifiedStandings) {
+    const numPots = Math.max(2, groupsCount)
+    const count = numPots * 2
+    return Array.from({ length: count }, (_, i) => ({ label: `Matchday ${i + 1}`, value: i + 1 }))
+  }
+
   const avgTeamsPerGroup = Math.ceil(teamsCount / groupsCount)
   
   // Single Round Robin: N-1 if even, N if odd
@@ -581,6 +587,12 @@ const unassignedParticipants = computed(() => {
 })
 
 const expectedFixturesCount = computed(() => {
+  if (config.unifiedStandings) {
+    const totalTeams = props.participants.length
+    const numPots = Math.max(2, config.numberOfGroups)
+    return Math.floor((totalTeams * (numPots * 2)) / 2)
+  }
+
   let count = 0
   const groupsList = Object.values(groupAssignments.value)
   for (const teamIds of groupsList) {

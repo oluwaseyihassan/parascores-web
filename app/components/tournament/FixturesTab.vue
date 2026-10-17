@@ -123,13 +123,15 @@ const expectedRounds = computed(() => {
 
     // Check if we already have double round robin fixtures to decide how many to show
     const hasDoubleRoundRobin = tournament.value.doubleRoundRobin;
-    let roundCount = hasDoubleRoundRobin
-      ? 2 * oneWayRoundCount
-      : oneWayRoundCount;
+    let roundCount: number;
 
     if (tournament.value.unifiedStandings) {
-      const numPots = Math.max(2, groupCounts.size);
-      roundCount = Math.max(roundCount, numPots * 2);
+      const numPots = Math.max(2, groupCounts.size || tournament.value.numberOfGroups || 4);
+      roundCount = numPots * 2;
+    } else {
+      roundCount = hasDoubleRoundRobin
+        ? 2 * oneWayRoundCount
+        : oneWayRoundCount;
     }
 
     for (let i = 1; i <= roundCount; i++) {
@@ -164,13 +166,14 @@ const expectedRounds = computed(() => {
         groupStageTeamCount % 2 === 0
           ? groupStageTeamCount - 1
           : groupStageTeamCount;
-      baseRoundOffset = hasDoubleRoundRobin
-        ? 2 * gpOneWayRounds
-        : gpOneWayRounds;
 
       if (tournament.value.unifiedStandings) {
-        const numPots = Math.max(2, groupCounts.size);
-        baseRoundOffset = Math.max(baseRoundOffset, numPots * 2);
+        const numPots = Math.max(2, groupCounts.size || tournament.value.numberOfGroups || 4);
+        baseRoundOffset = numPots * 2;
+      } else {
+        baseRoundOffset = hasDoubleRoundRobin
+          ? 2 * gpOneWayRounds
+          : gpOneWayRounds;
       }
     }
 
