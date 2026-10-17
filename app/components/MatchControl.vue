@@ -9,6 +9,7 @@ import type { Fixture, Player, MatchEvent, Highlight } from "~/types";
 import {
   useMatchTimer,
   isFixtureLiveStatus,
+  isFixtureHalftime,
 } from "~/composables/useMatchTimer";
 import { resolveEngine } from "~/engines/registry";
 import { SportEngineKey } from "~/engines/types";
@@ -579,6 +580,16 @@ const subPlayerInOptions = computed(() => {
 const confirmGoal = async () => {
   if (!selectedFixture.value) return;
 
+  if (timerControlsApi.isHalftime.value || isFixtureHalftime(selectedFixture.value)) {
+    useToast().add({
+      title: "Match at Halftime",
+      description: "Goals cannot be recorded during halftime. Start the 2nd half to resume scoring.",
+      color: "warning",
+      icon: "i-heroicons-clock",
+    });
+    return;
+  }
+
   const participantId =
     scoringTeam.value === "home"
       ? selectedFixture.value.homeTeamId
@@ -712,6 +723,16 @@ const openGoalModal = (
   team: "home" | "away",
   type: MatchEventType = MatchEventType.GOAL,
 ) => {
+  if (timerControlsApi.isHalftime.value || isFixtureHalftime(selectedFixture.value)) {
+    useToast().add({
+      title: "Match at Halftime",
+      description: "Goals cannot be recorded during halftime. Start the 2nd half to resume scoring.",
+      color: "warning",
+      icon: "i-heroicons-clock",
+    });
+    return;
+  }
+
   scoringTeam.value = team;
   goalData.type = type;
   goalData.scorerId = undefined;

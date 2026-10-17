@@ -94,7 +94,10 @@ const periodLabel = computed(() => {
         </template>
         <template v-else>
           <span>{{ liveClock }}</span>
-          <span class="text-[10px] opacity-75">({{ periodLabel }})</span>
+          <span
+            v-if="periodLabel && periodLabel !== liveClock"
+            class="text-[10px] opacity-75"
+          >({{ periodLabel }})</span>
         </template>
       </div>
       <div v-else-if="fixture.startTime" class="mc-match-time">
