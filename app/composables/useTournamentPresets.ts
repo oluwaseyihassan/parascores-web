@@ -9,6 +9,7 @@ export interface TournamentPreset {
   icon: string
   type: TournamentType
   unifiedStandings: boolean
+  hasKnockoutPlayoffs?: boolean
   flowSteps: string[]
 }
 
@@ -22,18 +23,20 @@ export const TOURNAMENT_PRESETS: TournamentPreset[] = [
     icon: 'i-heroicons-globe-alt',
     type: TournamentType.HYBRID,
     unifiedStandings: false,
+    hasKnockoutPlayoffs: false,
     flowSteps: ['Group Stage', 'Top Teams Qualify', 'Playoff Bracket', 'Champion']
   },
   {
     id: 'champions_league',
     label: 'Champions League Style',
     tag: 'UEFA Champions League',
-    summary: 'Unified League Phase → Seeded Knockouts',
-    description: 'Teams seeded in pots play cross-pot matches. All teams compete on ONE single 36-team league table with top seeds advancing to playoffs.',
+    summary: 'Unified League Phase → Play-offs & Knockouts',
+    description: 'Teams seeded in pots play cross-pot matches on ONE shared league table. Seeds 1–8 get byes to Round of 16, seeds 9–24 play-off.',
     icon: 'i-heroicons-sparkles',
     type: TournamentType.HYBRID,
     unifiedStandings: true,
-    flowSteps: ['Seeding Pots', '1 Shared League Table', 'Seeded Playoff Bracket', 'Champion']
+    hasKnockoutPlayoffs: true,
+    flowSteps: ['Seeding Pots', '1 Shared Table', 'Play-off Round (9–24)', 'Round of 16 (Top 8 + PO)', 'Finals']
   },
   {
     id: 'league',
