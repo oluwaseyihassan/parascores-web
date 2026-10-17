@@ -581,11 +581,16 @@ const confirmGoal = async () => {
   if (!selectedFixture.value) return;
 
   if (timerControlsApi.isHalftime.value || isFixtureHalftime(selectedFixture.value)) {
-    useToast().add({
-      title: "Match at Halftime",
-      description: "Goals cannot be recorded during halftime. Start the 2nd half to resume scoring.",
-      color: "warning",
-      icon: "i-heroicons-clock",
+    openConfirmModal({
+      title: "Match is at Halftime",
+      message:
+        "Goals cannot be recorded while the match is at halftime. Would you like to start the 2nd half now to resume scoring?",
+      confirmLabel: "Start 2nd Half",
+      confirmColor: "success",
+      onConfirm: async () => {
+        await timerControlsApi.startSecondHalf();
+        await confirmGoal();
+      },
     });
     return;
   }
@@ -724,11 +729,16 @@ const openGoalModal = (
   type: MatchEventType = MatchEventType.GOAL,
 ) => {
   if (timerControlsApi.isHalftime.value || isFixtureHalftime(selectedFixture.value)) {
-    useToast().add({
-      title: "Match at Halftime",
-      description: "Goals cannot be recorded during halftime. Start the 2nd half to resume scoring.",
-      color: "warning",
-      icon: "i-heroicons-clock",
+    openConfirmModal({
+      title: "Match is at Halftime",
+      message:
+        "Goals cannot be recorded while the match is at halftime. Would you like to start the 2nd half now to resume scoring?",
+      confirmLabel: "Start 2nd Half",
+      confirmColor: "success",
+      onConfirm: async () => {
+        await timerControlsApi.startSecondHalf();
+        openGoalModal(team, type);
+      },
     });
     return;
   }
