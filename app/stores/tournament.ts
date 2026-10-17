@@ -162,7 +162,6 @@ export const useTournamentStore = defineStore('tournament', () => {
   }
 
   async function updateTournament(id: string, updates: Partial<Tournament>) {
-    loading.value = true
     error.value = null
     try {
       const response = await $api<ApiResponse<Tournament>>(`/tournaments/${id}`, {
@@ -185,8 +184,6 @@ export const useTournamentStore = defineStore('tournament', () => {
       error.value = extractErrorMessage(err)
       console.error('Update tournament failed:', error.value)
       throw err
-    } finally {
-      loading.value = false
     }
   }
 
