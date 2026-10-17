@@ -27,6 +27,7 @@ definePageMeta({
 });
 
 const route = useRoute();
+const router = useRouter();
 const tournamentStore = useTournamentStore();
 const participantStore = useParticipantStore();
 const teamStore = useTeamStore();
@@ -41,11 +42,9 @@ const paymentStore = usePaymentStore();
 const { handleError } = useErrors();
 const toast = useToast();
 
-const {
-  currentTournament: tournament,
-  loading,
-  error,
-} = storeToRefs(tournamentStore);
+const { currentTournament: tournament } = storeToRefs(tournamentStore);
+const pageLoading = ref(true);
+const pageError = ref<string | null>(null);
 const { participants } = storeToRefs(participantStore);
 const { fixtures, knockoutRounds } = storeToRefs(fixtureStore);
 const { standings } = storeToRefs(standingStore);
@@ -91,8 +90,8 @@ const loadPlayerStats = async () => {
 const loadTournamentOverview = async (silent = false) => {
   if (!tournamentId.value) return;
   if (!silent) {
-    loading.value = true;
-    error.value = null;
+    pageLoading.value = true;
+    pageError.value = null;
   }
   try {
     const response = await $api<{
@@ -118,7 +117,7 @@ const loadTournamentOverview = async (silent = false) => {
       );
       if (!isOrgMember) {
         if (!silent) {
-          error.value =
+          pageError.value =
             "You don't have access to this tournament. It belongs to another organization.";
           toast.add({
             title: "Access denied",
@@ -162,14 +161,14 @@ const loadTournamentOverview = async (silent = false) => {
     }
   } catch (e: any) {
     if (!silent) {
-      error.value = handleError(e, {
+      pageError.value = handleError(e, {
         title: "Failed to load dashboard",
         toast: false,
       });
     }
   } finally {
     if (!silent) {
-      loading.value = false;
+      pageLoading.value = false;
     }
   }
 };
@@ -321,9 +320,35 @@ const tabItems = computed(() => {
   return items;
 });
 
+const initTabFromQuery = () => {
+  const queryTab = route.query.tab as string;
+  if (queryTab) {
+    const idx = tabItems.value.findIndex((t) => t.slot === queryTab);
+    if (idx >= 0) activeTab.value = String(idx);
+  }
+};
+
+watch(
+  tabItems,
+  () => {
+    initTabFromQuery();
+  },
+  { immediate: true },
+);
+
+watch(activeTab, (newIdx) => {
+  const tab = tabItems.value[Number(newIdx)];
+  if (tab && route.query.tab !== tab.slot) {
+    router.replace({ query: { ...route.query, tab: tab.slot } }).catch(() => {});
+  }
+});
+
 const goToTab = (slot: string) => {
   const i = tabItems.value.findIndex((t) => t.slot === slot);
-  if (i >= 0) activeTab.value = String(i);
+  if (i >= 0) {
+    activeTab.value = String(i);
+    router.replace({ query: { ...route.query, tab: slot } }).catch(() => {});
+  }
 };
 
 // Match Control Modal (owned here so every tab can reach it)
@@ -479,7 +504,7 @@ provide(SportEngineKey, computed(() => resolveEngine(tournament.value?.sport)));
     </NuxtLink>
 
     <!-- Loading State -->
-    <div v-if="loading" class="flex items-center justify-center py-20">
+    <div v-if="pageLoading" class="flex items-center justify-center py-20">
       <UIcon
         name="i-heroicons-arrow-path"
         class="w-8 h-8 animate-spin text-gray-400"
@@ -488,24 +513,24 @@ provide(SportEngineKey, computed(() => resolveEngine(tournament.value?.sport)));
 
     <!-- Error State -->
     <UAlert
-      v-else-if="error"
+      v-else-if="pageError"
       color="error"
       variant="soft"
       icon="i-heroicons-exclamation-circle"
       title="Action Required"
-      :description="error"
+      :description="pageError"
       class="mb-6 rounded-2xl border border-red-100 dark:border-red-900/30 shadow-sm"
     >
       <template #description>
         <div class="flex items-center justify-between gap-3">
-          <span class="flex-1">{{ error }}</span>
+          <span class="flex-1">{{ pageError }}</span>
           <UButton
             size="xs"
             color="error"
             variant="ghost"
             icon="i-heroicons-x-mark"
             class="rounded-full"
-            @click="error = null"
+            @click="pageError = null"
           />
         </div>
       </template>
