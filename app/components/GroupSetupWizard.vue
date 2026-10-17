@@ -843,22 +843,22 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
               <USwitch v-model="config.doubleRoundRobin" />
             </div>
 
-            <!-- Unified Standings Toggle (Champions League Format) -->
+            <!-- Tournament Style / League Phase Model -->
             <div
               v-if="[TournamentType.GROUP, TournamentType.HYBRID].includes(props.tournament.type as any)"
               class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-white/[0.05]"
             >
               <div class="flex-1 pr-3">
                 <div class="flex items-center gap-2">
-                  <p class="text-sm font-medium text-gray-900 dark:text-white">Unified League Table</p>
+                  <p class="text-sm font-medium text-gray-900 dark:text-white">Tournament Style</p>
                   <UBadge size="xs" :color="config.unifiedStandings ? 'primary' : 'neutral'" variant="subtle">
-                    {{ config.unifiedStandings ? 'Champions League / Swiss' : 'Separate Groups' }}
+                    {{ config.unifiedStandings ? 'Champions League (Unified Table)' : 'World Cup (Separate Groups)' }}
                   </UBadge>
                 </div>
                 <p class="text-xs text-gray-500 mt-0.5">
                   {{ config.unifiedStandings
-                    ? 'All teams are ranked on ONE single table. Groups act as seeding pots for matchmaking.'
-                    : 'Traditional format where each group has its own independent standings table.' }}
+                    ? 'All teams compete on 1 shared league table. Groups act as seeding pots to balance home and away matches.'
+                    : 'Teams play inside their group (Group A, Group B...). Each group maintains its own independent standings table.' }}
                 </p>
               </div>
               <USwitch v-model="config.unifiedStandings" />

@@ -406,6 +406,26 @@ watch(() => state.customName, (val) => {
   }, 500)
 }, { immediate: true })
 
+// Tournament Format Presets
+const currentPresetId = computed(() => getPresetIdFromState(state.type, state.unifiedStandings))
+const currentPreset = computed(() => getPresetById(currentPresetId.value))
+
+const availablePresets = computed(() => {
+  const c = resolveEngine(state.sport).creation
+  if (!c) return TOURNAMENT_PRESETS
+  return TOURNAMENT_PRESETS.filter((p) => {
+    if (p.type === TournamentType.LEAGUE) {
+      return c.formats.includes(TournamentType.LEAGUE) || c.formats.includes(TournamentType.ROUND_ROBIN)
+    }
+    return c.formats.includes(p.type)
+  })
+})
+
+const applyTournamentPreset = (preset: TournamentPreset) => {
+  state.type = preset.type
+  state.unifiedStandings = preset.unifiedStandings
+}
+
 // Options for selects
 const tournamentTypes = [
   { label: 'Knockout', value: TournamentType.KNOCKOUT, description: 'Single elimination bracket' },
@@ -1169,25 +1189,59 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 description="If you have already generated fixtures or matches, changing the tournament type might lead to unexpected behavior."
               />
 
-              <UFormField label="Tournament Type" name="type" required>
+              <UFormField label="Tournament Format & Style" name="type" required>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   <button
-                    v-for="opt in tournamentTypes"
-                    :key="opt.value"
+                    v-for="preset in availablePresets"
+                    :key="preset.id"
                     type="button"
-                    @click="state.type = opt.value"
-                    class="p-3.5 rounded-xl border text-left transition-all"
+                    @click="applyTournamentPreset(preset)"
+                    class="p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between group"
                     :class="[
-                      state.type === opt.value
+                      currentPresetId === preset.id
                         ? 'border-emerald-500/60 bg-emerald-50 dark:bg-emerald-500/10 ring-1 ring-emerald-500/30'
                         : 'border-gray-200 dark:border-white/[0.08] hover:border-gray-300 dark:hover:border-white/[0.16]'
                     ]"
                   >
-                    <p class="font-semibold text-[13px] text-gray-900 dark:text-white">{{ opt.label }}</p>
-                    <p class="text-[11px] leading-snug text-gray-500 mt-1">{{ opt.description }}</p>
+                    <div>
+                      <div class="flex items-start justify-between gap-1 mb-1">
+                        <div class="flex items-center gap-1.5">
+                          <UIcon :name="preset.icon" class="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span class="font-semibold text-[13px] text-gray-900 dark:text-white">{{ preset.label }}</span>
+                        </div>
+                        <UIcon
+                          v-if="currentPresetId === preset.id"
+                          name="i-heroicons-check-circle"
+                          class="w-4 h-4 text-emerald-500 shrink-0"
+                        />
+                      </div>
+                      <UBadge size="xs" variant="subtle" color="neutral" class="mb-1.5 text-[9.5px]">
+                        {{ preset.tag }}
+                      </UBadge>
+                      <p class="text-[11px] leading-snug text-gray-500 mb-2">{{ preset.description }}</p>
+                    </div>
+                    <div class="pt-1.5 border-t border-gray-100 dark:border-white/[0.05] text-[10px] text-gray-400 dark:text-gray-500 truncate">
+                      {{ preset.summary }}
+                    </div>
                   </button>
                 </div>
               </UFormField>
+
+              <!-- Format Flow Preview -->
+              <div class="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="flex items-center gap-2 shrink-0">
+                  <UIcon :name="currentPreset.icon" class="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span class="text-xs font-semibold text-gray-900 dark:text-white">{{ currentPreset.label }} Flow:</span>
+                </div>
+                <div class="flex items-center gap-1.5 text-[11px] overflow-x-auto py-0.5">
+                  <template v-for="(step, idx) in currentPreset.flowSteps" :key="step">
+                    <span class="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium shadow-xs whitespace-nowrap border border-black/5 dark:border-white/5">
+                      {{ step }}
+                    </span>
+                    <UIcon v-if="idx < currentPreset.flowSteps.length - 1" name="i-heroicons-chevron-right" class="w-3 h-3 text-gray-400 shrink-0" />
+                  </template>
+                </div>
+              </div>
 
               <UFormField label="Participant Type" name="participantType" required>
                 <div class="flex gap-2.5">

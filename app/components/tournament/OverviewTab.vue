@@ -57,14 +57,23 @@ const formatDate = (dateString: string) => {
 
 // Type labels
 const typeLabels: Record<TournamentType, string> = {
-  [TournamentType.KNOCKOUT]: "Knockout",
-  [TournamentType.LEAGUE]: "League",
+  [TournamentType.KNOCKOUT]: "Knockout Cup",
+  [TournamentType.LEAGUE]: "Classic League",
   [TournamentType.ROUND_ROBIN]: "Round Robin",
-  [TournamentType.GROUP]: "Group Stage",
-  [TournamentType.HYBRID]: "Hybrid (Group + Knockout)",
+  [TournamentType.GROUP]: "Group Stage Only",
+  [TournamentType.HYBRID]: "World Cup / Euro Style",
   [TournamentType.FRIENDLY]: "Friendly Match",
   [TournamentType.RACE]: "Race / Event",
 };
+
+const formatLabel = computed(() => {
+  const t = tournament.value;
+  if (!t) return "";
+  if (t.type === TournamentType.HYBRID) {
+    return t.unifiedStandings ? "Champions League Style" : "World Cup / Euro Style";
+  }
+  return typeLabels[t.type] ?? t.type;
+});
 
 const participantLabels: Record<ParticipantType, string> = {
   [ParticipantType.TEAM]: "Teams",
@@ -158,7 +167,7 @@ const visibilityLabels: Record<Visibility, { label: string; icon: string }> = {
                 >Format</span
               >
               <span class="font-medium text-xs sm:text-sm">
-                {{ typeLabels[tournament.type] ?? tournament.type }}
+                {{ formatLabel }}
               </span>
             </div>
 

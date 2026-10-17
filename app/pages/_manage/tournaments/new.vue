@@ -547,6 +547,24 @@ watch(isExtraSportSelected, (v) => { if (v) showSportMore.value = true })
 const creationEngine = computed(() => resolveEngine(state.sport))
 const creation = computed(() => creationEngine.value.creation)
 
+const currentPresetId = computed(() => getPresetIdFromState(state.type, state.unifiedStandings))
+const currentPreset = computed(() => getPresetById(currentPresetId.value))
+
+const availablePresets = computed(() => {
+  if (!creation.value) return TOURNAMENT_PRESETS
+  return TOURNAMENT_PRESETS.filter((p) => {
+    if (p.type === TournamentType.LEAGUE) {
+      return creation.value!.formats.includes(TournamentType.LEAGUE) || creation.value!.formats.includes(TournamentType.ROUND_ROBIN)
+    }
+    return creation.value!.formats.includes(p.type)
+  })
+})
+
+const selectPreset = (preset: TournamentPreset) => {
+  state.type = preset.type
+  state.unifiedStandings = preset.unifiedStandings
+}
+
 const availableTournamentTypes = computed(() => {
   if (!creation.value) return tournamentTypes
   return tournamentTypes.filter((t) => creation.value!.formats.includes(t.value))
@@ -557,7 +575,12 @@ watch(() => state.sport, () => {
   const c = creation.value
   if (!c) return
   if (!c.formats.includes(state.type as TournamentType)) {
-    state.type = c.formats[0]
+    const defaultPreset = availablePresets.value[0]
+    if (defaultPreset) {
+      selectPreset(defaultPreset)
+    } else {
+      state.type = c.formats[0]
+    }
   }
   if (c.participantType) {
     state.participantType = c.participantType
@@ -865,30 +888,78 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 <span class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                   <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5" />
                 </span>
-                <h2 class="text-[13px] font-bold text-heading">Format</h2>
+                <div>
+                  <h2 class="text-[13px] font-bold text-heading">Tournament format</h2>
+                  <p class="text-[11px] text-muted">Choose how teams compete and qualify for the title</p>
+                </div>
                 <span class="ml-auto text-[11px] text-muted">{{ creationEngine.label }} engine</span>
               </header>
               <div class="p-4 space-y-5">
-                <UFormField label="Tournament type" name="type" required>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <UFormField label="Popular Formats & Templates" name="type" required>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <button
-                      v-for="opt in availableTournamentTypes"
-                      :key="opt.value"
+                      v-for="preset in availablePresets"
+                      :key="preset.id"
                       type="button"
-                      @click="state.type = opt.value"
-                      class="p-3.5 rounded-xl border text-left transition-all"
-                      :class="state.type === opt.value
-                        ? 'border-emerald-500/50 bg-emerald-500/[0.07]'
-                        : 'border-subtle bg-black/[0.02] dark:bg-white/[0.03] hover:border-white/[0.16]'"
+                      @click="selectPreset(preset)"
+                      class="p-4 rounded-xl border text-left transition-all relative flex flex-col justify-between group"
+                      :class="currentPresetId === preset.id
+                        ? 'border-emerald-500/60 bg-emerald-500/[0.08] ring-1 ring-emerald-500/30'
+                        : 'border-subtle bg-black/[0.02] dark:bg-white/[0.03] hover:border-white/[0.16] hover:bg-black/[0.04] dark:hover:bg-white/[0.05]'"
                     >
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="text-[13px] font-bold text-heading">{{ opt.label }}</span>
-                        <UIcon v-if="state.type === opt.value" name="i-heroicons-check-circle" class="w-4.5 h-4.5 text-emerald-500" />
+                      <div>
+                        <div class="flex items-start justify-between gap-2 mb-1">
+                          <div class="flex items-center gap-2">
+                            <span
+                              class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                              :class="currentPresetId === preset.id
+                                ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-black/[0.05] dark:bg-white/[0.08] text-muted group-hover:text-heading'"
+                            >
+                              <UIcon :name="preset.icon" class="w-4 h-4" />
+                            </span>
+                            <span class="text-[13px] font-bold text-heading">{{ preset.label }}</span>
+                          </div>
+                          <UIcon
+                            v-if="currentPresetId === preset.id"
+                            name="i-heroicons-check-circle"
+                            class="w-5 h-5 text-emerald-500 shrink-0"
+                          />
+                        </div>
+
+                        <UBadge size="xs" variant="subtle" color="neutral" class="mb-2 text-[10px]">
+                          {{ preset.tag }}
+                        </UBadge>
+
+                        <p class="text-[11.5px] text-muted leading-relaxed mb-3">
+                          {{ preset.description }}
+                        </p>
                       </div>
-                      <p class="text-[11px] text-muted leading-relaxed">{{ opt.description }}</p>
+
+                      <!-- Mini flow footer -->
+                      <div class="pt-2 border-t border-black/[0.04] dark:border-white/[0.05] flex items-center gap-1.5 text-[10.5px] text-muted">
+                        <UIcon name="i-heroicons-arrow-path" class="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span class="font-medium text-heading truncate">{{ preset.summary }}</span>
+                      </div>
                     </button>
                   </div>
                 </UFormField>
+
+                <!-- Visual Progression Flow Preview -->
+                <div class="p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div class="flex items-center gap-2 shrink-0">
+                    <UIcon :name="currentPreset.icon" class="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span class="text-xs font-semibold text-heading">{{ currentPreset.label }} Flow:</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 text-[11px] overflow-x-auto py-0.5">
+                    <template v-for="(step, idx) in currentPreset.flowSteps" :key="step">
+                      <span class="px-2.5 py-0.5 rounded-md bg-white dark:bg-gray-800 text-heading font-medium shadow-xs whitespace-nowrap border border-black/5 dark:border-white/5">
+                        {{ step }}
+                      </span>
+                      <UIcon v-if="idx < currentPreset.flowSteps.length - 1" name="i-heroicons-chevron-right" class="w-3 h-3 text-muted shrink-0" />
+                    </template>
+                  </div>
+                </div>
 
                 <UFormField label="Participants" name="participantType" required>
                   <div class="grid grid-cols-2 gap-2">
@@ -919,7 +990,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 <span class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                   <UIcon name="i-heroicons-adjustments-horizontal" class="w-3.5 h-3.5" />
                 </span>
-                <h2 class="text-[13px] font-bold text-heading">Limits &amp; options</h2>
+                <h2 class="text-[13px] font-bold text-heading">Match Rules &amp; Limits</h2>
               </header>
               <div class="p-4 space-y-3">
                 <div class="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-subtle">
@@ -941,7 +1012,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                     >
                       <div>
                         <p class="text-[13px] font-semibold text-heading">Two-legged ties</p>
-                        <p class="text-[10.5px] text-muted mt-0.5">{{ optionSupported('twoLegs') ? 'Home & away rounds' : `Not available for ${creationEngine.label}` }}</p>
+                        <p class="text-[10.5px] text-muted mt-0.5">{{ optionSupported('twoLegs') ? 'Knockout matches played over Home & Away legs (with aggregate score)' : `Not available for ${creationEngine.label}` }}</p>
                       </div>
                       <USwitch v-model="state.twoLegsKnockout" :disabled="!optionSupported('twoLegs')" />
                     </div>
@@ -951,41 +1022,24 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                       :title="!optionSupported('thirdPlaceMatch') ? `Not available for ${creationEngine.label}` : undefined"
                     >
                       <div>
-                        <p class="text-[13px] font-semibold text-heading">Third-place match</p>
-                        <p class="text-[10.5px] text-muted mt-0.5">{{ optionSupported('thirdPlaceMatch') ? 'Playoff for 3rd place' : `Not available for ${creationEngine.label}` }}</p>
+                        <p class="text-[13px] font-semibold text-heading">Third-place playoff match</p>
+                        <p class="text-[10.5px] text-muted mt-0.5">{{ optionSupported('thirdPlaceMatch') ? 'Bronze medal playoff match for semi-final losers' : `Not available for ${creationEngine.label}` }}</p>
                       </div>
                       <USwitch v-model="state.thirdPlaceMatch" :disabled="!optionSupported('thirdPlaceMatch')" />
                     </div>
                   </template>
 
                   <div
-                    v-if="[TournamentType.ROUND_ROBIN, TournamentType.LEAGUE, TournamentType.GROUP, TournamentType.HYBRID].includes(state.type as any)"
+                    v-if="[TournamentType.ROUND_ROBIN, TournamentType.LEAGUE, TournamentType.GROUP, (state.type === TournamentType.HYBRID && !state.unifiedStandings)].includes(state.type as any)"
                     class="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-subtle"
                     :class="{ 'opacity-50': !optionSupported('doubleRoundRobin') }"
                     :title="!optionSupported('doubleRoundRobin') ? `Not available for ${creationEngine.label}` : undefined"
                   >
                     <div>
                       <p class="text-[13px] font-semibold text-heading">Double round robin</p>
-                      <p class="text-[10.5px] text-muted mt-0.5">{{ optionSupported('doubleRoundRobin') ? 'Each pairing plays home & away' : `Not available for ${creationEngine.label}` }}</p>
+                      <p class="text-[10.5px] text-muted mt-0.5">{{ optionSupported('doubleRoundRobin') ? 'Each pairing plays twice (Home and Away fixtures generated)' : `Not available for ${creationEngine.label}` }}</p>
                     </div>
                     <USwitch v-model="state.doubleRoundRobin" :disabled="!optionSupported('doubleRoundRobin')" />
-                  </div>
-
-                  <!-- Unified League Table (Champions League / Swiss Format) -->
-                  <div
-                    v-if="[TournamentType.GROUP, TournamentType.HYBRID].includes(state.type as any)"
-                    class="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-subtle"
-                  >
-                    <div>
-                      <div class="flex items-center gap-1.5">
-                        <p class="text-[13px] font-semibold text-heading">Unified League Table</p>
-                        <UBadge size="xs" color="primary" variant="subtle">Champions League / Swiss</UBadge>
-                      </div>
-                      <p class="text-[10.5px] text-muted mt-0.5">
-                        {{ state.unifiedStandings ? 'All teams share a single unified table (silent groups/pots decide fixtures)' : 'Each group has its own separate table (traditional World Cup style)' }}
-                      </p>
-                    </div>
-                    <USwitch v-model="state.unifiedStandings" />
                   </div>
                 </template>
               </div>
