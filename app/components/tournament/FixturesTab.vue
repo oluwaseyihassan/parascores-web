@@ -906,14 +906,19 @@ const canAdvance = computed(() => {
     }
   });
 
-  // If we have fewer matches than a single round robin, don't allow advancement yet
-  if (groupMatches.length < expectedMinMatches) return false;
+  // If we have fewer matches than a single round robin, don't allow advancement yet (skip for unified standings / Swiss format)
+  if (!tournament.value?.unifiedStandings && groupMatches.length < expectedMinMatches) return false;
 
-  // Check if already advanced (knockout matches exist)
+  // Check if already advanced (knockout matches exist with actual teams assigned)
   const knockoutMatches = fixtures.value.filter(
     (f) => f.stage === FixtureStage.KNOCKOUT,
   );
-  if (knockoutMatches.length > 0) return false;
+  if (knockoutMatches.length > 0) {
+    const hasPopulatedKnockout = knockoutMatches.some(
+      (f) => f.homeTeamId || f.awayTeamId,
+    );
+    if (hasPopulatedKnockout) return false;
+  }
 
   return true;
 });

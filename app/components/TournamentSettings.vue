@@ -603,9 +603,9 @@ const navClass = (s: (typeof sections)[number]) => {
 // ─── Dirty tracking (sticky save bar) ────────────────────
 const SNAP_KEYS = [
   'name', 'customName', 'description', 'sport', 'type', 'participantType', 'visibility',
-  'location', 'timezone', 'maxParticipants', 'autoApprove', 'isPaidRegistration',
+  'location', 'latitude', 'longitude', 'timezone', 'maxParticipants', 'autoApprove', 'isPaidRegistration',
   'registrationFee', 'registrationOpen', 'registrationClose', 'isPinned',
-  'twoLegsKnockout', 'doubleRoundRobin', 'thirdPlaceMatch', 'unifiedStandings', 'setsToWin', 'gamesPerSet',
+  'twoLegsKnockout', 'doubleRoundRobin', 'thirdPlaceMatch', 'unifiedStandings', 'hasKnockoutPlayoffs', 'setsToWin', 'gamesPerSet',
 ] as const
 
 function buildSnapshot() {
