@@ -998,7 +998,7 @@ const showAddEventModal = ref(false);
                 <p
                   class="text-sm font-medium text-gray-900 dark:text-white"
                 >
-                  All group stage matches completed
+                  {{ tournament?.unifiedStandings ? 'All league phase matches completed' : 'All group stage matches completed' }}
                 </p>
                 <p class="text-xs text-gray-500">
                   Ready to generate the knockout bracket

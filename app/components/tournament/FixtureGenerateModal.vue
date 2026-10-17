@@ -98,7 +98,7 @@ const { participants } = storeToRefs(participantStore);
             "
             class="grid grid-cols-1 md:grid-cols-2 gap-4"
           >
-            <UFormField label="Teams Per Group" name="teamsPerGroup">
+            <UFormField :label="tournament?.unifiedStandings ? 'Teams Per Pot' : 'Teams Per Group'" name="teamsPerGroup">
               <UInput
                 v-model.number="generateConfig.teamsPerGroup"
                 type="number"
@@ -107,7 +107,7 @@ const { participants } = storeToRefs(participantStore);
               />
             </UFormField>
 
-            <UFormField label="Number of Groups" name="numberOfGroups">
+            <UFormField :label="tournament?.unifiedStandings ? 'Number of Pots' : 'Number of Groups'" name="numberOfGroups">
               <UInput
                 v-model.number="generateConfig.numberOfGroups"
                 type="number"
@@ -122,28 +122,31 @@ const { participants } = storeToRefs(participantStore);
             class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg text-sm text-gray-500"
           >
             <p v-if="generateConfig.useExistingGroups">
-              The system will use your existing groups and team assignments.
+              {{ tournament?.unifiedStandings
+                ? 'The system will use your existing pots and team seedings.'
+                : 'The system will use your existing groups and team assignments.' }}
             </p>
             <p v-else-if="generateConfig.teamsPerGroup && participants.length">
               With {{ participants.length }} participants and
-              {{ generateConfig.teamsPerGroup }} teams per group, you will have
+              {{ generateConfig.teamsPerGroup }} teams per {{ tournament?.unifiedStandings ? 'pot' : 'group' }}, you will have
               roughly
               {{
                 Math.ceil(participants.length / generateConfig.teamsPerGroup)
               }}
-              groups.
+              {{ tournament?.unifiedStandings ? 'pots' : 'groups' }}.
             </p>
             <p v-else-if="generateConfig.numberOfGroups && participants.length">
               With {{ participants.length }} participants and
-              {{ generateConfig.numberOfGroups }} groups, you will have roughly
+              {{ generateConfig.numberOfGroups }} {{ tournament?.unifiedStandings ? 'pots' : 'groups' }}, you will have roughly
               {{
                 Math.ceil(participants.length / generateConfig.numberOfGroups)
               }}
-              teams per group.
+              teams per {{ tournament?.unifiedStandings ? 'pot' : 'group' }}.
             </p>
             <p v-else>
-              The system will automatically balance groups if no preference is
-              set.
+              {{ tournament?.unifiedStandings
+                ? 'The system will automatically balance pots if no preference is set.'
+                : 'The system will automatically balance groups if no preference is set.' }}
             </p>
           </div>
 

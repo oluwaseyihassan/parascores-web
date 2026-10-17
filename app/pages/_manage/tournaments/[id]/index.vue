@@ -237,14 +237,14 @@ const tabItems = computed(() => {
         },
   ];
 
-  // Add Groups tab for Group/Hybrid tournaments
+  // Add Groups/Pots tab for Group/Hybrid tournaments
   if (
     tournament.value?.type === TournamentType.GROUP ||
     tournament.value?.type === TournamentType.HYBRID
   ) {
     items.splice(2, 0, {
       slot: "groups",
-      label: "Groups",
+      label: tournament.value?.unifiedStandings ? "Pots" : "Groups",
       icon: "i-heroicons-rectangle-group",
     });
   }

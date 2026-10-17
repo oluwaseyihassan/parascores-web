@@ -559,7 +559,7 @@ const initializeGroups = () => {
 const nextStep = () => {
   if (step.value === 1) {
     if (config.numberOfGroups < 1) {
-      toast.add({ title: 'Invalid group count', color: 'error' })
+      toast.add({ title: config.unifiedStandings ? 'Invalid pot count' : 'Invalid group count', color: 'error' })
       return
     }
     initializeGroups()
@@ -668,7 +668,7 @@ const handleFinish = async (force = false) => {
     }
     
     toast.add({
-      title: 'Group Stage Setup Complete',
+      title: config.unifiedStandings ? 'League Phase Setup Complete' : 'Group Stage Setup Complete',
       description: 'Fixtures have been generated successfully.',
       color: 'success'
     })
@@ -743,7 +743,9 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
         <!-- Header (always visible) -->
         <div class="p-4 sm:p-6 border-b border-gray-100 dark:border-white/[0.05] shrink-0">
           <div class="flex items-center justify-between">
-            <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Group Stage Setup</h3>
+            <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+              {{ config.unifiedStandings ? 'Seeding & Pots Setup' : (props.tournament.type === TournamentType.ROUND_ROBIN ? 'Round Robin Setup' : 'Group Stage Setup') }}
+            </h3>
             <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" size="sm" @click="closeWizard" />
           </div>
           
@@ -763,7 +765,9 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                   'w-8 h-8 rounded-full flex shrink-0 items-center justify-center font-bold text-sm transition-all',
                   step >= 2 ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
                 ]">2</div>
-                <span :class="['max-w-full truncate text-xs font-semibold sm:text-sm sm:font-medium', step >= 2 ? 'text-gray-900 dark:text-white' : 'text-gray-400']">Groups</span>
+                <span :class="['max-w-full truncate text-xs font-semibold sm:text-sm sm:font-medium', step >= 2 ? 'text-gray-900 dark:text-white' : 'text-gray-400']">
+                  {{ config.unifiedStandings ? 'Pots' : 'Groups' }}
+                </span>
               </div>
               <div class="hidden w-12 h-px bg-gray-100 dark:bg-gray-800 sm:block"></div>
               <div class="flex min-w-0 flex-col items-center gap-1.5 sm:flex-row sm:gap-2">
@@ -784,7 +788,11 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
           <div v-if="step === 1" class="max-w-md mx-auto space-y-6">
             <div class="bg-primary-50/50 dark:bg-primary-950/20 p-4 rounded-xl border border-primary-100 dark:border-primary-900/30 mb-8">
               <p class="text-sm text-primary-700 dark:text-primary-300">
-                {{ props.tournament.type === TournamentType.ROUND_ROBIN ? 'Configure scheduling method for the Round Robin fixtures.' : 'Configure your group stage structure. You can use existing assignments or auto-generate new ones.' }}
+                {{ props.tournament.type === TournamentType.ROUND_ROBIN
+                  ? 'Configure scheduling method for the Round Robin fixtures.'
+                  : (config.unifiedStandings
+                    ? 'Configure seeding pots. Teams are placed in pots to balance home and away opponents across a single unified league table.'
+                    : 'Configure your group stage structure. You can use existing assignments or auto-generate new ones.') }}
               </p>
             </div>
 
@@ -792,16 +800,27 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                <URadioGroup
                   v-model="config.assignmentMethod"
                   :items="[
-                     { label: 'Use Existing Groups', value: 'existing', description: 'Use the groups and assignments already set up.', icon: 'i-heroicons-rectangle-group', disabled: !(props.groups?.length || props.tournament.groups?.length) },
-                     { label: 'Auto-Generate & Distribute', value: 'auto', description: 'Automatically create groups and distribute teams.', icon: 'i-heroicons-sparkles' }
+                     {
+                       label: config.unifiedStandings ? 'Use Existing Pots' : 'Use Existing Groups',
+                       value: 'existing',
+                       description: config.unifiedStandings ? 'Use the pots and seedings already set up.' : 'Use the groups and assignments already set up.',
+                       icon: 'i-heroicons-rectangle-group',
+                       disabled: !(props.groups?.length || props.tournament.groups?.length)
+                     },
+                     {
+                       label: 'Auto-Generate & Distribute',
+                       value: 'auto',
+                       description: config.unifiedStandings ? 'Automatically create pots and seed teams.' : 'Automatically create groups and distribute teams.',
+                       icon: 'i-heroicons-sparkles'
+                     }
                   ]"
                />
             </UFormField>
 
-            <UFormField v-if="config.assignmentMethod === 'auto' && props.tournament.type !== TournamentType.ROUND_ROBIN" label="Number of Groups" required>
+            <UFormField v-if="config.assignmentMethod === 'auto' && props.tournament.type !== TournamentType.ROUND_ROBIN" :label="config.unifiedStandings ? 'Number of Pots' : 'Number of Groups'" required>
               <USelect 
                 v-model.number="config.numberOfGroups" 
-                :items="[1, 2, 4, 8, 16, 32].map(n => ({ label: `${n} Group${n > 1 ? 's' : ''}`, value: n }))"
+                :items="[1, 2, 4, 8, 16, 32].map(n => ({ label: `${n} ${config.unifiedStandings ? (n > 1 ? 'Pots' : 'Pot') : (n > 1 ? 'Groups' : 'Group')}`, value: n }))"
                 class="w-full"
               />
             </UFormField>
@@ -820,7 +839,9 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                 <USwitch v-model="config.shuffleParticipants" />
                 <div>
                    <p class="text-sm font-medium text-gray-900 dark:text-white">Randomize Initial Order</p>
-                   <p class="text-xs text-gray-500">Shuffle teams before distributing them into groups.</p>
+                   <p class="text-xs text-gray-500">
+                     {{ config.unifiedStandings ? 'Shuffle teams before distributing them into pots.' : 'Shuffle teams before distributing them into groups.' }}
+                   </p>
                 </div>
             </div>
 
@@ -852,12 +873,12 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                 <div class="flex items-center gap-2">
                   <p class="text-sm font-medium text-gray-900 dark:text-white">Tournament Style</p>
                   <UBadge size="xs" :color="config.unifiedStandings ? 'primary' : 'neutral'" variant="subtle">
-                    {{ config.unifiedStandings ? 'Champions League (Unified Table)' : 'World Cup (Separate Groups)' }}
+                    {{ config.unifiedStandings ? 'Champions League (Pots & Unified Table)' : 'World Cup (Separate Groups)' }}
                   </UBadge>
                 </div>
                 <p class="text-xs text-gray-500 mt-0.5">
                   {{ config.unifiedStandings
-                    ? 'All teams compete on 1 shared league table. Groups act as seeding pots to balance home and away matches.'
+                    ? 'All teams compete on 1 shared league table. Teams are seeded into Pots to balance home and away matches across pots.'
                     : 'Teams play inside their group (Group A, Group B...). Each group maintains its own independent standings table.' }}
                 </p>
               </div>
@@ -873,17 +894,24 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                   </div>
                   <div>
                     <p class="text-sm font-bold text-gray-900 dark:text-white">Knockout Stage Progression</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Pre-generate the playoff bracket with group placeholders</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ config.unifiedStandings ? 'Pre-generate playoff bracket from the unified league standings' : 'Pre-generate the playoff bracket with group placeholders' }}
+                    </p>
                   </div>
                 </div>
                 <USwitch v-model="config.generateKnockout" />
               </div>
 
               <div v-if="config.generateKnockout" class="space-y-3.5 pt-3 border-t border-amber-500/15">
-                <UFormField label="Advancing per group" required>
+                <UFormField :label="config.unifiedStandings ? 'Advancing teams per pot (Top ' + totalAdvancingTeams + ' advance)' : 'Advancing per group'" required>
                   <USelect
                     v-model.number="config.advancingPerGroup"
-                    :items="[
+                    :items="config.unifiedStandings ? [
+                      { label: `Top ${config.numberOfGroups * 1} teams advance (1 per pot equiv.)`, value: 1 },
+                      { label: `Top ${config.numberOfGroups * 2} teams advance (2 per pot equiv.)`, value: 2 },
+                      { label: `Top ${config.numberOfGroups * 3} teams advance (3 per pot equiv.)`, value: 3 },
+                      { label: `Top ${config.numberOfGroups * 4} teams advance (4 per pot equiv.)`, value: 4 }
+                    ] : [
                       { label: 'Top 1 (Winner only)', value: 1 },
                       { label: 'Top 2 (Winner & Runner-up)', value: 2 },
                       { label: 'Top 3 (Top 3 teams)', value: 3 },
@@ -895,7 +923,10 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
 
                 <div class="flex items-center justify-between p-2.5 rounded-lg bg-white/70 dark:bg-black/30 border border-amber-500/10 text-xs">
                   <span class="text-gray-500 dark:text-gray-400">Bracket format:</span>
-                  <span class="font-bold text-gray-900 dark:text-white">{{ totalAdvancingTeams }} teams · Starts at {{ startingKnockoutRoundName }}</span>
+                  <span class="font-bold text-gray-900 dark:text-white">
+                    {{ totalAdvancingTeams }} teams · Starts at {{ startingKnockoutRoundName }}
+                    <span v-if="config.unifiedStandings" class="font-normal opacity-75"> (Seeds 1 to {{ totalAdvancingTeams }})</span>
+                  </span>
                 </div>
 
                 <div class="flex items-center justify-between pt-1">
@@ -1000,7 +1031,12 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                   <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-amber-500 shrink-0" />
                   <div>
                     <p class="text-xs font-bold text-gray-900 dark:text-white">Knockout Stage will be generated with placeholders</p>
-                    <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ totalAdvancingTeams }} teams (Top {{ config.advancingPerGroup }} per group) · Starts at {{ startingKnockoutRoundName }}</p>
+                    <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                      {{ config.unifiedStandings
+                        ? `${totalAdvancingTeams} teams (Top ${totalAdvancingTeams} from unified league table) · Starts at ${startingKnockoutRoundName}`
+                        : `${totalAdvancingTeams} teams (Top ${config.advancingPerGroup} per group) · Starts at ${startingKnockoutRoundName}`
+                      }}
+                    </p>
                   </div>
                 </div>
                 <div class="flex items-center gap-1.5">
@@ -1061,7 +1097,9 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                         <span class="text-sm truncate flex-1">{{ getParticipantById(id)?.customName }}</span>
                      </div>
                      <div v-if="teams.length === 0" class="h-full flex items-center justify-center py-6">
-                        <p class="text-xs text-gray-400 italic">No teams in this group</p>
+                        <p class="text-xs text-gray-400 italic">
+                          {{ config.unifiedStandings ? 'No teams in this pot' : 'No teams in this group' }}
+                        </p>
                      </div>
                   </div>
                </div>
@@ -1074,7 +1112,10 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                   <div>
                      <p class="text-sm font-bold text-orange-800 dark:text-orange-300">Warning: {{ unassignedParticipants.length }} Teams Unassigned</p>
                      <p class="text-xs text-orange-700/80 dark:text-orange-400/80 mt-1">
-                        These teams will NOT be included in the fixture generation. If this is intentional, you can proceed. Otherwise, please go back to the Groups tab to assign them.
+                        {{ config.unifiedStandings
+                          ? 'These teams will NOT be included in the fixture generation. If this is intentional, you can proceed. Otherwise, please go back to assign them to pots.'
+                          : 'These teams will NOT be included in the fixture generation. If this is intentional, you can proceed. Otherwise, please go back to the Groups tab to assign them.'
+                        }}
                      </p>
                   </div>
                 </div>
@@ -1103,7 +1144,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                       :items="homeParticipantOptions" 
                       value-key="value"
                       placeholder="Select team..."
-                      class="w-full"
+                      class="w-full" 
                     />
                  </UFormField>
 
@@ -1113,7 +1154,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                       :items="awayParticipantOptions" 
                       value-key="value"
                       placeholder="Select team..."
-                      class="w-full"
+                      class="w-full" 
                     />
                  </UFormField>
 
@@ -1129,7 +1170,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                       searchable
                       creatable
                       placeholder="Select or enter venue"
-                      class="w-full"
+                      class="w-full" 
                     />
                  </UFormField>
                  
@@ -1200,7 +1241,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
           <div v-if="step === 1" class="flex justify-end">
             <UButton color="primary" @click="nextStep" size="lg" class="w-full sm:w-auto">
               <span class="sm:hidden">Next</span>
-              <span class="hidden sm:inline">{{ config.schedulingMethod === 'manual' ? 'Next: Review Groups' : 'Review & Generate' }}</span>
+              <span class="hidden sm:inline">{{ config.schedulingMethod === 'manual' ? (config.unifiedStandings ? 'Next: Review Pots' : 'Next: Review Groups') : 'Review & Generate' }}</span>
               <template #trailing>
                 <UIcon name="i-heroicons-arrow-right" />
               </template>
@@ -1211,7 +1252,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
           <div v-if="step === 2" class="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 sm:flex sm:justify-between">
             <UButton color="neutral" variant="ghost" class="justify-center" @click="step = 1;">
               <span class="sm:hidden">Back</span>
-              <span class="hidden sm:inline">Back to Setup</span>
+              <span class="hidden sm:inline">{{ config.unifiedStandings ? 'Back to Pot Setup' : 'Back to Setup' }}</span>
             </UButton>
             <UButton 
               color="primary" 
@@ -1232,7 +1273,7 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
           <div v-if="step === 3" class="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 sm:flex sm:justify-between">
             <UButton color="neutral" variant="ghost" class="justify-center" @click="step = 2;" :disabled="loading">
               <span class="sm:hidden">Back</span>
-              <span class="hidden sm:inline">Back to Groups</span>
+              <span class="hidden sm:inline">{{ config.unifiedStandings ? 'Back to Pots' : 'Back to Groups' }}</span>
             </UButton>
             <UButton 
               color="success" 

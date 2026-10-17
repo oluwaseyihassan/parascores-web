@@ -12,8 +12,9 @@ const { handleError } = useErrors();
 const { openConfirmModal, openPromptModal } = inject(ModalDialogsKey)!;
 
 const tournamentId = computed(() => route.params.id as string);
+const isUnified = computed(() => tournament.value?.unifiedStandings ?? false);
 
-// Group Management state
+// Group / Pot Management state
 const newGroupName = ref("");
 const addingGroup = ref(false);
 
@@ -26,9 +27,12 @@ const handleAddGroup = async () => {
       tournament_id: tournament.value?.id || tournamentId.value,
     });
     newGroupName.value = "";
-    useToast().add({ title: "Group created successfully", color: "success" });
+    useToast().add({
+      title: isUnified.value ? "Pot created successfully" : "Group created successfully",
+      color: "success"
+    });
   } catch (err: any) {
-    handleError(err, { title: "Failed to create group" });
+    handleError(err, { title: isUnified.value ? "Failed to create pot" : "Failed to create group" });
   } finally {
     addingGroup.value = false;
   }
@@ -36,14 +40,17 @@ const handleAddGroup = async () => {
 
 const handleRenameGroup = (group: any) => {
   openPromptModal({
-    title: "Rename Group",
-    label: "Group Name",
+    title: isUnified.value ? "Rename Pot" : "Rename Group",
+    label: isUnified.value ? "Pot Name" : "Group Name",
     initialValue: group.name,
     confirmLabel: "Rename",
     onConfirm: async (newName) => {
       if (newName && newName !== group.name) {
         await groupStore.updateGroup(group.id, { name: newName });
-        useToast().add({ title: "Group renamed", color: "success" });
+        useToast().add({
+          title: isUnified.value ? "Pot renamed" : "Group renamed",
+          color: "success"
+        });
       }
     },
   });
@@ -51,10 +58,11 @@ const handleRenameGroup = (group: any) => {
 
 const handleDeleteGroup = (groupId: string) => {
   openConfirmModal({
-    title: "Delete Group",
-    description:
-      "Are you sure you want to delete this group? All participants in this group will become unassigned.",
-    confirmLabel: "Delete Group",
+    title: isUnified.value ? "Delete Pot" : "Delete Group",
+    description: isUnified.value
+      ? "Are you sure you want to delete this pot? All participants in this pot will become unassigned."
+      : "Are you sure you want to delete this group? All participants in this group will become unassigned.",
+    confirmLabel: isUnified.value ? "Delete Pot" : "Delete Group",
     color: "error",
     onConfirm: async () => {
       try {
@@ -67,7 +75,10 @@ const handleDeleteGroup = (groupId: string) => {
         standingStore.fetchStandings(
           tournament.value?.id || tournamentId.value,
         );
-        useToast().add({ title: "Group deleted", color: "success" });
+        useToast().add({
+          title: isUnified.value ? "Pot deleted" : "Group deleted",
+          color: "success"
+        });
       } catch (err: any) {
         handleError(err, { title: "Delete failed" });
       }
@@ -94,12 +105,12 @@ const handleAssignToGroup = async (
       const group = groupId
         ? groupStore.groups.find((g) => g.id === groupId)
         : null;
-      const groupName = group?.name || "group";
+      const groupName = group?.name || (isUnified.value ? "pot" : "group");
 
       useToast().add({
         title: groupId
           ? `${participantName} assigned to ${groupName}`
-          : `${participantName} removed from group`,
+          : `${participantName} removed from ${isUnified.value ? 'pot' : 'group'}`,
         color: "success",
       });
     }
@@ -167,10 +178,10 @@ const getGroupParticipants = (groupId: string) => {
         </div>
         <div>
           <h3 class="font-semibold text-gray-900 dark:text-white">
-            Tournament Groups
+            {{ isUnified ? 'Tournament Pots' : 'Tournament Groups' }}
           </h3>
           <p class="text-xs text-gray-500">
-            {{ groupStore.groups.length }} Groups ·
+            {{ groupStore.groups.length }} {{ isUnified ? (groupStore.groups.length === 1 ? 'Pot' : 'Pots') : (groupStore.groups.length === 1 ? 'Group' : 'Groups') }} ·
             {{ participants.length }} Participants
           </p>
         </div>
@@ -179,14 +190,14 @@ const getGroupParticipants = (groupId: string) => {
       <div class="flex w-full md:w-auto gap-2">
         <UInput
           v-model="newGroupName"
-          placeholder="New group name..."
+          :placeholder="isUnified ? 'New pot name (e.g. Pot 1)...' : 'New group name...'"
           class="flex-1 md:w-48"
           @keyup.enter="handleAddGroup"
         />
         <UButton
           color="primary"
           icon="i-heroicons-plus"
-          label="Add Group"
+          :label="isUnified ? 'Add Pot' : 'Add Group'"
           :loading="addingGroup"
           :disabled="!newGroupName.trim()"
           @click="handleAddGroup"
@@ -375,7 +386,9 @@ const getGroupParticipants = (groupId: string) => {
                 name="i-heroicons-user-group"
                 class="w-6 h-6 sm:w-8 sm:h-8 mb-2 opacity-20"
               />
-              <p class="text-xs">No teams assigned yet</p>
+              <p class="text-xs">
+                {{ isUnified ? 'No teams assigned to this pot yet' : 'No teams assigned yet' }}
+              </p>
             </div>
           </div>
         </div>
@@ -398,23 +411,24 @@ const getGroupParticipants = (groupId: string) => {
       <h3
         class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white"
       >
-        No groups created
+        {{ isUnified ? 'No pots created' : 'No groups created' }}
       </h3>
       <p class="text-sm text-gray-500 max-w-xs mx-auto mt-1 mb-6">
-        Create groups manually to organize your tournament
-        participants.
+        {{ isUnified
+          ? 'Create pots manually to organize your tournament seedings.'
+          : 'Create groups manually to organize your tournament participants.' }}
       </p>
       <div class="max-w-xs mx-auto flex gap-2">
         <UInput
           v-model="newGroupName"
-          placeholder="e.g. Group A"
+          :placeholder="isUnified ? 'e.g. Pot 1' : 'e.g. Group A'"
           class="flex-1"
           size="sm"
         />
         <UButton
           color="primary"
           size="sm"
-          label="Create Group"
+          :label="isUnified ? 'Create Pot' : 'Create Group'"
           @click="handleAddGroup"
         />
       </div>

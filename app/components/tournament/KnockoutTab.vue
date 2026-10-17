@@ -80,7 +80,7 @@ const { handleClearKnockoutFixtures } = useFixtureMaintenance();
         <UIcon name="i-heroicons-trophy" class="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
         <p class="text-sm font-semibold text-gray-900 dark:text-white">No bracket yet</p>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-4">
-          {{ tournament?.type === TournamentType.HYBRID ? "The bracket appears after group stage advancement." : "Set up the knockout stage to see the bracket here." }}
+          {{ tournament?.type === TournamentType.HYBRID ? (tournament?.unifiedStandings ? "The bracket appears after league phase advancement." : "The bracket appears after group stage advancement.") : "Set up the knockout stage to see the bracket here." }}
         </p>
         <UButton
           v-if="tournament?.type === TournamentType.KNOCKOUT"
@@ -96,7 +96,7 @@ const { handleClearKnockoutFixtures } = useFixtureMaintenance();
           size="sm"
           color="primary"
           variant="soft"
-          label="Go to Groups"
+          :label="tournament?.unifiedStandings ? 'Go to Pots' : 'Go to Groups'"
           @click="emit('go-to-tab', 'groups')"
         />
       </div>
