@@ -352,21 +352,22 @@ const fixtureDateLabel = (roundFixtures: Fixture[]): string => {
   return fmt(past[0]!);
 };
 
-// Rows: live first, then by match number (stable)
+// Rows: chronological by start time, then match number (stable)
 const sortGroupFixtures = (roundFixtures: Fixture[]) =>
   roundFixtures
     .slice()
-    .sort(
-      (a, b) =>
-        Number(isLiveFixture(b)) - Number(isLiveFixture(a)) ||
-        a.matchNumber - b.matchNumber,
-    );
+    .sort((a, b) => {
+      if (a.startTime && b.startTime) {
+        const timeDiff =
+          new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+        if (timeDiff !== 0) return timeDiff;
+      }
+      return (a.matchNumber || 0) - (b.matchNumber || 0);
+    });
 
-// Groups: live rounds pinned on top, then chronological round order (Matchday 1 first)
+// Groups: always chronological round order (Matchday 1 first, never jump when live)
 const sortFixtureGroups = (groups: FixtureGroup[]) =>
-  groups.sort(
-    (a, b) => Number(b.hasLive) - Number(a.hasLive) || a.round - b.round,
-  );
+  groups.sort((a, b) => a.round - b.round);
 
 const todayFiltered = (roundFixtures: Fixture[]): Fixture[] => {
   if (!showTodayOnly.value) return roundFixtures;
