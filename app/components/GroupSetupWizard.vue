@@ -36,13 +36,28 @@ const config = reactive({
   hasThirdPlace: props.tournament.thirdPlaceMatch ?? false,
   doubleRoundRobin: props.tournament.doubleRoundRobin ?? false,
   unifiedStandings: props.tournament.unifiedStandings ?? false,
+  hasKnockoutPlayoffs: props.tournament.hasKnockoutPlayoffs ?? true,
 })
+
+const playoffBaseSize = computed(() => {
+  const total = props.participants.length
+  if (total < 12) return 4
+  if (total < 24) return 8
+  return 16
+})
+
+const playoffDirectByeCount = computed(() => playoffBaseSize.value / 2)
+const playoffMatchesCount = computed(() => playoffBaseSize.value / 2)
+const playoffAdvancingTotal = computed(() => (playoffBaseSize.value / 2) + playoffBaseSize.value)
 
 const totalAdvancingTeams = computed(() => {
   return config.numberOfGroups * config.advancingPerGroup
 })
 
 const startingKnockoutRoundName = computed(() => {
+  if (config.unifiedStandings && config.hasKnockoutPlayoffs) {
+    return 'Knockout Play-offs'
+  }
   const teams = totalAdvancingTeams.value
   if (teams <= 2) return 'Final'
   if (teams <= 4) return 'Semifinals'
@@ -63,6 +78,34 @@ const computeDefaultKnockoutMatchups = (numGroups: number, adv: number): Knockou
   const pairs: KnockoutMatchup[] = []
 
   if (config.unifiedStandings) {
+    if (config.hasKnockoutPlayoffs) {
+      const B = playoffBaseSize.value
+      if (B === 16) {
+        return [
+          { home: 'Seed 9', away: 'Seed 24' },
+          { home: 'Seed 16', away: 'Seed 17' },
+          { home: 'Seed 13', away: 'Seed 20' },
+          { home: 'Seed 12', away: 'Seed 21' },
+          { home: 'Seed 14', away: 'Seed 19' },
+          { home: 'Seed 11', away: 'Seed 22' },
+          { home: 'Seed 15', away: 'Seed 18' },
+          { home: 'Seed 10', away: 'Seed 23' },
+        ]
+      } else if (B === 8) {
+        return [
+          { home: 'Seed 5', away: 'Seed 12' },
+          { home: 'Seed 8', away: 'Seed 9' },
+          { home: 'Seed 6', away: 'Seed 11' },
+          { home: 'Seed 7', away: 'Seed 10' },
+        ]
+      } else {
+        return [
+          { home: 'Seed 3', away: 'Seed 6' },
+          { home: 'Seed 4', away: 'Seed 5' },
+        ]
+      }
+    }
+
     const totalAdvancing = numGroups * adv
     const matchCount = Math.floor(totalAdvancing / 2)
     for (let i = 0; i < matchCount; i++) {
@@ -215,7 +258,8 @@ const updateMatchupSlot = (matchIndex: number, side: 'home' | 'away', newValue: 
 const getKnockoutMatchLabel = (index: number) => {
   const roundName = startingKnockoutRoundName.value
   let prefix = `Match ${index + 1}`
-  if (roundName === 'Quarterfinals') prefix = `QF ${index + 1}`
+  if (roundName === 'Knockout Play-offs') prefix = `PO ${index + 1}`
+  else if (roundName === 'Quarterfinals') prefix = `QF ${index + 1}`
   else if (roundName === 'Semifinals') prefix = `SF ${index + 1}`
   else if (roundName === 'Round of 16') prefix = `R16 ${index + 1}`
   else if (roundName === 'Round of 32') prefix = `R32 ${index + 1}`
@@ -229,7 +273,7 @@ const qualifierOptions = computed(() => {
   const adv = config.advancingPerGroup
 
   if (config.unifiedStandings) {
-    const total = numGroups * adv
+    const total = config.hasKnockoutPlayoffs ? playoffAdvancingTotal.value : numGroups * adv
     for (let i = 1; i <= total; i++) {
       options.push({ label: `Seed ${i}`, value: `Seed ${i}` })
     }
@@ -336,12 +380,16 @@ onMounted(() => {
     if (config.unifiedStandings === undefined) {
       config.unifiedStandings = props.tournament.unifiedStandings ?? false
     }
+    if (config.hasKnockoutPlayoffs === undefined) {
+      config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
+    }
     if (config.hasThirdPlace === undefined || (props.tournament.thirdPlaceMatch && !config.hasThirdPlace)) {
       config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
     }
   } else {
     config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
     config.unifiedStandings = props.tournament.unifiedStandings ?? false
+    config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
     config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
   }
 })
@@ -351,6 +399,7 @@ watch(() => props.open, (isOpen) => {
     if (!loadProgress()) {
       config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
       config.unifiedStandings = props.tournament.unifiedStandings ?? false
+      config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
       config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
     } else {
       if (config.doubleRoundRobin === undefined) {
@@ -358,6 +407,9 @@ watch(() => props.open, (isOpen) => {
       }
       if (config.unifiedStandings === undefined) {
         config.unifiedStandings = props.tournament.unifiedStandings ?? false
+      }
+      if (config.hasKnockoutPlayoffs === undefined) {
+        config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
       }
       if (props.tournament.thirdPlaceMatch && !config.hasThirdPlace) {
         config.hasThirdPlace = true
@@ -381,6 +433,12 @@ watch(() => props.tournament.doubleRoundRobin, (val) => {
 watch(() => props.tournament.unifiedStandings, (val) => {
   if (val !== undefined) {
     config.unifiedStandings = val
+  }
+})
+
+watch(() => props.tournament.hasKnockoutPlayoffs, (val) => {
+  if (val !== undefined) {
+    config.hasKnockoutPlayoffs = val
   }
 })
 
@@ -499,7 +557,7 @@ watch([() => config.assignmentMethod, () => config.numberOfGroups, () => config.
 })
 
 // Re-initialize knockout matchups if group count, progression or hybrid status changes
-watch([() => config.numberOfGroups, () => config.advancingPerGroup, () => config.generateKnockout, () => config.unifiedStandings], () => {
+watch([() => config.numberOfGroups, () => config.advancingPerGroup, () => config.generateKnockout, () => config.unifiedStandings, () => config.hasKnockoutPlayoffs], () => {
     if (isHybrid.value && config.generateKnockout) {
       initializeKnockoutMatchups(true)
     }
@@ -656,6 +714,7 @@ const handleFinish = async (force = false) => {
         unifiedStandings: config.unifiedStandings,
         format: config.unifiedStandings ? 'CHAMPIONS_LEAGUE' : undefined,
         generateKnockoutStage: isHybrid.value && config.generateKnockout,
+        hasKnockoutPlayoffs: config.unifiedStandings && config.hasKnockoutPlayoffs,
         advancingPerGroup: config.advancingPerGroup,
         hasThirdPlace: config.hasThirdPlace,
         knockoutMatchups: isHybrid.value && config.generateKnockout ? knockoutMatchups.value : undefined
@@ -915,30 +974,67 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
               </div>
 
               <div v-if="config.generateKnockout" class="space-y-3.5 pt-3 border-t border-amber-500/15">
-                <UFormField :label="config.unifiedStandings ? 'Advancing teams per pot (Top ' + totalAdvancingTeams + ' advance)' : 'Advancing per group'" required>
-                  <USelect
-                    v-model.number="config.advancingPerGroup"
-                    :items="config.unifiedStandings ? [
-                      { label: `Top ${config.numberOfGroups * 1} teams advance (1 per pot equiv.)`, value: 1 },
-                      { label: `Top ${config.numberOfGroups * 2} teams advance (2 per pot equiv.)`, value: 2 },
-                      { label: `Top ${config.numberOfGroups * 3} teams advance (3 per pot equiv.)`, value: 3 },
-                      { label: `Top ${config.numberOfGroups * 4} teams advance (4 per pot equiv.)`, value: 4 }
-                    ] : [
-                      { label: 'Top 1 (Winner only)', value: 1 },
-                      { label: 'Top 2 (Winner & Runner-up)', value: 2 },
-                      { label: 'Top 3 (Top 3 teams)', value: 3 },
-                      { label: 'Top 4 (Top 4 teams)', value: 4 }
-                    ]"
-                    class="w-full"
-                  />
-                </UFormField>
+                <!-- Playoff Round Switch for UEFA Champions League format -->
+                <div v-if="config.unifiedStandings" class="flex items-center justify-between p-3 rounded-xl bg-white/80 dark:bg-black/40 border border-amber-500/20">
+                  <div class="flex-1 pr-3">
+                    <div class="flex items-center gap-1.5">
+                      <p class="text-xs font-bold text-gray-900 dark:text-white">Knockout Play-off Round</p>
+                      <UBadge size="xs" color="primary" variant="subtle">UEFA Format</UBadge>
+                    </div>
+                    <p class="text-[11px] text-gray-500 mt-0.5">
+                      {{ config.hasKnockoutPlayoffs
+                        ? 'Top seeds get a bye directly to Round of 16. Middle seeds compete in Knockout Play-offs.'
+                        : 'Straight knockout bracket without play-offs (e.g. Seed 1 vs 16, 2 vs 15).'
+                      }}
+                    </p>
+                  </div>
+                  <USwitch v-model="config.hasKnockoutPlayoffs" />
+                </div>
 
-                <div class="flex items-center justify-between p-2.5 rounded-lg bg-white/70 dark:bg-black/30 border border-amber-500/10 text-xs">
-                  <span class="text-gray-500 dark:text-gray-400">Bracket format:</span>
-                  <span class="font-bold text-gray-900 dark:text-white">
-                    {{ totalAdvancingTeams }} teams · Starts at {{ startingKnockoutRoundName }}
-                    <span v-if="config.unifiedStandings" class="font-normal opacity-75"> (Seeds 1 to {{ totalAdvancingTeams }})</span>
-                  </span>
+                <div v-if="!config.unifiedStandings || !config.hasKnockoutPlayoffs">
+                  <UFormField :label="config.unifiedStandings ? 'Advancing teams per pot (Top ' + totalAdvancingTeams + ' advance)' : 'Advancing per group'" required>
+                    <USelect
+                      v-model.number="config.advancingPerGroup"
+                      :items="config.unifiedStandings ? [
+                        { label: `Top ${config.numberOfGroups * 1} teams advance (1 per pot equiv.)`, value: 1 },
+                        { label: `Top ${config.numberOfGroups * 2} teams advance (2 per pot equiv.)`, value: 2 },
+                        { label: `Top ${config.numberOfGroups * 3} teams advance (3 per pot equiv.)`, value: 3 },
+                        { label: `Top ${config.numberOfGroups * 4} teams advance (4 per pot equiv.)`, value: 4 }
+                      ] : [
+                        { label: 'Top 1 (Winner only)', value: 1 },
+                        { label: 'Top 2 (Winner & Runner-up)', value: 2 },
+                        { label: 'Top 3 (Top 3 teams)', value: 3 },
+                        { label: 'Top 4 (Top 4 teams)', value: 4 }
+                      ]"
+                      class="w-full"
+                    />
+                  </UFormField>
+                </div>
+
+                <div class="p-3 rounded-xl bg-white/70 dark:bg-black/30 border border-amber-500/15 text-xs space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Bracket structure:</span>
+                    <span class="font-bold text-gray-900 dark:text-white">
+                      {{ config.unifiedStandings && config.hasKnockoutPlayoffs
+                        ? `${playoffAdvancingTotal} teams advance · Starts at Knockout Play-offs`
+                        : `${totalAdvancingTeams} teams · Starts at ${startingKnockoutRoundName}`
+                      }}
+                    </span>
+                  </div>
+                  <div v-if="config.unifiedStandings && config.hasKnockoutPlayoffs" class="flex flex-col gap-1 pt-1.5 text-[11px] border-t border-amber-500/10">
+                    <div class="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                      <span>✓ Seeds 1 to {{ playoffDirectByeCount }} (Top {{ playoffDirectByeCount }})</span>
+                      <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10">Direct Bye to {{ playoffBaseSize === 16 ? 'Round of 16' : playoffBaseSize === 8 ? 'Quarterfinals' : 'Semifinals' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-amber-600 dark:text-amber-400 font-medium">
+                      <span>⚡ Seeds {{ playoffDirectByeCount + 1 }} to {{ playoffAdvancingTotal }} ({{ playoffMatchesCount * 2 }} teams)</span>
+                      <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10">{{ playoffMatchesCount }} Play-off Ties</span>
+                    </div>
+                    <div class="flex items-center justify-between text-gray-400">
+                      <span>✕ Seeds {{ playoffAdvancingTotal + 1 }}+</span>
+                      <span class="text-[10px] uppercase font-semibold">Eliminated from League Phase</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="flex items-center justify-between pt-1">
@@ -1045,7 +1141,9 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                     <p class="text-xs font-bold text-gray-900 dark:text-white">Knockout Stage will be generated with placeholders</p>
                     <p class="text-[11px] text-gray-500 dark:text-gray-400">
                       {{ config.unifiedStandings
-                        ? `${totalAdvancingTeams} teams (Top ${totalAdvancingTeams} from unified league table) · Starts at ${startingKnockoutRoundName}`
+                        ? (config.hasKnockoutPlayoffs
+                            ? `${playoffAdvancingTotal} teams advance (Top ${playoffDirectByeCount} direct bye + Seeds ${playoffDirectByeCount + 1}–${playoffAdvancingTotal} in Play-offs)`
+                            : `${totalAdvancingTeams} teams (Top ${totalAdvancingTeams} from unified league table) · Starts at ${startingKnockoutRoundName}`)
                         : `${totalAdvancingTeams} teams (Top ${config.advancingPerGroup} per group) · Starts at ${startingKnockoutRoundName}`
                       }}
                     </p>

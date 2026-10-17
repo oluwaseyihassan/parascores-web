@@ -58,6 +58,7 @@ export interface GenerateFixturesOptions {
   hasThirdPlace?: boolean;
   knockoutMatchups?: { home: string; away: string }[];
   unifiedStandings?: boolean;
+  hasKnockoutPlayoffs?: boolean;
   format?: 'ROUND_ROBIN' | 'CHAMPIONS_LEAGUE' | 'SWISS';
   matchesPerPot?: number;
 }

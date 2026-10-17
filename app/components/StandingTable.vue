@@ -20,6 +20,11 @@ const columns = [
 // Helper to cast row type in template slots
 const getRow = (row: any) => row.original as Standing
 
+const tournamentStore = useTournamentStore()
+const isChampionsLeague = computed(() => {
+  return !!(tournamentStore.currentTournament?.unifiedStandings && tournamentStore.currentTournament?.hasKnockoutPlayoffs)
+})
+
 // Safe data for UTable to prevent "not iterable" errors
 const tableData = computed(() => {
   if (Array.isArray(props.standings)) return props.standings
@@ -41,7 +46,13 @@ const tableData = computed(() => {
         <div 
           class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium mx-auto"
           :class="[
-            (getRow(row).position || row.index + 1) <= 4 ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-gray-500'
+            isChampionsLeague && (getRow(row).position || row.index + 1) <= 8
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 ring-1 ring-emerald-500/30 font-bold'
+              : isChampionsLeague && (getRow(row).position || row.index + 1) <= 24
+              ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 ring-1 ring-sky-500/30'
+              : (getRow(row).position || row.index + 1) <= 4
+              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+              : 'text-gray-500'
           ]"
         >
           {{ getRow(row).position || row.index + 1 }}
@@ -87,5 +98,21 @@ const tableData = computed(() => {
         </span>
       </template>
     </UTable>
+
+    <!-- Champions League Qualification Legend -->
+    <div v-if="isChampionsLeague" class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] pt-3 px-2 border-t border-gray-100 dark:border-white/[0.05] text-gray-500">
+      <div class="flex items-center gap-1.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-1 ring-emerald-500/30"></span>
+        <span class="text-gray-700 dark:text-gray-300 font-medium">1–8: Direct Round of 16 (Bye)</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-sky-500 ring-1 ring-sky-500/30"></span>
+        <span class="text-gray-700 dark:text-gray-300 font-medium">9–24: Knockout Play-offs</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
+        <span class="text-gray-400">25–36: Eliminated</span>
+      </div>
+    </div>
   </div>
 </template>

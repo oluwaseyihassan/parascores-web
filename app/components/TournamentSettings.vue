@@ -311,6 +311,7 @@ const schema = z.object({
   doubleRoundRobin: z.boolean().optional(),
   thirdPlaceMatch: z.boolean().optional(),
   unifiedStandings: z.boolean().optional(),
+  hasKnockoutPlayoffs: z.boolean().optional(),
   setsToWin: z.number().int().min(1).max(5).optional().nullable(),
   gamesPerSet: z.number().int().min(1).max(50).optional().nullable()
 })
@@ -343,6 +344,7 @@ const state = reactive<Partial<Schema>>({
   doubleRoundRobin: props.tournament.doubleRoundRobin ?? false,
   thirdPlaceMatch: props.tournament.thirdPlaceMatch ?? false,
   unifiedStandings: props.tournament.unifiedStandings ?? false,
+  hasKnockoutPlayoffs: props.tournament.hasKnockoutPlayoffs ?? false,
   setsToWin: props.tournament.scoringRules?.setsToWin ?? null,
   gamesPerSet: props.tournament.scoringRules?.gamesPerSet ?? null
 })
@@ -424,6 +426,7 @@ const availablePresets = computed(() => {
 const applyTournamentPreset = (preset: TournamentPreset) => {
   state.type = preset.type
   state.unifiedStandings = preset.unifiedStandings
+  state.hasKnockoutPlayoffs = preset.hasKnockoutPlayoffs ?? false
 }
 
 // Options for selects
@@ -1375,6 +1378,19 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                       </p>
                     </div>
                     <USwitch v-model="state.unifiedStandings" />
+                  </div>
+
+                  <div v-if="[TournamentType.GROUP, TournamentType.HYBRID].includes(state.type as any) && state.unifiedStandings" class="flex items-center justify-between p-3.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.05]">
+                    <div class="flex-1 pr-3">
+                      <div class="flex items-center gap-1.5">
+                        <p class="font-medium text-sm text-gray-900 dark:text-white">Knockout Play-off Round</p>
+                        <UBadge size="xs" color="primary" variant="subtle">UEFA Format</UBadge>
+                      </div>
+                      <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5">
+                        {{ state.hasKnockoutPlayoffs ? 'Seeds 1–8 get a bye directly to Round of 16; middle seeds (9–24) compete in a knockout play-off round.' : 'Straight seeded bracket without play-offs (e.g. 1 vs 16, 2 vs 15).' }}
+                      </p>
+                    </div>
+                    <USwitch v-model="state.hasKnockoutPlayoffs" />
                   </div>
                 </div>
               </template>

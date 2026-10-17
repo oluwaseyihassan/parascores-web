@@ -338,6 +338,7 @@ const schema = z.object({
   doubleRoundRobin: z.boolean().optional(),
   thirdPlaceMatch: z.boolean().optional(),
   unifiedStandings: z.boolean().optional(),
+  hasKnockoutPlayoffs: z.boolean().optional(),
   organization_id: z.string().min(1, 'Organization is required'),
   logoUrl: z.string().optional(),
   bannerUrl: z.string().optional(),
@@ -368,6 +369,7 @@ const state = reactive<Partial<Schema>>({
   doubleRoundRobin: false,
   thirdPlaceMatch: false,
   unifiedStandings: false,
+  hasKnockoutPlayoffs: false,
   organization_id: authStore.currentOrganization?.id || '',
   logoUrl: '',
   bannerUrl: '',
@@ -563,6 +565,7 @@ const availablePresets = computed(() => {
 const selectPreset = (preset: TournamentPreset) => {
   state.type = preset.type
   state.unifiedStandings = preset.unifiedStandings
+  state.hasKnockoutPlayoffs = preset.hasKnockoutPlayoffs ?? false
 }
 
 const availableTournamentTypes = computed(() => {
