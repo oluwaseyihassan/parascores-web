@@ -3,9 +3,11 @@ import {
   TournamentType,
   FixtureStatus,
   FixtureStage,
+  ParticipantType,
 } from "~/types";
 import type { Fixture } from "~/types";
 import { resolveEngine } from "~/engines/registry";
+import { getParticipantName } from "~/utils/participant";
 
 const props = defineProps<{
   playerStats: any;
@@ -369,6 +371,36 @@ const sortGroupFixtures = (roundFixtures: Fixture[]) =>
 const sortFixtureGroups = (groups: FixtureGroup[]) =>
   groups.sort((a, b) => a.round - b.round);
 
+// ── Team filtering ──────────────────────────────────────────
+const selectedTeam = ref<string>("ALL");
+
+const matchesTeamFilter = (f: Fixture): boolean => {
+  if (selectedTeam.value === "ALL") return true;
+  return (
+    f.homeTeamId === selectedTeam.value ||
+    f.awayTeamId === selectedTeam.value ||
+    f.homeTeam?.id === selectedTeam.value ||
+    f.awayTeam?.id === selectedTeam.value
+  );
+};
+
+const teamOptions = computed(() => {
+  if (!participants.value.length) return [];
+
+  const isIndividual =
+    tournament.value?.participantType === ParticipantType.INDIVIDUAL;
+  const allLabel = isIndividual ? "All Participants" : "All Teams";
+
+  const list = participants.value
+    .map((p) => ({
+      value: p.id,
+      label: getParticipantName(p),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  return [{ value: "ALL", label: allLabel }, ...list];
+});
+
 const todayFiltered = (roundFixtures: Fixture[]): Fixture[] => {
   if (!showTodayOnly.value) return roundFixtures;
   const todayStr = new Date().toLocaleDateString("en-CA");
@@ -377,6 +409,14 @@ const todayFiltered = (roundFixtures: Fixture[]): Fixture[] => {
       f.startTime &&
       new Date(f.startTime).toLocaleDateString("en-CA") === todayStr,
   );
+};
+
+const filterFixtures = (roundFixtures: Fixture[]): Fixture[] => {
+  let list = todayFiltered(roundFixtures);
+  if (selectedTeam.value !== "ALL") {
+    list = list.filter(matchesTeamFilter);
+  }
+  return list;
 };
 
 const makeGroup = (
@@ -405,9 +445,13 @@ const fixtureGroups = computed(() => {
 
   const groups: FixtureGroup[] = [];
   for (const round of allRoundNumbers) {
-    const roundFixtures = todayFiltered(fixturesByRound.value[round] || []);
-    // Only hide empty rounds if showing today only
-    if (showTodayOnly.value && roundFixtures.length === 0) continue;
+    const roundFixtures = filterFixtures(fixturesByRound.value[round] || []);
+    // Only hide empty rounds if showing today only OR if filtering by team
+    if (
+      (showTodayOnly.value || selectedTeam.value !== "ALL") &&
+      roundFixtures.length === 0
+    )
+      continue;
     const skeletonInfo = skeleton.find((s) => s.round === round);
     const label =
       skeletonInfo?.label || fixtureStore.getRoundDisplayName(round);
@@ -427,10 +471,14 @@ const groupStageGroups = computed(() => {
 
   const groups: FixtureGroup[] = [];
   for (const round of allRoundNumbers) {
-    const roundFixtures = todayFiltered(
+    const roundFixtures = filterFixtures(
       groupStageFixturesByRound.value[round] || [],
     );
-    if (showTodayOnly.value && roundFixtures.length === 0) continue;
+    if (
+      (showTodayOnly.value || selectedTeam.value !== "ALL") &&
+      roundFixtures.length === 0
+    )
+      continue;
     const skeletonInfo = skeleton.find((s) => s.round === round);
     const label =
       skeletonInfo?.label || fixtureStore.getGroupStageRoundDisplayName(round);
@@ -462,7 +510,7 @@ const buildKnockoutGroups = (
 
   const groups: FixtureGroup[] = [];
   for (const round of allRoundNumbers) {
-    const roundFixtures = todayFiltered(
+    const roundFixtures = filterFixtures(
       (byRound[round] || []).slice().sort((a, b) => a.matchNumber - b.matchNumber),
     );
     if (roundFixtures.length === 0) continue;
@@ -554,11 +602,16 @@ const roundOptions = computed(() => {
     tournament.value?.type === TournamentType.HYBRID &&
     hybridKnockoutGroups.value.length > 0;
 
+  const totalFilteredCount = groups.reduce(
+    (acc, g) => acc + g.fixtures.length,
+    0,
+  );
+
   const allLabel = isKnockoutOnly
-    ? `All Rounds (${fixtures.value.length})`
+    ? `All Rounds (${totalFilteredCount})`
     : isHybridWithKnockout
-      ? `All Matches (${fixtures.value.length})`
-      : `All Matchdays (${fixtures.value.length})`;
+      ? `All Matches (${totalFilteredCount})`
+      : `All Matchdays (${totalFilteredCount})`;
 
   const items: Array<{ value: string; label: string }> = [
     {
@@ -653,7 +706,11 @@ const isKnockoutSectionVisible = computed(() => {
 });
 
 const displayedFixturesCount = computed(() => {
-  if (selectedRound.value === "ALL" || !allAvailableGroups.value.length) {
+  if (
+    selectedRound.value === "ALL" &&
+    selectedTeam.value === "ALL" &&
+    !showTodayOnly.value
+  ) {
     return `${fixtures.value.length}`;
   }
   const groups = [
@@ -664,6 +721,18 @@ const displayedFixturesCount = computed(() => {
   ];
   const count = groups.reduce((acc, g) => acc + g.fixtures.length, 0);
   return `${count} of ${fixtures.value.length}`;
+});
+
+const hasFilteredFixtures = computed(() => {
+  return allAvailableGroups.value.some((g) => g.fixtures.length > 0);
+});
+
+watch(selectedTeam, () => {
+  if (selectedRound.value !== "ALL") {
+    if (!allAvailableGroups.value.some((g) => g.value === selectedRound.value)) {
+      selectedRound.value = "ALL";
+    }
+  }
 });
 
 // Card header ⋯ menu: secondary fixture actions (primary = "+ Add fixture")
@@ -978,6 +1047,20 @@ const showAddEventModal = ref(false);
             </UBadge>
           </div>
           <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
+            <!-- Team Filter -->
+            <div
+              v-if="!showTodayOnly && teamOptions.length > 2"
+              class="flex items-center"
+            >
+              <USelect
+                v-model="selectedTeam"
+                :items="teamOptions"
+                value-key="value"
+                size="xs"
+                class="w-32 sm:w-40"
+              />
+            </div>
+
             <!-- Round Selector & Navigation -->
             <div
               v-if="!showTodayOnly && roundOptions.length > 2"
@@ -997,7 +1080,7 @@ const showAddEventModal = ref(false);
                 :items="roundOptions"
                 value-key="value"
                 size="xs"
-                class="w-40 sm:w-48"
+                class="w-36 sm:w-44"
                 @update:model-value="userSelectedRound = true"
               />
               <UButton
@@ -1156,6 +1239,38 @@ const showAddEventModal = ref(false);
         </UButton>
       </div>
 
+      <!-- Filtered Empty State -->
+      <div
+        v-else-if="fixtures.length && !hasFilteredFixtures"
+        class="py-6 sm:py-8 text-center text-gray-400 text-sm"
+      >
+        <UIcon
+          name="i-heroicons-funnel"
+          class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 opacity-50"
+        />
+        <p>No fixtures match the selected filter</p>
+        <div class="flex items-center justify-center gap-2 mt-3">
+          <UButton
+            v-if="selectedTeam !== 'ALL'"
+            size="xs"
+            variant="soft"
+            color="neutral"
+            @click="selectedTeam = 'ALL'"
+          >
+            Clear Team Filter
+          </UButton>
+          <UButton
+            v-if="selectedRound !== 'ALL'"
+            size="xs"
+            variant="soft"
+            color="neutral"
+            @click="selectedRound = 'ALL'"
+          >
+            All Rounds
+          </UButton>
+        </div>
+      </div>
+
       <!-- Fixtures Display -->
       <template v-else>
         <!-- Knockout Fixture List + Bracket for knockout tournaments -->
@@ -1173,7 +1288,7 @@ const showAddEventModal = ref(false);
 
           <!-- Read-only bracket (below list) -->
           <KnockoutBracket
-            v-if="!showTodayOnly"
+            v-if="!showTodayOnly && selectedTeam === 'ALL'"
             :fixtures-by-round="fixturesByRound"
             :rounds="rounds"
             :get-round-display-name="fixtureStore.getRoundDisplayName"
