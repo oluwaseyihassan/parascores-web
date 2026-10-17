@@ -87,7 +87,99 @@ const loadPlayerStats = async () => {
   }
 };
 
-// Fetch tournament, participants, and fixtures on mount
+// Fetch tournament, participants, and fixtures
+const loadTournamentOverview = async (silent = false) => {
+  if (!tournamentId.value) return;
+  if (!silent) {
+    loading.value = true;
+    error.value = null;
+  }
+  try {
+    const response = await $api<{
+      success: boolean;
+      data: {
+        tournament: Tournament;
+        participants: Participant[];
+        fixtures: Fixture[];
+        standings: any[];
+        sponsors: Sponsor[];
+        socials: Social[];
+        venues: Venue[];
+      };
+    }>(`/tournaments/${tournamentId.value}/overview`, { method: "GET" });
+
+    if (response.data) {
+      // Access control: the overview endpoint is public (it also powers the
+      // marketing site), so the dashboard must verify the tournament belongs
+      // to an organization the user is a member of.
+      const tournamentOrgId = response.data.tournament.organization_id;
+      const isOrgMember = authStore.organizations.some(
+        (org) => org.organizationId === tournamentOrgId,
+      );
+      if (!isOrgMember) {
+        if (!silent) {
+          error.value =
+            "You don't have access to this tournament. It belongs to another organization.";
+          toast.add({
+            title: "Access denied",
+            description: "This tournament belongs to another organization.",
+            color: "error",
+          });
+          await navigateTo("/");
+        }
+        return;
+      }
+
+      tournamentStore.setCurrentTournament(response.data.tournament);
+
+      // Sync the org switcher to the tournament's organization
+      if (
+        tournamentOrgId &&
+        tournamentOrgId !== authStore.currentOrganization?.id
+      ) {
+        authStore.syncActiveOrganization(tournamentOrgId);
+        paymentStore.fetchSubscription(tournamentOrgId).catch(() => {});
+      }
+
+      participants.value = response.data.participants;
+      fixtures.value = response.data.fixtures;
+      standings.value = response.data.standings;
+      sponsors.value = response.data.sponsors;
+      socials.value = response.data.socials;
+      venues.value = response.data.venues;
+
+      // Initialize groups
+      if (response.data.tournament.groups) {
+        groupStore.groups = response.data.tournament.groups;
+      } else if (tournamentId.value) {
+        groupStore.fetchGroups(tournamentId.value);
+      }
+
+      // Load stats if applicable
+      if (response.data.tournament.participantType === ParticipantType.TEAM) {
+        loadPlayerStats();
+      }
+    }
+  } catch (e: any) {
+    if (!silent) {
+      error.value = handleError(e, {
+        title: "Failed to load dashboard",
+        toast: false,
+      });
+    }
+  } finally {
+    if (!silent) {
+      loading.value = false;
+    }
+  }
+};
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === "visible" && tournamentId.value) {
+    loadTournamentOverview(true);
+  }
+};
+
 onMounted(async () => {
   teamStore.loadMyTeams();
 
@@ -98,82 +190,13 @@ onMounted(async () => {
       .catch(() => {});
   }
 
-  if (tournamentId.value) {
-    loading.value = true;
-    error.value = null;
-    try {
-      const response = await $api<{
-        success: boolean;
-        data: {
-          tournament: Tournament;
-          participants: Participant[];
-          fixtures: Fixture[];
-          standings: any[];
-          sponsors: Sponsor[];
-          socials: Social[];
-          venues: Venue[];
-        };
-      }>(`/tournaments/${tournamentId.value}/overview`, { method: "GET" });
+  await loadTournamentOverview(false);
 
-      if (response.data) {
-        // Access control: the overview endpoint is public (it also powers the
-        // marketing site), so the dashboard must verify the tournament belongs
-        // to an organization the user is a member of.
-        const tournamentOrgId = response.data.tournament.organization_id;
-        const isOrgMember = authStore.organizations.some(
-          (org) => org.organizationId === tournamentOrgId,
-        );
-        if (!isOrgMember) {
-          error.value =
-            "You don't have access to this tournament. It belongs to another organization.";
-          toast.add({
-            title: "Access denied",
-            description: "This tournament belongs to another organization.",
-            color: "error",
-          });
-          await navigateTo("/");
-          return;
-        }
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+});
 
-        tournamentStore.setCurrentTournament(response.data.tournament);
-
-        // Sync the org switcher to the tournament's organization
-        if (
-          tournamentOrgId &&
-          tournamentOrgId !== authStore.currentOrganization?.id
-        ) {
-          authStore.syncActiveOrganization(tournamentOrgId);
-          paymentStore.fetchSubscription(tournamentOrgId).catch(() => {});
-        }
-
-        participants.value = response.data.participants;
-        fixtures.value = response.data.fixtures;
-        standings.value = response.data.standings;
-        sponsors.value = response.data.sponsors;
-        socials.value = response.data.socials;
-        venues.value = response.data.venues;
-
-        // Initialize groups
-        if (response.data.tournament.groups) {
-          groupStore.groups = response.data.tournament.groups;
-        } else if (tournamentId.value) {
-          groupStore.fetchGroups(tournamentId.value);
-        }
-
-        // Load stats if applicable
-        if (response.data.tournament.participantType === ParticipantType.TEAM) {
-          loadPlayerStats();
-        }
-      }
-    } catch (e: any) {
-      error.value = handleError(e, {
-        title: "Failed to load dashboard",
-        toast: false,
-      });
-    } finally {
-      loading.value = false;
-    }
-  }
+onUnmounted(() => {
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
 });
 
 // Check if standings should be shown
@@ -317,14 +340,52 @@ const openMatchControl = (fixture: Fixture) => {
   showMatchControlModal.value = !engine.control;
 };
 
-const startMatch = (fixture: Fixture) => {
+const startMatch = async (fixture: Fixture) => {
+  // Fresh-fetch fixture before opening modal to catch stale tab states
+  let currentFixture = fixture;
+  try {
+    const latest = await fixtureStore.fetchFixtureById(fixture.id);
+    if (latest) {
+      currentFixture = latest;
+      if (latest.status === FixtureStatus.COMPLETED) {
+        toast.add({
+          title: "Match Already Completed",
+          description: "This match has already ended on another device.",
+          icon: "i-heroicons-information-circle",
+          color: "warning",
+        });
+        return;
+      }
+      if (latest.status === FixtureStatus.LIVE) {
+        toast.add({
+          title: "Match Already Live",
+          description: "This match is already in progress.",
+          icon: "i-heroicons-information-circle",
+          color: "info",
+        });
+        return;
+      }
+      if (latest.status === FixtureStatus.CANCELLED) {
+        toast.add({
+          title: "Match Cancelled",
+          description: "This match has been cancelled.",
+          icon: "i-heroicons-exclamation-triangle",
+          color: "error",
+        });
+        return;
+      }
+    }
+  } catch {
+    // Proceed if network error
+  }
+
   const home = getParticipantName(
-    fixture.homeTeam,
-    fixture.homeTeamPlaceholder || "Home",
+    currentFixture.homeTeam,
+    currentFixture.homeTeamPlaceholder || "Home",
   );
   const away = getParticipantName(
-    fixture.awayTeam,
-    fixture.awayTeamPlaceholder || "Away",
+    currentFixture.awayTeam,
+    currentFixture.awayTeamPlaceholder || "Away",
   );
 
   modalDialogs.openConfirmModal({
@@ -336,24 +397,35 @@ const startMatch = (fixture: Fixture) => {
     onConfirm: async () => {
       updatingMatch.value = true;
       try {
+        const fresh = await fixtureStore.fetchFixtureById(currentFixture.id);
+        if (fresh && fresh.status === FixtureStatus.COMPLETED) {
+          toast.add({
+            title: "Match Already Completed",
+            description: "This match has already ended on another device.",
+            icon: "i-heroicons-information-circle",
+            color: "warning",
+          });
+          return;
+        }
+
         const now = new Date().toISOString();
-        await fixtureStore.updateFixture(fixture.id, {
+        await fixtureStore.updateFixture(currentFixture.id, {
           status: FixtureStatus.LIVE,
-          homeScore: fixture.homeScore ?? 0,
-          awayScore: fixture.awayScore ?? 0,
+          homeScore: (fresh?.homeScore ?? currentFixture.homeScore) ?? 0,
+          awayScore: (fresh?.awayScore ?? currentFixture.awayScore) ?? 0,
           timerStartedAt: now,
           timerElapsedSeconds: 0,
           timerIsRunning: true,
         });
 
-        useToast().add({
+        toast.add({
           title: "Match Started",
           description: "The match is now live!",
           icon: "i-heroicons-play",
           color: "success",
         });
       } catch (error: any) {
-        useToast().add({
+        toast.add({
           title: "Failed to start match",
           description: error?.data?.message || error?.message || "Unknown error",
           color: "error",

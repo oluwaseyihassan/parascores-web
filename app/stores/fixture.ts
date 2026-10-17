@@ -27,6 +27,7 @@ export interface UpdateFixtureData {
   manOfTheMatchPlayerId?: string | null;
   livestreamUrl?: string | null;
   livestreamPlatform?: LivestreamPlatform | string | null;
+  allowReopen?: boolean;
 }
 
 export interface CreateFixtureData {
@@ -367,6 +368,24 @@ export const useFixtureStore = defineStore("fixture", () => {
       throw err;
     } finally {
       loading.value = false;
+    }
+  }
+
+  // Fetch a single fixture by ID (e.g., fresh-fetch before starting/editing to prevent stale state races)
+  async function fetchFixtureById(id: string) {
+    try {
+      const response = await $api<ApiResponse<Fixture>>(`/fixtures/${id}`);
+      if (response.data) {
+        const index = fixtures.value.findIndex((f) => f.id === id);
+        if (index !== -1) {
+          fixtures.value[index] = response.data;
+        }
+      }
+      return response.data;
+    } catch (err: any) {
+      error.value = extractErrorMessage(err);
+      console.error("Fetch fixture failed:", error.value);
+      throw err;
     }
   }
 
@@ -722,6 +741,7 @@ export const useFixtureStore = defineStore("fixture", () => {
     getGroupStageRoundDisplayName,
     // Actions
     fetchFixtures,
+    fetchFixtureById,
     fetchLiveFixtures,
     generateFixtures,
     updateFixture,

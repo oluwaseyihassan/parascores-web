@@ -143,11 +143,55 @@ export function useMatchTimerControls(options: {
 
     updatingMatch.value = true;
     try {
+      // Fresh-fetch fixture to prevent stale tab overwrites
+      let latestFixture: Fixture | null = null;
+      try {
+        const res = await fixtureStore.fetchFixtureById(fixture.value.id);
+        if (res) {
+          latestFixture = res;
+          if (latestFixture.status === FixtureStatus.COMPLETED) {
+            fixture.value = latestFixture;
+            onFixtureUpdated(latestFixture);
+            useToast().add({
+              title: "Match Already Completed",
+              description: "This match has already ended on another device.",
+              icon: "i-heroicons-information-circle",
+              color: "warning",
+            });
+            return;
+          }
+          if (latestFixture.status === FixtureStatus.LIVE) {
+            fixture.value = latestFixture;
+            onFixtureUpdated(latestFixture);
+            useToast().add({
+              title: "Match Already Live",
+              description: "This match is already in progress.",
+              icon: "i-heroicons-information-circle",
+              color: "info",
+            });
+            return;
+          }
+          if (latestFixture.status === FixtureStatus.CANCELLED) {
+            fixture.value = latestFixture;
+            onFixtureUpdated(latestFixture);
+            useToast().add({
+              title: "Match Cancelled",
+              description: "This match has been cancelled.",
+              icon: "i-heroicons-exclamation-triangle",
+              color: "error",
+            });
+            return;
+          }
+        }
+      } catch {
+        // Fallback to proceed if fetch failed
+      }
+
       const now = new Date().toISOString();
       const updatePayload = {
         status: FixtureStatus.LIVE,
-        homeScore: fixture.value.homeScore ?? 0,
-        awayScore: fixture.value.awayScore ?? 0,
+        homeScore: (latestFixture?.homeScore ?? fixture.value.homeScore) ?? 0,
+        awayScore: (latestFixture?.awayScore ?? fixture.value.awayScore) ?? 0,
         timerStartedAt: now,
         timerElapsedSeconds: 0,
         timerIsRunning: true,
@@ -524,6 +568,7 @@ export function useMatchTimerControls(options: {
         status: FixtureStatus.LIVE,
         timerStartedAt: now,
         timerIsRunning: true,
+        allowReopen: true,
       };
       await fixtureStore.updateFixture(fixture.value.id, updatePayload);
 
