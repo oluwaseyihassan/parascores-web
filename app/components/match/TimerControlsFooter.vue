@@ -67,7 +67,16 @@ const showUndoStart = (status: string) =>
           v-if="!isLeg2 || leg1Completed"
           class="mc-primary-btn mc-primary-btn--start"
           :disabled="updatingMatch"
-          @click="startMatch"
+          @click="
+            openConfirmModal({
+              title: 'Start Match',
+              message:
+                'Are you sure you want to start this match? The status will change to LIVE and the match clock will begin.',
+              confirmLabel: 'Start Match',
+              confirmColor: 'success',
+              onConfirm: startMatch,
+            })
+          "
         >
           <UIcon name="i-heroicons-play" class="w-4 h-4" />
           <span>{{ updatingMatch ? "Starting…" : "Start Match" }}</span>
