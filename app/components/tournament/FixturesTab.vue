@@ -1187,21 +1187,10 @@ const showAddEventModal = ref(false);
         <template
           v-else-if="tournament?.type === TournamentType.HYBRID"
         >
-          <!-- Group Stage Fixtures (flat list) -->
-          <TournamentFixtureGroups
-            v-if="isGroupStageSectionVisible"
-            :groups="displayedGroupStageGroups"
-            :updating-match="updatingMatch"
-            @add-fixture="(p) => openAddFixtureModal(p.round, p.roundName)"
-            @start="(f) => emit('start', f)"
-            @control="(f) => emit('control', f)"
-            @delete="handleDeleteFixture"
-          />
-
           <!-- Advance to Knockout CTA -->
           <div
             v-if="canAdvance"
-            class="mt-4 flex items-center justify-between gap-4 p-4 rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50/50 dark:bg-primary-950/20"
+            class="mb-4 flex items-center justify-between gap-4 p-4 rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50/50 dark:bg-primary-950/20"
           >
             <div class="flex items-center gap-3">
               <div
@@ -1231,6 +1220,17 @@ const showAddEventModal = ref(false);
               @click="showAdvanceModal = true"
             />
           </div>
+
+          <!-- Group Stage Fixtures (flat list) -->
+          <TournamentFixtureGroups
+            v-if="isGroupStageSectionVisible"
+            :groups="displayedGroupStageGroups"
+            :updating-match="updatingMatch"
+            @add-fixture="(p) => openAddFixtureModal(p.round, p.roundName)"
+            @start="(f) => emit('start', f)"
+            @control="(f) => emit('control', f)"
+            @delete="handleDeleteFixture"
+          />
 
           <!-- Knockout Stage (shown after advancement) -->
           <div
