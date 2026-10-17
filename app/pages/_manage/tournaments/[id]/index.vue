@@ -19,6 +19,7 @@ import {
   useModalDialogs,
   ModalDialogsKey,
 } from "~/composables/useModalDialogs";
+import { getParticipantName } from "~/utils/participant";
 
 definePageMeta({
   middleware: ["require-organizer"],
@@ -53,7 +54,8 @@ const { socials } = storeToRefs(socialStore);
 const { venues } = storeToRefs(venueStore);
 
 // Shared confirm/prompt dialogs, available to every tab/card/modal below
-provide(ModalDialogsKey, useModalDialogs());
+const modalDialogs = useModalDialogs();
+provide(ModalDialogsKey, modalDialogs);
 
 const tournamentId = computed(() => route.params.id as string);
 
@@ -315,34 +317,52 @@ const openMatchControl = (fixture: Fixture) => {
   showMatchControlModal.value = !engine.control;
 };
 
-const startMatch = async (fixture: Fixture) => {
-  updatingMatch.value = true;
-  try {
-    const now = new Date().toISOString();
-    await fixtureStore.updateFixture(fixture.id, {
-      status: FixtureStatus.LIVE,
-      homeScore: fixture.homeScore ?? 0,
-      awayScore: fixture.awayScore ?? 0,
-      timerStartedAt: now,
-      timerElapsedSeconds: 0,
-      timerIsRunning: true,
-    });
+const startMatch = (fixture: Fixture) => {
+  const home = getParticipantName(
+    fixture.homeTeam,
+    fixture.homeTeamPlaceholder || "Home",
+  );
+  const away = getParticipantName(
+    fixture.awayTeam,
+    fixture.awayTeamPlaceholder || "Away",
+  );
 
-    useToast().add({
-      title: "Match Started",
-      description: "The match is now live!",
-      icon: "i-heroicons-play",
-      color: "success",
-    });
-  } catch (error: any) {
-    useToast().add({
-      title: "Failed to start match",
-      description: error?.data?.message || error?.message || "Unknown error",
-      color: "error",
-    });
-  } finally {
-    updatingMatch.value = false;
-  }
+  modalDialogs.openConfirmModal({
+    title: "Start Match",
+    description: `Are you sure you want to start ${home} vs ${away}? This will change the match status to LIVE and begin the match clock.`,
+    confirmLabel: "Start Match",
+    cancelLabel: "Cancel",
+    color: "primary",
+    onConfirm: async () => {
+      updatingMatch.value = true;
+      try {
+        const now = new Date().toISOString();
+        await fixtureStore.updateFixture(fixture.id, {
+          status: FixtureStatus.LIVE,
+          homeScore: fixture.homeScore ?? 0,
+          awayScore: fixture.awayScore ?? 0,
+          timerStartedAt: now,
+          timerElapsedSeconds: 0,
+          timerIsRunning: true,
+        });
+
+        useToast().add({
+          title: "Match Started",
+          description: "The match is now live!",
+          icon: "i-heroicons-play",
+          color: "success",
+        });
+      } catch (error: any) {
+        useToast().add({
+          title: "Failed to start match",
+          description: error?.data?.message || error?.message || "Unknown error",
+          color: "error",
+        });
+      } finally {
+        updatingMatch.value = false;
+      }
+    },
+  });
 };
 
 const handleFixtureUpdated = (fixture: Fixture) => {
