@@ -628,6 +628,44 @@ export const useFixtureStore = defineStore("fixture", () => {
     }
   }
 
+  // Create fixtures in bulk (e.g. from manual schedule wizard)
+  async function createBulkFixtures(
+    tournamentId: string,
+    items: Array<{
+      homeTeamId?: string | null;
+      awayTeamId?: string | null;
+      round: number;
+      roundName?: string | null;
+      matchNumber?: number;
+      startTime?: string | null;
+      venue?: string | null;
+      groupId?: string | null;
+      stage?: string | null;
+    }>,
+  ) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const response = await $api<ApiResponse<Fixture[]>>(
+        `/fixtures/tournaments/${tournamentId}/bulk`,
+        {
+          method: "POST",
+          body: { fixtures: items },
+        },
+      );
+      if (response.data && Array.isArray(response.data)) {
+        fixtures.value.push(...response.data);
+      }
+      return response;
+    } catch (err: any) {
+      error.value = extractErrorMessage(err);
+      console.error("Create bulk fixtures failed:", error.value);
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   // Delete a specific fixture
   async function deleteFixture(fixtureId: string) {
     loading.value = true;
@@ -698,5 +736,6 @@ export const useFixtureStore = defineStore("fixture", () => {
     deleteFixture,
     advanceToKnockout,
     createFixture,
+    createBulkFixtures,
   };
 });
