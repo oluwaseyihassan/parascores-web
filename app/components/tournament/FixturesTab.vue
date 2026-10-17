@@ -501,6 +501,171 @@ const hybridKnockoutGroups = computed(() =>
   buildKnockoutGroups("hko", knockoutFixturesByRound.value, knockoutRounds.value),
 );
 
+// ── Round filtering & navigation ────────────────────────────
+const allAvailableGroups = computed<FixtureGroup[]>(() => {
+  if (tournament.value?.type === TournamentType.KNOCKOUT) {
+    return knockoutGroups.value;
+  }
+  if (tournament.value?.type === TournamentType.HYBRID) {
+    return [...groupStageGroups.value, ...hybridKnockoutGroups.value];
+  }
+  return fixtureGroups.value;
+});
+
+const selectedRound = ref<string>("ALL");
+const userSelectedRound = ref(false);
+
+const findActiveRoundValue = (groups: FixtureGroup[]): string => {
+  if (!groups.length) return "ALL";
+  const liveGroup = groups.find((g) => g.hasLive);
+  if (liveGroup) return liveGroup.value;
+  const uncompletedGroup = groups.find((g) =>
+    g.fixtures.some((f) => f.status !== FixtureStatus.COMPLETED),
+  );
+  if (uncompletedGroup) return uncompletedGroup.value;
+  return groups[0]!.value;
+};
+
+watch(
+  allAvailableGroups,
+  (groups) => {
+    if (!groups.length) {
+      selectedRound.value = "ALL";
+      return;
+    }
+    if (!userSelectedRound.value) {
+      selectedRound.value = findActiveRoundValue(groups);
+    } else if (
+      selectedRound.value !== "ALL" &&
+      !groups.some((g) => g.value === selectedRound.value)
+    ) {
+      selectedRound.value = findActiveRoundValue(groups);
+    }
+  },
+  { immediate: true },
+);
+
+const roundOptions = computed(() => {
+  const groups = allAvailableGroups.value;
+  if (!groups.length) return [];
+
+  const isKnockoutOnly = tournament.value?.type === TournamentType.KNOCKOUT;
+  const isHybridWithKnockout =
+    tournament.value?.type === TournamentType.HYBRID &&
+    hybridKnockoutGroups.value.length > 0;
+
+  const allLabel = isKnockoutOnly
+    ? `All Rounds (${fixtures.value.length})`
+    : isHybridWithKnockout
+      ? `All Matches (${fixtures.value.length})`
+      : `All Matchdays (${fixtures.value.length})`;
+
+  const items: Array<{ value: string; label: string }> = [
+    {
+      value: "ALL",
+      label: allLabel,
+    },
+  ];
+
+  for (const group of groups) {
+    const isKnockoutGroup =
+      tournament.value?.type === TournamentType.HYBRID &&
+      hybridKnockoutGroups.value.some((kg) => kg.value === group.value);
+    const labelPrefix = isKnockoutGroup ? "Knockout: " : "";
+    items.push({
+      value: group.value,
+      label: `${labelPrefix}${group.label} (${group.fixtures.length})`,
+    });
+  }
+
+  return items;
+});
+
+const currentGroupIndex = computed(() => {
+  if (selectedRound.value === "ALL") return -1;
+  return allAvailableGroups.value.findIndex(
+    (g) => g.value === selectedRound.value,
+  );
+});
+
+const isPrevRoundDisabled = computed(() => {
+  if (selectedRound.value === "ALL") return true;
+  return currentGroupIndex.value <= 0;
+});
+
+const isNextRoundDisabled = computed(() => {
+  if (selectedRound.value === "ALL") return true;
+  return (
+    currentGroupIndex.value === -1 ||
+    currentGroupIndex.value >= allAvailableGroups.value.length - 1
+  );
+});
+
+const goToPrevRound = () => {
+  if (isPrevRoundDisabled.value) return;
+  const prevIdx = currentGroupIndex.value - 1;
+  if (prevIdx >= 0) {
+    selectedRound.value = allAvailableGroups.value[prevIdx]!.value;
+    userSelectedRound.value = true;
+  }
+};
+
+const goToNextRound = () => {
+  if (isNextRoundDisabled.value) return;
+  const nextIdx = currentGroupIndex.value + 1;
+  if (nextIdx < allAvailableGroups.value.length) {
+    selectedRound.value = allAvailableGroups.value[nextIdx]!.value;
+    userSelectedRound.value = true;
+  }
+};
+
+// Filtered groups for display
+const displayedFixtureGroups = computed(() => {
+  if (selectedRound.value === "ALL") return fixtureGroups.value;
+  return fixtureGroups.value.filter((g) => g.value === selectedRound.value);
+});
+
+const displayedGroupStageGroups = computed(() => {
+  if (selectedRound.value === "ALL") return groupStageGroups.value;
+  return groupStageGroups.value.filter((g) => g.value === selectedRound.value);
+});
+
+const displayedHybridKnockoutGroups = computed(() => {
+  if (selectedRound.value === "ALL") return hybridKnockoutGroups.value;
+  return hybridKnockoutGroups.value.filter(
+    (g) => g.value === selectedRound.value,
+  );
+});
+
+const displayedKnockoutGroups = computed(() => {
+  if (selectedRound.value === "ALL") return knockoutGroups.value;
+  return knockoutGroups.value.filter((g) => g.value === selectedRound.value);
+});
+
+const isGroupStageSectionVisible = computed(() => {
+  if (selectedRound.value === "ALL") return true;
+  return displayedGroupStageGroups.value.length > 0;
+});
+
+const isKnockoutSectionVisible = computed(() => {
+  if (selectedRound.value === "ALL") return true;
+  return displayedHybridKnockoutGroups.value.length > 0;
+});
+
+const displayedFixturesCount = computed(() => {
+  if (selectedRound.value === "ALL" || !allAvailableGroups.value.length) {
+    return `${fixtures.value.length}`;
+  }
+  const groups = [
+    ...displayedFixtureGroups.value,
+    ...displayedGroupStageGroups.value,
+    ...displayedKnockoutGroups.value,
+    ...displayedHybridKnockoutGroups.value,
+  ];
+  const count = groups.reduce((acc, g) => acc + g.fixtures.length, 0);
+  return `${count} of ${fixtures.value.length}`;
+});
+
 // Card header ⋯ menu: secondary fixture actions (primary = "+ Add fixture")
 const fixtureMenuItems = computed(() => {
   const setup: any[] = [];
@@ -690,6 +855,19 @@ const openAddFixtureModal = (round?: number, roundName?: string) => {
   fixtureAddModal.value?.openModal(round, roundName);
 };
 
+const handleAddFixtureClick = () => {
+  if (selectedRound.value !== "ALL") {
+    const currentGroup = allAvailableGroups.value.find(
+      (g) => g.value === selectedRound.value,
+    );
+    if (currentGroup) {
+      openAddFixtureModal(currentGroup.round, currentGroup.roundName);
+      return;
+    }
+  }
+  openAddFixtureModal();
+};
+
 // Race event creation modal
 const showAddEventModal = ref(false);
 </script>
@@ -796,31 +974,66 @@ const showAddEventModal = ref(false);
             />
             <span class="font-medium">Fixtures</span>
             <UBadge v-if="fixtures.length" size="sm" variant="subtle">
-              {{ fixtures.length }}
+              {{ displayedFixturesCount }}
             </UBadge>
           </div>
-          <div class="flex items-center gap-1.5">
-            <UDropdownMenu
-              :items="fixtureMenuItems"
-              :content="{ align: 'end' }"
+          <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
+            <!-- Round Selector & Navigation -->
+            <div
+              v-if="!showTodayOnly && roundOptions.length > 2"
+              class="flex items-center gap-1"
             >
               <UButton
                 size="xs"
                 variant="ghost"
                 color="neutral"
-                icon="i-heroicons-ellipsis-horizontal"
-                :loading="generating"
-                aria-label="Fixture actions"
+                icon="i-heroicons-chevron-left"
+                :disabled="isPrevRoundDisabled"
+                aria-label="Previous round"
+                @click="goToPrevRound"
               />
-            </UDropdownMenu>
-            <UButton
-              size="xs"
-              color="primary"
-              icon="i-heroicons-plus"
-              @click="openAddFixtureModal()"
-              :disabled="participants.length < 2"
-              label="Add fixture"
-            />
+              <USelect
+                v-model="selectedRound"
+                :items="roundOptions"
+                value-key="value"
+                size="xs"
+                class="w-40 sm:w-48"
+                @update:model-value="userSelectedRound = true"
+              />
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                icon="i-heroicons-chevron-right"
+                :disabled="isNextRoundDisabled"
+                aria-label="Next round"
+                @click="goToNextRound"
+              />
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <UDropdownMenu
+                :items="fixtureMenuItems"
+                :content="{ align: 'end' }"
+              >
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-heroicons-ellipsis-horizontal"
+                  :loading="generating"
+                  aria-label="Fixture actions"
+                />
+              </UDropdownMenu>
+              <UButton
+                size="xs"
+                color="primary"
+                icon="i-heroicons-plus"
+                @click="handleAddFixtureClick"
+                :disabled="participants.length < 2"
+                label="Add fixture"
+              />
+            </div>
           </div>
         </div>
       </template>
@@ -949,7 +1162,7 @@ const showAddEventModal = ref(false);
         <template v-if="tournament?.type === TournamentType.KNOCKOUT">
           <!-- Flat fixture list, grouped by stage/leg -->
           <TournamentFixtureGroups
-            :groups="knockoutGroups"
+            :groups="displayedKnockoutGroups"
             :updating-match="updatingMatch"
             class="mb-6"
             @add-fixture="(p) => openAddFixtureModal(p.round, p.roundName)"
@@ -976,7 +1189,8 @@ const showAddEventModal = ref(false);
         >
           <!-- Group Stage Fixtures (flat list) -->
           <TournamentFixtureGroups
-            :groups="groupStageGroups"
+            v-if="isGroupStageSectionVisible"
+            :groups="displayedGroupStageGroups"
             :updating-match="updatingMatch"
             @add-fixture="(p) => openAddFixtureModal(p.round, p.roundName)"
             @start="(f) => emit('start', f)"
@@ -1020,7 +1234,7 @@ const showAddEventModal = ref(false);
 
           <!-- Knockout Stage (shown after advancement) -->
           <div
-            v-if="knockoutRounds.length > 0"
+            v-if="knockoutRounds.length > 0 && isKnockoutSectionVisible"
             class="mt-6 space-y-6"
           >
             <h4
@@ -1035,7 +1249,7 @@ const showAddEventModal = ref(false);
 
             <!-- Flat fixture list, grouped by stage/leg -->
             <TournamentFixtureGroups
-              :groups="hybridKnockoutGroups"
+              :groups="displayedHybridKnockoutGroups"
               :updating-match="updatingMatch"
               @add-fixture="(p) => openAddFixtureModal(p.round, p.roundName)"
               @start="(f) => emit('start', f)"
@@ -1061,7 +1275,7 @@ const showAddEventModal = ref(false);
         <!-- List view for other tournament types (League, Round Robin) -->
         <div v-else>
           <TournamentFixtureGroups
-            :groups="fixtureGroups"
+            :groups="displayedFixtureGroups"
             :updating-match="updatingMatch"
             @add-fixture="(p) => openAddFixtureModal(p.round, p.roundName)"
             @start="(f) => emit('start', f)"
