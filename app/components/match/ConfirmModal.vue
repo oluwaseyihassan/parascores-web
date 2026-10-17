@@ -29,8 +29,9 @@ const emit = defineEmits<{
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <UIcon
-                name="i-heroicons-exclamation-triangle"
-                class="w-5 h-5 text-error-500"
+                :name="confirmColor === 'success' ? 'i-heroicons-clock' : 'i-heroicons-exclamation-triangle'"
+                class="w-5 h-5"
+                :class="confirmColor === 'success' ? 'text-emerald-500' : 'text-error-500'"
               />
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                 {{ title }}
@@ -62,7 +63,7 @@ const emit = defineEmits<{
             />
             <UButton
               :label="confirmLabel"
-              icon="i-heroicons-exclamation-triangle"
+              :icon="confirmColor === 'success' ? 'i-heroicons-forward' : 'i-heroicons-exclamation-triangle'"
               :color="confirmColor || 'error'"
               :loading="loading"
               @click="emit('confirm')"

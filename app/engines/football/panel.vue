@@ -4,6 +4,7 @@ import type { Fixture } from '~/types'
 import { useScoreUpdate } from '~/engines/_shared/useScoreUpdate'
 import { isFixtureHalftime } from '~/composables/useMatchTimer'
 import { MatchTimerControlsKey } from '~/composables/match/useMatchTimerControls'
+import { ConfirmModalKey } from '~/composables/match/useConfirmModal'
 
 const props = defineProps<{
   fixture: Fixture
@@ -20,6 +21,8 @@ const emit = defineEmits<{
 }>()
 
 const timerControls = inject(MatchTimerControlsKey, null)
+const confirmModal = inject(ConfirmModalKey, null)
+
 const isHalftime = computed(
   () => timerControls?.isHalftime.value ?? isFixtureHalftime(props.fixture),
 )
@@ -52,6 +55,24 @@ const awayName = computed(
 // Rare scoring events collapse behind a per-side "more" toggle
 const extrasHome = ref(false)
 const extrasAway = ref(false)
+
+const handleMinus = (team: 'home' | 'away') => {
+  if (isHalftime.value) {
+    confirmModal?.openConfirmModal({
+      title: 'Match is at Halftime',
+      message:
+        'Score adjustments cannot be made while the match is at halftime. Would you like to start the 2nd half now to resume scoring?',
+      confirmLabel: 'Start 2nd Half',
+      confirmColor: 'success',
+      onConfirm: async () => {
+        await timerControls?.startSecondHalf()
+        changeScore(team, -1)
+      },
+    })
+    return
+  }
+  changeScore(team, -1)
+}
 </script>
 
 <template>
@@ -60,8 +81,7 @@ const extrasAway = ref(false)
     <div class="mc-deck__label">{{ homeName }}</div>
     <button
       class="mc-deck__goal"
-      :disabled="props.loadingPlayers || busy || isHalftime"
-      :title="isHalftime ? 'Cannot record goals during halftime. Start 2nd half to resume scoring.' : undefined"
+      :disabled="props.loadingPlayers || busy"
       @click="emit('open-goal', 'home')"
     >
       <UIcon name="i-heroicons-plus" class="w-4 h-4" />
@@ -106,8 +126,7 @@ const extrasAway = ref(false)
       <div v-show="extrasHome" class="mc-deck__extras">
         <button
           class="mc-btn mc-btn--penalty"
-          :disabled="props.loadingPlayers || busy || isHalftime"
-          :title="isHalftime ? 'Cannot record goals during halftime' : undefined"
+          :disabled="props.loadingPlayers || busy"
           @click="emit('open-goal', 'home', MatchEventType.PENALTY)"
         >
           <IconsSoccerBallIcon class="w-3.5 h-3.5" />
@@ -115,8 +134,7 @@ const extrasAway = ref(false)
         </button>
         <button
           class="mc-btn mc-btn--og"
-          :disabled="props.loadingPlayers || busy || isHalftime"
-          :title="isHalftime ? 'Cannot record goals during halftime' : undefined"
+          :disabled="props.loadingPlayers || busy"
           @click="emit('open-goal', 'home', MatchEventType.OWN_GOAL)"
         >
           <IconsSoccerBallIcon class="w-3.5 h-3.5" />
@@ -124,8 +142,7 @@ const extrasAway = ref(false)
         </button>
         <button
           class="mc-btn mc-btn--miss"
-          :disabled="props.loadingPlayers || busy || isHalftime"
-          :title="isHalftime ? 'Cannot record penalties during halftime' : undefined"
+          :disabled="props.loadingPlayers || busy"
           @click="emit('open-goal', 'home', MatchEventType.MISSED_PENALTY)"
         >
           <UIcon name="i-heroicons-x-circle" class="w-3.5 h-3.5" />
@@ -136,8 +153,8 @@ const extrasAway = ref(false)
     <button
       v-if="isIndividual"
       class="mc-btn mc-btn--minus"
-      :disabled="(props.fixture.homeScore ?? 0) <= 0 || busy || isHalftime"
-      @click="changeScore('home', -1)"
+      :disabled="(props.fixture.homeScore ?? 0) <= 0 || busy"
+      @click="handleMinus('home')"
     >
       <UIcon name="i-heroicons-minus" class="w-3.5 h-3.5" />
     </button>
@@ -148,8 +165,7 @@ const extrasAway = ref(false)
     <div class="mc-deck__label">{{ awayName }}</div>
     <button
       class="mc-deck__goal"
-      :disabled="props.loadingPlayers || busy || isHalftime"
-      :title="isHalftime ? 'Cannot record goals during halftime. Start 2nd half to resume scoring.' : undefined"
+      :disabled="props.loadingPlayers || busy"
       @click="emit('open-goal', 'away')"
     >
       <UIcon name="i-heroicons-plus" class="w-4 h-4" />
@@ -194,8 +210,7 @@ const extrasAway = ref(false)
       <div v-show="extrasAway" class="mc-deck__extras">
         <button
           class="mc-btn mc-btn--penalty"
-          :disabled="props.loadingPlayers || busy || isHalftime"
-          :title="isHalftime ? 'Cannot record goals during halftime' : undefined"
+          :disabled="props.loadingPlayers || busy"
           @click="emit('open-goal', 'away', MatchEventType.PENALTY)"
         >
           <IconsSoccerBallIcon class="w-3.5 h-3.5" />
@@ -203,8 +218,7 @@ const extrasAway = ref(false)
         </button>
         <button
           class="mc-btn mc-btn--og"
-          :disabled="props.loadingPlayers || busy || isHalftime"
-          :title="isHalftime ? 'Cannot record goals during halftime' : undefined"
+          :disabled="props.loadingPlayers || busy"
           @click="emit('open-goal', 'away', MatchEventType.OWN_GOAL)"
         >
           <IconsSoccerBallIcon class="w-3.5 h-3.5" />
@@ -212,8 +226,7 @@ const extrasAway = ref(false)
         </button>
         <button
           class="mc-btn mc-btn--miss"
-          :disabled="props.loadingPlayers || busy || isHalftime"
-          :title="isHalftime ? 'Cannot record penalties during halftime' : undefined"
+          :disabled="props.loadingPlayers || busy"
           @click="emit('open-goal', 'away', MatchEventType.MISSED_PENALTY)"
         >
           <UIcon name="i-heroicons-x-circle" class="w-3.5 h-3.5" />
@@ -224,8 +237,8 @@ const extrasAway = ref(false)
     <button
       v-if="isIndividual"
       class="mc-btn mc-btn--minus"
-      :disabled="(props.fixture.awayScore ?? 0) <= 0 || busy || isHalftime"
-      @click="changeScore('away', -1)"
+      :disabled="(props.fixture.awayScore ?? 0) <= 0 || busy"
+      @click="handleMinus('away')"
     >
       <UIcon name="i-heroicons-minus" class="w-3.5 h-3.5" />
     </button>
