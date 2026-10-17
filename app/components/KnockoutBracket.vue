@@ -154,8 +154,25 @@ const getTeamName = (matchup: any, isHome: boolean) => {
   return isHome ? (matchup.homeTeamPlaceholder || 'TBD') : (matchup.awayTeamPlaceholder || 'TBD')
 }
 
+const isPlayoffFirstRound = computed(() => {
+  if (props.rounds.length < 2) return false
+  const r0 = props.rounds[0]!
+  const r1 = props.rounds[1]!
+  const count0 = matchupsByRound.value[r0]?.length || 0
+  const count1 = matchupsByRound.value[r1]?.length || 0
+  return count0 > 0 && count0 === count1
+})
+
+const getTreeDepth = (roundIndex: number): number => {
+  if (isPlayoffFirstRound.value) {
+    return roundIndex === 0 ? 0 : roundIndex - 1
+  }
+  return roundIndex
+}
+
 const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
-  const span = Math.pow(2, roundIndex)
+  const depth = getTreeDepth(roundIndex)
+  const span = Math.pow(2, depth)
   const start = matchIndex * span * 2 + 1
   const end = start + span * 2
   return `${start} / ${end}`
@@ -474,23 +491,42 @@ const resetZoom = () => {
 
           <!-- Connector column: pair up matches and draw bracket arms -->
           <div v-if="roundIndex < rounds.length - 1" class="connector-column">
-            <!-- Render one connector per PAIR of matches (every 2 matches) -->
-            <template v-for="pairIndex in Math.ceil((matchupsByRound[round]?.length || 0) / 2)" :key="`conn-pair-${pairIndex}`">
-              <div
-                class="connector-pair"
-                :style="{
-                  gridRow: `${(pairIndex - 1) * Math.pow(2, roundIndex) * 4 + 1} / ${(pairIndex - 1) * Math.pow(2, roundIndex) * 4 + Math.pow(2, roundIndex) * 4 + 1}`
-                }"
-              >
-                <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                  <!-- Top match: horizontal right, then vertical down to midpoint -->
-                  <path d="M 0 25 L 26 25 L 26 50" class="connector-line" />
-                  <!-- Bottom match: horizontal right, then vertical up to midpoint -->
-                  <path d="M 0 75 L 26 75 L 26 50" class="connector-line" />
-                  <!-- Midpoint: horizontal line out to next round -->
-                  <path d="M 26 50 L 52 50" class="connector-line" />
-                </svg>
-              </div>
+            <!-- 1-to-1 feeder lines from Round 0 (Playoffs) to Round 1 -->
+            <template v-if="roundIndex === 0 && isPlayoffFirstRound">
+              <template v-for="matchIdx in (matchupsByRound[round]?.length || 0)" :key="`conn-straight-${matchIdx}`">
+                <div
+                  class="connector-pair"
+                  :style="{
+                    gridRow: `${(matchIdx - 1) * 2 + 1} / ${(matchIdx - 1) * 2 + 3}`
+                  }"
+                >
+                  <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                    <path d="M 0 50 L 52 50" class="connector-line" />
+                  </svg>
+                </div>
+              </template>
+            </template>
+
+            <!-- Standard binary branching connector -->
+            <template v-else>
+              <!-- Render one connector per PAIR of matches (every 2 matches) -->
+              <template v-for="pairIndex in Math.ceil((matchupsByRound[round]?.length || 0) / 2)" :key="`conn-pair-${pairIndex}`">
+                <div
+                  class="connector-pair"
+                  :style="{
+                    gridRow: `${(pairIndex - 1) * Math.pow(2, getTreeDepth(roundIndex)) * 4 + 1} / ${(pairIndex - 1) * Math.pow(2, getTreeDepth(roundIndex)) * 4 + Math.pow(2, getTreeDepth(roundIndex)) * 4 + 1}`
+                  }"
+                >
+                  <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                    <!-- Top match: horizontal right, then vertical down to midpoint -->
+                    <path d="M 0 25 L 26 25 L 26 50" class="connector-line" />
+                    <!-- Bottom match: horizontal right, then vertical up to midpoint -->
+                    <path d="M 0 75 L 26 75 L 26 50" class="connector-line" />
+                    <!-- Midpoint: horizontal line out to next round -->
+                    <path d="M 26 50 L 52 50" class="connector-line" />
+                  </svg>
+                </div>
+              </template>
             </template>
           </div>
         </template>
