@@ -488,7 +488,7 @@ watch(() => props.open, (isOpen) => {
 })
 
 // Re-initialize groups if essential config changes
-watch([() => config.assignmentMethod, () => config.numberOfGroups, () => config.shuffleParticipants], () => {
+watch([() => config.assignmentMethod, () => config.numberOfGroups, () => config.shuffleParticipants, () => config.unifiedStandings], () => {
     initializeGroups()
 })
 
@@ -534,7 +534,7 @@ const initializeGroups = () => {
 
   // Otherwise, default to automatic generation/distribution
   for (let i = 0; i < config.numberOfGroups; i++) {
-    const label = `Group ${String.fromCharCode(65 + i)}`
+    const label = config.unifiedStandings ? `Pot ${i + 1}` : `Group ${String.fromCharCode(65 + i)}`
     groups[label] = []
   }
   
@@ -546,7 +546,7 @@ const initializeGroups = () => {
 
   teams.forEach((p, index) => {
     const groupIndex = index % config.numberOfGroups
-    const label = `Group ${String.fromCharCode(65 + groupIndex)}`
+    const label = config.unifiedStandings ? `Pot ${groupIndex + 1}` : `Group ${String.fromCharCode(65 + groupIndex)}`
     if (!groups[label]) {
       groups[label] = []
     }
@@ -1027,8 +1027,12 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
             </div>
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                <div class="min-w-0">
-                  <h4 class="font-bold text-gray-900 dark:text-white">Review Group Structure</h4>
-                  <p class="text-sm text-gray-500">Verify the group structure before generating fixtures.</p>
+                  <h4 class="font-bold text-gray-900 dark:text-white">
+                    {{ config.unifiedStandings ? 'Review Seeding Pots' : 'Review Group Structure' }}
+                  </h4>
+                  <p class="text-sm text-gray-500">
+                    {{ config.unifiedStandings ? 'Pots balance matchups so teams play home & away across pots on one unified table.' : 'Verify the group structure before generating fixtures.' }}
+                  </p>
                </div>
                <div class="self-start px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-bold sm:self-auto">
                   {{ participants.length }} Teams
