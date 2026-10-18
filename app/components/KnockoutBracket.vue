@@ -157,6 +157,45 @@ const thirdPlaceMatchups = computed(() => {
   return (activeMatchupsByRound.value[finalRound.value] || []).filter((m: any) => m.isThirdPlace)
 })
 
+const tournamentChampion = computed(() => {
+  if (finalRoundMainMatchups.value.length === 0) return null
+  const finalMatchup = finalRoundMainMatchups.value[0]
+  if (!finalMatchup || finalMatchup.status !== FixtureStatus.COMPLETED) {
+    return null
+  }
+  const homeScore = finalMatchup.homeScore ?? 0
+  const awayScore = finalMatchup.awayScore ?? 0
+
+  let winnerIsHome: boolean | null = null
+  if (homeScore > awayScore) {
+    winnerIsHome = true
+  } else if (awayScore > homeScore) {
+    winnerIsHome = false
+  } else {
+    const homePen = finalMatchup.homePenaltyScore ?? 0
+    const awayPen = finalMatchup.awayPenaltyScore ?? 0
+    if (homePen > awayPen) {
+      winnerIsHome = true
+    } else if (awayPen > homePen) {
+      winnerIsHome = false
+    }
+  }
+
+  if (winnerIsHome === null) return null
+
+  const winnerTeam = winnerIsHome ? finalMatchup.homeTeam : finalMatchup.awayTeam
+  const winnerName = winnerTeam
+    ? (winnerTeam.customShortName || winnerTeam.customName || winnerTeam.user?.name || (winnerIsHome ? finalMatchup.homeTeamPlaceholder : finalMatchup.awayTeamPlaceholder) || 'Champion')
+    : ((winnerIsHome ? finalMatchup.homeTeamPlaceholder : finalMatchup.awayTeamPlaceholder) || 'Champion')
+  const logoUrl = winnerTeam?.logoUrl || null
+
+  return {
+    name: winnerName,
+    logoUrl,
+    shortName: winnerTeam?.customShortName
+  }
+})
+
 const firstRoundMatches = computed(() => {
   if (props.rounds.length === 0) return 0
   return activeMatchupsByRound.value[props.rounds[0]!]?.length || 0
@@ -1051,6 +1090,14 @@ defineExpose({
               }"
             >
               <div class="final-container">
+                <!-- Champion Trophy Showcase -->
+                <div class="w-full flex justify-center mb-4">
+                  <BracketChampionTrophy
+                    :champion="tournamentChampion"
+                    :is-decided="!!tournamentChampion"
+                  />
+                </div>
+
                 <!-- Grand Final Match Card -->
                 <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
                   <KnockoutMatchCard
@@ -1207,8 +1254,20 @@ defineExpose({
                 <template v-for="(matchup, matchIndex) in (roundIndex === rounds.length - 1 ? finalRoundMainMatchups : activeMatchupsByRound[round])" :key="`linear-m-${matchup.id}`">
                   <div
                     class="match-cell"
+                    :class="{ 'flex-col justify-center': roundIndex === rounds.length - 1 }"
                     :style="{ gridRow: getLinearMatchGridRow(roundIndex, matchIndex) }"
                   >
+                    <!-- Champion Trophy Showcase in Linear Mode -->
+                    <div
+                      v-if="roundIndex === rounds.length - 1 && matchIndex === 0"
+                      class="w-full flex justify-center mb-4"
+                    >
+                      <BracketChampionTrophy
+                        :champion="tournamentChampion"
+                        :is-decided="!!tournamentChampion"
+                      />
+                    </div>
+
                     <KnockoutMatchCard
                       :matchup="matchup"
                       :round="round"
