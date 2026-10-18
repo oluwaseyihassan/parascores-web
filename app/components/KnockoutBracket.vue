@@ -719,7 +719,7 @@ defineExpose({
     <!-- Top Floating Toolbar when Arranging -->
     <div
       v-if="isArranging"
-      class="sticky top-0 z-50 mb-3 mx-2 rounded-xl border border-gray-300 dark:border-white/10 bg-white/95 dark:bg-gray-900/95 p-3 shadow-lg backdrop-blur flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-150"
+      class="sticky top-0 z-50 mb-3 mx-2 rounded-xl border border-gray-300 dark:border-white/10 bg-white/95 dark:bg-[#141414]/95 p-3 shadow-lg backdrop-blur flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-150"
     >
       <div class="flex items-center gap-3 flex-wrap">
         <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-700 dark:text-gray-300">
@@ -789,7 +789,7 @@ defineExpose({
     <!-- Top Right Controls (Arrange Button + Layout Toggle + Zoom) -->
     <div class="absolute top-0 right-4 z-40 flex items-center gap-2">
       <!-- Layout Mode Toggle (Dual-Sided vs Classic Linear) -->
-      <div v-if="feederRounds.length > 0" class="flex items-center rounded-lg border border-gray-200 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-gray-900/90 text-xs select-none">
+      <div v-if="feederRounds.length > 0" class="flex items-center rounded-lg border border-gray-200 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#141414]/90 text-xs select-none">
         <button
           @click="setLayoutMode('dual')"
           :class="layoutMode === 'dual' ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
@@ -814,7 +814,7 @@ defineExpose({
       <button
         v-if="canArrange && !isArranging"
         @click="enterArrangeMode"
-        class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 bg-white/90 dark:bg-gray-900/90 hover:border-gray-300 dark:border-white/10 dark:hover:border-white/20 text-gray-700 dark:text-gray-300 text-xs font-semibold shadow-sm backdrop-blur transition-all"
+        class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 bg-white/90 dark:bg-[#141414]/90 hover:border-gray-300 dark:border-white/10 dark:hover:border-white/20 text-gray-700 dark:text-gray-300 text-xs font-semibold shadow-sm backdrop-blur transition-all"
         title="Rearrange knockout matches or swap teams"
       >
         <UIcon name="i-heroicons-arrows-right-left" class="w-3.5 h-3.5" />
@@ -822,7 +822,7 @@ defineExpose({
       </button>
 
       <!-- Zoom Controls -->
-      <div class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-white/10 dark:bg-gray-900/90 text-xs select-none">
+      <div class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#141414]/90 text-xs select-none">
         <button
           @click="zoomOut"
           class="flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
