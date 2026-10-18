@@ -349,7 +349,7 @@ export const useFixtureStore = defineStore("fixture", () => {
   // Update knockout fixture pairings (e.g. custom playoff matches)
   async function updateKnockoutPairings(
     tournamentId: string,
-    pairings: Array<{ fixtureId: string; homeTeamId: string; awayTeamId: string }>,
+    pairings: Array<{ fixtureId: string; homeTeamId?: string | null; awayTeamId?: string | null }>,
   ) {
     loading.value = true;
     error.value = null;

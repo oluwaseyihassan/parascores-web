@@ -22,6 +22,7 @@ const { fixtures, knockoutFixturesByRound, knockoutRounds } =
   storeToRefs(fixtureStore);
 
 const showPlayoffDraw = ref(false);
+const bracketRef = ref<any>(null);
 
 const { handleClearKnockoutFixtures } = useFixtureMaintenance();
 </script>
@@ -37,6 +38,15 @@ const { handleClearKnockoutFixtures } = useFixtureMaintenance();
             <span class="text-sm font-bold">Knockout bracket</span>
           </div>
           <div class="flex items-center gap-2">
+            <UButton
+              v-if="knockoutRounds.length > 0 && fixtures.some((f) => f.stage === 'KNOCKOUT' && f.status === 'SCHEDULED')"
+              size="xs"
+              :color="bracketRef?.isArranging ? 'neutral' : 'primary'"
+              :variant="bracketRef?.isArranging ? 'solid' : 'subtle'"
+              icon="i-heroicons-arrows-right-left"
+              :label="bracketRef?.isArranging ? 'Close Arrange' : 'Arrange Bracket'"
+              @click="bracketRef?.toggleArrangeMode()"
+            />
             <UButton
               v-if="tournament?.hasKnockoutPlayoffs && fixtures.some((f) => f.stage === 'KNOCKOUT')"
               size="xs"
@@ -77,6 +87,7 @@ const { handleClearKnockoutFixtures } = useFixtureMaintenance();
       </template>
 
       <KnockoutBracket
+        ref="bracketRef"
         v-if="knockoutRounds.length > 0"
         :fixtures-by-round="knockoutFixturesByRound"
         :rounds="knockoutRounds"
@@ -84,9 +95,10 @@ const { handleClearKnockoutFixtures } = useFixtureMaintenance();
         :two-legs-knockout="tournament?.twoLegsKnockout"
         :third-place-match="tournament?.thirdPlaceMatch"
         :updating-match="updatingMatch"
+        :tournament-id="tournament?.id"
         @start-match="(f) => emit('start', f)"
         @control-match="(f) => emit('control', f)"
-        @open-playoff-draw="showPlayoffDraw = true"
+        @open-playoff-draw="bracketRef?.enterArrangeMode()"
       />
 
       <TournamentPlayoffDrawWizard
