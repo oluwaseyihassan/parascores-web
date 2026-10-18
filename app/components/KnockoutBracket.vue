@@ -1089,8 +1089,8 @@ defineExpose({
                 gridRow: `1 / ${totalWingRows + 1}`
               }"
             >
-              <div class="final-layout">
-                <!-- Top Slot: Champion Trophy Showcase -->
+              <div class="final-center-slot">
+                <!-- Top Slot: Champion Trophy Showcase (Positioned directly above Grand Final card) -->
                 <div class="final-top-slot">
                   <BracketChampionTrophy
                     :champion="tournamentChampion"
@@ -1099,28 +1099,26 @@ defineExpose({
                 </div>
 
                 <!-- Center Slot: Grand Final Match Card (Exact 50% vertical center connecting left & right) -->
-                <div class="final-center-slot">
-                  <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
-                    <KnockoutMatchCard
-                      :matchup="finalRoundMainMatchups[0]"
-                      :round="finalRound"
-                      :match-index="0"
-                      :is-arranging="isArranging"
-                      :selected-slot="selectedSlot"
-                      :readonly="readonly"
-                      :updating-match="updatingMatch"
-                      @slot-click="handleSlotClick"
-                      @swap-home-away="swapMatchHomeAway"
-                      @start-match="emit('start-match', $event)"
-                      @control-match="emit('control-match', $event)"
-                      @enter-arrange="enterArrangeMode"
-                    />
-                  </div>
+                <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
+                  <KnockoutMatchCard
+                    :matchup="finalRoundMainMatchups[0]"
+                    :round="finalRound"
+                    :match-index="0"
+                    :is-arranging="isArranging"
+                    :selected-slot="selectedSlot"
+                    :readonly="readonly"
+                    :updating-match="updatingMatch"
+                    @slot-click="handleSlotClick"
+                    @swap-home-away="swapMatchHomeAway"
+                    @start-match="emit('start-match', $event)"
+                    @control-match="emit('control-match', $event)"
+                    @enter-arrange="enterArrangeMode"
+                  />
                 </div>
 
                 <!-- Bottom Slot: 3rd Place Play-off Match underneath Grand Final -->
-                <div class="final-bottom-slot">
-                  <div v-if="thirdPlaceMatchups.length > 0" class="w-full">
+                <div v-if="thirdPlaceMatchups.length > 0" class="final-bottom-slot">
+                  <div class="w-full">
                     <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 text-center">
                       3rd Place Play-off
                     </div>
@@ -1258,13 +1256,13 @@ defineExpose({
                 <template v-for="(matchup, matchIndex) in (roundIndex === rounds.length - 1 ? finalRoundMainMatchups : activeMatchupsByRound[round])" :key="`linear-m-${matchup.id}`">
                   <div
                     class="match-cell"
-                    :class="{ 'flex-col justify-center': roundIndex === rounds.length - 1 }"
+                    :class="{ 'match-cell--final': roundIndex === rounds.length - 1 }"
                     :style="{ gridRow: getLinearMatchGridRow(roundIndex, matchIndex) }"
                   >
                     <!-- Champion Trophy Showcase in Linear Mode -->
                     <div
                       v-if="roundIndex === rounds.length - 1 && matchIndex === 0"
-                      class="w-full flex justify-center mb-4"
+                      class="final-top-slot"
                     >
                       <BracketChampionTrophy
                         :champion="tournamentChampion"
@@ -1440,30 +1438,21 @@ defineExpose({
   overflow: hidden;
 }
 
+.match-cell--final {
+  position: relative;
+  min-height: 420px;
+  overflow: visible;
+}
+
 /* ── Final Center Column ──────────────────────────────────── */
 .final-column {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  min-height: 380px;
-}
-
-.final-layout {
+  min-height: 420px;
   width: 100%;
-  height: 100%;
-  display: grid;
-  grid-template-rows: 1fr auto 1fr;
-  align-items: center;
-  justify-items: center;
-}
-
-.final-top-slot {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  width: 100%;
-  padding-bottom: 0.75rem;
 }
 
 .final-center-slot {
@@ -1471,14 +1460,34 @@ defineExpose({
   align-items: center;
   justify-content: center;
   width: 100%;
+  position: relative;
+  z-index: 10;
+}
+
+.final-top-slot {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 5;
+  pointer-events: auto;
 }
 
 .final-bottom-slot {
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 0;
+  right: 0;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  z-index: 5;
   width: 100%;
-  padding-top: 0.5rem;
+  pointer-events: auto;
 }
 
 /* ── Connector column ─────────────────────────────────────── */
