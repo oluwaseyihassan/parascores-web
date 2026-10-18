@@ -158,12 +158,12 @@ const hasFooter = (matchup: any) => {
         <UIcon
           v-if="isSlotSelected(round, matchIndex, true)"
           name="i-heroicons-check-circle"
-          class="w-4 h-4 text-primary-500 animate-pulse"
+          class="w-4 h-4 text-emerald-500 animate-pulse"
         />
         <UIcon
           v-else-if="selectedSlot && selectedSlot.round === round"
           name="i-heroicons-arrows-right-left"
-          class="w-3.5 h-3.5 text-amber-500"
+          class="w-3.5 h-3.5 text-emerald-400"
         />
         <UIcon
           v-else
@@ -221,12 +221,12 @@ const hasFooter = (matchup: any) => {
         <UIcon
           v-if="isSlotSelected(round, matchIndex, false)"
           name="i-heroicons-check-circle"
-          class="w-4 h-4 text-primary-500 animate-pulse"
+          class="w-4 h-4 text-emerald-500 animate-pulse"
         />
         <UIcon
           v-else-if="selectedSlot && selectedSlot.round === round"
           name="i-heroicons-arrows-right-left"
-          class="w-3.5 h-3.5 text-amber-500"
+          class="w-3.5 h-3.5 text-emerald-400"
         />
         <UIcon
           v-else
@@ -344,36 +344,53 @@ const hasFooter = (matchup: any) => {
 </template>
 
 <style scoped>
-/* ── Plain Match card ─────────────────────────────────────── */
+/* ── Previous Clean Neutral Match Card ──────────────────────── */
 .match-card {
   width: 100%;
   min-width: 0;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   position: relative;
 }
 
 .match-card:hover {
-  border-color: #9ca3af;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-color: #10b981;
+  box-shadow: 0 0 0 1px rgba(16,185,129,0.15), 0 4px 16px rgba(0,0,0,0.08);
 }
 
 :root.dark .match-card {
-  background: #111827;
-  border-color: rgba(255,255,255,0.08);
+  background: #141414;
+  border-color: rgba(255,255,255,0.07);
 }
 
 :root.dark .match-card:hover {
-  border-color: rgba(255,255,255,0.2);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  border-color: rgba(16,185,129,0.5);
+  box-shadow: 0 0 0 1px rgba(16,185,129,0.12), 0 4px 20px rgba(0,0,0,0.4);
 }
 
-/* Live: clean pulsing left indicator */
+/* Live: pulsing left indicator */
 .match-card--live {
   border-left: 2px solid #f59e0b !important;
+}
+
+.match-card--live::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 2px;
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+  animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 /* ── Team row ─────────────────────────────────────────────── */
@@ -381,8 +398,11 @@ const hasFooter = (matchup: any) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.45rem 0.625rem;
+  padding: 0.45rem 0.6rem;
   transition: background 0.15s;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .team-row:hover {
@@ -413,14 +433,22 @@ const hasFooter = (matchup: any) => {
 /* Arrange selectable / selected team slots */
 .team-row--selectable {
   cursor: pointer;
+  transition: all 0.15s ease-in-out;
 }
 .team-row--selectable:hover {
-  background: rgba(16, 185, 129, 0.08) !important;
+  background: rgba(16, 185, 129, 0.08);
+}
+:root.dark .team-row--selectable:hover {
+  background: rgba(16, 185, 129, 0.12);
 }
 
 .team-row--selected {
-  background: rgba(245, 158, 11, 0.15) !important;
-  box-shadow: inset 0 0 0 1px #f59e0b;
+  background: rgba(16, 185, 129, 0.18) !important;
+  box-shadow: inset 0 0 0 2px #10b981;
+}
+:root.dark .team-row--selected {
+  background: rgba(16, 185, 129, 0.25) !important;
+  box-shadow: inset 0 0 0 2px #10b981;
 }
 
 .arrange-slot-icon {
@@ -431,20 +459,20 @@ const hasFooter = (matchup: any) => {
 }
 
 .team-avatar {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
   overflow: hidden;
   flex-shrink: 0;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 :root.dark .team-avatar {
-  background: #1f2937;
+  background: #222;
   border-color: rgba(255,255,255,0.1);
 }
 
@@ -477,7 +505,7 @@ const hasFooter = (matchup: any) => {
 }
 
 :root.dark .team-name {
-  color: #d1d5db;
+  color: #f3f4f6;
 }
 
 .team-name--tbd {
@@ -523,46 +551,47 @@ const hasFooter = (matchup: any) => {
 }
 
 :root.dark .score {
-  color: #4b5563;
+  color: #6b7280;
 }
 
 .score--active {
-  color: #374151;
+  color: #111827;
 }
 
 :root.dark .score--active {
-  color: #d1d5db;
+  color: #f3f4f6;
 }
 
 .score--winner {
-  color: #111827 !important;
+  color: #10b981 !important;
   font-weight: 700;
 }
 
 :root.dark .score--winner {
-  color: #ffffff !important;
+  color: #34d399 !important;
 }
 
-/* ── Divider ──────────────────────────────────────────────── */
+/* ── Divider between teams ────────────────────────────────── */
 .team-divider {
   height: 1px;
   background: #f3f4f6;
+  margin: 0 0.6rem;
 }
 
 :root.dark .team-divider {
-  background: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.05);
 }
 
-/* ── Footer ───────────────────────────────────────────────── */
+/* ── Match footer ─────────────────────────────────────────── */
 .match-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: 0.2rem 0.5rem;
-  background: #fafafa;
+  justify-content: space-between;
+  padding: 0.25rem 0.6rem;
+  background: #f9fafb;
   border-top: 1px solid #f3f4f6;
-  min-height: 24px;
-  gap: 0.35rem;
+  min-height: 26px;
+  gap: 0.5rem;
 }
 
 :root.dark .match-footer {
@@ -571,9 +600,14 @@ const hasFooter = (matchup: any) => {
 }
 
 .match-footer--arrange {
-  background: rgba(245, 158, 11, 0.05);
-  border-top-color: rgba(245, 158, 11, 0.15);
+  background: #fafafa;
+  border-top-color: #f3f4f6;
   justify-content: flex-end;
+}
+
+:root.dark .match-footer--arrange {
+  background: rgba(255,255,255,0.02);
+  border-top-color: rgba(255,255,255,0.05);
 }
 
 .status-live {
@@ -585,7 +619,6 @@ const hasFooter = (matchup: any) => {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #f59e0b;
-  margin-right: auto;
 }
 
 .live-dot {
@@ -593,7 +626,8 @@ const hasFooter = (matchup: any) => {
   height: 5px;
   border-radius: 50%;
   background: #f59e0b;
-  animation: pulse-dot 1s ease-in-out infinite;
+  box-shadow: 0 0 6px #f59e0b;
+  animation: pulse-dot 1.2s ease-in-out infinite;
 }
 
 @keyframes pulse-dot {
@@ -605,10 +639,9 @@ const hasFooter = (matchup: any) => {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.625rem;
+  font-size: 0.6rem;
   font-weight: 600;
   color: #9ca3af;
-  margin-right: auto;
 }
 
 :root.dark .status-done {
@@ -619,16 +652,16 @@ const hasFooter = (matchup: any) => {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.625rem;
+  font-size: 0.6rem;
   font-weight: 600;
   color: #f59e0b;
-  margin-right: auto;
 }
 
 .match-actions {
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  margin-left: auto;
 }
 
 .action-btn {
@@ -637,35 +670,37 @@ const hasFooter = (matchup: any) => {
   gap: 0.2rem;
   font-size: 0.6rem;
   font-weight: 600;
-  padding: 0.12rem 0.4rem;
+  padding: 0.15rem 0.45rem;
   border-radius: 4px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #374151;
+  border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
 }
 
-.action-btn:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+.action-btn--edit {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
 }
-
-:root.dark .action-btn {
-  background: #1f2937;
-  border-color: rgba(255,255,255,0.1);
-  color: #d1d5db;
+.action-btn--edit:hover {
+  background: #059669;
+  color: #ffffff;
 }
-
-:root.dark .action-btn:hover {
-  background: #374151;
+:root.dark .action-btn--edit {
+  background: rgba(16,185,129,0.1);
+  color: #34d399;
+  border-color: rgba(16,185,129,0.25);
+}
+:root.dark .action-btn--edit:hover {
+  background: #10b981;
+  color: #ffffff;
 }
 
 .action-btn--start {
+  background: #ecfdf5;
   color: #059669;
   border-color: #a7f3d0;
-  background: #ecfdf5;
 }
 .action-btn--start:hover:not(:disabled) {
   background: #059669;
@@ -683,9 +718,9 @@ const hasFooter = (matchup: any) => {
 }
 
 .action-btn--control {
+  background: #f0fdf4;
   color: #16a34a;
   border-color: #bbf7d0;
-  background: #f0fdf4;
 }
 .action-btn--control:hover {
   background: #16a34a;
@@ -703,7 +738,14 @@ const hasFooter = (matchup: any) => {
 }
 
 .action-btn--disabled {
-  opacity: 0.4;
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
   cursor: not-allowed;
+}
+:root.dark .action-btn--disabled {
+  background: rgba(255,255,255,0.04);
+  color: #4b5563;
+  border-color: rgba(255,255,255,0.06);
 }
 </style>
