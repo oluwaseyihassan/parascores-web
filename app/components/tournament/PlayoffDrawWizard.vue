@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Participant, Tournament, Fixture } from '~/types'
-import { FixtureStatus } from '~/types'
 
 interface Props {
   open?: boolean
@@ -24,6 +23,7 @@ const isOpen = computed({
   set: (val) => emit('update:open', val)
 })
 
+const viewMode = ref<'bracket' | 'list'>('bracket')
 const saving = ref(false)
 const isShuffling = ref(false)
 
@@ -35,7 +35,12 @@ interface PlayoffTie {
   leg2?: Fixture
   homeTeamId: string
   awayTeamId: string
-  r16OpponentName?: string
+}
+
+interface OpponentInfo {
+  name: string
+  logoUrl?: string
+  rank?: number
 }
 
 const ties = ref<PlayoffTie[]>([])
@@ -48,6 +53,17 @@ const getParticipantName = (p?: Participant | null) => {
   return p.customShortName || p.customName || p.user?.name || p.team?.name || 'Unnamed'
 }
 
+const getParticipantShort = (id: string): string => {
+  const p = props.participants.find((part) => part.id === id)
+  if (!p) return 'TBD'
+  return p.customShortName || p.customName || p.user?.name || p.team?.name || 'TBD'
+}
+
+const getParticipantLogo = (id: string): string | undefined => {
+  const p = props.participants.find((part) => part.id === id)
+  return p?.logoUrl
+}
+
 // Helper to get participant standing rank
 const getParticipantRank = (id: string): number | null => {
   const standings = standingStore.standings
@@ -56,6 +72,56 @@ const getParticipantRank = (id: string): number | null => {
     return standings[idx]?.position || idx + 1
   }
   return null
+}
+
+// Helper to get actual Round of 16 top-seeded opponent for tieKey (1 to 8)
+const getR16Opponent = (tieKey: number): OpponentInfo => {
+  const r1 = fixtureStore.knockoutRounds[1]
+  if (r1 !== undefined) {
+    const r1Fixtures = fixtureStore.knockoutFixturesByRound[r1] || []
+    const matchFixtures = r1Fixtures.filter((f) => {
+      const key = f.matchNumber ? Math.ceil(f.matchNumber / 2) : 1
+      return key === tieKey
+    })
+    for (const f of matchFixtures) {
+      if (f.homeTeam && !f.homeTeamPlaceholder?.includes('PO(')) {
+        return {
+          name: getParticipantName(f.homeTeam),
+          logoUrl: f.homeTeam.logoUrl,
+          rank: getParticipantRank(f.homeTeam.id) || undefined
+        }
+      }
+      if (f.awayTeam && !f.awayTeamPlaceholder?.includes('PO(')) {
+        return {
+          name: getParticipantName(f.awayTeam),
+          logoUrl: f.awayTeam.logoUrl,
+          rank: getParticipantRank(f.awayTeam.id) || undefined
+        }
+      }
+      if (f.homeTeamPlaceholder && !f.homeTeamPlaceholder.includes('PO(')) {
+        return { name: f.homeTeamPlaceholder }
+      }
+      if (f.awayTeamPlaceholder && !f.awayTeamPlaceholder.includes('PO(')) {
+        return { name: f.awayTeamPlaceholder }
+      }
+    }
+  }
+
+  // Fallback to top 8 standings seeds
+  const standings = standingStore.standings
+  const standing = standings[tieKey - 1]
+  if (standing) {
+    const p = props.participants.find((part) => part.id === standing.participant_id)
+    if (p) {
+      return {
+        name: getParticipantName(p),
+        logoUrl: p.logoUrl,
+        rank: standing.position || tieKey
+      }
+    }
+  }
+
+  return { name: `Top Seed ${tieKey}` }
 }
 
 // Build the initial ties and pots from existing fixtures and standings
@@ -74,20 +140,6 @@ const initPotsAndTies = () => {
   }
 
   const sortedKeys = Array.from(map.keys()).sort((a, b) => a - b)
-
-  // Find R16 opponents (Round 1) if present
-  const r1 = fixtureStore.knockoutRounds[1]
-  const r1Fixtures = r1 !== undefined ? (fixtureStore.knockoutFixturesByRound[r1] || []) : []
-  const r1HomeTeamsByTie = new Map<number, string>()
-  for (const f of r1Fixtures) {
-    const key = f.matchNumber ? Math.ceil(f.matchNumber / 2) : 1
-    if (f.homeTeam) {
-      r1HomeTeamsByTie.set(key, getParticipantName(f.homeTeam))
-    } else if (f.homeTeamPlaceholder) {
-      r1HomeTeamsByTie.set(key, f.homeTeamPlaceholder)
-    }
-  }
-
   const builtTies: PlayoffTie[] = []
   const seededIds = new Set<string>()
   const unseededIds = new Set<string>()
@@ -110,15 +162,13 @@ const initPotsAndTies = () => {
       leg1,
       leg2,
       homeTeamId: homeId,
-      awayTeamId: awayId,
-      r16OpponentName: r1HomeTeamsByTie.get(key) || `R16 Match ${key}`
+      awayTeamId: awayId
     })
   })
 
   ties.value = builtTies
 
   // Derive pots:
-  // If standings are available and match count (e.g. 24 teams, ranks 9-16 and 17-24):
   const standings = standingStore.standings
   if (standings.length >= 16) {
     // Ranks 9 to 16 are seeded, 17 to 24 are unseeded
@@ -138,7 +188,7 @@ const initPotsAndTies = () => {
     if (pot2.length > 0) unseededPot.value = pot2
   }
 
-  // Fallback if standings wasn't used or had fewer items: use currently assigned teams
+  // Fallbacks if standings not loaded or fewer items
   if (seededPot.value.length === 0) {
     seededPot.value = props.participants.filter((p) => seededIds.has(p.id))
   }
@@ -153,29 +203,25 @@ watch(isOpen, (open) => {
   }
 })
 
-// Auto-swap when user changes home team (Seeded Pot) on tieIndex
+// Auto-swap when user changes home team on tieIndex
 const onHomeTeamChange = (tieIndex: number, newId: string) => {
   const currentTie = ties.value[tieIndex]
   if (!currentTie || currentTie.homeTeamId === newId) return
 
-  // Find if another tie already has newId as home
   const otherTie = ties.value.find((t, i) => i !== tieIndex && t.homeTeamId === newId)
   if (otherTie) {
-    // Swap
     otherTie.homeTeamId = currentTie.homeTeamId
   }
   currentTie.homeTeamId = newId
 }
 
-// Auto-swap when user changes away team (Unseeded Pot) on tieIndex
+// Auto-swap when user changes away team on tieIndex
 const onAwayTeamChange = (tieIndex: number, newId: string) => {
   const currentTie = ties.value[tieIndex]
   if (!currentTie || currentTie.awayTeamId === newId) return
 
-  // Find if another tie already has newId as away
   const otherTie = ties.value.find((t, i) => i !== tieIndex && t.awayTeamId === newId)
   if (otherTie) {
-    // Swap
     otherTie.awayTeamId = currentTie.awayTeamId
   }
   currentTie.awayTeamId = newId
@@ -196,9 +242,7 @@ const shuffleDraw = () => {
 
   isShuffling.value = true
 
-  // Copy and shuffle seeded pot
   const shuffledSeeded = [...seededPot.value].sort(() => Math.random() - 0.5)
-  // Copy and shuffle unseeded pot
   const shuffledUnseeded = [...unseededPot.value].sort(() => Math.random() - 0.5)
 
   ties.value.forEach((tie, idx) => {
@@ -226,11 +270,10 @@ const resetInvertedSeeding = () => {
   const standings = standingStore.standings
   if (standings.length >= 24) {
     const s9to16 = standings.slice(8, 16)
-    const s17to24 = standings.slice(16, 24) // 17 is 0, 24 is 7
+    const s17to24 = standings.slice(16, 24)
 
     ties.value.forEach((tie, idx) => {
       const seededStanding = s9to16[idx]
-      // 9 plays 24 (idx 0 -> idx 7), 10 plays 23 (idx 1 -> idx 6)...
       const unseededStanding = s17to24[s17to24.length - 1 - idx]
 
       if (seededStanding) tie.homeTeamId = seededStanding.participant_id
@@ -244,7 +287,6 @@ const resetInvertedSeeding = () => {
       icon: 'i-heroicons-arrow-path'
     })
   } else {
-    // If not standard 24, pair index i with index length - 1 - i from pots
     ties.value.forEach((tie, idx) => {
       if (seededPot.value[idx]) tie.homeTeamId = seededPot.value[idx]!.id
       const unseededIdx = unseededPot.value.length - 1 - idx
@@ -280,48 +322,69 @@ const handleSave = async () => {
     saving.value = false
   }
 }
-
-const findParticipant = (id: string): Participant | undefined => {
-  return props.participants.find((p) => p.id === id)
-}
 </script>
 
 <template>
-  <UModal v-model:open="isOpen" :ui="{ content: 'sm:max-w-3xl' }">
+  <UModal v-model:open="isOpen" :ui="{ content: 'sm:max-w-6xl w-full' }">
     <template #content>
       <UCard class="ring-0 shadow-none" :ui="{ root: 'divide-y divide-gray-100 dark:divide-gray-800' }">
         <!-- Modal Header -->
         <template #header>
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                 <UIcon name="i-heroicons-sparkles" class="w-5 h-5" />
               </div>
               <div>
                 <h3 class="text-base font-bold text-gray-900 dark:text-white leading-tight">
-                  Knockout Play-off Draw
+                  Knockout Play-off Draw & Bracket Flow
                 </h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                  Pair seeded teams (9th–16th) with unseeded teams (17th–24th) or shuffle for a live draw
+                  Pair teams for the Knockout Play-offs and visualize how they feed into the Round of 16 and Quarter-finals
                 </p>
               </div>
             </div>
-            <UButton
-              color="neutral"
-              variant="ghost"
-              icon="i-heroicons-x-mark"
-              class="-my-1"
-              @click="isOpen = false"
-            />
+
+            <!-- Controls: View mode & close -->
+            <div class="flex items-center gap-2">
+              <div class="flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 p-0.5 border border-gray-200 dark:border-gray-700">
+                <button
+                  type="button"
+                  @click="viewMode = 'bracket'"
+                  class="px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5"
+                  :class="viewMode === 'bracket' ? 'bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'"
+                >
+                  <UIcon name="i-heroicons-rectangle-group" class="w-3.5 h-3.5" />
+                  Bracket Flow
+                </button>
+                <button
+                  type="button"
+                  @click="viewMode = 'list'"
+                  class="px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5"
+                  :class="viewMode === 'list' ? 'bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'"
+                >
+                  <UIcon name="i-heroicons-list-bullet" class="w-3.5 h-3.5" />
+                  Form List
+                </button>
+              </div>
+
+              <UButton
+                color="neutral"
+                variant="ghost"
+                icon="i-heroicons-x-mark"
+                class="-my-1"
+                @click="isOpen = false"
+              />
+            </div>
           </div>
         </template>
 
-        <div class="py-4 space-y-5 max-h-[calc(100dvh-220px)] overflow-y-auto px-1">
-          <!-- Pots Summary Banners -->
+        <div class="py-4 space-y-4 max-h-[calc(100dvh-200px)] overflow-y-auto px-1">
+          <!-- Pots Summary Banners & Action Bar -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <!-- Seeded Pot -->
-            <div class="rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20 p-3">
-              <div class="flex items-center justify-between mb-2">
+            <div class="rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5">
+              <div class="flex items-center justify-between mb-1.5">
                 <span class="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
                   <UIcon name="i-heroicons-star" class="w-3.5 h-3.5 text-emerald-500" />
                   Seeded Pot (9th–16th)
@@ -330,24 +393,24 @@ const findParticipant = (id: string): Participant | undefined => {
                   {{ seededPot.length }} teams
                 </span>
               </div>
-              <div class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+              <div class="flex flex-wrap gap-1.5 max-h-16 overflow-y-auto pr-1">
                 <div
                   v-for="p in seededPot"
                   :key="p.id"
-                  class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white dark:bg-gray-900 border border-emerald-200/60 dark:border-emerald-800/40 text-xs text-gray-800 dark:text-gray-200 shadow-xs"
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white dark:bg-gray-900 border border-emerald-200/60 dark:border-emerald-800/40 text-[11px] text-gray-800 dark:text-gray-200 shadow-xs"
                 >
-                  <span v-if="getParticipantRank(p.id)" class="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  <span v-if="getParticipantRank(p.id)" class="text-[9px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
                     #{{ getParticipantRank(p.id) }}
                   </span>
-                  <img v-if="p.logoUrl" :src="p.logoUrl" class="w-3.5 h-3.5 rounded-full object-cover" />
-                  <span class="truncate max-w-[100px]">{{ getParticipantName(p) }}</span>
+                  <img v-if="p.logoUrl" :src="p.logoUrl" class="w-3 h-3 rounded-full object-cover" />
+                  <span class="truncate max-w-[90px]">{{ getParticipantName(p) }}</span>
                 </div>
               </div>
             </div>
 
             <!-- Unseeded Pot -->
-            <div class="rounded-xl border border-sky-200 dark:border-sky-900/40 bg-sky-50/50 dark:bg-sky-950/20 p-3">
-              <div class="flex items-center justify-between mb-2">
+            <div class="rounded-xl border border-sky-200 dark:border-sky-900/40 bg-sky-50/50 dark:bg-sky-950/20 p-2.5">
+              <div class="flex items-center justify-between mb-1.5">
                 <span class="text-xs font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
                   <UIcon name="i-heroicons-shield-check" class="w-3.5 h-3.5 text-sky-500" />
                   Unseeded Pot (17th–24th)
@@ -356,26 +419,26 @@ const findParticipant = (id: string): Participant | undefined => {
                   {{ unseededPot.length }} teams
                 </span>
               </div>
-              <div class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+              <div class="flex flex-wrap gap-1.5 max-h-16 overflow-y-auto pr-1">
                 <div
                   v-for="p in unseededPot"
                   :key="p.id"
-                  class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white dark:bg-gray-900 border border-sky-200/60 dark:border-sky-800/40 text-xs text-gray-800 dark:text-gray-200 shadow-xs"
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white dark:bg-gray-900 border border-sky-200/60 dark:border-sky-800/40 text-[11px] text-gray-800 dark:text-gray-200 shadow-xs"
                 >
-                  <span v-if="getParticipantRank(p.id)" class="text-[10px] font-mono font-bold text-sky-600 dark:text-sky-400">
+                  <span v-if="getParticipantRank(p.id)" class="text-[9px] font-mono font-bold text-sky-600 dark:text-sky-400">
                     #{{ getParticipantRank(p.id) }}
                   </span>
-                  <img v-if="p.logoUrl" :src="p.logoUrl" class="w-3.5 h-3.5 rounded-full object-cover" />
-                  <span class="truncate max-w-[100px]">{{ getParticipantName(p) }}</span>
+                  <img v-if="p.logoUrl" :src="p.logoUrl" class="w-3 h-3 rounded-full object-cover" />
+                  <span class="truncate max-w-[90px]">{{ getParticipantName(p) }}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Quick Action Buttons -->
-          <div class="flex items-center justify-between gap-2 flex-wrap pt-1">
+          <!-- Action bar -->
+          <div class="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-gray-100 dark:border-gray-800">
             <span class="text-xs font-bold text-gray-700 dark:text-gray-300">
-              Matchup Pairings ({{ ties.length }} Matches)
+              {{ viewMode === 'bracket' ? 'Interactive Knockout Bracket Flow' : `Matchup Pairings (${ties.length} Matches)` }}
             </span>
             <div class="flex items-center gap-2">
               <UButton
@@ -398,8 +461,219 @@ const findParticipant = (id: string): Participant | undefined => {
             </div>
           </div>
 
-          <!-- Tie Matchup Cards -->
-          <div class="space-y-3">
+          <!-- ══════════════════════════════════════════════════════════ -->
+          <!-- VIEW 1: BRACKET FLOW VIEW                                  -->
+          <!-- ══════════════════════════════════════════════════════════ -->
+          <div v-if="viewMode === 'bracket'" class="overflow-x-auto pb-4">
+            <div class="min-w-[880px]">
+              <!-- Column Headers -->
+              <div class="grid grid-cols-[280px_48px_250px_48px_240px] items-center mb-3 text-center">
+                <div class="bracket-col-header">
+                  <span>Knockout Play-offs (Select)</span>
+                </div>
+                <div />
+                <div class="bracket-col-header">
+                  <span>Round of 16 (Top Seeds)</span>
+                </div>
+                <div />
+                <div class="bracket-col-header">
+                  <span>Quarter-finals (Preview)</span>
+                </div>
+              </div>
+
+              <!-- Bracket Grid -->
+              <div class="grid grid-cols-[280px_48px_250px_48px_240px] gap-0">
+                <!-- ── Column 1: Play-offs (8 Matches, 16 rows) ─────── -->
+                <div class="grid grid-rows-[repeat(16,minmax(64px,auto))] gap-0">
+                  <div
+                    v-for="(tie, idx) in ties"
+                    :key="tie.fixtureId"
+                    class="py-1 flex flex-col justify-center"
+                    :style="{ gridRow: `${idx * 2 + 1} / ${idx * 2 + 3}` }"
+                  >
+                    <div class="flow-card flow-card--playoff">
+                      <!-- Card Header -->
+                      <div class="flow-card__header">
+                        <span class="text-[10px] font-bold text-gray-500">
+                          Play-off {{ idx + 1 }}
+                        </span>
+                        <button
+                          type="button"
+                          @click="swapTieHomeAway(idx)"
+                          title="Swap Home/Away"
+                          class="p-0.5 rounded text-gray-400 hover:text-emerald-500 transition-colors"
+                        >
+                          <UIcon name="i-heroicons-arrows-right-left" class="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <!-- Home Team Row (Seeded Pot) -->
+                      <div class="flow-card__team-row">
+                        <span class="team-pot-tag team-pot-tag--seeded">SEED</span>
+                        <select
+                          :value="tie.homeTeamId"
+                          class="team-select"
+                          @change="(e: any) => onHomeTeamChange(idx, e.target.value)"
+                        >
+                          <option v-for="p in seededPot" :key="p.id" :value="p.id">
+                            {{ getParticipantRank(p.id) ? `[#${getParticipantRank(p.id)}] ` : '' }}{{ getParticipantName(p) }}
+                          </option>
+                        </select>
+                      </div>
+
+                      <div class="flow-card__divider" />
+
+                      <!-- Away Team Row (Unseeded Pot) -->
+                      <div class="flow-card__team-row">
+                        <span class="team-pot-tag team-pot-tag--unseeded">UNSEED</span>
+                        <select
+                          :value="tie.awayTeamId"
+                          class="team-select"
+                          @change="(e: any) => onAwayTeamChange(idx, e.target.value)"
+                        >
+                          <option v-for="p in unseededPot" :key="p.id" :value="p.id">
+                            {{ getParticipantRank(p.id) ? `[#${getParticipantRank(p.id)}] ` : '' }}{{ getParticipantName(p) }}
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ── Connector Column 1: Straight lines 8x ─────────── -->
+                <div class="grid grid-rows-[repeat(16,minmax(64px,auto))] w-12">
+                  <div
+                    v-for="(_, idx) in ties"
+                    :key="`conn-r0-${idx}`"
+                    class="relative"
+                    :style="{ gridRow: `${idx * 2 + 1} / ${idx * 2 + 3}` }"
+                  >
+                    <svg class="w-full h-full absolute inset-0" viewBox="0 0 48 100" preserveAspectRatio="none">
+                      <path d="M 0 50 L 48 50" class="draw-connector-line" />
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- ── Column 2: Round of 16 (8 Matches, 16 rows) ────── -->
+                <div class="grid grid-rows-[repeat(16,minmax(64px,auto))] gap-0">
+                  <div
+                    v-for="(tie, idx) in ties"
+                    :key="`r16-${idx}`"
+                    class="py-1 flex flex-col justify-center"
+                    :style="{ gridRow: `${idx * 2 + 1} / ${idx * 2 + 3}` }"
+                  >
+                    <div class="flow-card flow-card--r16">
+                      <!-- Card Header -->
+                      <div class="flow-card__header">
+                        <span class="text-[10px] font-bold text-gray-500">
+                          R16 Match {{ idx + 1 }}
+                        </span>
+                      </div>
+
+                      <!-- Seeded Top Team -->
+                      <div class="flow-card__team-row">
+                        <span v-if="getR16Opponent(idx + 1).rank" class="text-[10px] font-mono font-bold text-amber-500">
+                          #{{ getR16Opponent(idx + 1).rank }}
+                        </span>
+                        <img
+                          v-if="getR16Opponent(idx + 1).logoUrl"
+                          :src="getR16Opponent(idx + 1).logoUrl"
+                          class="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                        />
+                        <span class="text-xs font-bold text-gray-900 dark:text-white truncate">
+                          {{ getR16Opponent(idx + 1).name }}
+                        </span>
+                      </div>
+
+                      <div class="flow-card__divider" />
+
+                      <!-- Feeder Playoff Winner Preview -->
+                      <div class="flow-card__team-row flex-col items-start gap-0.5 py-1">
+                        <div class="flex items-center gap-1.5 w-full">
+                          <UIcon name="i-heroicons-arrow-right-circle" class="w-3 h-3 text-emerald-500 shrink-0" />
+                          <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 truncate">
+                            PO({{ idx + 1 }}) Winner
+                          </span>
+                        </div>
+                        <span class="text-[9px] text-gray-400 dark:text-gray-500 truncate pl-4.5 block max-w-full">
+                          {{ getParticipantShort(tie.homeTeamId) }} or {{ getParticipantShort(tie.awayTeamId) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ── Connector Column 2: 2-to-1 Forks 4x ────────────── -->
+                <div class="grid grid-rows-[repeat(16,minmax(64px,auto))] w-12">
+                  <div
+                    v-for="pairIdx in 4"
+                    :key="`conn-r1-${pairIdx}`"
+                    class="relative"
+                    :style="{ gridRow: `${(pairIdx - 1) * 4 + 1} / ${(pairIdx - 1) * 4 + 5}` }"
+                  >
+                    <svg class="w-full h-full absolute inset-0" viewBox="0 0 48 100" preserveAspectRatio="none">
+                      <!-- Top R16 match arm -->
+                      <path d="M 0 25 L 24 25 L 24 50" class="draw-connector-line" />
+                      <!-- Bottom R16 match arm -->
+                      <path d="M 0 75 L 24 75 L 24 50" class="draw-connector-line" />
+                      <!-- Midpoint to QF -->
+                      <path d="M 24 50 L 48 50" class="draw-connector-line" />
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- ── Column 3: Quarter-finals (4 Matches, 16 rows) ─── -->
+                <div class="grid grid-rows-[repeat(16,minmax(64px,auto))] gap-0">
+                  <div
+                    v-for="qfIdx in 4"
+                    :key="`qf-${qfIdx}`"
+                    class="py-1 flex flex-col justify-center"
+                    :style="{ gridRow: `${(qfIdx - 1) * 4 + 1} / ${(qfIdx - 1) * 4 + 5}` }"
+                  >
+                    <div class="flow-card flow-card--qf">
+                      <!-- Card Header -->
+                      <div class="flow-card__header">
+                        <span class="text-[10px] font-bold text-gray-500">
+                          Quarter Final {{ qfIdx }}
+                        </span>
+                      </div>
+
+                      <!-- Top R16 Winner -->
+                      <div class="flow-card__team-row flex-col items-start gap-0.5 py-1.5 border-b border-gray-100 dark:border-white/5">
+                        <div class="flex items-center gap-1.5 w-full">
+                          <span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                          <span class="text-[11px] font-semibold text-gray-800 dark:text-gray-200 truncate">
+                            R16({{ (qfIdx - 1) * 2 + 1 }}) Winner
+                          </span>
+                        </div>
+                        <span class="text-[9px] text-gray-400 pl-3 truncate block max-w-full">
+                          {{ getR16Opponent((qfIdx - 1) * 2 + 1).name }} / PO({{ (qfIdx - 1) * 2 + 1 }})
+                        </span>
+                      </div>
+
+                      <!-- Bottom R16 Winner -->
+                      <div class="flow-card__team-row flex-col items-start gap-0.5 py-1.5">
+                        <div class="flex items-center gap-1.5 w-full">
+                          <span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                          <span class="text-[11px] font-semibold text-gray-800 dark:text-gray-200 truncate">
+                            R16({{ (qfIdx - 1) * 2 + 2 }}) Winner
+                          </span>
+                        </div>
+                        <span class="text-[9px] text-gray-400 pl-3 truncate block max-w-full">
+                          {{ getR16Opponent((qfIdx - 1) * 2 + 2).name }} / PO({{ (qfIdx - 1) * 2 + 2 }})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ══════════════════════════════════════════════════════════ -->
+          <!-- VIEW 2: FORM LIST VIEW                                     -->
+          <!-- ══════════════════════════════════════════════════════════ -->
+          <div v-else class="space-y-3">
             <div
               v-for="(tie, idx) in ties"
               :key="tie.fixtureId"
@@ -417,7 +691,7 @@ const findParticipant = (id: string): Participant | undefined => {
                 </div>
                 <div class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <UIcon name="i-heroicons-arrow-right" class="w-3 h-3" />
-                  Winner plays <strong class="font-bold underline">{{ tie.r16OpponentName }}</strong> in Round of 16
+                  Winner plays <strong class="font-bold underline">{{ getR16Opponent(idx + 1).name }}</strong> in Round of 16
                 </div>
               </div>
 
@@ -473,24 +747,187 @@ const findParticipant = (id: string): Participant | undefined => {
 
         <!-- Modal Footer -->
         <template #footer>
-          <div class="flex items-center justify-end gap-2.5">
-            <UButton
-              color="neutral"
-              variant="outline"
-              label="Cancel"
-              :disabled="saving"
-              @click="isOpen = false"
-            />
-            <UButton
-              color="primary"
-              icon="i-heroicons-check"
-              :loading="saving"
-              label="Save Playoff Matches"
-              @click="handleSave"
-            />
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <span class="text-xs text-gray-500">
+              Matches will be synced across both legs automatically.
+            </span>
+            <div class="flex items-center gap-2.5">
+              <UButton
+                color="neutral"
+                variant="outline"
+                label="Cancel"
+                :disabled="saving"
+                @click="isOpen = false"
+              />
+              <UButton
+                color="primary"
+                icon="i-heroicons-check"
+                :loading="saving"
+                label="Save Playoff Matches"
+                @click="handleSave"
+              />
+            </div>
           </div>
         </template>
       </UCard>
     </template>
   </UModal>
 </template>
+
+<style scoped>
+/* ── Bracket Column Header ──────────────────────────────── */
+.bracket-col-header span {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+:root.dark .bracket-col-header span {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #9ca3af;
+}
+
+/* ── Flow Cards ─────────────────────────────────────────── */
+.flow-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+:root.dark .flow-card {
+  background: #141414;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.flow-card--playoff {
+  border-left: 3px solid #10b981;
+}
+
+.flow-card--r16 {
+  border-left: 3px solid #f59e0b;
+  background: #fafafa;
+}
+
+:root.dark .flow-card--r16 {
+  background: #121212;
+}
+
+.flow-card--qf {
+  border-left: 3px solid #6366f1;
+  background: #f9fafb;
+}
+
+:root.dark .flow-card--qf {
+  background: #111111;
+}
+
+.flow-card__header {
+  padding: 0.25rem 0.5rem;
+  background: rgba(0, 0, 0, 0.02);
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+:root.dark .flow-card__header {
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+.flow-card__team-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  min-width: 0;
+}
+
+.flow-card__divider {
+  height: 1px;
+  background: #f3f4f6;
+  margin: 0 0.5rem;
+}
+
+:root.dark .flow-card__divider {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Select inside Playoff Card ─────────────────────────── */
+.team-select {
+  width: 100%;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.team-select:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:root.dark .team-select:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.team-select:focus {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+/* ── Pot Tags ───────────────────────────────────────────── */
+.team-pot-tag {
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.team-pot-tag--seeded {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+:root.dark .team-pot-tag--seeded {
+  color: #34d399;
+}
+
+.team-pot-tag--unseeded {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+}
+
+:root.dark .team-pot-tag--unseeded {
+  color: #38bdf8;
+}
+
+/* ── SVG Connectors ─────────────────────────────────────── */
+.draw-connector-line {
+  stroke: #d1d5db;
+  stroke-width: 1.5;
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+:root.dark .draw-connector-line {
+  stroke: rgba(255, 255, 255, 0.15);
+}
+</style>
