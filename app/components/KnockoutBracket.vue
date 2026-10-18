@@ -29,6 +29,48 @@ const participantStore = useParticipantStore()
 const bracketContainerRef = ref<HTMLElement | null>(null)
 const layoutMode = ref<'dual' | 'linear'>('dual')
 
+// Orientation state: auto-detects smaller screens (< 768px) or allows manual override
+const isSmallScreen = ref(false)
+const orientation = ref<'auto' | 'horizontal' | 'vertical'>('auto')
+
+const isVertical = computed(() => {
+  if (orientation.value === 'vertical') return true
+  if (orientation.value === 'horizontal') return false
+  return isSmallScreen.value
+})
+
+const setOrientation = (val: 'horizontal' | 'vertical') => {
+  orientation.value = val
+  if (val === 'horizontal') {
+    nextTick(() => {
+      centerBracket()
+    })
+  }
+}
+
+// Mobile vertical navigation: null means 'All Rounds', or specific round index
+const selectedMobileRound = ref<number | null>(null)
+
+const displayedVerticalRounds = computed(() => {
+  if (selectedMobileRound.value !== null) {
+    return [selectedMobileRound.value]
+  }
+  return props.rounds
+})
+
+const getMatchAdvanceText = (roundIdx: number, mIdx: number): string => {
+  if (roundIdx === props.rounds.length - 2) {
+    return 'Winner advances to Final'
+  }
+  const nextRound = props.rounds[roundIdx + 1]
+  if (nextRound !== undefined) {
+    const nextName = props.getRoundDisplayName(nextRound, roundIdx + 1, props.rounds.length)
+    const targetMatch = Math.floor(mIdx / 2) + 1
+    return `Winner advances to ${nextName} M${targetMatch}`
+  }
+  return 'Winner advances'
+}
+
 const getAggregateStatus = (fixtures: Fixture[]): FixtureStatus => {
   if (fixtures.some(f => f.status === FixtureStatus.LIVE || f.status === FixtureStatus.NORMAL_TIME_ENDED || f.status === FixtureStatus.EXTRATIME)) return FixtureStatus.LIVE
   if (fixtures.every(f => f.status === FixtureStatus.COMPLETED)) return FixtureStatus.COMPLETED
@@ -704,8 +746,16 @@ const setLayoutMode = (mode: 'dual' | 'linear') => {
   }
 }
 
-// Escape key listener
+// Escape key listener & screen resize listener
 onMounted(() => {
+  const updateScreen = () => {
+    if (typeof window !== 'undefined') {
+      isSmallScreen.value = window.innerWidth < 768
+    }
+  }
+  updateScreen()
+  window.addEventListener('resize', updateScreen)
+
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && isArranging.value) {
       if (selectedSlot.value) {
@@ -716,7 +766,9 @@ onMounted(() => {
     }
   }
   window.addEventListener('keydown', onKeyDown)
+
   onUnmounted(() => {
+    window.removeEventListener('resize', updateScreen)
     window.removeEventListener('keydown', onKeyDown)
   })
 
@@ -886,73 +938,228 @@ defineExpose({
       </div>
     </div>
 
-    <!-- Top Right Controls (Arrange Button + Layout Toggle + Zoom) -->
-    <div class="absolute top-0 right-4 z-40 flex items-center gap-2">
-      <!-- Layout Mode Toggle (Dual-Sided vs Classic Linear) -->
-      <div v-if="feederRounds.length > 0" class="flex items-center rounded-lg border border-gray-200 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#141414]/90 text-xs select-none">
+    <!-- Top Controls Toolbar (Orientation Toggle + Sub-Modes + Arrange + Zoom) -->
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-3 px-1 select-none">
+      <!-- Left: Orientation Toggle (Horizontal vs Vertical) -->
+      <div class="flex items-center rounded-lg border border-gray-200 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#141414]/90 text-xs">
         <button
-          @click="setLayoutMode('dual')"
-          :class="layoutMode === 'dual' ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
-          class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
-          title="Dual-Sided (Two sides converging to center)"
+          @click="setOrientation('horizontal')"
+          :class="!isVertical ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+          class="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] transition-colors"
+          title="Horizontal Bracket (Desktop/Large Screen View)"
         >
-          <UIcon name="i-heroicons-arrows-pointing-in" class="w-3.5 h-3.5" />
-          <span class="hidden sm:inline">Dual</span>
+          <UIcon name="i-heroicons-arrows-right-left" class="w-3.5 h-3.5" />
+          <span class="hidden sm:inline">Horizontal</span>
         </button>
         <button
-          @click="setLayoutMode('linear')"
-          :class="layoutMode === 'linear' ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
-          class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
-          title="Classic Linear (Left to right)"
+          @click="setOrientation('vertical')"
+          :class="isVertical ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+          class="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] transition-colors"
+          title="Vertical Bracket (Mobile/Small Screen View)"
         >
-          <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5" />
-          <span class="hidden sm:inline">Linear</span>
+          <UIcon name="i-heroicons-arrows-up-down" class="w-3.5 h-3.5" />
+          <span class="hidden sm:inline">Vertical</span>
         </button>
       </div>
 
-      <!-- Arrange Button -->
-      <button
-        v-if="canArrange && !isArranging"
-        @click="enterArrangeMode"
-        class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 bg-white/90 dark:bg-[#141414]/90 hover:border-gray-300 dark:border-white/10 dark:hover:border-white/20 text-gray-700 dark:text-gray-300 text-xs font-semibold shadow-sm backdrop-blur transition-all"
-        title="Rearrange knockout matches or swap teams"
-      >
-        <UIcon name="i-heroicons-arrows-right-left" class="w-3.5 h-3.5" />
-        <span>Arrange</span>
-      </button>
+      <!-- Right: Sub-Controls -->
+      <div class="flex items-center gap-2">
+        <!-- Horizontal Sub-Mode Toggle (Dual-Sided vs Classic Linear) - only in horizontal mode -->
+        <div v-if="!isVertical && feederRounds.length > 0" class="flex items-center rounded-lg border border-gray-200 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#141414]/90 text-xs">
+          <button
+            @click="setLayoutMode('dual')"
+            :class="layoutMode === 'dual' ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+            class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
+            title="Dual-Sided (Two sides converging to center)"
+          >
+            <UIcon name="i-heroicons-arrows-pointing-in" class="w-3.5 h-3.5" />
+            <span class="hidden sm:inline">Dual</span>
+          </button>
+          <button
+            @click="setLayoutMode('linear')"
+            :class="layoutMode === 'linear' ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+            class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
+            title="Classic Linear (Left to right)"
+          >
+            <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5" />
+            <span class="hidden sm:inline">Linear</span>
+          </button>
+        </div>
 
-      <!-- Zoom Controls -->
-      <div class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#141414]/90 text-xs select-none">
+        <!-- Arrange Button -->
         <button
-          @click="zoomOut"
-          class="flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
-          title="Zoom Out"
+          v-if="canArrange && !isArranging"
+          @click="enterArrangeMode"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 bg-white/90 dark:bg-[#141414]/90 hover:border-gray-300 dark:border-white/10 dark:hover:border-white/20 text-gray-700 dark:text-gray-300 text-xs font-semibold shadow-sm backdrop-blur transition-all"
+          title="Rearrange knockout matches or swap teams"
         >
-          <UIcon name="i-heroicons-minus" class="w-3.5 h-3.5" />
+          <UIcon name="i-heroicons-arrows-right-left" class="w-3.5 h-3.5" />
+          <span>Arrange</span>
         </button>
-        <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 min-w-[28px] text-center">
-          {{ Math.round(scale * 100) }}%
-        </span>
-        <button
-          @click="zoomIn"
-          class="flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
-          title="Zoom In"
-        >
-          <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5" />
-        </button>
-        <div class="w-px h-3 bg-gray-200 dark:bg-white/10 mx-1"></div>
-        <button
-          @click="resetZoom"
-          class="px-1.5 py-0.5 rounded text-[9px] font-bold text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
-          title="Reset Zoom"
-        >
-          Reset
-        </button>
+
+        <!-- Zoom Controls (Only in horizontal mode) -->
+        <div v-if="!isVertical" class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#141414]/90 text-xs select-none">
+          <button
+            @click="zoomOut"
+            class="flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
+            title="Zoom Out"
+          >
+            <UIcon name="i-heroicons-minus" class="w-3.5 h-3.5" />
+          </button>
+          <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 min-w-[28px] text-center">
+            {{ Math.round(scale * 100) }}%
+          </span>
+          <button
+            @click="zoomIn"
+            class="flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
+            title="Zoom In"
+          >
+            <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5" />
+          </button>
+          <div class="w-px h-3 bg-gray-200 dark:bg-white/10 mx-1"></div>
+          <button
+            @click="resetZoom"
+            class="px-1.5 py-0.5 rounded text-[9px] font-bold text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
+            title="Reset Zoom"
+          >
+            Reset
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- MAIN BRACKET CONTAINER -->
+    <!-- 1. MOBILE VERTICAL BRACKET FOR SMALLER SCREENS -->
+    <div v-if="isVertical" class="vertical-bracket-container w-full max-w-md mx-auto py-2">
+      <!-- Round Navigation Pills -->
+      <div v-if="rounds.length > 1" class="flex items-center gap-1.5 overflow-x-auto pb-3 mb-4 scrollbar-none px-1">
+        <button
+          @click="selectedMobileRound = null"
+          class="flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-all border"
+          :class="selectedMobileRound === null ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold' : 'bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'"
+        >
+          All Rounds
+        </button>
+        <button
+          v-for="(r, idx) in rounds"
+          :key="`m-pill-${r}`"
+          @click="selectedMobileRound = r"
+          class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border"
+          :class="selectedMobileRound === r ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold' : 'bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'"
+        >
+          <span>{{ getRoundDisplayName(r, idx, rounds.length) }}</span>
+          <span v-if="idx === rounds.length - 1" class="text-[11px]">🏆</span>
+        </button>
+      </div>
+
+      <!-- Vertical Rounds List -->
+      <div class="space-y-6">
+        <template v-for="(round, roundIdx) in displayedVerticalRounds" :key="`v-round-${round}`">
+          <!-- Final Round Section -->
+          <div v-if="round === finalRound" class="vertical-final-section">
+            <div class="flex items-center justify-center gap-2 mb-4">
+              <div class="h-px bg-gray-200 dark:bg-white/10 flex-1 max-w-[40px]" />
+              <span class="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-xs font-bold uppercase tracking-wider text-emerald-500 dark:text-emerald-400">
+                {{ getRoundDisplayName(round, rounds.indexOf(round), rounds.length) }}
+              </span>
+              <div class="h-px bg-gray-200 dark:bg-white/10 flex-1 max-w-[40px]" />
+            </div>
+
+            <!-- Trophy Showcase -->
+            <div class="mb-3 flex justify-center">
+              <BracketChampionTrophy
+                :champion="tournamentChampion"
+                :is-decided="!!tournamentChampion"
+              />
+            </div>
+
+            <!-- Grand Final Match Card -->
+            <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
+              <KnockoutMatchCard
+                :matchup="finalRoundMainMatchups[0]"
+                :round="finalRound"
+                :match-index="0"
+                :is-arranging="isArranging"
+                :selected-slot="selectedSlot"
+                :readonly="readonly"
+                :updating-match="updatingMatch"
+                @slot-click="handleSlotClick"
+                @swap-home-away="swapMatchHomeAway"
+                @start-match="emit('start-match', $event)"
+                @control-match="emit('control-match', $event)"
+                @enter-arrange="enterArrangeMode"
+              />
+            </div>
+
+            <!-- 3rd Place Play-off -->
+            <div v-if="thirdPlaceMatchups.length > 0" class="w-full mt-6">
+              <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 text-center">
+                3rd Place Play-off
+              </div>
+              <KnockoutMatchCard
+                :matchup="thirdPlaceMatchups[0]"
+                :round="finalRound"
+                :match-index="1"
+                :is-arranging="isArranging"
+                :selected-slot="selectedSlot"
+                :readonly="readonly"
+                :updating-match="updatingMatch"
+                @slot-click="handleSlotClick"
+                @swap-home-away="swapMatchHomeAway"
+                @start-match="emit('start-match', $event)"
+                @control-match="emit('control-match', $event)"
+                @enter-arrange="enterArrangeMode"
+              />
+            </div>
+          </div>
+
+          <!-- Feeder Round Section -->
+          <div v-else class="vertical-feeder-section">
+            <div class="flex items-center justify-center gap-2 mb-3">
+              <div class="h-px bg-gray-200 dark:bg-white/10 flex-1 max-w-[40px]" />
+              <span class="px-3 py-1 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                {{ getRoundDisplayName(round, rounds.indexOf(round), rounds.length) }}
+              </span>
+              <div class="h-px bg-gray-200 dark:bg-white/10 flex-1 max-w-[40px]" />
+            </div>
+
+            <!-- Matches in feeder round -->
+            <div class="space-y-4">
+              <template v-for="(matchup, mIdx) in (activeMatchupsByRound[round] || [])" :key="`v-match-${matchup.id}`">
+                <div>
+                  <KnockoutMatchCard
+                    :matchup="matchup"
+                    :round="round"
+                    :match-index="mIdx"
+                    :is-arranging="isArranging"
+                    :selected-slot="selectedSlot"
+                    :readonly="readonly"
+                    :updating-match="updatingMatch"
+                    :is-playoff-first-round="rounds.indexOf(round) === 0 && isPlayoffFirstRound"
+                    @slot-click="handleSlotClick"
+                    @swap-home-away="swapMatchHomeAway"
+                    @start-match="emit('start-match', $event)"
+                    @control-match="emit('control-match', $event)"
+                    @enter-arrange="enterArrangeMode"
+                  />
+                  <!-- Downward advancement indicator -->
+                  <div class="flex flex-col items-center my-2">
+                    <div class="w-px h-3.5 bg-gray-300 dark:bg-white/15" />
+                    <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 -mt-1" />
+                    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-500 mt-0.5">
+                      {{ getMatchAdvanceText(rounds.indexOf(round), mIdx) }}
+                    </span>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- 2. HORIZONTAL BRACKET FOR LARGE SCREENS -->
     <div
+      v-else
       ref="bracketContainerRef"
       class="bracket-container"
       :class="{ 'is-dragging': isDragging }"
@@ -1522,5 +1729,18 @@ defineExpose({
 /* ── 3rd place ────────────────────────────────────────────── */
 .third-place-section {
   margin-top: 1rem;
+}
+
+/* ── Vertical Bracket (Mobile) ───────────────────────────── */
+.vertical-bracket-container {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 </style>
