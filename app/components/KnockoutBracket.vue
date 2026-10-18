@@ -1089,52 +1089,56 @@ defineExpose({
                 gridRow: `1 / ${totalWingRows + 1}`
               }"
             >
-              <div class="final-container">
-                <!-- Champion Trophy Showcase -->
-                <div class="w-full flex justify-center mb-4">
+              <div class="final-layout">
+                <!-- Top Slot: Champion Trophy Showcase -->
+                <div class="final-top-slot">
                   <BracketChampionTrophy
                     :champion="tournamentChampion"
                     :is-decided="!!tournamentChampion"
                   />
                 </div>
 
-                <!-- Grand Final Match Card -->
-                <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
-                  <KnockoutMatchCard
-                    :matchup="finalRoundMainMatchups[0]"
-                    :round="finalRound"
-                    :match-index="0"
-                    :is-arranging="isArranging"
-                    :selected-slot="selectedSlot"
-                    :readonly="readonly"
-                    :updating-match="updatingMatch"
-                    @slot-click="handleSlotClick"
-                    @swap-home-away="swapMatchHomeAway"
-                    @start-match="emit('start-match', $event)"
-                    @control-match="emit('control-match', $event)"
-                    @enter-arrange="enterArrangeMode"
-                  />
+                <!-- Center Slot: Grand Final Match Card (Exact 50% vertical center connecting left & right) -->
+                <div class="final-center-slot">
+                  <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
+                    <KnockoutMatchCard
+                      :matchup="finalRoundMainMatchups[0]"
+                      :round="finalRound"
+                      :match-index="0"
+                      :is-arranging="isArranging"
+                      :selected-slot="selectedSlot"
+                      :readonly="readonly"
+                      :updating-match="updatingMatch"
+                      @slot-click="handleSlotClick"
+                      @swap-home-away="swapMatchHomeAway"
+                      @start-match="emit('start-match', $event)"
+                      @control-match="emit('control-match', $event)"
+                      @enter-arrange="enterArrangeMode"
+                    />
+                  </div>
                 </div>
 
-                <!-- 3rd Place Play-off Match underneath Grand Final -->
-                <div v-if="thirdPlaceMatchups.length > 0" class="w-full mt-4 pt-3 border-t border-gray-200 dark:border-white/10">
-                  <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 text-center">
-                    3rd Place Play-off
+                <!-- Bottom Slot: 3rd Place Play-off Match underneath Grand Final -->
+                <div class="final-bottom-slot">
+                  <div v-if="thirdPlaceMatchups.length > 0" class="w-full">
+                    <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 text-center">
+                      3rd Place Play-off
+                    </div>
+                    <KnockoutMatchCard
+                      :matchup="thirdPlaceMatchups[0]"
+                      :round="finalRound"
+                      :match-index="1"
+                      :is-arranging="isArranging"
+                      :selected-slot="selectedSlot"
+                      :readonly="readonly"
+                      :updating-match="updatingMatch"
+                      @slot-click="handleSlotClick"
+                      @swap-home-away="swapMatchHomeAway"
+                      @start-match="emit('start-match', $event)"
+                      @control-match="emit('control-match', $event)"
+                      @enter-arrange="enterArrangeMode"
+                    />
                   </div>
-                  <KnockoutMatchCard
-                    :matchup="thirdPlaceMatchups[0]"
-                    :round="finalRound"
-                    :match-index="1"
-                    :is-arranging="isArranging"
-                    :selected-slot="selectedSlot"
-                    :readonly="readonly"
-                    :updating-match="updatingMatch"
-                    @slot-click="handleSlotClick"
-                    @swap-home-away="swapMatchHomeAway"
-                    @start-match="emit('start-match', $event)"
-                    @control-match="emit('control-match', $event)"
-                    @enter-arrange="enterArrangeMode"
-                  />
                 </div>
               </div>
             </div>
@@ -1441,15 +1445,40 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 0.5rem;
+  padding: 0;
+  min-height: 380px;
 }
 
-.final-container {
+.final-layout {
   width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 1fr auto 1fr;
+  align-items: center;
+  justify-items: center;
+}
+
+.final-top-slot {
   display: flex;
-  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  padding-bottom: 0.75rem;
+}
+
+.final-center-slot {
+  display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+}
+
+.final-bottom-slot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  padding-top: 0.5rem;
 }
 
 /* ── Connector column ─────────────────────────────────────── */
