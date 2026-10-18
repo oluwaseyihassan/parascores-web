@@ -30,7 +30,7 @@ const trophyImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAN4AAAFQCAYAAAD
     <div class="relative flex items-center justify-center">
       <svg
         viewBox="0 0 222 336"
-        class="w-20 h-28 sm:w-24 sm:h-36 overflow-visible drop-shadow-md transition-transform duration-300 hover:scale-105"
+        class="w-20 h-28 sm:w-[84px] sm:h-[126px] overflow-visible drop-shadow-md transition-transform duration-300 hover:scale-105"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
@@ -97,7 +97,7 @@ const trophyImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAN4AAAFQCAYAAAD
     <!-- Team Name (Only rendered when champion is decided) -->
     <div
       v-if="isDecided && champion"
-      class="mt-3 text-sm font-bold text-gray-900 dark:text-gray-100 max-w-[210px] truncate leading-tight"
+      class="mt-2 text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 max-w-[210px] truncate leading-tight"
       :title="champion.name"
     >
       {{ champion.name }}
@@ -105,8 +105,8 @@ const trophyImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAN4AAAFQCAYAAAD
 
     <!-- CHAMPION Label (Always rendered) -->
     <div
-      class="text-[10px] sm:text-[11px] font-extrabold tracking-[0.25em] text-[#9ca3af] dark:text-[#a1a1aa] uppercase select-none"
-      :class="isDecided && champion ? 'mt-1' : 'mt-2.5'"
+      class="text-[10px] font-extrabold tracking-[0.25em] text-[#9ca3af] dark:text-[#a1a1aa] uppercase select-none"
+      :class="isDecided && champion ? 'mt-1' : 'mt-1.5'"
     >
       CHAMPION
     </div>
