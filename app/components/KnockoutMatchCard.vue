@@ -354,6 +354,8 @@ const hasFooter = (matchup: any) => {
   overflow: hidden;
   transition: border-color 0.2s, box-shadow 0.2s;
   position: relative;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .match-card:hover {
