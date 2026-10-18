@@ -10,6 +10,7 @@ interface Props {
   twoLegsKnockout?: boolean
   thirdPlaceMatch?: boolean
   readonly?: boolean
+  tournamentId?: string
 }
 
 const props = defineProps<Props>()
@@ -19,6 +20,11 @@ const emit = defineEmits<{
   'control-match': [fixture: Fixture]
   'open-playoff-draw': []
 }>()
+
+const toast = useToast()
+const fixtureStore = useFixtureStore()
+const standingStore = useStandingStore()
+const participantStore = useParticipantStore()
 
 const getAggregateStatus = (fixtures: Fixture[]): FixtureStatus => {
   if (fixtures.some(f => f.status === FixtureStatus.LIVE || f.status === FixtureStatus.NORMAL_TIME_ENDED || f.status === FixtureStatus.EXTRATIME)) return FixtureStatus.LIVE
@@ -107,21 +113,513 @@ const matchupsByRound = computed(() => {
   return result
 })
 
+// Arrange Mode state
+const isArranging = ref(false)
+const isSaving = ref(false)
+const isShuffling = ref(false)
+const draftMatchups = ref<Record<number, any[]>>({})
+
+const selectedSlot = ref<{
+  round: number
+  matchIndex: number
+  isHome: boolean
+  teamId?: string | null
+  team?: any
+  placeholder?: string | null
+} | null>(null)
+
+const activeMatchupsByRound = computed(() => {
+  if (isArranging.value && draftMatchups.value && Object.keys(draftMatchups.value).length > 0) {
+    return draftMatchups.value
+  }
+  return matchupsByRound.value
+})
+
 const finalRoundMainMatchups = computed(() => {
   if (props.rounds.length === 0) return []
   const finalRound = props.rounds[props.rounds.length - 1]!
-  return (matchupsByRound.value[finalRound] || []).filter((m: any) => !m.isThirdPlace)
+  return (activeMatchupsByRound.value[finalRound] || []).filter((m: any) => !m.isThirdPlace)
 })
 
 const thirdPlaceMatchups = computed(() => {
   if (props.rounds.length === 0) return []
   const finalRound = props.rounds[props.rounds.length - 1]!
-  return (matchupsByRound.value[finalRound] || []).filter((m: any) => m.isThirdPlace)
+  return (activeMatchupsByRound.value[finalRound] || []).filter((m: any) => m.isThirdPlace)
 })
 
 const firstRoundMatches = computed(() => {
   if (props.rounds.length === 0) return 0
-  return matchupsByRound.value[props.rounds[0]!]?.length || 0
+  return activeMatchupsByRound.value[props.rounds[0]!]?.length || 0
+})
+
+const isPlayoffFirstRound = computed(() => {
+  if (props.rounds.length < 2) return false
+  const r0 = props.rounds[0]!
+  const r1 = props.rounds[1]!
+  const count0 = activeMatchupsByRound.value[r0]?.length || 0
+  const count1 = activeMatchupsByRound.value[r1]?.length || 0
+  return count0 > 0 && count0 === count1
+})
+
+const canArrange = computed(() => {
+  if (props.readonly) return false
+  return props.rounds.some(r => {
+    const roundFixtures = props.fixturesByRound[r] || []
+    return roundFixtures.some(f => f.status === FixtureStatus.SCHEDULED)
+  })
+})
+
+const enterArrangeMode = () => {
+  draftMatchups.value = JSON.parse(JSON.stringify(matchupsByRound.value))
+  selectedSlot.value = null
+  isArranging.value = true
+  toast.add({
+    title: 'Arrange Bracket Mode',
+    description: 'Click any team to select it, then click another team to swap positions.',
+    color: 'info',
+    icon: 'i-heroicons-arrows-right-left'
+  })
+}
+
+const exitArrangeMode = () => {
+  isArranging.value = false
+  selectedSlot.value = null
+  draftMatchups.value = {}
+}
+
+const toggleArrangeMode = () => {
+  if (isArranging.value) {
+    exitArrangeMode()
+  } else {
+    enterArrangeMode()
+  }
+}
+
+// Path to Final Helpers
+const isTopHalf = (round: number, matchIndex: number): boolean | null => {
+  const matches = activeMatchupsByRound.value[round] || []
+  if (matches.length < 2) return null
+  return matchIndex < Math.ceil(matches.length / 2)
+}
+
+const getHalfName = (round: number, matchIndex: number): string | null => {
+  const matches = activeMatchupsByRound.value[round] || []
+  if (matches.length < 2) return null
+  return matchIndex < Math.ceil(matches.length / 2) ? 'Top Half' : 'Bottom Half'
+}
+
+const isSlotSelectable = (round: number, matchIndex: number, isHome: boolean): boolean => {
+  if (!isArranging.value) return false
+  const matchup = draftMatchups.value[round]?.[matchIndex]
+  if (!matchup || matchup.status !== FixtureStatus.SCHEDULED) return false
+  const teamId = isHome ? matchup.homeTeamId : matchup.awayTeamId
+  const team = isHome ? matchup.homeTeam : matchup.awayTeam
+  if (selectedSlot.value) {
+    return selectedSlot.value.round === round
+  }
+  return !!(teamId || team)
+}
+
+const isSlotSelected = (round: number, matchIndex: number, isHome: boolean): boolean => {
+  if (!selectedSlot.value) return false
+  return (
+    selectedSlot.value.round === round &&
+    selectedSlot.value.matchIndex === matchIndex &&
+    selectedSlot.value.isHome === isHome
+  )
+}
+
+const getTeamNameFromSlot = (slot: typeof selectedSlot.value): string => {
+  if (!slot) return ''
+  if (slot.team) {
+    return slot.team.customShortName || slot.team.customName || slot.team.user?.name || 'Team'
+  }
+  return slot.placeholder || 'Slot'
+}
+
+const handleSlotClick = (round: number, matchIndex: number, isHome: boolean) => {
+  if (!isArranging.value) return
+
+  const roundMatchups = draftMatchups.value[round]
+  if (!roundMatchups || !roundMatchups[matchIndex]) return
+
+  const matchup = roundMatchups[matchIndex]
+  if (matchup.status !== FixtureStatus.SCHEDULED) {
+    toast.add({
+      title: 'Match unavailable',
+      description: 'You can only swap teams in scheduled matches.',
+      color: 'warning'
+    })
+    return
+  }
+
+  const slotTeam = isHome ? matchup.homeTeam : matchup.awayTeam
+  const slotTeamId = isHome ? matchup.homeTeamId : matchup.awayTeamId
+  const slotPlaceholder = isHome ? matchup.homeTeamPlaceholder : matchup.awayTeamPlaceholder
+
+  // If nothing is selected yet:
+  if (!selectedSlot.value) {
+    if (!slotTeamId && !slotTeam) {
+      toast.add({
+        title: 'Empty slot',
+        description: 'Please select a slot that contains an assigned team.',
+        color: 'neutral'
+      })
+      return
+    }
+
+    selectedSlot.value = {
+      round,
+      matchIndex,
+      isHome,
+      teamId: slotTeamId,
+      team: slotTeam,
+      placeholder: slotPlaceholder
+    }
+    return
+  }
+
+  // Clicked the exact same slot -> Deselect
+  if (
+    selectedSlot.value.round === round &&
+    selectedSlot.value.matchIndex === matchIndex &&
+    selectedSlot.value.isHome === isHome
+  ) {
+    selectedSlot.value = null
+    return
+  }
+
+  // Must swap within the same round
+  if (selectedSlot.value.round !== round) {
+    toast.add({
+      title: 'Different rounds',
+      description: 'Teams can only be swapped with other teams in the same round.',
+      color: 'warning'
+    })
+    return
+  }
+
+  // Swap selectedSlot with target slot!
+  const prevRound = selectedSlot.value.round
+  const prevMatchIdx = selectedSlot.value.matchIndex
+  const prevIsHome = selectedSlot.value.isHome
+  const prevMatchup = draftMatchups.value[prevRound]![prevMatchIdx]!
+
+  const prevTeam = prevIsHome ? prevMatchup.homeTeam : prevMatchup.awayTeam
+  const prevTeamId = prevIsHome ? prevMatchup.homeTeamId : prevMatchup.awayTeamId
+  const prevPlaceholder = prevIsHome ? prevMatchup.homeTeamPlaceholder : prevMatchup.awayTeamPlaceholder
+
+  // Update prevMatchup
+  if (prevIsHome) {
+    prevMatchup.homeTeam = slotTeam
+    prevMatchup.homeTeamId = slotTeamId
+    prevMatchup.homeTeamPlaceholder = slotPlaceholder
+    if (prevMatchup.fixtures?.[0]) {
+      prevMatchup.fixtures[0].homeTeam = slotTeam
+      prevMatchup.fixtures[0].homeTeamId = slotTeamId
+      prevMatchup.fixtures[0].homeTeamPlaceholder = slotPlaceholder
+    }
+  } else {
+    prevMatchup.awayTeam = slotTeam
+    prevMatchup.awayTeamId = slotTeamId
+    prevMatchup.awayTeamPlaceholder = slotPlaceholder
+    if (prevMatchup.fixtures?.[0]) {
+      prevMatchup.fixtures[0].awayTeam = slotTeam
+      prevMatchup.fixtures[0].awayTeamId = slotTeamId
+      prevMatchup.fixtures[0].awayTeamPlaceholder = slotPlaceholder
+    }
+  }
+
+  // Update current matchup
+  if (isHome) {
+    matchup.homeTeam = prevTeam
+    matchup.homeTeamId = prevTeamId
+    matchup.homeTeamPlaceholder = prevPlaceholder
+    if (matchup.fixtures?.[0]) {
+      matchup.fixtures[0].homeTeam = prevTeam
+      matchup.fixtures[0].homeTeamId = prevTeamId
+      matchup.fixtures[0].homeTeamPlaceholder = prevPlaceholder
+    }
+  } else {
+    matchup.awayTeam = prevTeam
+    matchup.awayTeamId = prevTeamId
+    matchup.awayTeamPlaceholder = prevPlaceholder
+    if (matchup.fixtures?.[0]) {
+      matchup.fixtures[0].awayTeam = prevTeam
+      matchup.fixtures[0].awayTeamId = prevTeamId
+      matchup.fixtures[0].awayTeamPlaceholder = prevPlaceholder
+    }
+  }
+
+  const teamAName = prevTeam?.customShortName || prevTeam?.customName || prevTeam?.user?.name || prevPlaceholder || 'Team'
+  const teamBName = slotTeam?.customShortName || slotTeam?.customName || slotTeam?.user?.name || slotPlaceholder || 'Team'
+
+  toast.add({
+    title: 'Teams Swapped',
+    description: `Swapped ${teamAName} ⇄ ${teamBName}`,
+    color: 'success',
+    icon: 'i-heroicons-arrows-right-left'
+  })
+
+  selectedSlot.value = null
+}
+
+const swapMatchHomeAway = (round: number, matchIndex: number) => {
+  if (!isArranging.value) return
+  const matchup = draftMatchups.value[round]?.[matchIndex]
+  if (!matchup || matchup.status !== FixtureStatus.SCHEDULED) return
+
+  const tempTeam = matchup.homeTeam
+  const tempTeamId = matchup.homeTeamId
+  const tempPlaceholder = matchup.homeTeamPlaceholder
+
+  matchup.homeTeam = matchup.awayTeam
+  matchup.homeTeamId = matchup.awayTeamId
+  matchup.homeTeamPlaceholder = matchup.awayTeamPlaceholder
+
+  matchup.awayTeam = tempTeam
+  matchup.awayTeamId = tempTeamId
+  matchup.awayTeamPlaceholder = tempPlaceholder
+
+  if (matchup.fixtures?.[0]) {
+    matchup.fixtures[0].homeTeam = matchup.homeTeam
+    matchup.fixtures[0].homeTeamId = matchup.homeTeamId
+    matchup.fixtures[0].homeTeamPlaceholder = matchup.homeTeamPlaceholder
+
+    matchup.fixtures[0].awayTeam = matchup.awayTeam
+    matchup.fixtures[0].awayTeamId = matchup.awayTeamId
+    matchup.fixtures[0].awayTeamPlaceholder = matchup.awayTeamPlaceholder
+  }
+
+  toast.add({
+    title: 'Home / Away Inverted',
+    description: 'First leg home advantage reversed.',
+    color: 'info',
+    icon: 'i-heroicons-arrows-up-down'
+  })
+}
+
+const shuffleDraw = () => {
+  if (!isArranging.value) return
+  isShuffling.value = true
+
+  try {
+    // 1. Play-off round (Round 0)
+    const r0 = props.rounds[0]
+    if (r0 !== undefined && isPlayoffFirstRound.value && draftMatchups.value[r0]) {
+      const playoffMatchups = draftMatchups.value[r0]!
+      if (playoffMatchups.every(m => m.status === FixtureStatus.SCHEDULED)) {
+        // Collect unseeded away teams
+        const awayTeams = playoffMatchups.map(m => ({
+          team: m.awayTeam,
+          teamId: m.awayTeamId,
+          placeholder: m.awayTeamPlaceholder
+        }))
+        const shuffledAway = [...awayTeams].sort(() => Math.random() - 0.5)
+
+        playoffMatchups.forEach((m, idx) => {
+          const item = shuffledAway[idx]!
+          m.awayTeam = item.team
+          m.awayTeamId = item.teamId
+          m.awayTeamPlaceholder = item.placeholder
+          if (m.fixtures?.[0]) {
+            m.fixtures[0].awayTeam = item.team
+            m.fixtures[0].awayTeamId = item.teamId
+            m.fixtures[0].awayTeamPlaceholder = item.placeholder
+          }
+        })
+      }
+    }
+
+    // 2. Round of 16 (or first round if no playoffs)
+    const r1 = isPlayoffFirstRound.value ? props.rounds[1] : props.rounds[0]
+    if (r1 !== undefined && draftMatchups.value[r1]) {
+      const r1Matchups = draftMatchups.value[r1]!
+      if (r1Matchups.every(m => m.status === FixtureStatus.SCHEDULED)) {
+        // Shuffle the seeded home teams
+        const homeTeams = r1Matchups
+          .map(m => ({ team: m.homeTeam, teamId: m.homeTeamId, placeholder: m.homeTeamPlaceholder }))
+          .filter(h => !!h.teamId)
+
+        if (homeTeams.length > 1) {
+          const shuffledHome = [...homeTeams].sort(() => Math.random() - 0.5)
+          let sIdx = 0
+          r1Matchups.forEach(m => {
+            if (m.homeTeamId) {
+              const item = shuffledHome[sIdx++]!
+              m.homeTeam = item.team
+              m.homeTeamId = item.teamId
+              m.homeTeamPlaceholder = item.placeholder
+              if (m.fixtures?.[0]) {
+                m.fixtures[0].homeTeam = item.team
+                m.fixtures[0].homeTeamId = item.teamId
+                m.fixtures[0].homeTeamPlaceholder = item.placeholder
+              }
+            }
+          })
+        }
+      }
+    }
+
+    selectedSlot.value = null
+    toast.add({
+      title: 'Draw Shuffled',
+      description: 'Matchups and bracket paths randomized.',
+      color: 'success',
+      icon: 'i-heroicons-sparkles'
+    })
+  } finally {
+    isShuffling.value = false
+  }
+}
+
+const standardSeeding = () => {
+  if (!isArranging.value) return
+
+  const standings = standingStore.standings
+  const participants = participantStore.participants
+  const getParticipant = (pId: string) => participants.find(p => p.id === pId)
+
+  // 1. Playoff round: 9 vs 24, 10 vs 23, etc.
+  const r0 = props.rounds[0]
+  if (r0 !== undefined && isPlayoffFirstRound.value && draftMatchups.value[r0]) {
+    const playoffMatchups = draftMatchups.value[r0]!
+    if (standings.length >= 24) {
+      const s9to16 = standings.slice(8, 16)
+      const s17to24 = standings.slice(16, 24)
+
+      playoffMatchups.forEach((m, idx) => {
+        const seededStanding = s9to16[idx]
+        const unseededStanding = s17to24[s17to24.length - 1 - idx]
+
+        if (seededStanding) {
+          const p = getParticipant(seededStanding.participant_id)
+          m.homeTeamId = seededStanding.participant_id
+          m.homeTeam = p
+          if (m.fixtures?.[0]) {
+            m.fixtures[0].homeTeamId = seededStanding.participant_id
+            m.fixtures[0].homeTeam = p
+          }
+        }
+        if (unseededStanding) {
+          const p = getParticipant(unseededStanding.participant_id)
+          m.awayTeamId = unseededStanding.participant_id
+          m.awayTeam = p
+          if (m.fixtures?.[0]) {
+            m.fixtures[0].awayTeamId = unseededStanding.participant_id
+            m.fixtures[0].awayTeam = p
+          }
+        }
+      })
+    }
+  }
+
+  // 2. Round of 16 Top 8 seeds: standard balanced bracket
+  // Top Half: 1, 8, 4, 5 | Bottom Half: 2, 7, 3, 6
+  const r1 = isPlayoffFirstRound.value ? props.rounds[1] : props.rounds[0]
+  if (r1 !== undefined && draftMatchups.value[r1]) {
+    const r1Matchups = draftMatchups.value[r1]!
+    if (standings.length >= 8 && r1Matchups.length >= 8) {
+      const seedOrder = [0, 7, 3, 4, 1, 6, 2, 5]
+      r1Matchups.forEach((m, idx) => {
+        const seedIdx = seedOrder[idx]
+        if (seedIdx !== undefined && standings[seedIdx]) {
+          const standing = standings[seedIdx]!
+          const p = getParticipant(standing.participant_id)
+          m.homeTeamId = standing.participant_id
+          m.homeTeam = p
+          if (m.fixtures?.[0]) {
+            m.fixtures[0].homeTeamId = standing.participant_id
+            m.fixtures[0].homeTeam = p
+          }
+        }
+      })
+    }
+  }
+
+  selectedSlot.value = null
+  toast.add({
+    title: 'Standard Seeding Restored',
+    description: 'Top seeds balanced across Top and Bottom halves.',
+    color: 'success',
+    icon: 'i-heroicons-arrow-path'
+  })
+}
+
+const saveArrangement = async () => {
+  if (!props.tournamentId) {
+    toast.add({
+      title: 'Missing tournament',
+      description: 'Tournament ID is required to save pairings.',
+      color: 'error'
+    })
+    return
+  }
+
+  isSaving.value = true
+  try {
+    const pairingsPayload: Array<{
+      fixtureId: string
+      homeTeamId?: string | null
+      awayTeamId?: string | null
+    }> = []
+
+    for (const round of props.rounds) {
+      const matchups = draftMatchups.value[round] || []
+      for (const m of matchups) {
+        if (m.status === FixtureStatus.SCHEDULED && m.fixtures?.[0]?.id) {
+          pairingsPayload.push({
+            fixtureId: m.fixtures[0].id,
+            homeTeamId: m.homeTeamId || null,
+            awayTeamId: m.awayTeamId || null
+          })
+        }
+      }
+    }
+
+    if (pairingsPayload.length === 0) {
+      isArranging.value = false
+      return
+    }
+
+    await fixtureStore.updateKnockoutPairings(props.tournamentId, pairingsPayload)
+
+    toast.add({
+      title: 'Knockout Arrangement Saved',
+      description: 'Bracket path to the final updated successfully.',
+      color: 'success',
+      icon: 'i-heroicons-check-circle'
+    })
+
+    isArranging.value = false
+    selectedSlot.value = null
+    draftMatchups.value = {}
+  } catch (err: any) {
+    toast.add({
+      title: 'Failed to Save',
+      description: err?.message || 'Could not update knockout pairings.',
+      color: 'error'
+    })
+  } finally {
+    isSaving.value = false
+  }
+}
+
+// Escape key listener
+onMounted(() => {
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && isArranging.value) {
+      if (selectedSlot.value) {
+        selectedSlot.value = null
+      } else {
+        exitArrangeMode()
+      }
+    }
+  }
+  window.addEventListener('keydown', onKeyDown)
+  onUnmounted(() => {
+    window.removeEventListener('keydown', onKeyDown)
+  })
 })
 
 const getWinnerState = (matchup: any, isHome: boolean): 'winner' | 'loser' | 'none' => {
@@ -155,15 +653,6 @@ const getTeamName = (matchup: any, isHome: boolean) => {
   return isHome ? (matchup.homeTeamPlaceholder || 'TBD') : (matchup.awayTeamPlaceholder || 'TBD')
 }
 
-const isPlayoffFirstRound = computed(() => {
-  if (props.rounds.length < 2) return false
-  const r0 = props.rounds[0]!
-  const r1 = props.rounds[1]!
-  const count0 = matchupsByRound.value[r0]?.length || 0
-  const count1 = matchupsByRound.value[r1]?.length || 0
-  return count0 > 0 && count0 === count1
-})
-
 const getTreeDepth = (roundIndex: number): number => {
   if (isPlayoffFirstRound.value) {
     return roundIndex === 0 ? 0 : roundIndex - 1
@@ -187,12 +676,6 @@ const CONNECTOR_WIDTH = 52
 const gridColumns = computed(() =>
   props.rounds.map((_, i) => i < props.rounds.length - 1 ? `${COLUMN_WIDTH}px ${CONNECTOR_WIDTH}px` : `${COLUMN_WIDTH}px`).join(' ')
 )
-
-const scrollWidth = computed(() => {
-  const cols = props.rounds.length
-  const connectors = cols - 1
-  return `${cols * COLUMN_WIDTH + connectors * CONNECTOR_WIDTH}px`
-})
 
 const isTeamKnown = (matchup: any, isHome: boolean) => {
   return isHome ? !!matchup.homeTeamId : !!matchup.awayTeamId
@@ -272,356 +755,531 @@ const zoomOut = () => {
 const resetZoom = () => {
   scale.value = 1.0
 }
+
+defineExpose({
+  isArranging,
+  canArrange,
+  enterArrangeMode,
+  exitArrangeMode,
+  toggleArrangeMode,
+  saveArrangement,
+  shuffleDraw,
+  standardSeeding
+})
 </script>
 
 <template>
   <div class="relative w-full">
-    <!-- Zoom Controls -->
-    <div class="absolute top-0 right-4 z-40 flex items-center gap-1 rounded-lg border border-gray-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-white/10 dark:bg-gray-900/90 text-xs select-none">
+    <!-- Top Floating Toolbar when Arranging -->
+    <div
+      v-if="isArranging"
+      class="sticky top-0 z-50 mb-3 mx-2 rounded-xl border border-primary-500/40 bg-white/95 dark:bg-gray-900/95 p-3 shadow-lg backdrop-blur flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-150"
+    >
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary-50 dark:bg-primary-950/60 border border-primary-200 dark:border-primary-800/60 text-xs font-bold text-primary-700 dark:text-primary-300">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
+          </span>
+          Arrange Mode
+        </div>
+
+        <div v-if="selectedSlot" class="flex items-center gap-2 text-xs font-medium text-gray-800 dark:text-gray-200">
+          <span>Selected:</span>
+          <span class="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold">
+            {{ getTeamNameFromSlot(selectedSlot) }}
+          </span>
+          <span class="text-gray-400 text-[11px]">(Click another team in this round to swap)</span>
+          <button
+            @click="selectedSlot = null"
+            class="text-xs text-primary-600 dark:text-primary-400 hover:underline ml-1"
+          >
+            Cancel selection
+          </button>
+        </div>
+        <div v-else class="text-xs text-gray-500 dark:text-gray-400">
+          Click any team to select it, then click another team to swap positions. Top Half feeds into SF 1; Bottom Half feeds into SF 2.
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <UButton
+          size="xs"
+          variant="soft"
+          color="neutral"
+          icon="i-heroicons-sparkles"
+          label="Shuffle Draw"
+          :loading="isShuffling"
+          @click="shuffleDraw"
+        />
+        <UButton
+          size="xs"
+          variant="soft"
+          color="neutral"
+          icon="i-heroicons-arrow-path"
+          label="Standard Seeding"
+          @click="standardSeeding"
+        />
+        <div class="w-px h-5 bg-gray-200 dark:bg-white/10 mx-1"></div>
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          label="Cancel"
+          :disabled="isSaving"
+          @click="exitArrangeMode"
+        />
+        <UButton
+          size="xs"
+          color="primary"
+          icon="i-heroicons-check"
+          label="Save Arrangement"
+          :loading="isSaving"
+          @click="saveArrangement"
+        />
+      </div>
+    </div>
+
+    <!-- Top Right Controls (Arrange Button + Zoom) -->
+    <div class="absolute top-0 right-4 z-40 flex items-center gap-2">
       <button
-        @click="zoomOut"
-        class="flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
-        title="Zoom Out"
+        v-if="canArrange && !isArranging"
+        @click="enterArrangeMode"
+        class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-primary-500/30 bg-white/90 dark:bg-gray-900/90 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/40 text-primary-600 dark:text-primary-400 text-xs font-semibold shadow-sm backdrop-blur transition-all"
+        title="Rearrange knockout matches, swap teams, or run draw"
       >
-        <UIcon name="i-heroicons-minus" class="w-3.5 h-3.5" />
+        <UIcon name="i-heroicons-arrows-right-left" class="w-3.5 h-3.5" />
+        <span>Arrange Bracket</span>
       </button>
-      <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 min-w-[28px] text-center">
-        {{ Math.round(scale * 100) }}%
-      </span>
-      <button
-        @click="zoomIn"
-        class="flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
-        title="Zoom In"
-      >
-        <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5" />
-      </button>
-      <div class="w-px h-3 bg-gray-200 dark:bg-white/10 mx-1"></div>
-      <button
-        @click="resetZoom"
-        class="px-1.5 py-0.5 rounded text-[9px] font-bold text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
-        title="Reset Zoom"
-      >
-        Reset
-      </button>
+
+      <!-- Zoom Controls -->
+      <div class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-white/10 dark:bg-gray-900/90 text-xs select-none">
+        <button
+          @click="zoomOut"
+          class="flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
+          title="Zoom Out"
+        >
+          <UIcon name="i-heroicons-minus" class="w-3.5 h-3.5" />
+        </button>
+        <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 min-w-[28px] text-center">
+          {{ Math.round(scale * 100) }}%
+        </span>
+        <button
+          @click="zoomIn"
+          class="flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
+          title="Zoom In"
+        >
+          <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5" />
+        </button>
+        <div class="w-px h-3 bg-gray-200 dark:bg-white/10 mx-1"></div>
+        <button
+          @click="resetZoom"
+          class="px-1.5 py-0.5 rounded text-[9px] font-bold text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
+          title="Reset Zoom"
+        >
+          Reset
+        </button>
+      </div>
     </div>
 
     <div class="bracket-container">
       <div class="bracket-scroll" :style="{ zoom: scale }">
-      <!-- Round headers — same grid template as the bracket so each header sits over its column -->
-      <div
-        class="bracket-headers"
-        :style="{
-          display: 'grid',
-          gridTemplateColumns: gridColumns,
-        }"
-      >
-        <template v-for="(round, roundIndex) in rounds" :key="`header-${round}`">
-          <div class="bracket-header">
-            <span>{{ getRoundDisplayName(round, roundIndex, rounds.length) }}</span>
-          </div>
-          <!-- Empty cell for the connector column -->
-          <div v-if="roundIndex < rounds.length - 1" />
-        </template>
-      </div>
+        <!-- Round headers -->
+        <div
+          class="bracket-headers"
+          :style="{
+            display: 'grid',
+            gridTemplateColumns: gridColumns,
+          }"
+        >
+          <template v-for="(round, roundIndex) in rounds" :key="`header-${round}`">
+            <div class="bracket-header">
+              <span>{{ getRoundDisplayName(round, roundIndex, rounds.length) }}</span>
+            </div>
+            <div v-if="roundIndex < rounds.length - 1" />
+          </template>
+        </div>
 
-      <!-- Bracket grid -->
-      <div
-        class="bracket-grid"
-        :style="{
-          '--total-rows': firstRoundMatches * 2,
-          display: 'grid',
-          gridTemplateColumns: gridColumns,
-          gap: '0'
-        }"
-      >
-        <template v-for="(round, roundIndex) in rounds" :key="round">
-          <!-- Matches column -->
-          <div class="matches-column">
-            <template v-for="(matchup, matchIndex) in (roundIndex === rounds.length - 1 ? finalRoundMainMatchups : matchupsByRound[round])" :key="matchup.id">
-              <div
-                class="match-cell"
-                :style="{ gridRow: getMatchGridRow(roundIndex, matchIndex) }"
-              >
-                <div class="match-card" :class="{
-                  'match-card--live': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME,
-                  'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
-                }">
-                  <!-- Home team row -->
-                  <div class="team-row" :class="{
-                    'team-row--winner': getWinnerState(matchup, true) === 'winner',
-                    'team-row--loser': getWinnerState(matchup, true) === 'loser',
-                  }">
-                    <div class="team-avatar">
-                      <img v-if="matchup.homeTeam?.logoUrl" :src="matchup.homeTeam.logoUrl" class="team-avatar__img" />
-                      <span v-else class="team-avatar__initial">
-                        {{ getTeamName(matchup, true).charAt(0).toUpperCase() }}
+        <!-- Bracket grid -->
+        <div
+          class="bracket-grid"
+          :style="{
+            '--total-rows': firstRoundMatches * 2,
+            display: 'grid',
+            gridTemplateColumns: gridColumns,
+            gap: '0'
+          }"
+        >
+          <template v-for="(round, roundIndex) in rounds" :key="round">
+            <!-- Matches column -->
+            <div class="matches-column">
+              <template v-for="(matchup, matchIndex) in (roundIndex === rounds.length - 1 ? finalRoundMainMatchups : activeMatchupsByRound[round])" :key="matchup.id">
+                <div
+                  class="match-cell"
+                  :style="{ gridRow: getMatchGridRow(roundIndex, matchIndex) }"
+                >
+                  <div
+                    class="match-card"
+                    :class="{
+                      'match-card--live': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME,
+                      'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
+                      'match-card--top-half': isTopHalf(round, matchIndex) === true,
+                      'match-card--bottom-half': isTopHalf(round, matchIndex) === false,
+                    }"
+                  >
+                    <!-- Half Header / Path Badge -->
+                    <div v-if="getHalfName(round, matchIndex)" class="match-half-header">
+                      <div class="flex items-center gap-1.5">
+                        <span class="half-dot" :class="isTopHalf(round, matchIndex) ? 'half-dot--top' : 'half-dot--bottom'" />
+                        <span class="half-title" :class="isTopHalf(round, matchIndex) ? 'half-title--top' : 'half-title--bottom'">
+                          {{ isTopHalf(round, matchIndex) ? 'Top Half · SF 1 Path' : 'Bottom Half · SF 2 Path' }}
+                        </span>
+                      </div>
+                      <span v-if="isArranging" class="text-[9px] text-gray-400 font-mono">
+                        M{{ matchIndex + 1 }}
                       </span>
-                    </div>
-                    <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, true) }">
-                      {{ getTeamName(matchup, true) }}
-                    </span>
-                    <div class="team-score-area">
-                      <span v-if="matchup.homeSubScores" class="sub-scores">
-                        {{ matchup.homeSubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }}
-                      </span>
-                      <span v-if="matchup.homePenaltyScore != null" class="pen-score">
-                        ({{ matchup.homePenaltyScore }})
-                      </span>
-                      <span class="score" :class="{
-                        'score--winner': getWinnerState(matchup, true) === 'winner',
-                        'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
-                      }">
-                        {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.homeScore : '-' }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <!-- Divider -->
-                  <div class="team-divider" />
-
-                  <!-- Away team row -->
-                  <div class="team-row" :class="{
-                    'team-row--winner': getWinnerState(matchup, false) === 'winner',
-                    'team-row--loser': getWinnerState(matchup, false) === 'loser',
-                  }">
-                    <div class="team-avatar">
-                      <img v-if="matchup.awayTeam?.logoUrl" :src="matchup.awayTeam.logoUrl" class="team-avatar__img" />
-                      <span v-else class="team-avatar__initial">
-                        {{ getTeamName(matchup, false).charAt(0).toUpperCase() }}
-                      </span>
-                    </div>
-                    <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, false) }">
-                      {{ getTeamName(matchup, false) }}
-                    </span>
-                    <div class="team-score-area">
-                      <span v-if="matchup.awaySubScores" class="sub-scores">
-                        {{ matchup.awaySubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }}
-                      </span>
-                      <span v-if="matchup.awayPenaltyScore != null" class="pen-score">
-                        ({{ matchup.awayPenaltyScore }})
-                      </span>
-                      <span class="score" :class="{
-                        'score--winner': getWinnerState(matchup, false) === 'winner',
-                        'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
-                      }">
-                        {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.awayScore : '-' }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <!-- Match info: time & venue -->
-                  <div v-if="getMatchTime(matchup) || getMatchVenue(matchup)" class="match-info">
-                    <span v-if="getMatchTime(matchup)" class="match-info__item">
-                      <UIcon name="i-heroicons-calendar" class="match-info__icon" />
-                      {{ formatMatchTime(getMatchTime(matchup)) }}
-                    </span>
-                    <span v-if="getMatchVenue(matchup)" class="match-info__item">
-                      <UIcon name="i-heroicons-map-pin" class="match-info__icon" />
-                      {{ getMatchVenue(matchup) }}
-                    </span>
-                  </div>
-
-                  <!-- Footer: status + actions -->
-                  <div v-if="hasFooter(matchup)" class="match-footer">
-                    <!-- Live indicator -->
-                    <div v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME" class="status-live">
-                      <span class="live-dot" />
-                      <span>{{ matchup.status === FixtureStatus.EXTRATIME ? 'ET' : matchup.status === FixtureStatus.NORMAL_TIME_ENDED ? 'FT' : 'Live' }}</span>
-                    </div>
-                    <div v-else-if="matchup.status === FixtureStatus.COMPLETED && !hasNoWinner(matchup)" class="status-done">
-                      <UIcon name="i-heroicons-check-circle" class="w-3 h-3" />
-                      <span>FT</span>
-                    </div>
-                    <div v-else-if="hasNoWinner(matchup)" class="status-warn">
-                      <UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3" />
-                      <span>No winner</span>
                     </div>
 
-                    <!-- Actions -->
-                    <div v-if="!readonly" class="match-actions">
+                    <!-- Home team row -->
+                    <div
+                      class="team-row"
+                      :class="{
+                        'team-row--winner': getWinnerState(matchup, true) === 'winner',
+                        'team-row--loser': getWinnerState(matchup, true) === 'loser',
+                        'team-row--selectable': isArranging && matchup.status === FixtureStatus.SCHEDULED,
+                        'team-row--selected': isSlotSelected(round, matchIndex, true),
+                      }"
+                      @click="handleSlotClick(round, matchIndex, true)"
+                    >
+                      <div class="team-avatar">
+                        <img v-if="matchup.homeTeam?.logoUrl" :src="matchup.homeTeam.logoUrl" class="team-avatar__img" />
+                        <span v-else class="team-avatar__initial">
+                          {{ getTeamName(matchup, true).charAt(0).toUpperCase() }}
+                        </span>
+                      </div>
+                      <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, true) }">
+                        {{ getTeamName(matchup, true) }}
+                      </span>
+
+                      <!-- Slot swap indicator when arranging -->
+                      <div v-if="isArranging && matchup.status === FixtureStatus.SCHEDULED" class="arrange-slot-icon">
+                        <UIcon
+                          v-if="isSlotSelected(round, matchIndex, true)"
+                          name="i-heroicons-check-circle"
+                          class="w-4 h-4 text-primary-500 animate-pulse"
+                        />
+                        <UIcon
+                          v-else-if="selectedSlot && selectedSlot.round === round"
+                          name="i-heroicons-arrows-right-left"
+                          class="w-3.5 h-3.5 text-amber-500"
+                        />
+                        <UIcon
+                          v-else
+                          name="i-heroicons-arrows-right-left"
+                          class="w-3 h-3 text-gray-400 opacity-30 hover:opacity-100"
+                        />
+                      </div>
+
+                      <!-- Standard score area -->
+                      <div v-else class="team-score-area">
+                        <span v-if="matchup.homeSubScores" class="sub-scores">
+                          {{ matchup.homeSubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }}
+                        </span>
+                        <span v-if="matchup.homePenaltyScore != null" class="pen-score">
+                          ({{ matchup.homePenaltyScore }})
+                        </span>
+                        <span class="score" :class="{
+                          'score--winner': getWinnerState(matchup, true) === 'winner',
+                          'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
+                        }">
+                          {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.homeScore : '-' }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="team-divider" />
+
+                    <!-- Away team row -->
+                    <div
+                      class="team-row"
+                      :class="{
+                        'team-row--winner': getWinnerState(matchup, false) === 'winner',
+                        'team-row--loser': getWinnerState(matchup, false) === 'loser',
+                        'team-row--selectable': isArranging && matchup.status === FixtureStatus.SCHEDULED,
+                        'team-row--selected': isSlotSelected(round, matchIndex, false),
+                      }"
+                      @click="handleSlotClick(round, matchIndex, false)"
+                    >
+                      <div class="team-avatar">
+                        <img v-if="matchup.awayTeam?.logoUrl" :src="matchup.awayTeam.logoUrl" class="team-avatar__img" />
+                        <span v-else class="team-avatar__initial">
+                          {{ getTeamName(matchup, false).charAt(0).toUpperCase() }}
+                        </span>
+                      </div>
+                      <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, false) }">
+                        {{ getTeamName(matchup, false) }}
+                      </span>
+
+                      <!-- Slot swap indicator when arranging -->
+                      <div v-if="isArranging && matchup.status === FixtureStatus.SCHEDULED" class="arrange-slot-icon">
+                        <UIcon
+                          v-if="isSlotSelected(round, matchIndex, false)"
+                          name="i-heroicons-check-circle"
+                          class="w-4 h-4 text-primary-500 animate-pulse"
+                        />
+                        <UIcon
+                          v-else-if="selectedSlot && selectedSlot.round === round"
+                          name="i-heroicons-arrows-right-left"
+                          class="w-3.5 h-3.5 text-amber-500"
+                        />
+                        <UIcon
+                          v-else
+                          name="i-heroicons-arrows-right-left"
+                          class="w-3 h-3 text-gray-400 opacity-30 hover:opacity-100"
+                        />
+                      </div>
+
+                      <!-- Standard score area -->
+                      <div v-else class="team-score-area">
+                        <span v-if="matchup.awaySubScores" class="sub-scores">
+                          {{ matchup.awaySubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }}
+                        </span>
+                        <span v-if="matchup.awayPenaltyScore != null" class="pen-score">
+                          ({{ matchup.awayPenaltyScore }})
+                        </span>
+                        <span class="score" :class="{
+                          'score--winner': getWinnerState(matchup, false) === 'winner',
+                          'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
+                        }">
+                          {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.awayScore : '-' }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Match info: time & venue -->
+                    <div v-if="getMatchTime(matchup) || getMatchVenue(matchup)" class="match-info">
+                      <span v-if="getMatchTime(matchup)" class="match-info__item">
+                        <UIcon name="i-heroicons-calendar" class="match-info__icon" />
+                        {{ formatMatchTime(getMatchTime(matchup)) }}
+                      </span>
+                      <span v-if="getMatchVenue(matchup)" class="match-info__item">
+                        <UIcon name="i-heroicons-map-pin" class="match-info__icon" />
+                        {{ getMatchVenue(matchup) }}
+                      </span>
+                    </div>
+
+                    <!-- Footer: in arrange mode show Swap H/A button, otherwise normal actions -->
+                    <div v-if="isArranging && matchup.status === FixtureStatus.SCHEDULED" class="match-footer match-footer--arrange">
+                      <span class="text-[9px] text-gray-400 font-medium">Click team to swap</span>
                       <button
-                        v-if="roundIndex === 0 && isPlayoffFirstRound && matchup.status === FixtureStatus.SCHEDULED"
+                        type="button"
                         class="action-btn action-btn--edit"
-                        title="Edit playoff matchups"
-                        @click.stop="emit('open-playoff-draw')"
+                        title="Swap Home/Away advantage"
+                        @click.stop="swapMatchHomeAway(round, matchIndex)"
                       >
-                        <UIcon name="i-heroicons-pencil-square" class="w-3 h-3" />
-                        Edit
+                        <UIcon name="i-heroicons-arrows-up-down" class="w-3 h-3" />
+                        <span>Swap H/A</span>
                       </button>
-                      <template v-if="matchup.fixtures.length === 1">
+                    </div>
+
+                    <div v-else-if="hasFooter(matchup)" class="match-footer">
+                      <!-- Live indicator -->
+                      <div v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME" class="status-live">
+                        <span class="live-dot" />
+                        <span>{{ matchup.status === FixtureStatus.EXTRATIME ? 'ET' : matchup.status === FixtureStatus.NORMAL_TIME_ENDED ? 'FT' : 'Live' }}</span>
+                      </div>
+                      <div v-else-if="matchup.status === FixtureStatus.COMPLETED && !hasNoWinner(matchup)" class="status-done">
+                        <UIcon name="i-heroicons-check-circle" class="w-3 h-3" />
+                        <span>FT</span>
+                      </div>
+                      <div v-else-if="hasNoWinner(matchup)" class="status-warn">
+                        <UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3" />
+                        <span>No winner</span>
+                      </div>
+
+                      <!-- Actions -->
+                      <div v-if="!readonly" class="match-actions">
                         <button
-                          v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
-                          class="action-btn action-btn--start"
-                          :disabled="updatingMatch"
-                          @click.stop="emit('start-match', matchup.fixtures[0])"
+                          v-if="roundIndex === 0 && isPlayoffFirstRound && matchup.status === FixtureStatus.SCHEDULED"
+                          class="action-btn action-btn--edit"
+                          title="Arrange playoff matchups"
+                          @click.stop="enterArrangeMode"
                         >
-                          <UIcon name="i-heroicons-play" class="w-3 h-3" />
-                          Start
+                          <UIcon name="i-heroicons-pencil-square" class="w-3 h-3" />
+                          Arrange
                         </button>
-                        <button
-                          v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED"
-                          class="action-btn action-btn--control"
-                          @click.stop="emit('control-match', matchup.fixtures[0])"
-                        >
-                          <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />
-                          Control
-                        </button>
-                      </template>
-                      <template v-else>
-                        <template v-for="(leg, i) in matchup.fixtures" :key="leg.id">
+                        <template v-if="matchup.fixtures.length === 1">
                           <button
-                            v-if="leg.status === FixtureStatus.SCHEDULED && leg.homeTeamId && leg.awayTeamId"
+                            v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
                             class="action-btn action-btn--start"
                             :disabled="updatingMatch"
-                            @click.stop="emit('start-match', leg)"
+                            @click.stop="emit('start-match', matchup.fixtures[0])"
                           >
                             <UIcon name="i-heroicons-play" class="w-3 h-3" />
-                            L{{ (i as number) + 1 }}
+                            Start
                           </button>
                           <button
-                            v-else-if="leg.status === FixtureStatus.LIVE || leg.status === FixtureStatus.NORMAL_TIME_ENDED || leg.status === FixtureStatus.EXTRATIME || leg.status === FixtureStatus.COMPLETED"
+                            v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED"
                             class="action-btn action-btn--control"
-                            @click.stop="emit('control-match', leg)"
+                            @click.stop="emit('control-match', matchup.fixtures[0])"
                           >
                             <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />
-                            L{{ (i as number) + 1 }}
+                            Control
                           </button>
-                          <span v-else class="action-btn action-btn--disabled">
-                            <UIcon name="i-heroicons-clock" class="w-3 h-3" />
-                            L{{ (i as number) + 1 }}
-                          </span>
                         </template>
-                      </template>
+                        <template v-else>
+                          <template v-for="(leg, i) in matchup.fixtures" :key="leg.id">
+                            <button
+                              v-if="leg.status === FixtureStatus.SCHEDULED && leg.homeTeamId && leg.awayTeamId"
+                              class="action-btn action-btn--start"
+                              :disabled="updatingMatch"
+                              @click.stop="emit('start-match', leg)"
+                            >
+                              <UIcon name="i-heroicons-play" class="w-3 h-3" />
+                              L{{ (i as number) + 1 }}
+                            </button>
+                            <button
+                              v-else-if="leg.status === FixtureStatus.LIVE || leg.status === FixtureStatus.NORMAL_TIME_ENDED || leg.status === FixtureStatus.EXTRATIME || leg.status === FixtureStatus.COMPLETED"
+                              class="action-btn action-btn--control"
+                              @click.stop="emit('control-match', leg)"
+                            >
+                              <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />
+                              L{{ (i as number) + 1 }}
+                            </button>
+                            <span v-else class="action-btn action-btn--disabled">
+                              <UIcon name="i-heroicons-clock" class="w-3 h-3" />
+                              L{{ (i as number) + 1 }}
+                            </span>
+                          </template>
+                        </template>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </template>
-          </div>
-
-          <!-- Connector column: pair up matches and draw bracket arms -->
-          <div v-if="roundIndex < rounds.length - 1" class="connector-column">
-            <!-- 1-to-1 feeder lines from Round 0 (Playoffs) to Round 1 -->
-            <template v-if="roundIndex === 0 && isPlayoffFirstRound">
-              <template v-for="matchIdx in (matchupsByRound[round]?.length || 0)" :key="`conn-straight-${matchIdx}`">
-                <div
-                  class="connector-pair"
-                  :style="{
-                    gridRow: `${(matchIdx - 1) * 2 + 1} / ${(matchIdx - 1) * 2 + 3}`
-                  }"
-                >
-                  <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                    <path d="M 0 50 L 52 50" class="connector-line" />
-                  </svg>
-                </div>
               </template>
-            </template>
+            </div>
 
-            <!-- Standard binary branching connector -->
-            <template v-else>
-              <!-- Render one connector per PAIR of matches (every 2 matches) -->
-              <template v-for="pairIndex in Math.ceil((matchupsByRound[round]?.length || 0) / 2)" :key="`conn-pair-${pairIndex}`">
-                <div
-                  class="connector-pair"
-                  :style="{
-                    gridRow: `${(pairIndex - 1) * Math.pow(2, getTreeDepth(roundIndex)) * 4 + 1} / ${(pairIndex - 1) * Math.pow(2, getTreeDepth(roundIndex)) * 4 + Math.pow(2, getTreeDepth(roundIndex)) * 4 + 1}`
-                  }"
-                >
-                  <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                    <!-- Top match: horizontal right, then vertical down to midpoint -->
-                    <path d="M 0 25 L 26 25 L 26 50" class="connector-line" />
-                    <!-- Bottom match: horizontal right, then vertical up to midpoint -->
-                    <path d="M 0 75 L 26 75 L 26 50" class="connector-line" />
-                    <!-- Midpoint: horizontal line out to next round -->
-                    <path d="M 26 50 L 52 50" class="connector-line" />
-                  </svg>
-                </div>
+            <!-- Connector column -->
+            <div v-if="roundIndex < rounds.length - 1" class="connector-column">
+              <!-- 1-to-1 feeder lines from Round 0 (Playoffs) to Round 1 -->
+              <template v-if="roundIndex === 0 && isPlayoffFirstRound">
+                <template v-for="matchIdx in (activeMatchupsByRound[round]?.length || 0)" :key="`conn-straight-${matchIdx}`">
+                  <div
+                    class="connector-pair"
+                    :style="{
+                      gridRow: `${(matchIdx - 1) * 2 + 1} / ${(matchIdx - 1) * 2 + 3}`
+                    }"
+                  >
+                    <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                      <path d="M 0 50 L 52 50" class="connector-line" />
+                    </svg>
+                  </div>
+                </template>
               </template>
-            </template>
-          </div>
-        </template>
-      </div>
 
-      <!-- 3rd Place Play-off -->
-      <div v-if="thirdPlaceMatchups.length > 0" class="third-place-section" :style="{ marginLeft: `${finalColumnOffset * (COLUMN_WIDTH + CONNECTOR_WIDTH)}px`, width: `${COLUMN_WIDTH}px` }">
-        <div v-for="matchup in thirdPlaceMatchups" :key="matchup.id">
-          <div class="third-place-label">
-            <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-400" />
-            3rd Place Play-off
-          </div>
-          <div class="match-card" :class="{
-            'match-card--live': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME,
-            'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
-          }">
-            <div class="team-row" :class="{
-              'team-row--winner': getWinnerState(matchup, true) === 'winner',
-              'team-row--loser': getWinnerState(matchup, true) === 'loser',
+              <!-- Standard binary branching connector -->
+              <template v-else>
+                <template v-for="pairIndex in Math.ceil((activeMatchupsByRound[round]?.length || 0) / 2)" :key="`conn-pair-${pairIndex}`">
+                  <div
+                    class="connector-pair"
+                    :style="{
+                      gridRow: `${(pairIndex - 1) * Math.pow(2, getTreeDepth(roundIndex)) * 4 + 1} / ${(pairIndex - 1) * Math.pow(2, getTreeDepth(roundIndex)) * 4 + Math.pow(2, getTreeDepth(roundIndex)) * 4 + 1}`
+                    }"
+                  >
+                    <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                      <path d="M 0 25 L 26 25 L 26 50" class="connector-line" />
+                      <path d="M 0 75 L 26 75 L 26 50" class="connector-line" />
+                      <path d="M 26 50 L 52 50" class="connector-line" />
+                    </svg>
+                  </div>
+                </template>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <!-- 3rd Place Play-off -->
+        <div v-if="thirdPlaceMatchups.length > 0" class="third-place-section" :style="{ marginLeft: `${finalColumnOffset * (COLUMN_WIDTH + CONNECTOR_WIDTH)}px`, width: `${COLUMN_WIDTH}px` }">
+          <div v-for="matchup in thirdPlaceMatchups" :key="matchup.id">
+            <div class="third-place-label">
+              <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-400" />
+              3rd Place Play-off
+            </div>
+            <div class="match-card" :class="{
+              'match-card--live': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME,
+              'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
             }">
-              <div class="team-avatar">
-                <img v-if="matchup.homeTeam?.logoUrl" :src="matchup.homeTeam.logoUrl" class="team-avatar__img" />
-                <span v-else class="team-avatar__initial">{{ getTeamName(matchup, true).charAt(0).toUpperCase() }}</span>
+              <div class="team-row" :class="{
+                'team-row--winner': getWinnerState(matchup, true) === 'winner',
+                'team-row--loser': getWinnerState(matchup, true) === 'loser',
+              }">
+                <div class="team-avatar">
+                  <img v-if="matchup.homeTeam?.logoUrl" :src="matchup.homeTeam.logoUrl" class="team-avatar__img" />
+                  <span v-else class="team-avatar__initial">{{ getTeamName(matchup, true).charAt(0).toUpperCase() }}</span>
+                </div>
+                <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, true) }">{{ getTeamName(matchup, true) }}</span>
+                <div class="team-score-area">
+                  <span v-if="matchup.homePenaltyScore != null" class="pen-score">({{ matchup.homePenaltyScore }})</span>
+                  <span class="score" :class="{
+                    'score--winner': getWinnerState(matchup, true) === 'winner',
+                    'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
+                  }">
+                    {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.homeScore : '-' }}
+                  </span>
+                </div>
               </div>
-              <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, true) }">{{ getTeamName(matchup, true) }}</span>
-              <div class="team-score-area">
-                <span v-if="matchup.homePenaltyScore != null" class="pen-score">({{ matchup.homePenaltyScore }})</span>
-                <span class="score" :class="{
-                  'score--winner': getWinnerState(matchup, true) === 'winner',
-                  'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
-                }">
-                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.homeScore : '-' }}
+              <div class="team-divider" />
+              <div class="team-row" :class="{
+                'team-row--winner': getWinnerState(matchup, false) === 'winner',
+                'team-row--loser': getWinnerState(matchup, false) === 'loser',
+              }">
+                <div class="team-avatar">
+                  <img v-if="matchup.awayTeam?.logoUrl" :src="matchup.awayTeam.logoUrl" class="team-avatar__img" />
+                  <span v-else class="team-avatar__initial">{{ getTeamName(matchup, false).charAt(0).toUpperCase() }}</span>
+                </div>
+                <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, false) }">{{ getTeamName(matchup, false) }}</span>
+                <div class="team-score-area">
+                  <span v-if="matchup.awayPenaltyScore != null" class="pen-score">({{ matchup.awayPenaltyScore }})</span>
+                  <span class="score" :class="{
+                    'score--winner': getWinnerState(matchup, false) === 'winner',
+                    'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
+                  }">
+                    {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.awayScore : '-' }}
+                  </span>
+                </div>
+              </div>
+              <div v-if="getMatchTime(matchup) || getMatchVenue(matchup)" class="match-info">
+                <span v-if="getMatchTime(matchup)" class="match-info__item">
+                  <UIcon name="i-heroicons-calendar" class="match-info__icon" />
+                  {{ formatMatchTime(getMatchTime(matchup)) }}
+                </span>
+                <span v-if="getMatchVenue(matchup)" class="match-info__item">
+                  <UIcon name="i-heroicons-map-pin" class="match-info__icon" />
+                  {{ getMatchVenue(matchup) }}
                 </span>
               </div>
-            </div>
-            <div class="team-divider" />
-            <div class="team-row" :class="{
-              'team-row--winner': getWinnerState(matchup, false) === 'winner',
-              'team-row--loser': getWinnerState(matchup, false) === 'loser',
-            }">
-              <div class="team-avatar">
-                <img v-if="matchup.awayTeam?.logoUrl" :src="matchup.awayTeam.logoUrl" class="team-avatar__img" />
-                <span v-else class="team-avatar__initial">{{ getTeamName(matchup, false).charAt(0).toUpperCase() }}</span>
-              </div>
-              <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, false) }">{{ getTeamName(matchup, false) }}</span>
-              <div class="team-score-area">
-                <span v-if="matchup.awayPenaltyScore != null" class="pen-score">({{ matchup.awayPenaltyScore }})</span>
-                <span class="score" :class="{
-                  'score--winner': getWinnerState(matchup, false) === 'winner',
-                  'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
-                }">
-                  {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.awayScore : '-' }}
-                </span>
-              </div>
-            </div>
-            <div v-if="getMatchTime(matchup) || getMatchVenue(matchup)" class="match-info">
-              <span v-if="getMatchTime(matchup)" class="match-info__item">
-                <UIcon name="i-heroicons-calendar" class="match-info__icon" />
-                {{ formatMatchTime(getMatchTime(matchup)) }}
-              </span>
-              <span v-if="getMatchVenue(matchup)" class="match-info__item">
-                <UIcon name="i-heroicons-map-pin" class="match-info__icon" />
-                {{ getMatchVenue(matchup) }}
-              </span>
-            </div>
-            <div v-if="hasFooter(matchup)" class="match-footer">
-              <div v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME" class="status-live"><span class="live-dot" /><span>{{ matchup.status === FixtureStatus.EXTRATIME ? 'ET' : matchup.status === FixtureStatus.NORMAL_TIME_ENDED ? 'FT' : 'Live' }}</span></div>
-              <div v-else-if="matchup.status === FixtureStatus.COMPLETED && !hasNoWinner(matchup)" class="status-done"><UIcon name="i-heroicons-check-circle" class="w-3 h-3" /><span>FT</span></div>
-              <div v-else-if="hasNoWinner(matchup)" class="status-warn"><UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3" /><span>No winner</span></div>
-              <div v-if="!readonly" class="match-actions">
-                <button
-                  v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
-                  class="action-btn action-btn--start"
-                  :disabled="updatingMatch"
-                  @click.stop="emit('start-match', matchup.fixtures[0])"
-                >
-                  <UIcon name="i-heroicons-play" class="w-3 h-3" />Start
-                </button>
-                <button
-                  v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED"
-                  class="action-btn action-btn--control"
-                  @click.stop="emit('control-match', matchup.fixtures[0])"
-                >
-                  <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />Control
-                </button>
+              <div v-if="hasFooter(matchup)" class="match-footer">
+                <div v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME" class="status-live"><span class="live-dot" /><span>{{ matchup.status === FixtureStatus.EXTRATIME ? 'ET' : matchup.status === FixtureStatus.NORMAL_TIME_ENDED ? 'FT' : 'Live' }}</span></div>
+                <div v-else-if="matchup.status === FixtureStatus.COMPLETED && !hasNoWinner(matchup)" class="status-done"><UIcon name="i-heroicons-check-circle" class="w-3 h-3" /><span>FT</span></div>
+                <div v-else-if="hasNoWinner(matchup)" class="status-warn"><UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3" /><span>No winner</span></div>
+                <div v-if="!readonly" class="match-actions">
+                  <button
+                    v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
+                    class="action-btn action-btn--start"
+                    :disabled="updatingMatch"
+                    @click.stop="emit('start-match', matchup.fixtures[0])"
+                  >
+                    <UIcon name="i-heroicons-play" class="w-3 h-3" />Start
+                  </button>
+                  <button
+                    v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED"
+                    class="action-btn action-btn--control"
+                    @click.stop="emit('control-match', matchup.fixtures[0])"
+                  >
+                    <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />Control
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -629,7 +1287,6 @@ const resetZoom = () => {
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <style scoped>
@@ -671,7 +1328,6 @@ const resetZoom = () => {
   border-color: rgba(255,255,255,0.08);
   color: #9ca3af;
 }
-
 
 /* ── Grid ─────────────────────────────────────────────────── */
 .bracket-grid {
@@ -725,7 +1381,7 @@ const resetZoom = () => {
 
 /* Live: pulsing left border */
 .match-card--live {
-  border-left: 2px solid #f59e0b;
+  border-left: 2px solid #f59e0b !important;
 }
 
 .match-card--live::before {
@@ -745,6 +1401,106 @@ const resetZoom = () => {
   50% { opacity: 0.4; }
 }
 
+/* ── Half Badges and Path Styling ───────────────────────────── */
+.match-card--top-half {
+  border-left: 3px solid #0ea5e9;
+}
+.match-card--bottom-half {
+  border-left: 3px solid #a855f7;
+}
+
+.match-half-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.6rem;
+  border-bottom: 1px solid #f3f4f6;
+  background: rgba(249, 250, 251, 0.7);
+}
+
+:root.dark .match-half-header {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.half-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.half-dot--top {
+  background-color: #0ea5e9;
+  box-shadow: 0 0 6px rgba(14, 165, 233, 0.5);
+}
+.half-dot--bottom {
+  background-color: #a855f7;
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
+}
+
+.half-title {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.half-title--top {
+  color: #0284c7;
+}
+:root.dark .half-title--top {
+  color: #38bdf8;
+}
+.half-title--bottom {
+  color: #9333ea;
+}
+:root.dark .half-title--bottom {
+  color: #c084fc;
+}
+
+/* ── Interactive Arrange Mode Slots ──────────────────────────── */
+.team-row--selectable {
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+.team-row--selectable:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
+:root.dark .team-row--selectable:hover {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.team-row--selected {
+  background: rgba(16, 185, 129, 0.18) !important;
+  box-shadow: inset 0 0 0 2px #10b981;
+}
+:root.dark .team-row--selected {
+  background: rgba(16, 185, 129, 0.25) !important;
+  box-shadow: inset 0 0 0 2px #10b981;
+}
+
+.arrange-slot-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.match-footer--arrange {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.6rem;
+  border-top: 1px solid #f3f4f6;
+  background: #fafafa;
+}
+
+:root.dark .match-footer--arrange {
+  border-top-color: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+}
+
 /* ── Team row ─────────────────────────────────────────────── */
 .team-row {
   display: flex;
@@ -761,7 +1517,6 @@ const resetZoom = () => {
   background: rgba(16,185,129,0.06);
 }
 
-
 .team-row--loser {
   opacity: 0.38;
 }
@@ -770,7 +1525,7 @@ const resetZoom = () => {
   background: rgba(16,185,129,0.08);
 }
 
-/* ── Team avatar ──────────────────────────────────────────── */
+/* ── Team avatar ──────────────────────────────────── */
 .team-avatar {
   width: 22px;
   height: 22px;
@@ -848,35 +1603,27 @@ const resetZoom = () => {
   font-weight: 700;
   color: #9ca3af;
   min-width: 1.25rem;
-  text-align: center;
-  background: #f9fafb;
-  border: 1px solid #f3f4f6;
-  border-radius: 5px;
-  padding: 0.1rem 0.25rem;
-  line-height: 1.4;
-}
-
-:root.dark .score {
-  color: #6b7280;
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(255,255,255,0.06);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .score--active {
-  color: #374151;
+  color: #111827;
 }
 
 :root.dark .score--active {
-  color: #e5e7eb;
+  color: #f3f4f6;
 }
 
 .score--winner {
-  color: #059669 !important;
-  background: rgba(16,185,129,0.08) !important;
-  border-color: rgba(16,185,129,0.2) !important;
+  color: #10b981 !important;
 }
 
-/* ── Team divider ─────────────────────────────────────────── */
+:root.dark .score--winner {
+  color: #34d399 !important;
+}
+
+/* ── Divider between teams ────────────────────────────────── */
 .team-divider {
   height: 1px;
   background: #f3f4f6;
@@ -892,9 +1639,10 @@ const resetZoom = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.3rem 0.6rem;
+  padding: 0.35rem 0.6rem;
   background: #f9fafb;
   border-top: 1px solid #f3f4f6;
+  min-height: 28px;
   gap: 0.5rem;
 }
 
@@ -903,39 +1651,51 @@ const resetZoom = () => {
   border-top-color: rgba(255,255,255,0.04);
 }
 
-/* status chips */
-.status-live,
-.status-done,
-.status-warn,
-.status-sched {
+/* Status chips */
+.status-live {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #f59e0b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+.status-done {
   display: flex;
   align-items: center;
   gap: 0.25rem;
   font-size: 0.6rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: #9ca3af;
 }
 
-.status-live  { color: #f59e0b; }
-.status-done  { color: #10b981; }
-.status-warn  { color: #f59e0b; }
-.status-sched { color: #6b7280; }
-
-.live-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #f59e0b;
-  animation: pulse-dot 1s ease-in-out infinite;
+.status-warn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #f59e0b;
 }
 
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.8); }
-}
-
-/* ── Action buttons ───────────────────────────────────────── */
+/* Action buttons */
 .match-actions {
   display: flex;
   align-items: center;
@@ -946,7 +1706,7 @@ const resetZoom = () => {
 .action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.25rem;
   font-size: 0.6rem;
   font-weight: 600;
   padding: 0.2rem 0.45rem;
