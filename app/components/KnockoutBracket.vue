@@ -26,6 +26,9 @@ const fixtureStore = useFixtureStore()
 const standingStore = useStandingStore()
 const participantStore = useParticipantStore()
 
+const bracketContainerRef = ref<HTMLElement | null>(null)
+const layoutMode = ref<'dual' | 'linear'>('dual')
+
 const getAggregateStatus = (fixtures: Fixture[]): FixtureStatus => {
   if (fixtures.some(f => f.status === FixtureStatus.LIVE || f.status === FixtureStatus.NORMAL_TIME_ENDED || f.status === FixtureStatus.EXTRATIME)) return FixtureStatus.LIVE
   if (fixtures.every(f => f.status === FixtureStatus.COMPLETED)) return FixtureStatus.COMPLETED
@@ -43,26 +46,21 @@ const matchupsByRound = computed(() => {
     const matchups: any[] = []
 
     if (props.twoLegsKnockout && !isFinalRound) {
-      // Group fixtures by their logical match pairing using matchNumber
-      // Leg 1 = odd matchNumber, Leg 2 = even matchNumber. Both map to Math.ceil(matchNumber / 2)
       const matchupsMap = new Map<number, Fixture[]>()
       for (const f of roundFixtures) {
-        // Fallback to matchNumber if missing (though it shouldn't be)
         const logicalMatchId = f.matchNumber ? Math.ceil(f.matchNumber / 2) : 1
         if (!matchupsMap.has(logicalMatchId)) matchupsMap.set(logicalMatchId, [])
         matchupsMap.get(logicalMatchId)!.push(f)
       }
 
-      // Sort by logicalMatchId to maintain bracket ordering (top to bottom)
       const sortedLogicalIds = Array.from(matchupsMap.keys()).sort((a, b) => a - b)
 
       for (const logicalMatchId of sortedLogicalIds) {
         const fixtures = matchupsMap.get(logicalMatchId)!
-        // Sort within group so Leg 1 comes first (lowest matchNumber)
         fixtures.sort((a, b) => a.matchNumber - b.matchNumber)
         
         const f1 = fixtures[0]!
-        const f2 = fixtures[1] // Might be undefined if user deleted Leg 2
+        const f2 = fixtures[1]
         
         matchups.push({
           id: f1.id,
@@ -135,16 +133,28 @@ const activeMatchupsByRound = computed(() => {
   return matchupsByRound.value
 })
 
+const finalRound = computed(() => {
+  if (props.rounds.length === 0) return 0
+  return props.rounds[props.rounds.length - 1]!
+})
+
+const feederRounds = computed(() => {
+  if (props.rounds.length <= 1) return []
+  return props.rounds.slice(0, props.rounds.length - 1)
+})
+
+const reversedFeederRounds = computed(() => {
+  return [...feederRounds.value].reverse()
+})
+
 const finalRoundMainMatchups = computed(() => {
   if (props.rounds.length === 0) return []
-  const finalRound = props.rounds[props.rounds.length - 1]!
-  return (activeMatchupsByRound.value[finalRound] || []).filter((m: any) => !m.isThirdPlace)
+  return (activeMatchupsByRound.value[finalRound.value] || []).filter((m: any) => !m.isThirdPlace)
 })
 
 const thirdPlaceMatchups = computed(() => {
   if (props.rounds.length === 0) return []
-  const finalRound = props.rounds[props.rounds.length - 1]!
-  return (activeMatchupsByRound.value[finalRound] || []).filter((m: any) => m.isThirdPlace)
+  return (activeMatchupsByRound.value[finalRound.value] || []).filter((m: any) => m.isThirdPlace)
 })
 
 const firstRoundMatches = computed(() => {
@@ -168,6 +178,76 @@ const canArrange = computed(() => {
     return roundFixtures.some(f => f.status === FixtureStatus.SCHEDULED)
   })
 })
+
+const COLUMN_WIDTH = 260
+const CONNECTOR_WIDTH = 52
+const FINAL_WIDTH = 290
+
+const totalWingRows = computed(() => {
+  const matches = Math.max(1, Math.ceil(firstRoundMatches.value / 2))
+  return matches * 2
+})
+
+const dualGridColumns = computed(() => {
+  const n = feederRounds.value.length
+  if (n === 0) return `${FINAL_WIDTH}px`
+  const leftCols: string[] = []
+  for (let i = 0; i < n; i++) {
+    leftCols.push(`${COLUMN_WIDTH}px`)
+    leftCols.push(`${CONNECTOR_WIDTH}px`)
+  }
+  const centerCol = `${FINAL_WIDTH}px`
+  const rightCols: string[] = []
+  for (let i = 0; i < n; i++) {
+    rightCols.push(`${CONNECTOR_WIDTH}px`)
+    rightCols.push(`${COLUMN_WIDTH}px`)
+  }
+  return [...leftCols, centerCol, ...rightCols].join(' ')
+})
+
+const linearGridColumns = computed(() =>
+  props.rounds.map((_, i) => i < props.rounds.length - 1 ? `${COLUMN_WIDTH}px ${CONNECTOR_WIDTH}px` : `${COLUMN_WIDTH}px`).join(' ')
+)
+
+const getWingMatchups = (round: number, wing: 'left' | 'right') => {
+  const allMatches = activeMatchupsByRound.value[round] || []
+  const halfCount = Math.ceil(allMatches.length / 2)
+  if (wing === 'left') {
+    return allMatches.slice(0, halfCount)
+  } else {
+    return allMatches.slice(halfCount)
+  }
+}
+
+const getGlobalMatchIndex = (round: number, wing: 'left' | 'right', wingIndex: number) => {
+  if (wing === 'left') return wingIndex
+  const allMatches = activeMatchupsByRound.value[round] || []
+  const halfCount = Math.ceil(allMatches.length / 2)
+  return halfCount + wingIndex
+}
+
+const getWingTreeDepth = (roundIndex: number): number => {
+  if (isPlayoffFirstRound.value) {
+    return roundIndex === 0 ? 0 : roundIndex - 1
+  }
+  return roundIndex
+}
+
+const getWingMatchGridRow = (roundIndex: number, matchIndexInWing: number) => {
+  const depth = getWingTreeDepth(roundIndex)
+  const span = Math.pow(2, depth)
+  const start = matchIndexInWing * span * 2 + 1
+  const end = start + span * 2
+  return `${start} / ${end}`
+}
+
+const getLinearMatchGridRow = (roundIndex: number, matchIndex: number) => {
+  const depth = isPlayoffFirstRound.value ? (roundIndex === 0 ? 0 : roundIndex - 1) : roundIndex
+  const span = Math.pow(2, depth)
+  const start = matchIndex * span * 2 + 1
+  const end = start + span * 2
+  return `${start} / ${end}`
+}
 
 const enterArrangeMode = () => {
   draftMatchups.value = JSON.parse(JSON.stringify(matchupsByRound.value))
@@ -193,40 +273,6 @@ const toggleArrangeMode = () => {
   } else {
     enterArrangeMode()
   }
-}
-
-// Path to Final Helpers
-const isTopHalf = (round: number, matchIndex: number): boolean | null => {
-  const matches = activeMatchupsByRound.value[round] || []
-  if (matches.length < 2) return null
-  return matchIndex < Math.ceil(matches.length / 2)
-}
-
-const getHalfName = (round: number, matchIndex: number): string | null => {
-  const matches = activeMatchupsByRound.value[round] || []
-  if (matches.length < 2) return null
-  return matchIndex < Math.ceil(matches.length / 2) ? 'Top Half' : 'Bottom Half'
-}
-
-const isSlotSelectable = (round: number, matchIndex: number, isHome: boolean): boolean => {
-  if (!isArranging.value) return false
-  const matchup = draftMatchups.value[round]?.[matchIndex]
-  if (!matchup || matchup.status !== FixtureStatus.SCHEDULED) return false
-  const teamId = isHome ? matchup.homeTeamId : matchup.awayTeamId
-  const team = isHome ? matchup.homeTeam : matchup.awayTeam
-  if (selectedSlot.value) {
-    return selectedSlot.value.round === round
-  }
-  return !!(teamId || team)
-}
-
-const isSlotSelected = (round: number, matchIndex: number, isHome: boolean): boolean => {
-  if (!selectedSlot.value) return false
-  return (
-    selectedSlot.value.round === round &&
-    selectedSlot.value.matchIndex === matchIndex &&
-    selectedSlot.value.isHome === isHome
-  )
 }
 
 const getTeamNameFromSlot = (slot: typeof selectedSlot.value): string => {
@@ -409,7 +455,6 @@ const shuffleDraw = () => {
     if (r0 !== undefined && isPlayoffFirstRound.value && draftMatchups.value[r0]) {
       const playoffMatchups = draftMatchups.value[r0]!
       if (playoffMatchups.every(m => m.status === FixtureStatus.SCHEDULED)) {
-        // Collect unseeded away teams
         const awayTeams = playoffMatchups.map(m => ({
           team: m.awayTeam,
           teamId: m.awayTeamId,
@@ -436,7 +481,6 @@ const shuffleDraw = () => {
     if (r1 !== undefined && draftMatchups.value[r1]) {
       const r1Matchups = draftMatchups.value[r1]!
       if (r1Matchups.every(m => m.status === FixtureStatus.SCHEDULED)) {
-        // Shuffle the seeded home teams
         const homeTeams = r1Matchups
           .map(m => ({ team: m.homeTeam, teamId: m.homeTeamId, placeholder: m.homeTeamPlaceholder }))
           .filter(h => !!h.teamId)
@@ -515,7 +559,6 @@ const standardSeeding = () => {
   }
 
   // 2. Round of 16 Top 8 seeds: standard balanced bracket
-  // Top Half: 1, 8, 4, 5 | Bottom Half: 2, 7, 3, 6
   const r1 = isPlayoffFirstRound.value ? props.rounds[1] : props.rounds[0]
   if (r1 !== undefined && draftMatchups.value[r1]) {
     const r1Matchups = draftMatchups.value[r1]!
@@ -605,6 +648,23 @@ const saveArrangement = async () => {
   }
 }
 
+// Center scroll container on mount
+const centerBracket = () => {
+  if (bracketContainerRef.value && layoutMode.value === 'dual') {
+    const el = bracketContainerRef.value
+    el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2
+  }
+}
+
+const setLayoutMode = (mode: 'dual' | 'linear') => {
+  layoutMode.value = mode
+  if (mode === 'dual') {
+    nextTick(() => {
+      centerBracket()
+    })
+  }
+}
+
 // Escape key listener
 onMounted(() => {
   const onKeyDown = (e: KeyboardEvent) => {
@@ -620,125 +680,11 @@ onMounted(() => {
   onUnmounted(() => {
     window.removeEventListener('keydown', onKeyDown)
   })
+
+  nextTick(() => {
+    centerBracket()
+  })
 })
-
-const getWinnerState = (matchup: any, isHome: boolean): 'winner' | 'loser' | 'none' => {
-  if (matchup.status !== FixtureStatus.COMPLETED) return 'none'
-  const homeScore = matchup.homeScore ?? 0
-  const awayScore = matchup.awayScore ?? 0
-  if (homeScore === awayScore) {
-    const homePen = matchup.homePenaltyScore ?? 0
-    const awayPen = matchup.awayPenaltyScore ?? 0
-    if (homePen === awayPen) return 'none'
-    return isHome ? (homePen > awayPen ? 'winner' : 'loser') : (awayPen > homePen ? 'winner' : 'loser')
-  }
-  return isHome ? (homeScore > awayScore ? 'winner' : 'loser') : (awayScore > homeScore ? 'winner' : 'loser')
-}
-
-const hasNoWinner = (matchup: any): boolean => {
-  if (matchup.status !== FixtureStatus.COMPLETED) return false
-  const homeScore = matchup.homeScore ?? 0
-  const awayScore = matchup.awayScore ?? 0
-  if (homeScore !== awayScore) return false
-  const homePen = matchup.homePenaltyScore ?? 0
-  const awayPen = matchup.awayPenaltyScore ?? 0
-  return homePen === awayPen
-}
-
-const getTeamName = (matchup: any, isHome: boolean) => {
-  const team = isHome ? matchup.homeTeam : matchup.awayTeam
-  if (team) {
-    return team.customShortName || team.customName || team.user?.name || 'TBD'
-  }
-  return isHome ? (matchup.homeTeamPlaceholder || 'TBD') : (matchup.awayTeamPlaceholder || 'TBD')
-}
-
-const getTreeDepth = (roundIndex: number): number => {
-  if (isPlayoffFirstRound.value) {
-    return roundIndex === 0 ? 0 : roundIndex - 1
-  }
-  return roundIndex
-}
-
-const getMatchGridRow = (roundIndex: number, matchIndex: number) => {
-  const depth = getTreeDepth(roundIndex)
-  const span = Math.pow(2, depth)
-  const start = matchIndex * span * 2 + 1
-  const end = start + span * 2
-  return `${start} / ${end}`
-}
-
-const finalColumnOffset = computed(() => props.rounds.length - 1)
-
-const COLUMN_WIDTH = 260
-const CONNECTOR_WIDTH = 52
-
-const gridColumns = computed(() =>
-  props.rounds.map((_, i) => i < props.rounds.length - 1 ? `${COLUMN_WIDTH}px ${CONNECTOR_WIDTH}px` : `${COLUMN_WIDTH}px`).join(' ')
-)
-
-const isTeamKnown = (matchup: any, isHome: boolean) => {
-  return isHome ? !!matchup.homeTeamId : !!matchup.awayTeamId
-}
-
-const getMatchTime = (matchup: any): string | null => {
-  return matchup.fixtures?.[0]?.startTime || null
-}
-
-const getMatchVenue = (matchup: any): string | null => {
-  return matchup.fixtures?.[0]?.venue || null
-}
-
-const formatMatchTime = (dateStr: string | null | undefined): string | null => {
-  if (!dateStr) return null
-  try {
-    const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return null
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) +
-      ' \u00b7 ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-  } catch { return null }
-}
-
-const hasFooter = (matchup: any) => {
-  if (
-    matchup.status === FixtureStatus.LIVE ||
-    matchup.status === FixtureStatus.NORMAL_TIME_ENDED ||
-    matchup.status === FixtureStatus.EXTRATIME ||
-    matchup.status === FixtureStatus.COMPLETED ||
-    hasNoWinner(matchup)
-  ) {
-    return true
-  }
-
-  if (!props.readonly) {
-    if (matchup.fixtures.length === 1) {
-      if (
-        (matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId) ||
-        matchup.status === FixtureStatus.LIVE ||
-        matchup.status === FixtureStatus.NORMAL_TIME_ENDED ||
-        matchup.status === FixtureStatus.EXTRATIME ||
-        matchup.status === FixtureStatus.COMPLETED
-      ) {
-        return true
-      }
-    } else {
-      if (
-        matchup.fixtures.some(
-          (leg: any) =>
-            (leg.status === FixtureStatus.SCHEDULED && leg.homeTeamId && leg.awayTeamId) ||
-            leg.status === FixtureStatus.LIVE ||
-            leg.status === FixtureStatus.NORMAL_TIME_ENDED ||
-            leg.status === FixtureStatus.EXTRATIME ||
-            leg.status === FixtureStatus.COMPLETED
-        )
-      ) {
-        return true
-      }
-    }
-  }
-
-  return false
-}
 
 // Zoom logic
 const scale = ref(1.0)
@@ -789,7 +735,7 @@ defineExpose({
           <span class="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold">
             {{ getTeamNameFromSlot(selectedSlot) }}
           </span>
-          <span class="text-gray-400 text-[11px]">(Click another team in this round to swap)</span>
+          <span class="text-gray-400 text-[11px]">(Click any other team slot in this round to swap across halves)</span>
           <button
             @click="selectedSlot = null"
             class="text-xs text-primary-600 dark:text-primary-400 hover:underline ml-1"
@@ -798,7 +744,7 @@ defineExpose({
           </button>
         </div>
         <div v-else class="text-xs text-gray-500 dark:text-gray-400">
-          Click any team to select it, then click another team to swap positions. Top Half feeds into SF 1; Bottom Half feeds into SF 2.
+          Click any team to select it, then click another team to swap. Left Wing feeds into SF 1; Right Wing feeds into SF 2.
         </div>
       </div>
 
@@ -840,8 +786,31 @@ defineExpose({
       </div>
     </div>
 
-    <!-- Top Right Controls (Arrange Button + Zoom) -->
+    <!-- Top Right Controls (Arrange Button + Layout Toggle + Zoom) -->
     <div class="absolute top-0 right-4 z-40 flex items-center gap-2">
+      <!-- Layout Mode Toggle (Dual-Sided vs Classic Linear) -->
+      <div v-if="feederRounds.length > 0" class="flex items-center rounded-lg border border-gray-200 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-gray-900/90 text-xs select-none">
+        <button
+          @click="setLayoutMode('dual')"
+          :class="layoutMode === 'dual' ? 'bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 font-bold border border-primary-200 dark:border-primary-800/60' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent'"
+          class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
+          title="Dual-Sided (Left & Right Wings converging to Center Championship)"
+        >
+          <UIcon name="i-heroicons-arrows-pointing-in" class="w-3.5 h-3.5" />
+          <span class="hidden sm:inline">Dual-Sided</span>
+        </button>
+        <button
+          @click="setLayoutMode('linear')"
+          :class="layoutMode === 'linear' ? 'bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 font-bold border border-primary-200 dark:border-primary-800/60' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent'"
+          class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
+          title="Classic Linear (Left to Right)"
+        >
+          <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5" />
+          <span class="hidden sm:inline">Classic</span>
+        </button>
+      </div>
+
+      <!-- Arrange Button -->
       <button
         v-if="canArrange && !isArranging"
         @click="enterArrangeMode"
@@ -882,905 +851,619 @@ defineExpose({
       </div>
     </div>
 
-    <div class="bracket-container">
+    <!-- MAIN BRACKET CONTAINER -->
+    <div ref="bracketContainerRef" class="bracket-container">
       <div class="bracket-scroll" :style="{ zoom: scale }">
-        <!-- Round headers -->
-        <div
-          class="bracket-headers"
-          :style="{
-            display: 'grid',
-            gridTemplateColumns: gridColumns,
-          }"
-        >
-          <template v-for="(round, roundIndex) in rounds" :key="`header-${round}`">
-            <div class="bracket-header">
-              <span>{{ getRoundDisplayName(round, roundIndex, rounds.length) }}</span>
-            </div>
-            <div v-if="roundIndex < rounds.length - 1" />
-          </template>
-        </div>
 
-        <!-- Bracket grid -->
-        <div
-          class="bracket-grid"
-          :style="{
-            '--total-rows': firstRoundMatches * 2,
-            display: 'grid',
-            gridTemplateColumns: gridColumns,
-            gap: '0'
-          }"
-        >
-          <template v-for="(round, roundIndex) in rounds" :key="round">
-            <!-- Matches column -->
-            <div class="matches-column">
-              <template v-for="(matchup, matchIndex) in (roundIndex === rounds.length - 1 ? finalRoundMainMatchups : activeMatchupsByRound[round])" :key="matchup.id">
-                <div
-                  class="match-cell"
-                  :style="{ gridRow: getMatchGridRow(roundIndex, matchIndex) }"
-                >
-                  <div
-                    class="match-card"
-                    :class="{
-                      'match-card--live': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME,
-                      'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
-                      'match-card--top-half': isTopHalf(round, matchIndex) === true,
-                      'match-card--bottom-half': isTopHalf(round, matchIndex) === false,
-                    }"
-                  >
-                    <!-- Half Header / Path Badge -->
-                    <div v-if="getHalfName(round, matchIndex)" class="match-half-header">
-                      <div class="flex items-center gap-1.5">
-                        <span class="half-dot" :class="isTopHalf(round, matchIndex) ? 'half-dot--top' : 'half-dot--bottom'" />
-                        <span class="half-title" :class="isTopHalf(round, matchIndex) ? 'half-title--top' : 'half-title--bottom'">
-                          {{ isTopHalf(round, matchIndex) ? 'Top Half · SF 1 Path' : 'Bottom Half · SF 2 Path' }}
-                        </span>
-                      </div>
-                      <span v-if="isArranging" class="text-[9px] text-gray-400 font-mono">
-                        M{{ matchIndex + 1 }}
-                      </span>
-                    </div>
-
-                    <!-- Home team row -->
-                    <div
-                      class="team-row"
-                      :class="{
-                        'team-row--winner': getWinnerState(matchup, true) === 'winner',
-                        'team-row--loser': getWinnerState(matchup, true) === 'loser',
-                        'team-row--selectable': isArranging && matchup.status === FixtureStatus.SCHEDULED,
-                        'team-row--selected': isSlotSelected(round, matchIndex, true),
-                      }"
-                      @click="handleSlotClick(round, matchIndex, true)"
-                    >
-                      <div class="team-avatar">
-                        <img v-if="matchup.homeTeam?.logoUrl" :src="matchup.homeTeam.logoUrl" class="team-avatar__img" />
-                        <span v-else class="team-avatar__initial">
-                          {{ getTeamName(matchup, true).charAt(0).toUpperCase() }}
-                        </span>
-                      </div>
-                      <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, true) }">
-                        {{ getTeamName(matchup, true) }}
-                      </span>
-
-                      <!-- Slot swap indicator when arranging -->
-                      <div v-if="isArranging && matchup.status === FixtureStatus.SCHEDULED" class="arrange-slot-icon">
-                        <UIcon
-                          v-if="isSlotSelected(round, matchIndex, true)"
-                          name="i-heroicons-check-circle"
-                          class="w-4 h-4 text-primary-500 animate-pulse"
-                        />
-                        <UIcon
-                          v-else-if="selectedSlot && selectedSlot.round === round"
-                          name="i-heroicons-arrows-right-left"
-                          class="w-3.5 h-3.5 text-amber-500"
-                        />
-                        <UIcon
-                          v-else
-                          name="i-heroicons-arrows-right-left"
-                          class="w-3 h-3 text-gray-400 opacity-30 hover:opacity-100"
-                        />
-                      </div>
-
-                      <!-- Standard score area -->
-                      <div v-else class="team-score-area">
-                        <span v-if="matchup.homeSubScores" class="sub-scores">
-                          {{ matchup.homeSubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }}
-                        </span>
-                        <span v-if="matchup.homePenaltyScore != null" class="pen-score">
-                          ({{ matchup.homePenaltyScore }})
-                        </span>
-                        <span class="score" :class="{
-                          'score--winner': getWinnerState(matchup, true) === 'winner',
-                          'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
-                        }">
-                          {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.homeScore : '-' }}
-                        </span>
-                      </div>
-                    </div>
-
-                    <!-- Divider -->
-                    <div class="team-divider" />
-
-                    <!-- Away team row -->
-                    <div
-                      class="team-row"
-                      :class="{
-                        'team-row--winner': getWinnerState(matchup, false) === 'winner',
-                        'team-row--loser': getWinnerState(matchup, false) === 'loser',
-                        'team-row--selectable': isArranging && matchup.status === FixtureStatus.SCHEDULED,
-                        'team-row--selected': isSlotSelected(round, matchIndex, false),
-                      }"
-                      @click="handleSlotClick(round, matchIndex, false)"
-                    >
-                      <div class="team-avatar">
-                        <img v-if="matchup.awayTeam?.logoUrl" :src="matchup.awayTeam.logoUrl" class="team-avatar__img" />
-                        <span v-else class="team-avatar__initial">
-                          {{ getTeamName(matchup, false).charAt(0).toUpperCase() }}
-                        </span>
-                      </div>
-                      <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, false) }">
-                        {{ getTeamName(matchup, false) }}
-                      </span>
-
-                      <!-- Slot swap indicator when arranging -->
-                      <div v-if="isArranging && matchup.status === FixtureStatus.SCHEDULED" class="arrange-slot-icon">
-                        <UIcon
-                          v-if="isSlotSelected(round, matchIndex, false)"
-                          name="i-heroicons-check-circle"
-                          class="w-4 h-4 text-primary-500 animate-pulse"
-                        />
-                        <UIcon
-                          v-else-if="selectedSlot && selectedSlot.round === round"
-                          name="i-heroicons-arrows-right-left"
-                          class="w-3.5 h-3.5 text-amber-500"
-                        />
-                        <UIcon
-                          v-else
-                          name="i-heroicons-arrows-right-left"
-                          class="w-3 h-3 text-gray-400 opacity-30 hover:opacity-100"
-                        />
-                      </div>
-
-                      <!-- Standard score area -->
-                      <div v-else class="team-score-area">
-                        <span v-if="matchup.awaySubScores" class="sub-scores">
-                          {{ matchup.awaySubScores.map((s: any) => s !== null && s !== undefined ? s : '-').join(', ') }}
-                        </span>
-                        <span v-if="matchup.awayPenaltyScore != null" class="pen-score">
-                          ({{ matchup.awayPenaltyScore }})
-                        </span>
-                        <span class="score" :class="{
-                          'score--winner': getWinnerState(matchup, false) === 'winner',
-                          'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
-                        }">
-                          {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.awayScore : '-' }}
-                        </span>
-                      </div>
-                    </div>
-
-                    <!-- Match info: time & venue -->
-                    <div v-if="getMatchTime(matchup) || getMatchVenue(matchup)" class="match-info">
-                      <span v-if="getMatchTime(matchup)" class="match-info__item">
-                        <UIcon name="i-heroicons-calendar" class="match-info__icon" />
-                        {{ formatMatchTime(getMatchTime(matchup)) }}
-                      </span>
-                      <span v-if="getMatchVenue(matchup)" class="match-info__item">
-                        <UIcon name="i-heroicons-map-pin" class="match-info__icon" />
-                        {{ getMatchVenue(matchup) }}
-                      </span>
-                    </div>
-
-                    <!-- Footer: in arrange mode show Swap H/A button, otherwise normal actions -->
-                    <div v-if="isArranging && matchup.status === FixtureStatus.SCHEDULED" class="match-footer match-footer--arrange">
-                      <span class="text-[9px] text-gray-400 font-medium">Click team to swap</span>
-                      <button
-                        type="button"
-                        class="action-btn action-btn--edit"
-                        title="Swap Home/Away advantage"
-                        @click.stop="swapMatchHomeAway(round, matchIndex)"
-                      >
-                        <UIcon name="i-heroicons-arrows-up-down" class="w-3 h-3" />
-                        <span>Swap H/A</span>
-                      </button>
-                    </div>
-
-                    <div v-else-if="hasFooter(matchup)" class="match-footer">
-                      <!-- Live indicator -->
-                      <div v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME" class="status-live">
-                        <span class="live-dot" />
-                        <span>{{ matchup.status === FixtureStatus.EXTRATIME ? 'ET' : matchup.status === FixtureStatus.NORMAL_TIME_ENDED ? 'FT' : 'Live' }}</span>
-                      </div>
-                      <div v-else-if="matchup.status === FixtureStatus.COMPLETED && !hasNoWinner(matchup)" class="status-done">
-                        <UIcon name="i-heroicons-check-circle" class="w-3 h-3" />
-                        <span>FT</span>
-                      </div>
-                      <div v-else-if="hasNoWinner(matchup)" class="status-warn">
-                        <UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3" />
-                        <span>No winner</span>
-                      </div>
-
-                      <!-- Actions -->
-                      <div v-if="!readonly" class="match-actions">
-                        <button
-                          v-if="roundIndex === 0 && isPlayoffFirstRound && matchup.status === FixtureStatus.SCHEDULED"
-                          class="action-btn action-btn--edit"
-                          title="Arrange playoff matchups"
-                          @click.stop="enterArrangeMode"
-                        >
-                          <UIcon name="i-heroicons-pencil-square" class="w-3 h-3" />
-                          Arrange
-                        </button>
-                        <template v-if="matchup.fixtures.length === 1">
-                          <button
-                            v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
-                            class="action-btn action-btn--start"
-                            :disabled="updatingMatch"
-                            @click.stop="emit('start-match', matchup.fixtures[0])"
-                          >
-                            <UIcon name="i-heroicons-play" class="w-3 h-3" />
-                            Start
-                          </button>
-                          <button
-                            v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED"
-                            class="action-btn action-btn--control"
-                            @click.stop="emit('control-match', matchup.fixtures[0])"
-                          >
-                            <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />
-                            Control
-                          </button>
-                        </template>
-                        <template v-else>
-                          <template v-for="(leg, i) in matchup.fixtures" :key="leg.id">
-                            <button
-                              v-if="leg.status === FixtureStatus.SCHEDULED && leg.homeTeamId && leg.awayTeamId"
-                              class="action-btn action-btn--start"
-                              :disabled="updatingMatch"
-                              @click.stop="emit('start-match', leg)"
-                            >
-                              <UIcon name="i-heroicons-play" class="w-3 h-3" />
-                              L{{ (i as number) + 1 }}
-                            </button>
-                            <button
-                              v-else-if="leg.status === FixtureStatus.LIVE || leg.status === FixtureStatus.NORMAL_TIME_ENDED || leg.status === FixtureStatus.EXTRATIME || leg.status === FixtureStatus.COMPLETED"
-                              class="action-btn action-btn--control"
-                              @click.stop="emit('control-match', leg)"
-                            >
-                              <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />
-                              L{{ (i as number) + 1 }}
-                            </button>
-                            <span v-else class="action-btn action-btn--disabled">
-                              <UIcon name="i-heroicons-clock" class="w-3 h-3" />
-                              L{{ (i as number) + 1 }}
-                            </span>
-                          </template>
-                        </template>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </div>
-
-            <!-- Connector column -->
-            <div v-if="roundIndex < rounds.length - 1" class="connector-column">
-              <!-- 1-to-1 feeder lines from Round 0 (Playoffs) to Round 1 -->
-              <template v-if="roundIndex === 0 && isPlayoffFirstRound">
-                <template v-for="matchIdx in (activeMatchupsByRound[round]?.length || 0)" :key="`conn-straight-${matchIdx}`">
-                  <div
-                    class="connector-pair"
-                    :style="{
-                      gridRow: `${(matchIdx - 1) * 2 + 1} / ${(matchIdx - 1) * 2 + 3}`
-                    }"
-                  >
-                    <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                      <path d="M 0 50 L 52 50" class="connector-line" />
-                    </svg>
-                  </div>
-                </template>
-              </template>
-
-              <!-- Standard binary branching connector -->
-              <template v-else>
-                <template v-for="pairIndex in Math.ceil((activeMatchupsByRound[round]?.length || 0) / 2)" :key="`conn-pair-${pairIndex}`">
-                  <div
-                    class="connector-pair"
-                    :style="{
-                      gridRow: `${(pairIndex - 1) * Math.pow(2, getTreeDepth(roundIndex)) * 4 + 1} / ${(pairIndex - 1) * Math.pow(2, getTreeDepth(roundIndex)) * 4 + Math.pow(2, getTreeDepth(roundIndex)) * 4 + 1}`
-                    }"
-                  >
-                    <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                      <path d="M 0 25 L 26 25 L 26 50" class="connector-line" />
-                      <path d="M 0 75 L 26 75 L 26 50" class="connector-line" />
-                      <path d="M 26 50 L 52 50" class="connector-line" />
-                    </svg>
-                  </div>
-                </template>
-              </template>
-            </div>
-          </template>
-        </div>
-
-        <!-- 3rd Place Play-off -->
-        <div v-if="thirdPlaceMatchups.length > 0" class="third-place-section" :style="{ marginLeft: `${finalColumnOffset * (COLUMN_WIDTH + CONNECTOR_WIDTH)}px`, width: `${COLUMN_WIDTH}px` }">
-          <div v-for="matchup in thirdPlaceMatchups" :key="matchup.id">
-            <div class="third-place-label">
-              <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-400" />
-              3rd Place Play-off
-            </div>
-            <div class="match-card" :class="{
-              'match-card--live': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME,
-              'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
-            }">
-              <div class="team-row" :class="{
-                'team-row--winner': getWinnerState(matchup, true) === 'winner',
-                'team-row--loser': getWinnerState(matchup, true) === 'loser',
-              }">
-                <div class="team-avatar">
-                  <img v-if="matchup.homeTeam?.logoUrl" :src="matchup.homeTeam.logoUrl" class="team-avatar__img" />
-                  <span v-else class="team-avatar__initial">{{ getTeamName(matchup, true).charAt(0).toUpperCase() }}</span>
-                </div>
-                <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, true) }">{{ getTeamName(matchup, true) }}</span>
-                <div class="team-score-area">
-                  <span v-if="matchup.homePenaltyScore != null" class="pen-score">({{ matchup.homePenaltyScore }})</span>
-                  <span class="score" :class="{
-                    'score--winner': getWinnerState(matchup, true) === 'winner',
-                    'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
-                  }">
-                    {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.homeScore : '-' }}
-                  </span>
-                </div>
+        <!-- ========================================== -->
+        <!-- 1. DUAL-SIDED CENTER-CONVERGING LAYOUT    -->
+        <!-- ========================================== -->
+        <template v-if="layoutMode === 'dual' && feederRounds.length > 0">
+          <!-- Top Path Indicator Banner -->
+          <div class="dual-path-banner mb-3" :style="{ gridTemplateColumns: dualGridColumns }">
+            <!-- Left Wing Path Banner -->
+            <div
+              class="path-banner-card path-banner-card--left"
+              :style="{ gridColumn: `1 / ${feederRounds.length * 2 + 1}` }"
+            >
+              <div class="flex items-center gap-2">
+                <span class="path-pill path-pill--left">Top Half</span>
+                <span class="text-xs font-bold text-sky-700 dark:text-sky-300">Feeds into Semi-Final 1 ➔</span>
               </div>
-              <div class="team-divider" />
-              <div class="team-row" :class="{
-                'team-row--winner': getWinnerState(matchup, false) === 'winner',
-                'team-row--loser': getWinnerState(matchup, false) === 'loser',
-              }">
-                <div class="team-avatar">
-                  <img v-if="matchup.awayTeam?.logoUrl" :src="matchup.awayTeam.logoUrl" class="team-avatar__img" />
-                  <span v-else class="team-avatar__initial">{{ getTeamName(matchup, false).charAt(0).toUpperCase() }}</span>
-                </div>
-                <span class="team-name" :class="{ 'team-name--tbd': !isTeamKnown(matchup, false) }">{{ getTeamName(matchup, false) }}</span>
-                <div class="team-score-area">
-                  <span v-if="matchup.awayPenaltyScore != null" class="pen-score">({{ matchup.awayPenaltyScore }})</span>
-                  <span class="score" :class="{
-                    'score--winner': getWinnerState(matchup, false) === 'winner',
-                    'score--active': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED,
-                  }">
-                    {{ matchup.status === FixtureStatus.COMPLETED || matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME ? matchup.awayScore : '-' }}
-                  </span>
-                </div>
-              </div>
-              <div v-if="getMatchTime(matchup) || getMatchVenue(matchup)" class="match-info">
-                <span v-if="getMatchTime(matchup)" class="match-info__item">
-                  <UIcon name="i-heroicons-calendar" class="match-info__icon" />
-                  {{ formatMatchTime(getMatchTime(matchup)) }}
-                </span>
-                <span v-if="getMatchVenue(matchup)" class="match-info__item">
-                  <UIcon name="i-heroicons-map-pin" class="match-info__icon" />
-                  {{ getMatchVenue(matchup) }}
-                </span>
-              </div>
-              <div v-if="hasFooter(matchup)" class="match-footer">
-                <div v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME" class="status-live"><span class="live-dot" /><span>{{ matchup.status === FixtureStatus.EXTRATIME ? 'ET' : matchup.status === FixtureStatus.NORMAL_TIME_ENDED ? 'FT' : 'Live' }}</span></div>
-                <div v-else-if="matchup.status === FixtureStatus.COMPLETED && !hasNoWinner(matchup)" class="status-done"><UIcon name="i-heroicons-check-circle" class="w-3 h-3" /><span>FT</span></div>
-                <div v-else-if="hasNoWinner(matchup)" class="status-warn"><UIcon name="i-heroicons-exclamation-triangle" class="w-3 h-3" /><span>No winner</span></div>
-                <div v-if="!readonly" class="match-actions">
-                  <button
-                    v-if="matchup.status === FixtureStatus.SCHEDULED && matchup.homeTeamId && matchup.awayTeamId"
-                    class="action-btn action-btn--start"
-                    :disabled="updatingMatch"
-                    @click.stop="emit('start-match', matchup.fixtures[0])"
-                  >
-                    <UIcon name="i-heroicons-play" class="w-3 h-3" />Start
-                  </button>
-                  <button
-                    v-else-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME || matchup.status === FixtureStatus.COMPLETED"
-                    class="action-btn action-btn--control"
-                    @click.stop="emit('control-match', matchup.fixtures[0])"
-                  >
-                    <UIcon name="i-heroicons-adjustments-horizontal" class="w-3 h-3" />Control
-                  </button>
-                </div>
+              <span class="text-[11px] text-sky-600/70 dark:text-sky-400/60 hidden md:inline">Advances left-to-right</span>
+            </div>
+
+            <!-- Center Final Trophy Banner -->
+            <div
+              class="path-banner-card path-banner-card--center"
+              :style="{ gridColumn: `${feederRounds.length * 2 + 1} / ${feederRounds.length * 2 + 2}` }"
+            >
+              <UIcon name="i-heroicons-trophy" class="w-4 h-4 text-amber-500" />
+              <span class="text-xs font-black tracking-wider uppercase text-amber-600 dark:text-amber-400">Grand Final</span>
+            </div>
+
+            <!-- Right Wing Path Banner -->
+            <div
+              class="path-banner-card path-banner-card--right"
+              :style="{ gridColumn: `${feederRounds.length * 2 + 2} / -1` }"
+            >
+              <span class="text-[11px] text-purple-600/70 dark:text-purple-400/60 hidden md:inline">Advances right-to-left</span>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-purple-700 dark:text-purple-300">⬅ Feeds into Semi-Final 2</span>
+                <span class="path-pill path-pill--right">Bottom Half</span>
               </div>
             </div>
           </div>
-        </div>
+
+          <!-- Dual Round Headers -->
+          <div
+            class="bracket-headers"
+            :style="{
+              display: 'grid',
+              gridTemplateColumns: dualGridColumns,
+            }"
+          >
+            <!-- Left Wing Headers (Forward: Round 0 -> SF) -->
+            <template v-for="(round, idx) in feederRounds" :key="`dual-h-left-${round}`">
+              <div class="bracket-header">
+                <span>{{ getRoundDisplayName(round, idx, rounds.length) }}</span>
+              </div>
+              <!-- Connector space -->
+              <div class="w-[52px]" />
+            </template>
+
+            <!-- Center Final Header -->
+            <div class="bracket-header bracket-header--final">
+              <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-500 inline-block mr-1" />
+              <span>{{ getRoundDisplayName(finalRound, rounds.length - 1, rounds.length) }}</span>
+            </div>
+
+            <!-- Right Wing Headers (Reversed: SF <- Round 0) -->
+            <template v-for="(round, revIdx) in reversedFeederRounds" :key="`dual-h-right-${round}`">
+              <!-- Connector space -->
+              <div class="w-[52px]" />
+              <div class="bracket-header">
+                <span>{{ getRoundDisplayName(round, feederRounds.length - 1 - revIdx, rounds.length) }}</span>
+              </div>
+            </template>
+          </div>
+
+          <!-- Dual Bracket Grid -->
+          <div
+            class="bracket-grid"
+            :style="{
+              '--total-rows': totalWingRows,
+              display: 'grid',
+              gridTemplateColumns: dualGridColumns,
+              gap: '0'
+            }"
+          >
+            <!-- LEFT WING COLUMNS -->
+            <template v-for="(round, roundIdx) in feederRounds" :key="`left-wing-${round}`">
+              <!-- Left Wing Matches Column -->
+              <div class="matches-column">
+                <template v-for="(matchup, mIdx) in getWingMatchups(round, 'left')" :key="`left-m-${matchup.id}`">
+                  <div
+                    class="match-cell"
+                    :style="{ gridRow: getWingMatchGridRow(roundIdx, mIdx) }"
+                  >
+                    <KnockoutMatchCard
+                      :matchup="matchup"
+                      :round="round"
+                      :match-index="getGlobalMatchIndex(round, 'left', mIdx)"
+                      :half-title="'Top Half · SF 1 Path'"
+                      :is-top-half="true"
+                      :is-arranging="isArranging"
+                      :selected-slot="selectedSlot"
+                      :readonly="readonly"
+                      :updating-match="updatingMatch"
+                      :is-playoff-first-round="roundIdx === 0 && isPlayoffFirstRound"
+                      @slot-click="handleSlotClick"
+                      @swap-home-away="swapMatchHomeAway"
+                      @start-match="emit('start-match', $event)"
+                      @control-match="emit('control-match', $event)"
+                      @enter-arrange="enterArrangeMode"
+                    />
+                  </div>
+                </template>
+              </div>
+
+              <!-- Left Wing Connector Column -->
+              <div class="connector-column">
+                <!-- If this is the last feeder round (Semi-Final 1), straight line to Final! -->
+                <template v-if="roundIdx === feederRounds.length - 1">
+                  <div
+                    class="connector-pair"
+                    :style="{ gridRow: `1 / ${totalWingRows + 1}` }"
+                  >
+                    <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                      <path d="M 0 50 L 52 50" class="connector-line connector-line--sf" />
+                    </svg>
+                  </div>
+                </template>
+
+                <!-- 1-to-1 straight lines for Playoff round -->
+                <template v-else-if="roundIdx === 0 && isPlayoffFirstRound">
+                  <template v-for="mIdx in getWingMatchups(round, 'left').length" :key="`left-conn-str-${mIdx}`">
+                    <div
+                      class="connector-pair"
+                      :style="{ gridRow: `${(mIdx - 1) * 2 + 1} / ${(mIdx - 1) * 2 + 3}` }"
+                    >
+                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                        <path d="M 0 50 L 52 50" class="connector-line" />
+                      </svg>
+                    </div>
+                  </template>
+                </template>
+
+                <!-- Binary merge for intermediate rounds -->
+                <template v-else>
+                  <template v-for="pairIdx in Math.ceil(getWingMatchups(round, 'left').length / 2)" :key="`left-conn-bin-${pairIdx}`">
+                    <div
+                      class="connector-pair"
+                      :style="{
+                        gridRow: `${(pairIdx - 1) * Math.pow(2, getWingTreeDepth(roundIdx)) * 4 + 1} / ${(pairIdx - 1) * Math.pow(2, getWingTreeDepth(roundIdx)) * 4 + Math.pow(2, getWingTreeDepth(roundIdx)) * 4 + 1}`
+                      }"
+                    >
+                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                        <path d="M 0 25 L 26 25 L 26 50" class="connector-line" />
+                        <path d="M 0 75 L 26 75 L 26 50" class="connector-line" />
+                        <path d="M 26 50 L 52 50" class="connector-line" />
+                      </svg>
+                    </div>
+                  </template>
+                </template>
+              </div>
+            </template>
+
+            <!-- CENTER GRAND FINAL COLUMN -->
+            <div
+              class="final-column"
+              :style="{
+                gridRow: `1 / ${totalWingRows + 1}`
+              }"
+            >
+              <div class="final-container">
+                <!-- Championship Trophy Badge -->
+                <div class="final-trophy-badge mb-2.5">
+                  <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-amber-500 animate-bounce" />
+                  <span class="text-xs font-black tracking-wider uppercase text-amber-600 dark:text-amber-400">Championship Match</span>
+                </div>
+
+                <!-- Grand Final Match Card -->
+                <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
+                  <KnockoutMatchCard
+                    :matchup="finalRoundMainMatchups[0]"
+                    :round="finalRound"
+                    :match-index="0"
+                    :is-arranging="isArranging"
+                    :selected-slot="selectedSlot"
+                    :readonly="readonly"
+                    :updating-match="updatingMatch"
+                    :is-championship-final="true"
+                    @slot-click="handleSlotClick"
+                    @swap-home-away="swapMatchHomeAway"
+                    @start-match="emit('start-match', $event)"
+                    @control-match="emit('control-match', $event)"
+                    @enter-arrange="enterArrangeMode"
+                  />
+                </div>
+
+                <!-- 3rd Place Play-off Match underneath Grand Final -->
+                <div v-if="thirdPlaceMatchups.length > 0" class="w-full mt-6 pt-4 border-t border-dashed border-gray-200 dark:border-white/10">
+                  <div class="third-place-label mb-2 flex items-center justify-center gap-1.5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <UIcon name="i-heroicons-shield-check" class="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" />
+                    3rd Place Play-off
+                  </div>
+                  <KnockoutMatchCard
+                    :matchup="thirdPlaceMatchups[0]"
+                    :round="finalRound"
+                    :match-index="1"
+                    :is-arranging="isArranging"
+                    :selected-slot="selectedSlot"
+                    :readonly="readonly"
+                    :updating-match="updatingMatch"
+                    @slot-click="handleSlotClick"
+                    @swap-home-away="swapMatchHomeAway"
+                    @start-match="emit('start-match', $event)"
+                    @control-match="emit('control-match', $event)"
+                    @enter-arrange="enterArrangeMode"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT WING COLUMNS (Reversed: SF -> QF -> R16 -> Playoffs) -->
+            <template v-for="(round, revIdx) in reversedFeederRounds" :key="`right-wing-${round}`">
+              <!-- Right Wing Connector Column -->
+              <div class="connector-column">
+                <!-- If this is the last feeder round (Semi-Final 2), straight line to Final from Right! -->
+                <template v-if="revIdx === 0">
+                  <div
+                    class="connector-pair"
+                    :style="{ gridRow: `1 / ${totalWingRows + 1}` }"
+                  >
+                    <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                      <path d="M 52 50 L 0 50" class="connector-line connector-line--sf" />
+                    </svg>
+                  </div>
+                </template>
+
+                <!-- 1-to-1 straight lines for Playoff round -->
+                <template v-else-if="(feederRounds.length - 1 - revIdx) === 0 && isPlayoffFirstRound">
+                  <template v-for="mIdx in getWingMatchups(round, 'right').length" :key="`right-conn-str-${mIdx}`">
+                    <div
+                      class="connector-pair"
+                      :style="{ gridRow: `${(mIdx - 1) * 2 + 1} / ${(mIdx - 1) * 2 + 3}` }"
+                    >
+                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                        <path d="M 52 50 L 0 50" class="connector-line" />
+                      </svg>
+                    </div>
+                  </template>
+                </template>
+
+                <!-- Binary merge for intermediate rounds (advancing right-to-left) -->
+                <template v-else>
+                  <template v-for="pairIdx in Math.ceil(getWingMatchups(round, 'right').length / 2)" :key="`right-conn-bin-${pairIdx}`">
+                    <div
+                      class="connector-pair"
+                      :style="{
+                        gridRow: `${(pairIdx - 1) * Math.pow(2, getWingTreeDepth(feederRounds.length - 1 - revIdx)) * 4 + 1} / ${(pairIdx - 1) * Math.pow(2, getWingTreeDepth(feederRounds.length - 1 - revIdx)) * 4 + Math.pow(2, getWingTreeDepth(feederRounds.length - 1 - revIdx)) * 4 + 1}`
+                      }"
+                    >
+                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                        <path d="M 52 25 L 26 25 L 26 50" class="connector-line" />
+                        <path d="M 52 75 L 26 75 L 26 50" class="connector-line" />
+                        <path d="M 26 50 L 0 50" class="connector-line" />
+                      </svg>
+                    </div>
+                  </template>
+                </template>
+              </div>
+
+              <!-- Right Wing Matches Column -->
+              <div class="matches-column">
+                <template v-for="(matchup, mIdx) in getWingMatchups(round, 'right')" :key="`right-m-${matchup.id}`">
+                  <div
+                    class="match-cell"
+                    :style="{ gridRow: getWingMatchGridRow(feederRounds.length - 1 - revIdx, mIdx) }"
+                  >
+                    <KnockoutMatchCard
+                      :matchup="matchup"
+                      :round="round"
+                      :match-index="getGlobalMatchIndex(round, 'right', mIdx)"
+                      :half-title="'Bottom Half · SF 2 Path'"
+                      :is-top-half="false"
+                      :is-arranging="isArranging"
+                      :selected-slot="selectedSlot"
+                      :readonly="readonly"
+                      :updating-match="updatingMatch"
+                      :is-playoff-first-round="(feederRounds.length - 1 - revIdx) === 0 && isPlayoffFirstRound"
+                      @slot-click="handleSlotClick"
+                      @swap-home-away="swapMatchHomeAway"
+                      @start-match="emit('start-match', $event)"
+                      @control-match="emit('control-match', $event)"
+                      @enter-arrange="enterArrangeMode"
+                    />
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+
+
+        <!-- ========================================== -->
+        <!-- 2. CLASSIC LINEAR LAYOUT (LEFT TO RIGHT)  -->
+        <!-- ========================================== -->
+        <template v-else>
+          <!-- Linear Round headers -->
+          <div
+            class="bracket-headers"
+            :style="{
+              display: 'grid',
+              gridTemplateColumns: linearGridColumns,
+            }"
+          >
+            <template v-for="(round, roundIndex) in rounds" :key="`linear-header-${round}`">
+              <div class="bracket-header">
+                <span>{{ getRoundDisplayName(round, roundIndex, rounds.length) }}</span>
+              </div>
+              <div v-if="roundIndex < rounds.length - 1" class="w-[52px]" />
+            </template>
+          </div>
+
+          <!-- Linear Bracket grid -->
+          <div
+            class="bracket-grid"
+            :style="{
+              '--total-rows': firstRoundMatches * 2,
+              display: 'grid',
+              gridTemplateColumns: linearGridColumns,
+              gap: '0'
+            }"
+          >
+            <template v-for="(round, roundIndex) in rounds" :key="`linear-col-${round}`">
+              <!-- Matches column -->
+              <div class="matches-column">
+                <template v-for="(matchup, matchIndex) in (roundIndex === rounds.length - 1 ? finalRoundMainMatchups : activeMatchupsByRound[round])" :key="`linear-m-${matchup.id}`">
+                  <div
+                    class="match-cell"
+                    :style="{ gridRow: getLinearMatchGridRow(roundIndex, matchIndex) }"
+                  >
+                    <KnockoutMatchCard
+                      :matchup="matchup"
+                      :round="round"
+                      :match-index="matchIndex"
+                      :half-title="roundIndex < rounds.length - 1 && activeMatchupsByRound[round]?.length >= 2 ? (matchIndex < Math.ceil(activeMatchupsByRound[round].length / 2) ? 'Top Half · SF 1 Path' : 'Bottom Half · SF 2 Path') : null"
+                      :is-top-half="roundIndex < rounds.length - 1 && activeMatchupsByRound[round]?.length >= 2 ? (matchIndex < Math.ceil(activeMatchupsByRound[round].length / 2)) : null"
+                      :is-arranging="isArranging"
+                      :selected-slot="selectedSlot"
+                      :readonly="readonly"
+                      :updating-match="updatingMatch"
+                      :is-playoff-first-round="roundIndex === 0 && isPlayoffFirstRound"
+                      :is-championship-final="roundIndex === rounds.length - 1"
+                      @slot-click="handleSlotClick"
+                      @swap-home-away="swapMatchHomeAway"
+                      @start-match="emit('start-match', $event)"
+                      @control-match="emit('control-match', $event)"
+                      @enter-arrange="enterArrangeMode"
+                    />
+                  </div>
+                </template>
+              </div>
+
+              <!-- Connector column -->
+              <div v-if="roundIndex < rounds.length - 1" class="connector-column">
+                <template v-if="roundIndex === 0 && isPlayoffFirstRound">
+                  <template v-for="matchIdx in (activeMatchupsByRound[round]?.length || 0)" :key="`linear-conn-str-${matchIdx}`">
+                    <div
+                      class="connector-pair"
+                      :style="{
+                        gridRow: `${(matchIdx - 1) * 2 + 1} / ${(matchIdx - 1) * 2 + 3}`
+                      }"
+                    >
+                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                        <path d="M 0 50 L 52 50" class="connector-line" />
+                      </svg>
+                    </div>
+                  </template>
+                </template>
+
+                <template v-else>
+                  <template v-for="pairIndex in Math.ceil((activeMatchupsByRound[round]?.length || 0) / 2)" :key="`linear-conn-bin-${pairIndex}`">
+                    <div
+                      class="connector-pair"
+                      :style="{
+                        gridRow: `${(pairIndex - 1) * Math.pow(2, isPlayoffFirstRound ? (roundIndex === 0 ? 0 : roundIndex - 1) : roundIndex) * 4 + 1} / ${(pairIndex - 1) * Math.pow(2, isPlayoffFirstRound ? (roundIndex === 0 ? 0 : roundIndex - 1) : roundIndex) * 4 + Math.pow(2, isPlayoffFirstRound ? (roundIndex === 0 ? 0 : roundIndex - 1) : roundIndex) * 4 + 1}`
+                      }"
+                    >
+                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
+                        <path d="M 0 25 L 26 25 L 26 50" class="connector-line" />
+                        <path d="M 0 75 L 26 75 L 26 50" class="connector-line" />
+                        <path d="M 26 50 L 52 50" class="connector-line" />
+                      </svg>
+                    </div>
+                  </template>
+                </template>
+              </div>
+            </template>
+          </div>
+
+          <!-- Linear 3rd Place Section -->
+          <div v-if="thirdPlaceMatchups.length > 0" class="third-place-section" :style="{ marginLeft: `${(rounds.length - 1) * (COLUMN_WIDTH + CONNECTOR_WIDTH)}px`, width: `${COLUMN_WIDTH}px` }">
+            <div v-for="matchup in thirdPlaceMatchups" :key="matchup.id">
+              <div class="third-place-label">
+                <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-500" />
+                3rd Place Play-off
+              </div>
+              <KnockoutMatchCard
+                :matchup="matchup"
+                :round="finalRound"
+                :match-index="1"
+                :is-arranging="isArranging"
+                :selected-slot="selectedSlot"
+                :readonly="readonly"
+                :updating-match="updatingMatch"
+                @slot-click="handleSlotClick"
+                @swap-home-away="swapMatchHomeAway"
+                @start-match="emit('start-match', $event)"
+                @control-match="emit('control-match', $event)"
+                @enter-arrange="enterArrangeMode"
+              />
+            </div>
+          </div>
+        </template>
+
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* ── Layout ───────────────────────────────────────────────── */
+/* ── Container & scroll ───────────────────────────────────── */
 .bracket-container {
-  width: 100%;
   overflow-x: auto;
-  padding: 1.25rem;
+  overflow-y: hidden;
+  padding: 1rem 0;
+  cursor: grab;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156,163,175,0.4) transparent;
+}
+
+.bracket-container:active {
+  cursor: grabbing;
+}
+
+.bracket-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.bracket-container::-webkit-scrollbar-thumb {
+  background: rgba(156,163,175,0.4);
+  border-radius: 3px;
 }
 
 .bracket-scroll {
   display: inline-block;
+  min-width: 100%;
+  padding-bottom: 1.5rem;
+  transform-origin: top left;
+}
+
+/* ── Dual Path Banner ─────────────────────────────────────── */
+.dual-path-banner {
+  display: grid;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+}
+
+.path-banner-card {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+}
+
+.path-banner-card--left {
+  justify-content: space-between;
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+}
+
+.path-banner-card--center {
+  justify-content: center;
+  gap: 0.35rem;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  margin: 0 0.5rem;
+}
+
+.path-banner-card--right {
+  justify-content: space-between;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.path-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.path-pill--left {
+  background: #0ea5e9;
+  color: #ffffff;
+}
+
+.path-pill--right {
+  background: #a855f7;
+  color: #ffffff;
 }
 
 /* ── Round headers ────────────────────────────────────────── */
 .bracket-headers {
-  margin-bottom: 1.25rem;
+  display: grid;
+  margin-bottom: 0.75rem;
 }
 
 .bracket-header {
-  display: flex;
-  justify-content: center;
-}
-
-.bracket-header span {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.07em;
   color: #6b7280;
+  padding: 0.375rem 0.5rem;
   background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  padding: 0.3rem 0.75rem;
-  border-radius: 999px;
+  border-radius: 6px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-:root.dark .bracket-header span {
-  background: rgba(255,255,255,0.05);
-  border-color: rgba(255,255,255,0.08);
+:root.dark .bracket-header {
   color: #9ca3af;
+  background: rgba(255,255,255,0.04);
 }
 
-/* ── Grid ─────────────────────────────────────────────────── */
+.bracket-header--final {
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  font-weight: 800;
+}
+
+:root.dark .bracket-header--final {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+/* ── Grid layout ──────────────────────────────────────────── */
 .bracket-grid {
-  display: grid;
-  width: 100%;
+  grid-template-rows: repeat(var(--total-rows), minmax(42px, 1fr));
 }
 
 .matches-column {
-  display: grid;
-  grid-template-rows: repeat(var(--total-rows), 1fr);
-  min-width: 0;
-  overflow: hidden;
-  gap: 0;
+  display: contents;
 }
 
 .match-cell {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
   padding: 6px 0;
   min-width: 0;
   overflow: hidden;
 }
 
-/* ── Match card ───────────────────────────────────────────── */
-.match-card {
-  width: 100%;
-  min-width: 0;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  position: relative;
-}
-
-.match-card:hover {
-  border-color: #10b981;
-  box-shadow: 0 0 0 1px rgba(16,185,129,0.15), 0 4px 16px rgba(0,0,0,0.08);
-}
-
-:root.dark .match-card {
-  background: #141414;
-  border-color: rgba(255,255,255,0.07);
-}
-
-:root.dark .match-card:hover {
-  border-color: rgba(16,185,129,0.5);
-  box-shadow: 0 0 0 1px rgba(16,185,129,0.12), 0 4px 20px rgba(0,0,0,0.4);
-}
-
-/* Live: pulsing left border */
-.match-card--live {
-  border-left: 2px solid #f59e0b !important;
-}
-
-.match-card--live::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 2px;
-  background: #f59e0b;
-  box-shadow: 0 0 8px #f59e0b;
-  animation: pulse-border 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-border {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* ── Half Badges and Path Styling ───────────────────────────── */
-.match-card--top-half {
-  border-left: 3px solid #0ea5e9;
-}
-.match-card--bottom-half {
-  border-left: 3px solid #a855f7;
-}
-
-.match-half-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.25rem 0.6rem;
-  border-bottom: 1px solid #f3f4f6;
-  background: rgba(249, 250, 251, 0.7);
-}
-
-:root.dark .match-half-header {
-  border-bottom-color: rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.half-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.half-dot--top {
-  background-color: #0ea5e9;
-  box-shadow: 0 0 6px rgba(14, 165, 233, 0.5);
-}
-.half-dot--bottom {
-  background-color: #a855f7;
-  box-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
-}
-
-.half-title {
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.half-title--top {
-  color: #0284c7;
-}
-:root.dark .half-title--top {
-  color: #38bdf8;
-}
-.half-title--bottom {
-  color: #9333ea;
-}
-:root.dark .half-title--bottom {
-  color: #c084fc;
-}
-
-/* ── Interactive Arrange Mode Slots ──────────────────────────── */
-.team-row--selectable {
-  cursor: pointer;
-  transition: all 0.15s ease-in-out;
-}
-.team-row--selectable:hover {
-  background: rgba(16, 185, 129, 0.08);
-}
-:root.dark .team-row--selectable:hover {
-  background: rgba(16, 185, 129, 0.12);
-}
-
-.team-row--selected {
-  background: rgba(16, 185, 129, 0.18) !important;
-  box-shadow: inset 0 0 0 2px #10b981;
-}
-:root.dark .team-row--selected {
-  background: rgba(16, 185, 129, 0.25) !important;
-  box-shadow: inset 0 0 0 2px #10b981;
-}
-
-.arrange-slot-icon {
+/* ── Final Center Column ──────────────────────────────────── */
+.final-column {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
+  padding: 0 0.5rem;
 }
 
-.match-footer--arrange {
+.final-container {
+  width: 100%;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.35rem 0.6rem;
-  border-top: 1px solid #f3f4f6;
-  background: #fafafa;
-}
-
-:root.dark .match-footer--arrange {
-  border-top-color: rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-/* ── Team row ─────────────────────────────────────────────── */
-.team-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.6rem;
-  transition: background 0.15s;
-  position: relative;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.team-row--winner {
-  background: rgba(16,185,129,0.06);
-}
-
-.team-row--loser {
-  opacity: 0.38;
-}
-
-:root.dark .team-row--winner {
-  background: rgba(16,185,129,0.08);
-}
-
-/* ── Team avatar ──────────────────────────────────── */
-.team-avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: #f3f4f6;
-  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e5e7eb;
 }
 
-:root.dark .team-avatar {
-  background: #1f2937;
-  border-color: rgba(255,255,255,0.08);
-}
-
-.team-avatar__img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.team-avatar__initial {
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: #6b7280;
-}
-
-/* ── Team name ────────────────────────────────────────────── */
-.team-name {
-  font-size: 0.725rem;
-  font-weight: 600;
-  color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-  min-width: 0;
-}
-
-:root.dark .team-name {
-  color: #f3f4f6;
-}
-
-.team-name--tbd {
-  color: #9ca3af;
-  font-weight: 400;
-  font-style: italic;
-}
-
-/* ── Score area ───────────────────────────────────────────── */
-.team-score-area {
+.final-trophy-badge {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  flex-shrink: 0;
+  gap: 0.375rem;
 }
 
-.sub-scores {
-  font-size: 0.6rem;
-  color: #9ca3af;
-  font-weight: 500;
-}
-
-.pen-score {
-  font-size: 0.6rem;
-  color: #9ca3af;
-  font-weight: 500;
-}
-
-.score {
-  font-size: 0.775rem;
-  font-weight: 700;
-  color: #9ca3af;
-  min-width: 1.25rem;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.score--active {
-  color: #111827;
-}
-
-:root.dark .score--active {
-  color: #f3f4f6;
-}
-
-.score--winner {
-  color: #10b981 !important;
-}
-
-:root.dark .score--winner {
-  color: #34d399 !important;
-}
-
-/* ── Divider between teams ────────────────────────────────── */
-.team-divider {
-  height: 1px;
-  background: #f3f4f6;
-  margin: 0 0.6rem;
-}
-
-:root.dark .team-divider {
-  background: rgba(255,255,255,0.05);
-}
-
-/* ── Match footer ─────────────────────────────────────────── */
-.match-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.35rem 0.6rem;
-  background: #f9fafb;
-  border-top: 1px solid #f3f4f6;
-  min-height: 28px;
-  gap: 0.5rem;
-}
-
-:root.dark .match-footer {
-  background: rgba(255,255,255,0.02);
-  border-top-color: rgba(255,255,255,0.04);
-}
-
-/* Status chips */
-.status-live {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: #f59e0b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.live-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #f59e0b;
-  box-shadow: 0 0 6px #f59e0b;
-  animation: pulse-dot 1.2s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.4); opacity: 0.6; }
-}
-
-.status-done {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.6rem;
-  font-weight: 600;
-  color: #9ca3af;
-}
-
-.status-warn {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.6rem;
-  font-weight: 600;
-  color: #f59e0b;
-}
-
-/* Action buttons */
-.match-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-left: auto;
-}
-
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.6rem;
-  font-weight: 600;
-  padding: 0.2rem 0.45rem;
-  border-radius: 5px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-  line-height: 1.4;
-}
-
-.action-btn--start {
-  background: rgba(16,185,129,0.12);
-  color: #059669;
-  border-color: rgba(16,185,129,0.2);
-}
-
-.action-btn--start:hover:not(:disabled) {
-  background: rgba(16,185,129,0.2);
-}
-
-.action-btn--control {
-  background: rgba(245,158,11,0.12);
-  color: #d97706;
-  border-color: rgba(245,158,11,0.2);
-}
-
-.action-btn--control:hover {
-  background: rgba(245,158,11,0.2);
-}
-
-.action-btn--disabled {
-  background: rgba(107,114,128,0.08);
-  color: #9ca3af;
-  border-color: rgba(107,114,128,0.12);
-  cursor: default;
-}
-
-.action-btn--edit {
-  background: rgba(16,185,129,0.12);
-  color: #059669;
-  border-color: rgba(16,185,129,0.25);
-}
-
-.action-btn--edit:hover {
-  background: rgba(16,185,129,0.22);
-}
-
-:root.dark .action-btn--edit {
-  color: #34d399;
-}
-
-/* ── Connectors ───────────────────────────────────────────── */
+/* ── Connector column ─────────────────────────────────────── */
 .connector-column {
-  display: grid;
-  grid-template-rows: repeat(var(--total-rows), 1fr);
-  width: 52px;
-  flex-shrink: 0;
+  display: contents;
 }
 
 .connector-pair {
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
 }
 
 .connector-svg {
-  width: 100%;
+  width: 52px;
   height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
+  overflow: visible;
 }
 
 .connector-line {
-  stroke: #e5e7eb;
+  stroke: #d1d5db;
   stroke-width: 1.5;
   fill: none;
   vector-effect: non-scaling-stroke;
@@ -1790,10 +1473,15 @@ defineExpose({
   stroke: rgba(255,255,255,0.1);
 }
 
+.connector-line--sf {
+  stroke: #f59e0b;
+  stroke-width: 2;
+  stroke-dasharray: 4 2;
+}
+
 /* ── 3rd place ────────────────────────────────────────────── */
 .third-place-section {
   margin-top: 1rem;
-  max-width: 260px;
 }
 
 .third-place-label {
@@ -1806,48 +1494,5 @@ defineExpose({
   letter-spacing: 0.06em;
   color: #9ca3af;
   margin-bottom: 0.5rem;
-}
-
-/* ── Responsive ───────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .team-name {
-    font-size: 0.75rem;
-  }
-}
-
-/* ── Match info (time & venue) ────────────────────────────── */
-.match-info {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.25rem 0.6rem;
-  background: #f9fafb;
-  border-top: 1px solid #f3f4f6;
-}
-
-:root.dark .match-info {
-  background: rgba(255,255,255,0.02);
-  border-top-color: rgba(255,255,255,0.04);
-}
-
-.match-info__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  font-size: 0.575rem;
-  font-weight: 500;
-  color: #9ca3af;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.match-info__icon {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  opacity: 0.7;
 }
 </style>
