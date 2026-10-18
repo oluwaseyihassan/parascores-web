@@ -3,12 +3,15 @@ const open = defineModel<boolean>("open", { default: false });
 
 const emit = defineEmits<{
   "start-manual-wizard": [];
+  "start-playoff-draw": [];
 }>();
 
 const route = useRoute();
+const tournamentStore = useTournamentStore();
 const fixtureStore = useFixtureStore();
 const standingStore = useStandingStore();
 const { handleError } = useErrors();
+const { currentTournament: tournament } = storeToRefs(tournamentStore);
 
 const tournamentId = computed(() => route.params.id as string);
 
@@ -135,6 +138,24 @@ const handleStartManualWizard = () => {
     emit("start-manual-wizard");
   }, 100);
 };
+
+const handleStartPlayoffDraw = async () => {
+  advancing.value = true;
+  advanceError.value = null;
+  try {
+    await fixtureStore.advanceToKnockout(tournamentId.value);
+    await fixtureStore.fetchFixtures(tournamentId.value);
+    open.value = false;
+    clearAdvanceProgress();
+    setTimeout(() => {
+      emit("start-playoff-draw");
+    }, 100);
+  } catch (err: any) {
+    advanceError.value = handleError(err, { toast: false });
+  } finally {
+    advancing.value = false;
+  }
+};
 </script>
 
 <template>
@@ -164,13 +185,38 @@ const handleStartManualWizard = () => {
 
         <div class="py-4 max-h-[calc(100dvh-250px)] overflow-y-auto px-1">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+            <!-- Playoff Draw Option (when playoffs enabled) -->
+            <button
+              v-if="tournament?.hasKnockoutPlayoffs"
+              type="button"
+              :disabled="advancing"
+              @click="handleStartPlayoffDraw"
+              class="flex flex-col items-center justify-center p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-center transition-all group col-span-1 sm:col-span-2 shadow-xs"
+            >
+              <div
+                class="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center mb-3 shadow-lg shadow-emerald-500/20"
+              >
+                <UIcon name="i-heroicons-sparkles" class="w-6 h-6" />
+              </div>
+              <p
+                class="text-sm font-bold text-emerald-900 dark:text-emerald-100 mb-1"
+              >
+                Knockout Play-off Draw (Custom Matchups)
+              </p>
+              <p
+                class="text-[11px] text-emerald-700/80 dark:text-emerald-400/80"
+              >
+                Advance into playoffs and customize which teams play each other.
+              </p>
+            </button>
+
             <!-- Auto Option -->
             <button
               type="button"
               @click="manualSelection = false"
               class="flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all group"
               :class="
-                !manualSelection
+                !manualSelection && !tournament?.hasKnockoutPlayoffs
                   ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/20 ring-1 ring-primary-500'
                   : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'
               "

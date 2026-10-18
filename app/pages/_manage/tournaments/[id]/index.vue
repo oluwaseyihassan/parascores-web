@@ -479,6 +479,7 @@ const handleMatchEnded = async () => {
 // Fixture setup wizards (opened from the fixtures/knockout tabs)
 const showKnockoutWizard = ref(false);
 const showGroupWizard = ref(false);
+const showPlayoffDrawWizard = ref(false);
 
 // QR Code Feature
 const showQRCodeModal = ref(false);
@@ -599,6 +600,7 @@ provide(SportEngineKey, computed(() => resolveEngine(tournament.value?.sport)));
                 @go-to-tab="goToTab"
                 @open-knockout-wizard="showKnockoutWizard = true"
                 @open-group-wizard="showGroupWizard = true"
+                @open-playoff-draw="showPlayoffDrawWizard = true"
               />
             </template>
 
@@ -610,6 +612,7 @@ provide(SportEngineKey, computed(() => resolveEngine(tournament.value?.sport)));
                 @control="openMatchControl"
                 @go-to-tab="goToTab"
                 @open-knockout-wizard="showKnockoutWizard = true"
+                @open-playoff-draw="showPlayoffDrawWizard = true"
               />
             </template>
 
@@ -666,6 +669,14 @@ provide(SportEngineKey, computed(() => resolveEngine(tournament.value?.sport)));
           :tournament="tournament"
           :groups="groupStore.groups"
           @finish="fixtureStore.fetchFixtures(tournament.id)"
+        />
+
+        <TournamentPlayoffDrawWizard
+          v-if="tournament"
+          v-model:open="showPlayoffDrawWizard"
+          :tournament="tournament"
+          :participants="participants"
+          @saved="fixtureStore.fetchFixtures(tournament.id)"
         />
       </div>
     </template>

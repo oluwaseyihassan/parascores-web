@@ -20,6 +20,7 @@ const emit = defineEmits<{
   "go-to-tab": [slot: string];
   "open-knockout-wizard": [];
   "open-group-wizard": [];
+  "open-playoff-draw": [];
 }>();
 
 const route = useRoute();
@@ -1454,6 +1455,7 @@ const showAddEventModal = ref(false);
     <TournamentAdvanceModal
       v-model:open="showAdvanceModal"
       @start-manual-wizard="emit('open-knockout-wizard')"
+      @start-playoff-draw="emit('open-playoff-draw')"
     />
 
     <!-- Add Event Modal (race tournaments) -->
