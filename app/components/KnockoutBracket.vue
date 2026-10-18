@@ -702,6 +702,67 @@ const resetZoom = () => {
   scale.value = 1.0
 }
 
+// Drag-to-scroll (pan) functionality
+const isDragging = ref(false)
+let isMouseDown = false
+let startX = 0
+let scrollLeftStart = 0
+let hasMoved = false
+
+const onMouseDown = (e: MouseEvent) => {
+  if (e.button !== 0 || !bracketContainerRef.value) return
+
+  // Don't drag if clicking buttons, links or form controls
+  const target = e.target as HTMLElement
+  if (target.closest('button') || target.closest('a') || target.closest('input')) {
+    return
+  }
+
+  isMouseDown = true
+  hasMoved = false
+  startX = e.pageX - bracketContainerRef.value.offsetLeft
+  scrollLeftStart = bracketContainerRef.value.scrollLeft
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    if (!isMouseDown || !bracketContainerRef.value) return
+    const currentX = moveEvent.pageX - bracketContainerRef.value.offsetLeft
+    const dx = currentX - startX
+
+    if (!hasMoved && Math.abs(dx) > 3) {
+      hasMoved = true
+      isDragging.value = true
+      window.getSelection()?.removeAllRanges()
+    }
+
+    if (hasMoved) {
+      bracketContainerRef.value.scrollLeft = scrollLeftStart - dx
+    }
+  }
+
+  const onMouseUp = () => {
+    isMouseDown = false
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+
+    if (hasMoved) {
+      const preventClick = (clickEvent: MouseEvent) => {
+        clickEvent.stopPropagation()
+        clickEvent.preventDefault()
+      }
+      window.addEventListener('click', preventClick, { capture: true, once: true })
+      setTimeout(() => {
+        isDragging.value = false
+        hasMoved = false
+      }, 50)
+    } else {
+      isDragging.value = false
+    }
+  }
+
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
 defineExpose({
   isArranging,
   canArrange,
@@ -852,7 +913,12 @@ defineExpose({
     </div>
 
     <!-- MAIN BRACKET CONTAINER -->
-    <div ref="bracketContainerRef" class="bracket-container">
+    <div
+      ref="bracketContainerRef"
+      class="bracket-container"
+      :class="{ 'is-dragging': isDragging }"
+      @mousedown="onMouseDown"
+    >
       <div class="bracket-scroll" :style="{ zoom: scale }">
 
         <!-- ========================================== -->
@@ -1235,12 +1301,21 @@ defineExpose({
   overflow-y: hidden;
   padding: 0.75rem 0;
   cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
   scrollbar-width: thin;
   scrollbar-color: rgba(156,163,175,0.4) transparent;
 }
 
-.bracket-container:active {
-  cursor: grabbing;
+.bracket-container:active,
+.bracket-container.is-dragging {
+  cursor: grabbing !important;
+}
+
+.bracket-container.is-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
 .bracket-container::-webkit-scrollbar {
