@@ -6,8 +6,6 @@ interface Props {
   matchup: any
   round?: number
   matchIndex?: number
-  halfTitle?: string | null
-  isTopHalf?: boolean | null
   isArranging?: boolean
   selectedSlot?: {
     round: number
@@ -20,20 +18,16 @@ interface Props {
   readonly?: boolean
   updatingMatch?: boolean
   isPlayoffFirstRound?: boolean
-  isChampionshipFinal?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   round: 0,
   matchIndex: 0,
-  halfTitle: null,
-  isTopHalf: null,
   isArranging: false,
   selectedSlot: null,
   readonly: false,
   updatingMatch: false,
-  isPlayoffFirstRound: false,
-  isChampionshipFinal: false
+  isPlayoffFirstRound: false
 })
 
 const emit = defineEmits<{
@@ -77,24 +71,6 @@ const getTeamName = (matchup: any, isHome: boolean) => {
 
 const isTeamKnown = (matchup: any, isHome: boolean) => {
   return isHome ? !!matchup.homeTeamId : !!matchup.awayTeamId
-}
-
-const getMatchTime = (matchup: any): string | null => {
-  return matchup.fixtures?.[0]?.startTime || null
-}
-
-const getMatchVenue = (matchup: any): string | null => {
-  return matchup.fixtures?.[0]?.venue || null
-}
-
-const formatMatchTime = (dateStr: string | null | undefined): string | null => {
-  if (!dateStr) return null
-  try {
-    const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return null
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) +
-      ' \u00b7 ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-  } catch { return null }
 }
 
 const isSlotSelected = (round: number, matchIndex: number, isHome: boolean): boolean => {
@@ -154,30 +130,8 @@ const hasFooter = (matchup: any) => {
     :class="{
       'match-card--live': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME,
       'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
-      'match-card--top-half': isTopHalf === true,
-      'match-card--bottom-half': isTopHalf === false,
-      'match-card--final': isChampionshipFinal
     }"
   >
-    <!-- Half Header / Path Badge -->
-    <div v-if="halfTitle" class="match-half-header">
-      <div class="flex items-center gap-1.5">
-        <span
-          class="half-dot"
-          :class="isTopHalf === true ? 'half-dot--top' : isTopHalf === false ? 'half-dot--bottom' : 'bg-gray-400'"
-        />
-        <span
-          class="half-title"
-          :class="isTopHalf === true ? 'half-title--top' : isTopHalf === false ? 'half-title--bottom' : 'text-gray-500'"
-        >
-          {{ halfTitle }}
-        </span>
-      </div>
-      <span v-if="isArranging" class="text-[9px] text-gray-400 font-mono">
-        M{{ matchIndex + 1 }}
-      </span>
-    </div>
-
     <!-- Home team row -->
     <div
       class="team-row"
@@ -301,21 +255,8 @@ const hasFooter = (matchup: any) => {
       </div>
     </div>
 
-    <!-- Match info: time & venue -->
-    <div v-if="getMatchTime(matchup) || getMatchVenue(matchup)" class="match-info">
-      <span v-if="getMatchTime(matchup)" class="match-info__item">
-        <UIcon name="i-heroicons-calendar" class="match-info__icon" />
-        {{ formatMatchTime(getMatchTime(matchup)) }}
-      </span>
-      <span v-if="getMatchVenue(matchup)" class="match-info__item">
-        <UIcon name="i-heroicons-map-pin" class="match-info__icon" />
-        {{ getMatchVenue(matchup) }}
-      </span>
-    </div>
-
-    <!-- Footer: in arrange mode show Swap H/A button, otherwise normal actions -->
+    <!-- Footer: only in arrange mode or when match has status/actions -->
     <div v-if="isArranging && matchup.status === FixtureStatus.SCHEDULED" class="match-footer match-footer--arrange">
-      <span class="text-[9px] text-gray-400 font-medium">Click team to swap</span>
       <button
         type="button"
         class="action-btn action-btn--edit"
@@ -328,7 +269,7 @@ const hasFooter = (matchup: any) => {
     </div>
 
     <div v-else-if="hasFooter(matchup)" class="match-footer">
-      <!-- Live indicator -->
+      <!-- Live / FT status -->
       <div v-if="matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME" class="status-live">
         <span class="live-dot" />
         <span>{{ matchup.status === FixtureStatus.EXTRATIME ? 'ET' : matchup.status === FixtureStatus.NORMAL_TIME_ENDED ? 'FT' : 'Live' }}</span>
@@ -403,120 +344,36 @@ const hasFooter = (matchup: any) => {
 </template>
 
 <style scoped>
-/* ── Match card ───────────────────────────────────────────── */
+/* ── Plain Match card ─────────────────────────────────────── */
 .match-card {
   width: 100%;
   min-width: 0;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   position: relative;
 }
 
 .match-card:hover {
-  border-color: #10b981;
-  box-shadow: 0 0 0 1px rgba(16,185,129,0.15), 0 4px 16px rgba(0,0,0,0.08);
+  border-color: #9ca3af;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 :root.dark .match-card {
-  background: #141414;
-  border-color: rgba(255,255,255,0.07);
+  background: #111827;
+  border-color: rgba(255,255,255,0.08);
 }
 
 :root.dark .match-card:hover {
-  border-color: rgba(16,185,129,0.5);
-  box-shadow: 0 0 0 1px rgba(16,185,129,0.12), 0 4px 20px rgba(0,0,0,0.4);
+  border-color: rgba(255,255,255,0.2);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
 }
 
-/* Championship Final golden glow */
-.match-card--final {
-  border: 1.5px solid #f59e0b !important;
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.15), 0 4px 20px rgba(0,0,0,0.08);
-}
-
-:root.dark .match-card--final {
-  border-color: #f59e0b !important;
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25), 0 6px 24px rgba(0,0,0,0.5);
-}
-
-/* Live: pulsing left border */
+/* Live: clean pulsing left indicator */
 .match-card--live {
   border-left: 2px solid #f59e0b !important;
-}
-
-.match-card--live::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 2px;
-  background: #f59e0b;
-  box-shadow: 0 0 8px #f59e0b;
-  animation: pulse-border 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-border {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* ── Half Badges and Path Styling ───────────────────────────── */
-.match-card--top-half {
-  border-left: 3px solid #0ea5e9;
-}
-.match-card--bottom-half {
-  border-left: 3px solid #a855f7;
-}
-
-.match-half-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.25rem 0.6rem;
-  border-bottom: 1px solid #f3f4f6;
-  background: rgba(249, 250, 251, 0.7);
-}
-
-:root.dark .match-half-header {
-  border-bottom-color: rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.half-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.half-dot--top {
-  background-color: #0ea5e9;
-  box-shadow: 0 0 6px rgba(14, 165, 233, 0.5);
-}
-.half-dot--bottom {
-  background-color: #a855f7;
-  box-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
-}
-
-.half-title {
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.half-title--top {
-  color: #0284c7;
-}
-:root.dark .half-title--top {
-  color: #38bdf8;
-}
-.half-title--bottom {
-  color: #9333ea;
-}
-:root.dark .half-title--bottom {
-  color: #c084fc;
 }
 
 /* ── Team row ─────────────────────────────────────────────── */
@@ -524,7 +381,7 @@ const hasFooter = (matchup: any) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.625rem;
+  padding: 0.45rem 0.625rem;
   transition: background 0.15s;
 }
 
@@ -574,8 +431,8 @@ const hasFooter = (matchup: any) => {
 }
 
 .team-avatar {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: #f3f4f6;
   border: 1px solid #e5e7eb;
@@ -587,7 +444,7 @@ const hasFooter = (matchup: any) => {
 }
 
 :root.dark .team-avatar {
-  background: #222;
+  background: #1f2937;
   border-color: rgba(255,255,255,0.1);
 }
 
@@ -598,7 +455,7 @@ const hasFooter = (matchup: any) => {
 }
 
 .team-avatar__initial {
-  font-size: 0.625rem;
+  font-size: 0.6rem;
   font-weight: 700;
   color: #6b7280;
   line-height: 1;
@@ -659,7 +516,7 @@ const hasFooter = (matchup: any) => {
 .score {
   min-width: 18px;
   text-align: right;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #9ca3af;
@@ -678,8 +535,12 @@ const hasFooter = (matchup: any) => {
 }
 
 .score--winner {
-  color: #10b981 !important;
+  color: #111827 !important;
   font-weight: 700;
+}
+
+:root.dark .score--winner {
+  color: #ffffff !important;
 }
 
 /* ── Divider ──────────────────────────────────────────────── */
@@ -689,55 +550,19 @@ const hasFooter = (matchup: any) => {
 }
 
 :root.dark .team-divider {
-  background: rgba(255,255,255,0.05);
-}
-
-/* ── Match info (time & venue) ────────────────────────────── */
-.match-info {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.25rem 0.6rem;
-  background: #f9fafb;
-  border-top: 1px solid #f3f4f6;
-}
-
-:root.dark .match-info {
-  background: rgba(255,255,255,0.02);
-  border-top-color: rgba(255,255,255,0.04);
-}
-
-.match-info__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  font-size: 0.575rem;
-  font-weight: 500;
-  color: #9ca3af;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.match-info__icon {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  opacity: 0.7;
+  background: rgba(255,255,255,0.06);
 }
 
 /* ── Footer ───────────────────────────────────────────────── */
 .match-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.25rem 0.625rem;
-  background: #f9fafb;
+  justify-content: flex-end;
+  padding: 0.2rem 0.5rem;
+  background: #fafafa;
   border-top: 1px solid #f3f4f6;
-  min-height: 26px;
-  gap: 0.5rem;
+  min-height: 24px;
+  gap: 0.35rem;
 }
 
 :root.dark .match-footer {
@@ -748,6 +573,7 @@ const hasFooter = (matchup: any) => {
 .match-footer--arrange {
   background: rgba(245, 158, 11, 0.05);
   border-top-color: rgba(245, 158, 11, 0.15);
+  justify-content: flex-end;
 }
 
 .status-live {
@@ -759,6 +585,7 @@ const hasFooter = (matchup: any) => {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #f59e0b;
+  margin-right: auto;
 }
 
 .live-dot {
@@ -781,6 +608,7 @@ const hasFooter = (matchup: any) => {
   font-size: 0.625rem;
   font-weight: 600;
   color: #9ca3af;
+  margin-right: auto;
 }
 
 :root.dark .status-done {
@@ -794,42 +622,55 @@ const hasFooter = (matchup: any) => {
   font-size: 0.625rem;
   font-weight: 600;
   color: #f59e0b;
+  margin-right: auto;
 }
 
 .match-actions {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  margin-left: auto;
 }
 
 .action-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
-  font-size: 0.625rem;
+  font-size: 0.6rem;
   font-weight: 600;
-  padding: 0.15rem 0.45rem;
+  padding: 0.12rem 0.4rem;
   border-radius: 4px;
-  border: 1px solid transparent;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
 }
 
+.action-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+:root.dark .action-btn {
+  background: #1f2937;
+  border-color: rgba(255,255,255,0.1);
+  color: #d1d5db;
+}
+
+:root.dark .action-btn:hover {
+  background: #374151;
+}
+
 .action-btn--start {
-  background: #ecfdf5;
   color: #059669;
   border-color: #a7f3d0;
+  background: #ecfdf5;
 }
 .action-btn--start:hover:not(:disabled) {
   background: #059669;
   color: #ffffff;
   border-color: #059669;
-}
-.action-btn--start:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 :root.dark .action-btn--start {
   background: rgba(16,185,129,0.1);
@@ -842,9 +683,9 @@ const hasFooter = (matchup: any) => {
 }
 
 .action-btn--control {
-  background: #f0fdf4;
   color: #16a34a;
   border-color: #bbf7d0;
+  background: #f0fdf4;
 }
 .action-btn--control:hover {
   background: #16a34a;
@@ -861,35 +702,8 @@ const hasFooter = (matchup: any) => {
   color: #ffffff;
 }
 
-.action-btn--edit {
-  background: #eff6ff;
-  color: #2563eb;
-  border-color: #bfdbfe;
-}
-.action-btn--edit:hover {
-  background: #2563eb;
-  color: #ffffff;
-  border-color: #2563eb;
-}
-:root.dark .action-btn--edit {
-  background: rgba(37,99,235,0.1);
-  color: #60a5fa;
-  border-color: rgba(37,99,235,0.25);
-}
-:root.dark .action-btn--edit:hover {
-  background: #3b82f6;
-  color: #ffffff;
-}
-
 .action-btn--disabled {
-  background: #f3f4f6;
-  color: #9ca3af;
-  border-color: #e5e7eb;
+  opacity: 0.4;
   cursor: not-allowed;
-}
-:root.dark .action-btn--disabled {
-  background: rgba(255,255,255,0.04);
-  color: #4b5563;
-  border-color: rgba(255,255,255,0.06);
 }
 </style>

@@ -179,9 +179,9 @@ const canArrange = computed(() => {
   })
 })
 
-const COLUMN_WIDTH = 260
-const CONNECTOR_WIDTH = 52
-const FINAL_WIDTH = 290
+const COLUMN_WIDTH = 250
+const CONNECTOR_WIDTH = 48
+const FINAL_WIDTH = 260
 
 const totalWingRows = computed(() => {
   const matches = Math.max(1, Math.ceil(firstRoundMatches.value / 2))
@@ -508,7 +508,7 @@ const shuffleDraw = () => {
     selectedSlot.value = null
     toast.add({
       title: 'Draw Shuffled',
-      description: 'Matchups and bracket paths randomized.',
+      description: 'Matchups randomized.',
       color: 'success',
       icon: 'i-heroicons-sparkles'
     })
@@ -583,7 +583,7 @@ const standardSeeding = () => {
   selectedSlot.value = null
   toast.add({
     title: 'Standard Seeding Restored',
-    description: 'Top seeds balanced across Top and Bottom halves.',
+    description: 'Top seeds balanced across both sides.',
     color: 'success',
     icon: 'i-heroicons-arrow-path'
   })
@@ -629,7 +629,7 @@ const saveArrangement = async () => {
 
     toast.add({
       title: 'Knockout Arrangement Saved',
-      description: 'Bracket path to the final updated successfully.',
+      description: 'Bracket matchups updated successfully.',
       color: 'success',
       icon: 'i-heroicons-check-circle'
     })
@@ -719,13 +719,13 @@ defineExpose({
     <!-- Top Floating Toolbar when Arranging -->
     <div
       v-if="isArranging"
-      class="sticky top-0 z-50 mb-3 mx-2 rounded-xl border border-primary-500/40 bg-white/95 dark:bg-gray-900/95 p-3 shadow-lg backdrop-blur flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-150"
+      class="sticky top-0 z-50 mb-3 mx-2 rounded-xl border border-gray-300 dark:border-white/10 bg-white/95 dark:bg-gray-900/95 p-3 shadow-lg backdrop-blur flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-150"
     >
       <div class="flex items-center gap-3 flex-wrap">
-        <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary-50 dark:bg-primary-950/60 border border-primary-200 dark:border-primary-800/60 text-xs font-bold text-primary-700 dark:text-primary-300">
+        <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-700 dark:text-gray-300">
           <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-gray-500"></span>
           </span>
           Arrange Mode
         </div>
@@ -735,16 +735,16 @@ defineExpose({
           <span class="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold">
             {{ getTeamNameFromSlot(selectedSlot) }}
           </span>
-          <span class="text-gray-400 text-[11px]">(Click any other team slot in this round to swap across halves)</span>
+          <span class="text-gray-400 text-[11px]">(Click another team in this round to swap)</span>
           <button
             @click="selectedSlot = null"
             class="text-xs text-primary-600 dark:text-primary-400 hover:underline ml-1"
           >
-            Cancel selection
+            Cancel
           </button>
         </div>
         <div v-else class="text-xs text-gray-500 dark:text-gray-400">
-          Click any team to select it, then click another team to swap. Left Wing feeds into SF 1; Right Wing feeds into SF 2.
+          Click any team to select it, then click another team in the same round to swap.
         </div>
       </div>
 
@@ -754,7 +754,7 @@ defineExpose({
           variant="soft"
           color="neutral"
           icon="i-heroicons-sparkles"
-          label="Shuffle Draw"
+          label="Shuffle"
           :loading="isShuffling"
           @click="shuffleDraw"
         />
@@ -763,7 +763,7 @@ defineExpose({
           variant="soft"
           color="neutral"
           icon="i-heroicons-arrow-path"
-          label="Standard Seeding"
+          label="Seeding"
           @click="standardSeeding"
         />
         <div class="w-px h-5 bg-gray-200 dark:bg-white/10 mx-1"></div>
@@ -792,21 +792,21 @@ defineExpose({
       <div v-if="feederRounds.length > 0" class="flex items-center rounded-lg border border-gray-200 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-gray-900/90 text-xs select-none">
         <button
           @click="setLayoutMode('dual')"
-          :class="layoutMode === 'dual' ? 'bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 font-bold border border-primary-200 dark:border-primary-800/60' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent'"
+          :class="layoutMode === 'dual' ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
           class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
-          title="Dual-Sided (Left & Right Wings converging to Center Championship)"
+          title="Dual-Sided (Two sides converging to center)"
         >
           <UIcon name="i-heroicons-arrows-pointing-in" class="w-3.5 h-3.5" />
-          <span class="hidden sm:inline">Dual-Sided</span>
+          <span class="hidden sm:inline">Dual</span>
         </button>
         <button
           @click="setLayoutMode('linear')"
-          :class="layoutMode === 'linear' ? 'bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 font-bold border border-primary-200 dark:border-primary-800/60' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent'"
+          :class="layoutMode === 'linear' ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
           class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
-          title="Classic Linear (Left to Right)"
+          title="Classic Linear (Left to right)"
         >
           <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5" />
-          <span class="hidden sm:inline">Classic</span>
+          <span class="hidden sm:inline">Linear</span>
         </button>
       </div>
 
@@ -814,11 +814,11 @@ defineExpose({
       <button
         v-if="canArrange && !isArranging"
         @click="enterArrangeMode"
-        class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-primary-500/30 bg-white/90 dark:bg-gray-900/90 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/40 text-primary-600 dark:text-primary-400 text-xs font-semibold shadow-sm backdrop-blur transition-all"
-        title="Rearrange knockout matches, swap teams, or run draw"
+        class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 bg-white/90 dark:bg-gray-900/90 hover:border-gray-300 dark:border-white/10 dark:hover:border-white/20 text-gray-700 dark:text-gray-300 text-xs font-semibold shadow-sm backdrop-blur transition-all"
+        title="Rearrange knockout matches or swap teams"
       >
         <UIcon name="i-heroicons-arrows-right-left" class="w-3.5 h-3.5" />
-        <span>Arrange Bracket</span>
+        <span>Arrange</span>
       </button>
 
       <!-- Zoom Controls -->
@@ -859,42 +859,6 @@ defineExpose({
         <!-- 1. DUAL-SIDED CENTER-CONVERGING LAYOUT    -->
         <!-- ========================================== -->
         <template v-if="layoutMode === 'dual' && feederRounds.length > 0">
-          <!-- Top Path Indicator Banner -->
-          <div class="dual-path-banner mb-3" :style="{ gridTemplateColumns: dualGridColumns }">
-            <!-- Left Wing Path Banner -->
-            <div
-              class="path-banner-card path-banner-card--left"
-              :style="{ gridColumn: `1 / ${feederRounds.length * 2 + 1}` }"
-            >
-              <div class="flex items-center gap-2">
-                <span class="path-pill path-pill--left">Top Half</span>
-                <span class="text-xs font-bold text-sky-700 dark:text-sky-300">Feeds into Semi-Final 1 ➔</span>
-              </div>
-              <span class="text-[11px] text-sky-600/70 dark:text-sky-400/60 hidden md:inline">Advances left-to-right</span>
-            </div>
-
-            <!-- Center Final Trophy Banner -->
-            <div
-              class="path-banner-card path-banner-card--center"
-              :style="{ gridColumn: `${feederRounds.length * 2 + 1} / ${feederRounds.length * 2 + 2}` }"
-            >
-              <UIcon name="i-heroicons-trophy" class="w-4 h-4 text-amber-500" />
-              <span class="text-xs font-black tracking-wider uppercase text-amber-600 dark:text-amber-400">Grand Final</span>
-            </div>
-
-            <!-- Right Wing Path Banner -->
-            <div
-              class="path-banner-card path-banner-card--right"
-              :style="{ gridColumn: `${feederRounds.length * 2 + 2} / -1` }"
-            >
-              <span class="text-[11px] text-purple-600/70 dark:text-purple-400/60 hidden md:inline">Advances right-to-left</span>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-purple-700 dark:text-purple-300">⬅ Feeds into Semi-Final 2</span>
-                <span class="path-pill path-pill--right">Bottom Half</span>
-              </div>
-            </div>
-          </div>
-
           <!-- Dual Round Headers -->
           <div
             class="bracket-headers"
@@ -909,19 +873,18 @@ defineExpose({
                 <span>{{ getRoundDisplayName(round, idx, rounds.length) }}</span>
               </div>
               <!-- Connector space -->
-              <div class="w-[52px]" />
+              <div class="w-[48px]" />
             </template>
 
             <!-- Center Final Header -->
-            <div class="bracket-header bracket-header--final">
-              <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-500 inline-block mr-1" />
+            <div class="bracket-header">
               <span>{{ getRoundDisplayName(finalRound, rounds.length - 1, rounds.length) }}</span>
             </div>
 
             <!-- Right Wing Headers (Reversed: SF <- Round 0) -->
             <template v-for="(round, revIdx) in reversedFeederRounds" :key="`dual-h-right-${round}`">
               <!-- Connector space -->
-              <div class="w-[52px]" />
+              <div class="w-[48px]" />
               <div class="bracket-header">
                 <span>{{ getRoundDisplayName(round, feederRounds.length - 1 - revIdx, rounds.length) }}</span>
               </div>
@@ -951,8 +914,6 @@ defineExpose({
                       :matchup="matchup"
                       :round="round"
                       :match-index="getGlobalMatchIndex(round, 'left', mIdx)"
-                      :half-title="'Top Half · SF 1 Path'"
-                      :is-top-half="true"
                       :is-arranging="isArranging"
                       :selected-slot="selectedSlot"
                       :readonly="readonly"
@@ -970,14 +931,14 @@ defineExpose({
 
               <!-- Left Wing Connector Column -->
               <div class="connector-column">
-                <!-- If this is the last feeder round (Semi-Final 1), straight line to Final! -->
+                <!-- If this is the last feeder round (Semi-Final 1), straight line to Final -->
                 <template v-if="roundIdx === feederRounds.length - 1">
                   <div
                     class="connector-pair"
                     :style="{ gridRow: `1 / ${totalWingRows + 1}` }"
                   >
-                    <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                      <path d="M 0 50 L 52 50" class="connector-line connector-line--sf" />
+                    <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
+                      <path d="M 0 50 L 48 50" class="connector-line" />
                     </svg>
                   </div>
                 </template>
@@ -989,8 +950,8 @@ defineExpose({
                       class="connector-pair"
                       :style="{ gridRow: `${(mIdx - 1) * 2 + 1} / ${(mIdx - 1) * 2 + 3}` }"
                     >
-                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                        <path d="M 0 50 L 52 50" class="connector-line" />
+                      <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
+                        <path d="M 0 50 L 48 50" class="connector-line" />
                       </svg>
                     </div>
                   </template>
@@ -1005,10 +966,10 @@ defineExpose({
                         gridRow: `${(pairIdx - 1) * Math.pow(2, getWingTreeDepth(roundIdx)) * 4 + 1} / ${(pairIdx - 1) * Math.pow(2, getWingTreeDepth(roundIdx)) * 4 + Math.pow(2, getWingTreeDepth(roundIdx)) * 4 + 1}`
                       }"
                     >
-                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                        <path d="M 0 25 L 26 25 L 26 50" class="connector-line" />
-                        <path d="M 0 75 L 26 75 L 26 50" class="connector-line" />
-                        <path d="M 26 50 L 52 50" class="connector-line" />
+                      <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
+                        <path d="M 0 25 L 24 25 L 24 50" class="connector-line" />
+                        <path d="M 0 75 L 24 75 L 24 50" class="connector-line" />
+                        <path d="M 24 50 L 48 50" class="connector-line" />
                       </svg>
                     </div>
                   </template>
@@ -1024,12 +985,6 @@ defineExpose({
               }"
             >
               <div class="final-container">
-                <!-- Championship Trophy Badge -->
-                <div class="final-trophy-badge mb-2.5">
-                  <UIcon name="i-heroicons-trophy" class="w-5 h-5 text-amber-500 animate-bounce" />
-                  <span class="text-xs font-black tracking-wider uppercase text-amber-600 dark:text-amber-400">Championship Match</span>
-                </div>
-
                 <!-- Grand Final Match Card -->
                 <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
                   <KnockoutMatchCard
@@ -1040,7 +995,6 @@ defineExpose({
                     :selected-slot="selectedSlot"
                     :readonly="readonly"
                     :updating-match="updatingMatch"
-                    :is-championship-final="true"
                     @slot-click="handleSlotClick"
                     @swap-home-away="swapMatchHomeAway"
                     @start-match="emit('start-match', $event)"
@@ -1050,9 +1004,8 @@ defineExpose({
                 </div>
 
                 <!-- 3rd Place Play-off Match underneath Grand Final -->
-                <div v-if="thirdPlaceMatchups.length > 0" class="w-full mt-6 pt-4 border-t border-dashed border-gray-200 dark:border-white/10">
-                  <div class="third-place-label mb-2 flex items-center justify-center gap-1.5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    <UIcon name="i-heroicons-shield-check" class="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" />
+                <div v-if="thirdPlaceMatchups.length > 0" class="w-full mt-4 pt-3 border-t border-gray-200 dark:border-white/10">
+                  <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 text-center">
                     3rd Place Play-off
                   </div>
                   <KnockoutMatchCard
@@ -1077,14 +1030,14 @@ defineExpose({
             <template v-for="(round, revIdx) in reversedFeederRounds" :key="`right-wing-${round}`">
               <!-- Right Wing Connector Column -->
               <div class="connector-column">
-                <!-- If this is the last feeder round (Semi-Final 2), straight line to Final from Right! -->
+                <!-- If this is the last feeder round (Semi-Final 2), straight line to Final from Right -->
                 <template v-if="revIdx === 0">
                   <div
                     class="connector-pair"
                     :style="{ gridRow: `1 / ${totalWingRows + 1}` }"
                   >
-                    <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                      <path d="M 52 50 L 0 50" class="connector-line connector-line--sf" />
+                    <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
+                      <path d="M 48 50 L 0 50" class="connector-line" />
                     </svg>
                   </div>
                 </template>
@@ -1096,8 +1049,8 @@ defineExpose({
                       class="connector-pair"
                       :style="{ gridRow: `${(mIdx - 1) * 2 + 1} / ${(mIdx - 1) * 2 + 3}` }"
                     >
-                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                        <path d="M 52 50 L 0 50" class="connector-line" />
+                      <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
+                        <path d="M 48 50 L 0 50" class="connector-line" />
                       </svg>
                     </div>
                   </template>
@@ -1112,10 +1065,10 @@ defineExpose({
                         gridRow: `${(pairIdx - 1) * Math.pow(2, getWingTreeDepth(feederRounds.length - 1 - revIdx)) * 4 + 1} / ${(pairIdx - 1) * Math.pow(2, getWingTreeDepth(feederRounds.length - 1 - revIdx)) * 4 + Math.pow(2, getWingTreeDepth(feederRounds.length - 1 - revIdx)) * 4 + 1}`
                       }"
                     >
-                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                        <path d="M 52 25 L 26 25 L 26 50" class="connector-line" />
-                        <path d="M 52 75 L 26 75 L 26 50" class="connector-line" />
-                        <path d="M 26 50 L 0 50" class="connector-line" />
+                      <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
+                        <path d="M 48 25 L 24 25 L 24 50" class="connector-line" />
+                        <path d="M 48 75 L 24 75 L 24 50" class="connector-line" />
+                        <path d="M 24 50 L 0 50" class="connector-line" />
                       </svg>
                     </div>
                   </template>
@@ -1133,8 +1086,6 @@ defineExpose({
                       :matchup="matchup"
                       :round="round"
                       :match-index="getGlobalMatchIndex(round, 'right', mIdx)"
-                      :half-title="'Bottom Half · SF 2 Path'"
-                      :is-top-half="false"
                       :is-arranging="isArranging"
                       :selected-slot="selectedSlot"
                       :readonly="readonly"
@@ -1170,7 +1121,7 @@ defineExpose({
               <div class="bracket-header">
                 <span>{{ getRoundDisplayName(round, roundIndex, rounds.length) }}</span>
               </div>
-              <div v-if="roundIndex < rounds.length - 1" class="w-[52px]" />
+              <div v-if="roundIndex < rounds.length - 1" class="w-[48px]" />
             </template>
           </div>
 
@@ -1196,14 +1147,11 @@ defineExpose({
                       :matchup="matchup"
                       :round="round"
                       :match-index="matchIndex"
-                      :half-title="roundIndex < rounds.length - 1 && activeMatchupsByRound[round]?.length >= 2 ? (matchIndex < Math.ceil(activeMatchupsByRound[round].length / 2) ? 'Top Half · SF 1 Path' : 'Bottom Half · SF 2 Path') : null"
-                      :is-top-half="roundIndex < rounds.length - 1 && activeMatchupsByRound[round]?.length >= 2 ? (matchIndex < Math.ceil(activeMatchupsByRound[round].length / 2)) : null"
                       :is-arranging="isArranging"
                       :selected-slot="selectedSlot"
                       :readonly="readonly"
                       :updating-match="updatingMatch"
                       :is-playoff-first-round="roundIndex === 0 && isPlayoffFirstRound"
-                      :is-championship-final="roundIndex === rounds.length - 1"
                       @slot-click="handleSlotClick"
                       @swap-home-away="swapMatchHomeAway"
                       @start-match="emit('start-match', $event)"
@@ -1224,8 +1172,8 @@ defineExpose({
                         gridRow: `${(matchIdx - 1) * 2 + 1} / ${(matchIdx - 1) * 2 + 3}`
                       }"
                     >
-                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                        <path d="M 0 50 L 52 50" class="connector-line" />
+                      <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
+                        <path d="M 0 50 L 48 50" class="connector-line" />
                       </svg>
                     </div>
                   </template>
@@ -1239,10 +1187,10 @@ defineExpose({
                         gridRow: `${(pairIndex - 1) * Math.pow(2, isPlayoffFirstRound ? (roundIndex === 0 ? 0 : roundIndex - 1) : roundIndex) * 4 + 1} / ${(pairIndex - 1) * Math.pow(2, isPlayoffFirstRound ? (roundIndex === 0 ? 0 : roundIndex - 1) : roundIndex) * 4 + Math.pow(2, isPlayoffFirstRound ? (roundIndex === 0 ? 0 : roundIndex - 1) : roundIndex) * 4 + 1}`
                       }"
                     >
-                      <svg class="connector-svg" viewBox="0 0 52 100" preserveAspectRatio="none">
-                        <path d="M 0 25 L 26 25 L 26 50" class="connector-line" />
-                        <path d="M 0 75 L 26 75 L 26 50" class="connector-line" />
-                        <path d="M 26 50 L 52 50" class="connector-line" />
+                      <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
+                        <path d="M 0 25 L 24 25 L 24 50" class="connector-line" />
+                        <path d="M 0 75 L 24 75 L 24 50" class="connector-line" />
+                        <path d="M 24 50 L 48 50" class="connector-line" />
                       </svg>
                     </div>
                   </template>
@@ -1254,8 +1202,7 @@ defineExpose({
           <!-- Linear 3rd Place Section -->
           <div v-if="thirdPlaceMatchups.length > 0" class="third-place-section" :style="{ marginLeft: `${(rounds.length - 1) * (COLUMN_WIDTH + CONNECTOR_WIDTH)}px`, width: `${COLUMN_WIDTH}px` }">
             <div v-for="matchup in thirdPlaceMatchups" :key="matchup.id">
-              <div class="third-place-label">
-                <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-500" />
+              <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                 3rd Place Play-off
               </div>
               <KnockoutMatchCard
@@ -1286,7 +1233,7 @@ defineExpose({
 .bracket-container {
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 1rem 0;
+  padding: 0.75rem 0;
   cursor: grab;
   scrollbar-width: thin;
   scrollbar-color: rgba(156,163,175,0.4) transparent;
@@ -1308,62 +1255,8 @@ defineExpose({
 .bracket-scroll {
   display: inline-block;
   min-width: 100%;
-  padding-bottom: 1.5rem;
+  padding-bottom: 1rem;
   transform-origin: top left;
-}
-
-/* ── Dual Path Banner ─────────────────────────────────────── */
-.dual-path-banner {
-  display: grid;
-  align-items: center;
-  gap: 0;
-  width: 100%;
-}
-
-.path-banner-card {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 0.85rem;
-  border-radius: 8px;
-}
-
-.path-banner-card--left {
-  justify-content: space-between;
-  background: rgba(14, 165, 233, 0.08);
-  border: 1px solid rgba(14, 165, 233, 0.2);
-}
-
-.path-banner-card--center {
-  justify-content: center;
-  gap: 0.35rem;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  margin: 0 0.5rem;
-}
-
-.path-banner-card--right {
-  justify-content: space-between;
-  background: rgba(168, 85, 247, 0.08);
-  border: 1px solid rgba(168, 85, 247, 0.2);
-}
-
-.path-pill {
-  font-size: 0.65rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 0.15rem 0.5rem;
-  border-radius: 9999px;
-}
-
-.path-pill--left {
-  background: #0ea5e9;
-  color: #ffffff;
-}
-
-.path-pill--right {
-  background: #a855f7;
-  color: #ffffff;
 }
 
 /* ── Round headers ────────────────────────────────────────── */
@@ -1373,12 +1266,12 @@ defineExpose({
 }
 
 .bracket-header {
-  font-size: 0.7rem;
-  font-weight: 700;
+  font-size: 0.675rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.05em;
   color: #6b7280;
-  padding: 0.375rem 0.5rem;
+  padding: 0.35rem 0.5rem;
   background: #f3f4f6;
   border-radius: 6px;
   text-align: center;
@@ -1392,22 +1285,9 @@ defineExpose({
   background: rgba(255,255,255,0.04);
 }
 
-.bracket-header--final {
-  color: #d97706;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  font-weight: 800;
-}
-
-:root.dark .bracket-header--final {
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.15);
-  border-color: rgba(245, 158, 11, 0.35);
-}
-
 /* ── Grid layout ──────────────────────────────────────────── */
 .bracket-grid {
-  grid-template-rows: repeat(var(--total-rows), minmax(42px, 1fr));
+  grid-template-rows: repeat(var(--total-rows), minmax(36px, 1fr));
 }
 
 .matches-column {
@@ -1417,7 +1297,7 @@ defineExpose({
 .match-cell {
   display: flex;
   align-items: center;
-  padding: 6px 0;
+  padding: 4px 0;
   min-width: 0;
   overflow: hidden;
 }
@@ -1438,12 +1318,6 @@ defineExpose({
   justify-content: center;
 }
 
-.final-trophy-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
 /* ── Connector column ─────────────────────────────────────── */
 .connector-column {
   display: contents;
@@ -1453,11 +1327,11 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
+  width: 48px;
 }
 
 .connector-svg {
-  width: 52px;
+  width: 48px;
   height: 100%;
   overflow: visible;
 }
@@ -1470,29 +1344,11 @@ defineExpose({
 }
 
 :root.dark .connector-line {
-  stroke: rgba(255,255,255,0.1);
-}
-
-.connector-line--sf {
-  stroke: #f59e0b;
-  stroke-width: 2;
-  stroke-dasharray: 4 2;
+  stroke: rgba(255,255,255,0.12);
 }
 
 /* ── 3rd place ────────────────────────────────────────────── */
 .third-place-section {
   margin-top: 1rem;
-}
-
-.third-place-label {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #9ca3af;
-  margin-bottom: 0.5rem;
 }
 </style>
