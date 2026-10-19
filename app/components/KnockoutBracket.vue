@@ -1722,7 +1722,8 @@ defineExpose({
               '--total-rows': firstRoundMatches * 2,
               display: 'grid',
               gridTemplateColumns: linearGridColumns,
-              gap: '0'
+              gap: '0',
+              paddingRight: '160px'
             }"
           >
             <template v-for="(round, roundIndex) in rounds" :key="`linear-col-${round}`">
@@ -1734,10 +1735,10 @@ defineExpose({
                     :class="{ 'match-cell--final': roundIndex === rounds.length - 1 }"
                     :style="{ gridRow: getLinearMatchGridRow(roundIndex, matchIndex) }"
                   >
-                    <!-- Champion Trophy Showcase in Linear Mode -->
+                    <!-- Champion Trophy Showcase in Linear Mode (Positioned to the right of the Final card) -->
                     <div
                       v-if="roundIndex === rounds.length - 1 && matchIndex === 0"
-                      class="final-top-slot"
+                      class="linear-trophy-showcase"
                     >
                       <BracketChampionTrophy
                         :champion="tournamentChampion"
@@ -2235,8 +2236,21 @@ defineExpose({
 
 .match-cell--final {
   position: relative;
-  min-height: 420px;
   overflow: visible;
+}
+
+.linear-trophy-showcase {
+  position: absolute;
+  left: calc(100% + 24px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: auto;
+  white-space: nowrap;
 }
 
 /* ── Final Center Column ──────────────────────────────────── */
