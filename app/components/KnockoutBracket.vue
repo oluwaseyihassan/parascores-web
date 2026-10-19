@@ -1231,9 +1231,8 @@ defineExpose({
             <div class="w-full grid gap-1.5 h-8" :style="{ gridTemplateColumns: verticalGridColumns }">
               <template v-for="pairIdx in Math.ceil(getWingMatchups(round, 'left').length / 2)" :key="`v-conn-bin-${pairIdx}`">
                 <div :style="{ gridColumn: getVerticalMergeGridColumn(roundIdx, pairIdx - 1) }" class="w-full h-8">
-                  <svg class="w-full h-full" viewBox="0 0 100 36" preserveAspectRatio="none">
-                    <path d="M 25 0 V 12 Q 25 18 31 18 H 44 Q 50 18 50 24 V 36" class="v-bracket-line" />
-                    <path d="M 75 0 V 12 Q 75 18 69 18 H 56 Q 50 18 50 24 V 36" class="v-bracket-line" />
+                  <svg class="w-full h-full" viewBox="0 0 100 32" preserveAspectRatio="none">
+                    <path d="M 25 0 V 12 Q 25 16 29 16 H 71 Q 75 16 75 12 V 0 M 50 16 V 32" class="v-bracket-line" />
                   </svg>
                 </div>
               </template>
@@ -1285,7 +1284,7 @@ defineExpose({
         </div>
 
         <!-- Right: Trophy Showcase in the right wing whitespace -->
-        <div class="absolute right-0 sm:right-2 flex flex-col items-center pointer-events-none scale-90 sm:scale-100">
+        <div class="absolute right-0 sm:right-2 flex flex-col items-center pointer-events-none">
           <BracketChampionTrophy
             :champion="tournamentChampion"
             :is-decided="!!tournamentChampion"
@@ -1320,9 +1319,8 @@ defineExpose({
             <div class="w-full grid gap-1.5 h-8" :style="{ gridTemplateColumns: verticalGridColumns }">
               <template v-for="pairIdx in Math.ceil(getWingMatchups(round, 'right').length / 2)" :key="`v-b-conn-bin-${pairIdx}`">
                 <div :style="{ gridColumn: getVerticalMergeGridColumn(feederRounds.length - 1 - revIdx, pairIdx - 1) }" class="w-full h-8">
-                  <svg class="w-full h-full" viewBox="0 0 100 36" preserveAspectRatio="none">
-                    <path d="M 25 36 V 24 Q 25 18 31 18 H 44 Q 50 18 50 12 V 0" class="v-bracket-line" />
-                    <path d="M 75 36 V 24 Q 75 18 69 18 H 56 Q 50 18 50 12 V 0" class="v-bracket-line" />
+                  <svg class="w-full h-full" viewBox="0 0 100 32" preserveAspectRatio="none">
+                    <path d="M 50 0 V 16 M 25 32 V 20 Q 25 16 29 16 H 71 Q 75 16 75 20 V 32" class="v-bracket-line" />
                   </svg>
                 </div>
               </template>
@@ -2328,6 +2326,7 @@ defineExpose({
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
 }
 
 :root.dark .v-bracket-line {
