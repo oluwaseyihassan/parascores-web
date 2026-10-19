@@ -357,8 +357,8 @@ const canArrange = computed(() => {
 const cardStyle = ref<'compact' | 'expanded'>('compact')
 
 const effectiveColWidth = computed(() => cardStyle.value === 'compact' ? 96 : 250)
-const effectiveConnWidth = computed(() => cardStyle.value === 'compact' ? 44 : 48)
-const effectiveFinalWidth = computed(() => cardStyle.value === 'compact' ? 100 : 260)
+const effectiveConnWidth = computed(() => 48)
+const effectiveFinalWidth = computed(() => effectiveColWidth.value)
 
 const totalWingRows = computed(() => {
   const matches = Math.max(1, Math.ceil(firstRoundMatches.value / 2))
@@ -1520,7 +1520,7 @@ defineExpose({
                 </div>
 
                 <!-- Center Slot: Grand Final Match Card (Exact 50% vertical center connecting left & right) -->
-                <div v-if="finalRoundMainMatchups.length > 0" class="w-full flex justify-center">
+                <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
                   <KnockoutCompactCard
                     v-if="cardStyle === 'compact'"
                     :matchup="finalRoundMainMatchups[0]"
@@ -2219,7 +2219,18 @@ defineExpose({
   align-items: center;
   padding: 4px 0;
   min-width: 0;
-  overflow: hidden;
+  width: 100%;
+}
+
+.bracket-grid .compact-match-card {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.bracket-grid .match-card {
+  width: 100% !important;
+  min-width: 0 !important;
 }
 
 .match-cell--final {
@@ -2283,11 +2294,11 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
+  width: 100%;
 }
 
 .connector-svg {
-  width: 48px;
+  width: 100%;
   height: 100%;
   overflow: visible;
 }
