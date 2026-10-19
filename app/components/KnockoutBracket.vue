@@ -353,10 +353,7 @@ const canArrange = computed(() => {
   })
 })
 
-// Card density: 'compact' (UEFA style matching image) or 'expanded' (full card)
-const cardStyle = ref<'compact' | 'expanded'>('compact')
-
-const effectiveColWidth = computed(() => cardStyle.value === 'compact' ? 96 : 250)
+const effectiveColWidth = computed(() => 96)
 const effectiveConnWidth = computed(() => 48)
 const effectiveFinalWidth = computed(() => effectiveColWidth.value)
 
@@ -1125,27 +1122,6 @@ defineExpose({
           <span>Arrange</span>
         </button>
 
-        <!-- Card Density Toggle (Compact vs Expanded) - only in horizontal mode -->
-        <div v-if="!isVertical" class="flex items-center rounded-lg border border-gray-200 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#141414]/90 text-xs">
-          <button
-            @click="cardStyle = 'compact'"
-            :class="cardStyle === 'compact' ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
-            class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
-            title="Compact UEFA Style Cards"
-          >
-            <UIcon name="i-heroicons-squares-2x2" class="w-3.5 h-3.5" />
-            <span class="hidden sm:inline">Compact</span>
-          </button>
-          <button
-            @click="cardStyle = 'expanded'"
-            :class="cardStyle === 'expanded' ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
-            class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
-            title="Expanded Cards with Full Names"
-          >
-            <UIcon name="i-heroicons-bars-3" class="w-3.5 h-3.5" />
-            <span class="hidden sm:inline">Expanded</span>
-          </button>
-        </div>
 
         <!-- Zoom Controls (Only in horizontal mode) -->
         <div v-if="!isVertical" class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#141414]/90 text-xs select-none">
@@ -1420,24 +1396,6 @@ defineExpose({
                     :style="{ gridRow: getWingMatchGridRow(roundIdx, mIdx) }"
                   >
                     <KnockoutCompactCard
-                      v-if="cardStyle === 'compact'"
-                      :matchup="matchup"
-                      :round="round"
-                      :match-index="getGlobalMatchIndex(round, 'left', mIdx)"
-                      :is-arranging="isArranging"
-                      :selected-slot="selectedSlot"
-                      :readonly="readonly"
-                      :updating-match="updatingMatch"
-                      :is-playoff-first-round="roundIdx === 0 && isPlayoffFirstRound"
-                      @slot-click="handleSlotClick"
-                      @swap-home-away="swapMatchHomeAway"
-                      @start-match="emit('start-match', $event)"
-                      @control-match="emit('control-match', $event)"
-                      @show-legs="openTwoLegModal"
-                      @enter-arrange="enterArrangeMode"
-                    />
-                    <KnockoutMatchCard
-                      v-else
                       :matchup="matchup"
                       :round="round"
                       :match-index="getGlobalMatchIndex(round, 'left', mIdx)"
@@ -1522,27 +1480,10 @@ defineExpose({
                 <!-- Center Slot: Grand Final Match Card (Exact 50% vertical center connecting left & right) -->
                 <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
                   <KnockoutCompactCard
-                    v-if="cardStyle === 'compact'"
                     :matchup="finalRoundMainMatchups[0]"
                     :round="finalRound"
                     :match-index="0"
                     :is-final="true"
-                    :is-arranging="isArranging"
-                    :selected-slot="selectedSlot"
-                    :readonly="readonly"
-                    :updating-match="updatingMatch"
-                    @slot-click="handleSlotClick"
-                    @swap-home-away="swapMatchHomeAway"
-                    @start-match="emit('start-match', $event)"
-                    @control-match="emit('control-match', $event)"
-                    @show-legs="openTwoLegModal"
-                    @enter-arrange="enterArrangeMode"
-                  />
-                  <KnockoutMatchCard
-                    v-else
-                    :matchup="finalRoundMainMatchups[0]"
-                    :round="finalRound"
-                    :match-index="0"
                     :is-arranging="isArranging"
                     :selected-slot="selectedSlot"
                     :readonly="readonly"
@@ -1563,23 +1504,6 @@ defineExpose({
                       3rd Place Play-off
                     </div>
                     <KnockoutCompactCard
-                      v-if="cardStyle === 'compact'"
-                      :matchup="thirdPlaceMatchups[0]"
-                      :round="finalRound"
-                      :match-index="1"
-                      :is-arranging="isArranging"
-                      :selected-slot="selectedSlot"
-                      :readonly="readonly"
-                      :updating-match="updatingMatch"
-                      @slot-click="handleSlotClick"
-                      @swap-home-away="swapMatchHomeAway"
-                      @start-match="emit('start-match', $event)"
-                      @control-match="emit('control-match', $event)"
-                      @show-legs="openTwoLegModal"
-                      @enter-arrange="enterArrangeMode"
-                    />
-                    <KnockoutMatchCard
-                      v-else
                       :matchup="thirdPlaceMatchups[0]"
                       :round="finalRound"
                       :match-index="1"
@@ -1654,24 +1578,6 @@ defineExpose({
                     :style="{ gridRow: getWingMatchGridRow(feederRounds.length - 1 - revIdx, mIdx) }"
                   >
                     <KnockoutCompactCard
-                      v-if="cardStyle === 'compact'"
-                      :matchup="matchup"
-                      :round="round"
-                      :match-index="getGlobalMatchIndex(round, 'right', mIdx)"
-                      :is-arranging="isArranging"
-                      :selected-slot="selectedSlot"
-                      :readonly="readonly"
-                      :updating-match="updatingMatch"
-                      :is-playoff-first-round="(feederRounds.length - 1 - revIdx) === 0 && isPlayoffFirstRound"
-                      @slot-click="handleSlotClick"
-                      @swap-home-away="swapMatchHomeAway"
-                      @start-match="emit('start-match', $event)"
-                      @control-match="emit('control-match', $event)"
-                      @show-legs="openTwoLegModal"
-                      @enter-arrange="enterArrangeMode"
-                    />
-                    <KnockoutMatchCard
-                      v-else
                       :matchup="matchup"
                       :round="round"
                       :match-index="getGlobalMatchIndex(round, 'right', mIdx)"
@@ -1747,28 +1653,10 @@ defineExpose({
                     </div>
 
                     <KnockoutCompactCard
-                      v-if="cardStyle === 'compact'"
                       :matchup="matchup"
                       :round="round"
                       :match-index="matchIndex"
                       :is-final="roundIndex === rounds.length - 1"
-                      :is-arranging="isArranging"
-                      :selected-slot="selectedSlot"
-                      :readonly="readonly"
-                      :updating-match="updatingMatch"
-                      :is-playoff-first-round="roundIndex === 0 && isPlayoffFirstRound"
-                      @slot-click="handleSlotClick"
-                      @swap-home-away="swapMatchHomeAway"
-                      @start-match="emit('start-match', $event)"
-                      @control-match="emit('control-match', $event)"
-                      @show-legs="openTwoLegModal"
-                      @enter-arrange="enterArrangeMode"
-                    />
-                    <KnockoutMatchCard
-                      v-else
-                      :matchup="matchup"
-                      :round="round"
-                      :match-index="matchIndex"
                       :is-arranging="isArranging"
                       :selected-slot="selectedSlot"
                       :readonly="readonly"
@@ -1827,23 +1715,6 @@ defineExpose({
                 3rd Place Play-off
               </div>
               <KnockoutCompactCard
-                v-if="cardStyle === 'compact'"
-                :matchup="matchup"
-                :round="finalRound"
-                :match-index="1"
-                :is-arranging="isArranging"
-                :selected-slot="selectedSlot"
-                :readonly="readonly"
-                :updating-match="updatingMatch"
-                @slot-click="handleSlotClick"
-                @swap-home-away="swapMatchHomeAway"
-                @start-match="emit('start-match', $event)"
-                @control-match="emit('control-match', $event)"
-                @show-legs="openTwoLegModal"
-                @enter-arrange="enterArrangeMode"
-              />
-              <KnockoutMatchCard
-                v-else
                 :matchup="matchup"
                 :round="finalRound"
                 :match-index="1"
@@ -2229,10 +2100,6 @@ defineExpose({
   max-width: 100% !important;
 }
 
-.bracket-grid .match-card {
-  width: 100% !important;
-  min-width: 0 !important;
-}
 
 .match-cell--final {
   position: relative;
