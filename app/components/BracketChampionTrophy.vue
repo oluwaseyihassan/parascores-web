@@ -36,7 +36,7 @@ const trophyImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAN4AAAFQCAYAAAD
       >
         <defs>
           <clipPath id="trophyBadgeClip">
-            <circle cx="111" cy="123" r="23" />
+            <circle cx="111" cy="123" r="28" />
           </clipPath>
         </defs>
 
@@ -50,24 +50,24 @@ const trophyImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAN4AAAFQCAYAAAD
         <!-- ── Center Emblem Aperture ── -->
         <!-- Decided State with Team Badge -->
         <template v-if="isDecided && champion">
-          <circle cx="111" cy="123" r="23" class="fill-zinc-900 stroke-zinc-700/60" stroke-width="1.5" />
+          <circle cx="111" cy="123" r="28" class="fill-zinc-900 stroke-zinc-700/60" stroke-width="1.5" />
           <image
             v-if="champion.logoUrl"
             :href="champion.logoUrl"
-            x="88"
-            y="100"
-            width="46"
-            height="46"
+            x="83"
+            y="95"
+            width="56"
+            height="56"
             preserveAspectRatio="xMidYMid slice"
             clip-path="url(#trophyBadgeClip)"
           />
           <text
             v-else
             x="111"
-            y="131"
+            y="132"
             text-anchor="middle"
             fill="#ffffff"
-            font-size="20"
+            font-size="24"
             font-family="system-ui, -apple-system, sans-serif"
             font-weight="bold"
           >{{ initial }}</text>
@@ -75,21 +75,23 @@ const trophyImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAN4AAAFQCAYAAAD
 
         <!-- Pending State: Shield outline with question mark inside -->
         <template v-else>
-          <circle cx="111" cy="123" r="23" class="fill-zinc-900" />
-          <path
-            d="M 111 106 C 120 106 125 109 125 115 C 125 128 118 136 111 140 C 104 136 97 128 97 115 C 97 109 102 106 111 106 Z"
-            class="fill-zinc-800/90 stroke-zinc-600 dark:stroke-zinc-500"
-            stroke-width="1.8"
-          />
-          <text
-            x="111"
-            y="128.5"
-            text-anchor="middle"
-            class="fill-zinc-400 dark:fill-zinc-300"
-            font-size="18"
-            font-family="system-ui, -apple-system, sans-serif"
-            font-weight="bold"
-          >?</text>
+          <circle cx="111" cy="123" r="28" class="fill-zinc-900" />
+          <g transform="translate(111, 123) scale(1.15) translate(-111, -123)">
+            <path
+              d="M 111 106 C 120 106 125 109 125 115 C 125 128 118 136 111 140 C 104 136 97 128 97 115 C 97 109 102 106 111 106 Z"
+              class="fill-zinc-800/90 stroke-zinc-600 dark:stroke-zinc-500"
+              stroke-width="1.8"
+            />
+            <text
+              x="111"
+              y="128.5"
+              text-anchor="middle"
+              class="fill-zinc-400 dark:fill-zinc-300"
+              font-size="18"
+              font-family="system-ui, -apple-system, sans-serif"
+              font-weight="bold"
+            >?</text>
+          </g>
         </template>
       </svg>
     </div>
