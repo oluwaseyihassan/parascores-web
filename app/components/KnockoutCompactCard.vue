@@ -119,7 +119,9 @@ const handleSlotSelect = (isHome: boolean, event: MouseEvent) => {
   <div
     class="compact-match-card group relative select-none rounded-xl border transition-all duration-200"
     :class="[
-      isFinal ? 'border-amber-500/30 bg-[#16171c] shadow-lg shadow-amber-500/5' : 'border-white/10 dark:border-white/10 bg-[#151619] hover:border-white/25 shadow',
+      isFinal
+        ? 'border-amber-400 dark:border-amber-500/30 bg-amber-50/60 dark:bg-[#181818] shadow-md dark:shadow-amber-500/5'
+        : 'border-gray-200 dark:border-white/10 bg-white dark:bg-[#141414] hover:border-gray-300 dark:hover:border-white/25 shadow-xs dark:shadow',
       isLive ? 'ring-1 ring-emerald-500/50' : '',
       isArranging ? 'cursor-default' : 'cursor-pointer hover:scale-[1.02]'
     ]"
@@ -132,19 +134,19 @@ const handleSlotSelect = (isHome: boolean, event: MouseEvent) => {
         class="flex flex-1 flex-col items-center min-w-0"
         :class="{
           'cursor-pointer rounded-lg p-0.5 ring-2 ring-emerald-500/70 bg-emerald-500/10': isArranging && isSlotSelected(round, matchIndex, true),
-          'cursor-pointer hover:bg-white/5 rounded-lg p-0.5': isArranging && matchup.status === FixtureStatus.SCHEDULED
+          'cursor-pointer hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg p-0.5': isArranging && matchup.status === FixtureStatus.SCHEDULED
         }"
         @click="handleSlotSelect(true, $event)"
       >
         <!-- Logo -->
-        <div class="w-5 h-5 rounded-full overflow-hidden bg-white/5 flex items-center justify-center shrink-0 mb-1 border border-white/10">
+        <div class="w-5 h-5 rounded-full overflow-hidden bg-gray-100 dark:bg-white/5 flex items-center justify-center shrink-0 mb-1 border border-gray-200 dark:border-white/10">
           <img
             v-if="matchup.homeTeam?.logoUrl"
             :src="matchup.homeTeam.logoUrl"
             :alt="homeCode"
             class="w-full h-full object-cover"
           />
-          <span v-else class="text-[9px] font-bold text-gray-300">
+          <span v-else class="text-[9px] font-bold text-gray-600 dark:text-gray-300">
             {{ homeCode.charAt(0) }}
           </span>
         </div>
@@ -152,9 +154,9 @@ const handleSlotSelect = (isHome: boolean, event: MouseEvent) => {
         <span
           class="text-[10px] font-bold tracking-tight truncate max-w-full"
           :class="[
-            homeWinner === 'winner' ? 'text-white font-extrabold' : '',
-            homeWinner === 'loser' ? 'text-gray-500 line-through opacity-60' : '',
-            homeWinner === 'none' ? 'text-gray-200' : ''
+            homeWinner === 'winner' ? 'text-gray-900 dark:text-white font-extrabold' : '',
+            homeWinner === 'loser' ? 'text-gray-400 dark:text-gray-500 line-through opacity-60' : '',
+            homeWinner === 'none' ? 'text-gray-700 dark:text-gray-200' : ''
           ]"
           :title="matchup.homeTeam?.customName || matchup.homeTeamPlaceholder || homeCode"
         >
@@ -167,19 +169,19 @@ const handleSlotSelect = (isHome: boolean, event: MouseEvent) => {
         class="flex flex-1 flex-col items-center min-w-0"
         :class="{
           'cursor-pointer rounded-lg p-0.5 ring-2 ring-emerald-500/70 bg-emerald-500/10': isArranging && isSlotSelected(round, matchIndex, false),
-          'cursor-pointer hover:bg-white/5 rounded-lg p-0.5': isArranging && matchup.status === FixtureStatus.SCHEDULED
+          'cursor-pointer hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg p-0.5': isArranging && matchup.status === FixtureStatus.SCHEDULED
         }"
         @click="handleSlotSelect(false, $event)"
       >
         <!-- Logo -->
-        <div class="w-5 h-5 rounded-full overflow-hidden bg-white/5 flex items-center justify-center shrink-0 mb-1 border border-white/10">
+        <div class="w-5 h-5 rounded-full overflow-hidden bg-gray-100 dark:bg-white/5 flex items-center justify-center shrink-0 mb-1 border border-gray-200 dark:border-white/10">
           <img
             v-if="matchup.awayTeam?.logoUrl"
             :src="matchup.awayTeam.logoUrl"
             :alt="awayCode"
             class="w-full h-full object-cover"
           />
-          <span v-else class="text-[9px] font-bold text-gray-300">
+          <span v-else class="text-[9px] font-bold text-gray-600 dark:text-gray-300">
             {{ awayCode.charAt(0) }}
           </span>
         </div>
@@ -187,9 +189,9 @@ const handleSlotSelect = (isHome: boolean, event: MouseEvent) => {
         <span
           class="text-[10px] font-bold tracking-tight truncate max-w-full"
           :class="[
-            awayWinner === 'winner' ? 'text-white font-extrabold' : '',
-            awayWinner === 'loser' ? 'text-gray-500 line-through opacity-60' : '',
-            awayWinner === 'none' ? 'text-gray-200' : ''
+            awayWinner === 'winner' ? 'text-gray-900 dark:text-white font-extrabold' : '',
+            awayWinner === 'loser' ? 'text-gray-400 dark:text-gray-500 line-through opacity-60' : '',
+            awayWinner === 'none' ? 'text-gray-700 dark:text-gray-200' : ''
           ]"
           :title="matchup.awayTeam?.customName || matchup.awayTeamPlaceholder || awayCode"
         >
@@ -202,27 +204,27 @@ const handleSlotSelect = (isHome: boolean, event: MouseEvent) => {
     <div class="px-2 pb-1.5 flex flex-col items-center justify-center">
       <!-- Live Indicator -->
       <div v-if="isLive" class="flex items-center gap-1 mb-0.5">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-[8px] font-black text-emerald-400 uppercase tracking-wider">Live</span>
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Live</span>
       </div>
 
       <!-- Numbers -->
       <div
         v-if="isCompleted || isLive"
-        class="text-xs font-black tracking-widest text-white leading-tight"
+        class="text-xs font-black tracking-widest text-gray-900 dark:text-white leading-tight"
       >
         <span>{{ matchup.homeScore ?? 0 }}</span>
-        <span class="text-gray-500 mx-1">-</span>
+        <span class="text-gray-400 dark:text-gray-500 mx-1">-</span>
         <span>{{ matchup.awayScore ?? 0 }}</span>
       </div>
-      <div v-else class="text-[11px] font-bold text-gray-500 tracking-wider">
+      <div v-else class="text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-wider">
         vs
       </div>
 
       <!-- Penalties subscript if any -->
       <div
         v-if="matchup.homePenaltyScore != null && matchup.awayPenaltyScore != null"
-        class="text-[9px] font-semibold text-gray-400 -mt-0.5"
+        class="text-[9px] font-semibold text-gray-500 dark:text-gray-400 -mt-0.5"
       >
         ({{ matchup.homePenaltyScore }} - {{ matchup.awayPenaltyScore }})
       </div>
@@ -230,7 +232,7 @@ const handleSlotSelect = (isHome: boolean, event: MouseEvent) => {
       <!-- 2-Legs Indicator -->
       <div
         v-if="matchup.fixtures && matchup.fixtures.length > 1 && !isFinal"
-        class="text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 -mt-0.5"
+        class="text-[8px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 -mt-0.5"
       >
         {{ isCompleted || isLive ? 'agg' : '2 legs' }}
       </div>
@@ -238,7 +240,7 @@ const handleSlotSelect = (isHome: boolean, event: MouseEvent) => {
       <!-- Grand Final Pill Badge -->
       <div
         v-if="isFinal"
-        class="mt-1 px-2 py-0.5 rounded-full bg-amber-400 text-black text-[8px] font-black uppercase tracking-wider shadow-sm select-none"
+        class="mt-1 px-2 py-0.5 rounded-full bg-amber-400 text-black text-[8px] font-black uppercase tracking-wider shadow-xs select-none"
       >
         FINAL
       </div>
@@ -248,7 +250,7 @@ const handleSlotSelect = (isHome: boolean, event: MouseEvent) => {
     <button
       v-if="isArranging && matchup.status === FixtureStatus.SCHEDULED"
       type="button"
-      class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-zinc-800 border border-white/20 text-gray-300 hover:text-white flex items-center justify-center shadow"
+      class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-white/20 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white flex items-center justify-center shadow-xs"
       title="Swap Home/Away"
       @click.stop="emit('swap-home-away', round, matchIndex)"
     >

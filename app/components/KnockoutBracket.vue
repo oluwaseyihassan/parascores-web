@@ -1211,7 +1211,7 @@ defineExpose({
           <!-- If this is the last feeder round (Semi-Final 1), straight line down to Final -->
           <template v-if="roundIdx === feederRounds.length - 1">
             <div class="h-6 w-full flex justify-center">
-              <div class="w-px h-full bg-[#334155] dark:bg-white/20"></div>
+              <div class="w-px h-full bg-slate-300 dark:bg-white/20"></div>
             </div>
           </template>
 
@@ -1220,7 +1220,7 @@ defineExpose({
             <div class="w-full grid gap-1.5 h-6" :style="{ gridTemplateColumns: verticalGridColumns }">
               <template v-for="mIdx in getWingMatchups(round, 'left').length" :key="`v-conn-str-${mIdx}`">
                 <div :style="{ gridColumn: getWingMatchGridColumn(0, mIdx - 1) }" class="flex justify-center">
-                  <div class="w-px h-full bg-[#334155] dark:bg-white/20"></div>
+                  <div class="w-px h-full bg-slate-300 dark:bg-white/20"></div>
                 </div>
               </template>
             </div>
@@ -1300,7 +1300,7 @@ defineExpose({
           <!-- If revIdx === 0 (Semi-Final 2), straight line up into Grand Final -->
           <template v-if="revIdx === 0">
             <div class="h-6 w-full flex justify-center">
-              <div class="w-px h-full bg-[#2563eb] dark:bg-blue-500"></div>
+              <div class="w-px h-full bg-slate-300 dark:bg-white/20"></div>
             </div>
           </template>
 
@@ -1309,7 +1309,7 @@ defineExpose({
             <div class="w-full grid gap-1.5 h-6" :style="{ gridTemplateColumns: verticalGridColumns }">
               <template v-for="mIdx in getWingMatchups(round, 'right').length" :key="`v-b-conn-str-${mIdx}`">
                 <div :style="{ gridColumn: getWingMatchGridColumn(0, mIdx - 1) }" class="flex justify-center">
-                  <div class="w-px h-full bg-[#2563eb] dark:bg-blue-500"></div>
+                  <div class="w-px h-full bg-slate-300 dark:bg-white/20"></div>
                 </div>
               </template>
             </div>
@@ -1321,8 +1321,8 @@ defineExpose({
               <template v-for="pairIdx in Math.ceil(getWingMatchups(round, 'right').length / 2)" :key="`v-b-conn-bin-${pairIdx}`">
                 <div :style="{ gridColumn: getVerticalMergeGridColumn(feederRounds.length - 1 - revIdx, pairIdx - 1) }" class="w-full h-8">
                   <svg class="w-full h-full" viewBox="0 0 100 36" preserveAspectRatio="none">
-                    <path d="M 25 36 V 24 Q 25 18 31 18 H 44 Q 50 18 50 12 V 0" class="v-bracket-line v-bracket-line--active" />
-                    <path d="M 75 36 V 24 Q 75 18 69 18 H 56 Q 50 18 50 12 V 0" class="v-bracket-line v-bracket-line--active" />
+                    <path d="M 25 36 V 24 Q 25 18 31 18 H 44 Q 50 18 50 12 V 0" class="v-bracket-line" />
+                    <path d="M 75 36 V 24 Q 75 18 69 18 H 56 Q 50 18 50 12 V 0" class="v-bracket-line" />
                   </svg>
                 </div>
               </template>
@@ -1876,12 +1876,11 @@ defineExpose({
   <!-- Two-Legged Knockout Ties Breakdown Modal -->
   <UModal v-model:open="showTwoLegModal" :ui="{ content: 'sm:max-w-xl' }">
     <template #content>
-      <div v-if="selectedTwoLegMatchup" class="bg-[#141416] text-white rounded-2xl border border-white/10 overflow-hidden shadow-2xl flex flex-col">
+      <div v-if="selectedTwoLegMatchup" class="bg-white dark:bg-[#121212] text-gray-900 dark:text-white rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-2xl flex flex-col">
         <!-- Modal Header -->
-        <div class="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-white/[0.02]">
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.02]">
           <div class="flex items-center gap-2 min-w-0">
-            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <h3 class="text-sm font-bold tracking-tight text-white uppercase truncate">
+            <h3 class="text-sm font-bold tracking-tight text-gray-900 dark:text-white uppercase truncate">
               {{ getMatchupRoundName(selectedTwoLegMatchup) }} &mdash; 2 Legs Tie
             </h3>
           </div>
@@ -1890,33 +1889,33 @@ defineExpose({
             variant="ghost"
             icon="i-heroicons-x-mark"
             size="sm"
-            class="-mr-1.5 text-gray-400 hover:text-white"
+            class="-mr-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white"
             @click="showTwoLegModal = false"
           />
         </div>
 
         <!-- Aggregate Score Hero Banner -->
-        <div class="p-5 bg-gradient-to-b from-white/[0.04] to-transparent border-b border-white/10">
-          <div class="text-[10px] font-bold uppercase tracking-widest text-gray-400 text-center mb-3">
+        <div class="p-5 bg-gradient-to-b from-gray-50/80 to-transparent dark:from-white/[0.03] dark:to-transparent border-b border-gray-100 dark:border-white/10">
+          <div class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 text-center mb-3">
             Aggregate Score
           </div>
           <div class="flex items-center justify-between gap-4">
             <!-- Home Team -->
             <div class="flex-1 flex flex-col items-center text-center min-w-0">
-              <div class="w-12 h-12 rounded-full overflow-hidden bg-white/5 border border-white/15 flex items-center justify-center mb-2 shadow-inner">
+              <div class="w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/15 flex items-center justify-center mb-2 shadow-inner">
                 <img
                   v-if="selectedTwoLegMatchup.homeTeam?.logoUrl"
                   :src="selectedTwoLegMatchup.homeTeam.logoUrl"
                   :alt="selectedTwoLegMatchup.homeTeam?.customName"
                   class="w-full h-full object-cover"
                 />
-                <span v-else class="text-sm font-bold text-gray-300">
+                <span v-else class="text-sm font-bold text-gray-600 dark:text-gray-300">
                   {{ (selectedTwoLegMatchup.homeTeam?.customName || selectedTwoLegMatchup.homeTeamPlaceholder || 'H').charAt(0).toUpperCase() }}
                 </span>
               </div>
               <span
                 class="text-sm font-bold truncate max-w-full"
-                :class="getMatchupWinner(selectedTwoLegMatchup) === 'home' ? 'text-white font-extrabold' : 'text-gray-300'"
+                :class="getMatchupWinner(selectedTwoLegMatchup) === 'home' ? 'text-gray-900 dark:text-white font-extrabold' : 'text-gray-600 dark:text-gray-400'"
               >
                 {{ getTeamName(selectedTwoLegMatchup.homeTeam, selectedTwoLegMatchup.homeTeamPlaceholder) }}
               </span>
@@ -1924,16 +1923,16 @@ defineExpose({
 
             <!-- Score Display -->
             <div class="flex flex-col items-center shrink-0 px-2">
-              <div class="text-3xl font-black tracking-widest text-white leading-none flex items-center gap-2">
+              <div class="text-3xl font-black tracking-widest text-gray-900 dark:text-white leading-none flex items-center gap-2">
                 <span>{{ selectedTwoLegMatchup.homeScore ?? 0 }}</span>
-                <span class="text-gray-500 font-normal">-</span>
+                <span class="text-gray-400 dark:text-gray-500 font-normal">-</span>
                 <span>{{ selectedTwoLegMatchup.awayScore ?? 0 }}</span>
               </div>
 
               <!-- Penalties badge if any -->
               <div
                 v-if="selectedTwoLegMatchup.homePenaltyScore != null && selectedTwoLegMatchup.awayPenaltyScore != null"
-                class="mt-1 text-xs font-semibold text-emerald-400"
+                class="mt-1 text-xs font-semibold text-gray-500 dark:text-gray-400"
               >
                 ({{ selectedTwoLegMatchup.homePenaltyScore }} - {{ selectedTwoLegMatchup.awayPenaltyScore }} pens)
               </div>
@@ -1942,21 +1941,20 @@ defineExpose({
               <div class="mt-2">
                 <span
                   v-if="selectedTwoLegMatchup.status === FixtureStatus.COMPLETED"
-                  class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-emerald-400 border border-emerald-500/30"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300 border border-gray-200 dark:border-white/10"
                 >
-                  <UIcon name="i-heroicons-check" class="w-3 h-3" />
-                  FT (Decided)
+                  FT
                 </span>
                 <span
                   v-else-if="selectedTwoLegMatchup.status === FixtureStatus.LIVE || selectedTwoLegMatchup.status === FixtureStatus.NORMAL_TIME_ENDED || selectedTwoLegMatchup.status === FixtureStatus.EXTRATIME"
-                  class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse"
+                  class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 animate-pulse"
                 >
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                   LIVE IN PROGRESS
                 </span>
                 <span
                   v-else
-                  class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-white/5 text-gray-400 border border-white/10"
+                  class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-white/10"
                 >
                   SCHEDULED
                 </span>
@@ -1965,20 +1963,20 @@ defineExpose({
 
             <!-- Away Team -->
             <div class="flex-1 flex flex-col items-center text-center min-w-0">
-              <div class="w-12 h-12 rounded-full overflow-hidden bg-white/5 border border-white/15 flex items-center justify-center mb-2 shadow-inner">
+              <div class="w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/15 flex items-center justify-center mb-2 shadow-inner">
                 <img
                   v-if="selectedTwoLegMatchup.awayTeam?.logoUrl"
                   :src="selectedTwoLegMatchup.awayTeam.logoUrl"
                   :alt="selectedTwoLegMatchup.awayTeam?.customName"
                   class="w-full h-full object-cover"
                 />
-                <span v-else class="text-sm font-bold text-gray-300">
+                <span v-else class="text-sm font-bold text-gray-600 dark:text-gray-300">
                   {{ (selectedTwoLegMatchup.awayTeam?.customName || selectedTwoLegMatchup.awayTeamPlaceholder || 'A').charAt(0).toUpperCase() }}
                 </span>
               </div>
               <span
                 class="text-sm font-bold truncate max-w-full"
-                :class="getMatchupWinner(selectedTwoLegMatchup) === 'away' ? 'text-white font-extrabold' : 'text-gray-300'"
+                :class="getMatchupWinner(selectedTwoLegMatchup) === 'away' ? 'text-gray-900 dark:text-white font-extrabold' : 'text-gray-600 dark:text-gray-400'"
               >
                 {{ getTeamName(selectedTwoLegMatchup.awayTeam, selectedTwoLegMatchup.awayTeamPlaceholder) }}
               </span>
@@ -1991,40 +1989,40 @@ defineExpose({
           <div
             v-for="(fixture, idx) in selectedTwoLegMatchup.fixtures"
             :key="fixture.id || idx"
-            class="rounded-xl border border-white/10 bg-[#191a1f] hover:border-white/20 transition-all duration-200 overflow-hidden shadow-sm"
+            class="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#181818] hover:border-gray-300 dark:hover:border-white/20 transition-all duration-200 overflow-hidden shadow-xs dark:shadow-sm"
           >
             <!-- Leg Header -->
-            <div class="flex items-center justify-between px-3.5 py-2 bg-white/[0.02] border-b border-white/5 text-xs">
+            <div class="flex items-center justify-between px-3.5 py-2 bg-gray-50 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/5 text-xs">
               <div class="flex items-center gap-2">
-                <span class="px-2 py-0.5 rounded-md font-bold text-[11px] bg-white/10 text-white">
-                  Leg {{ idx + 1 }}{{ idx === 1 ? ' (Deciding)' : '' }}
+                <span class="px-2 py-0.5 rounded-md font-bold text-[11px] bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-white/5">
+                  Leg {{ idx + 1 }}
                 </span>
-                <span v-if="fixture.venue" class="text-gray-400 text-[11px] flex items-center gap-1">
-                  <UIcon name="i-heroicons-map-pin" class="w-3 h-3 text-gray-500" />
+                <span v-if="fixture.venue" class="text-gray-500 dark:text-gray-400 text-[11px] flex items-center gap-1">
+                  <UIcon name="i-heroicons-map-pin" class="w-3 h-3 text-gray-400 dark:text-gray-500" />
                   {{ fixture.venue }}
                 </span>
               </div>
 
               <div class="flex items-center gap-2">
-                <span v-if="fixture.startTime" class="text-[11px] text-gray-400">
+                <span v-if="fixture.startTime" class="text-[11px] text-gray-500 dark:text-gray-400">
                   {{ formatLegDate(fixture.startTime) }}
                 </span>
                 <span
                   v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME"
-                  class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 flex items-center gap-1"
+                  class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center gap-1"
                 >
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                   Live
                 </span>
                 <span
                   v-else-if="fixture.status === FixtureStatus.COMPLETED"
-                  class="px-2 py-0.5 rounded text-[10px] font-bold bg-white/10 text-gray-300"
+                  class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300"
                 >
                   FT
                 </span>
                 <span
                   v-else
-                  class="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/5 text-gray-400"
+                  class="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400"
                 >
                   Scheduled
                 </span>
@@ -2035,25 +2033,25 @@ defineExpose({
             <div class="p-3.5 flex items-center justify-between gap-3">
               <!-- Leg Home Team -->
               <div class="flex-1 flex items-center gap-2.5 min-w-0">
-                <div class="w-7 h-7 rounded-full overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                <div class="w-7 h-7 rounded-full overflow-hidden bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center shrink-0">
                   <img
                     v-if="fixture.homeTeam?.logoUrl"
                     :src="fixture.homeTeam.logoUrl"
                     :alt="fixture.homeTeam?.customName"
                     class="w-full h-full object-cover"
                   />
-                  <span v-else class="text-xs font-bold text-gray-300">
+                  <span v-else class="text-xs font-bold text-gray-600 dark:text-gray-300">
                     {{ (fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'H').charAt(0).toUpperCase() }}
                   </span>
                 </div>
                 <div class="flex flex-col min-w-0">
                   <span
                     class="text-xs font-semibold truncate"
-                    :class="getFixtureWinner(fixture) === 'home' ? 'text-white font-bold' : 'text-gray-300'"
+                    :class="getFixtureWinner(fixture) === 'home' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-400'"
                   >
                     {{ getTeamName(fixture.homeTeam, fixture.homeTeamPlaceholder) }}
                   </span>
-                  <span class="text-[10px] text-gray-500 uppercase font-medium">Home</span>
+                  <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-medium">Home</span>
                 </div>
               </div>
 
@@ -2061,20 +2059,20 @@ defineExpose({
               <div class="flex flex-col items-center shrink-0 px-2">
                 <div
                   v-if="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME"
-                  class="text-base font-black tracking-wider text-white"
+                  class="text-base font-black tracking-wider text-gray-900 dark:text-white"
                 >
                   <span>{{ fixture.homeScore ?? 0 }}</span>
-                  <span class="text-gray-500 mx-1.5">-</span>
+                  <span class="text-gray-400 dark:text-gray-500 mx-1.5">-</span>
                   <span>{{ fixture.awayScore ?? 0 }}</span>
                 </div>
-                <div v-else class="text-xs font-bold text-gray-500">
+                <div v-else class="text-xs font-bold text-gray-400 dark:text-gray-500">
                   vs
                 </div>
 
                 <!-- Penalties if decided on penalties in this leg -->
                 <span
                   v-if="fixture.homePenaltyScore != null && fixture.awayPenaltyScore != null"
-                  class="text-[10px] font-semibold text-gray-400 -mt-0.5"
+                  class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 -mt-0.5"
                 >
                   ({{ fixture.homePenaltyScore }} - {{ fixture.awayPenaltyScore }} pens)
                 </span>
@@ -2085,20 +2083,20 @@ defineExpose({
                 <div class="flex flex-col min-w-0 items-end">
                   <span
                     class="text-xs font-semibold truncate"
-                    :class="getFixtureWinner(fixture) === 'away' ? 'text-white font-bold' : 'text-gray-300'"
+                    :class="getFixtureWinner(fixture) === 'away' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-400'"
                   >
                     {{ getTeamName(fixture.awayTeam, fixture.awayTeamPlaceholder) }}
                   </span>
-                  <span class="text-[10px] text-gray-500 uppercase font-medium">Away</span>
+                  <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-medium">Away</span>
                 </div>
-                <div class="w-7 h-7 rounded-full overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                <div class="w-7 h-7 rounded-full overflow-hidden bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center shrink-0">
                   <img
                     v-if="fixture.awayTeam?.logoUrl"
                     :src="fixture.awayTeam.logoUrl"
                     :alt="fixture.awayTeam?.customName"
                     class="w-full h-full object-cover"
                   />
-                  <span v-else class="text-xs font-bold text-gray-300">
+                  <span v-else class="text-xs font-bold text-gray-600 dark:text-gray-300">
                     {{ (fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'A').charAt(0).toUpperCase() }}
                   </span>
                 </div>
@@ -2106,7 +2104,7 @@ defineExpose({
             </div>
 
             <!-- Leg Action Footer -->
-            <div class="px-3.5 py-2 bg-white/[0.015] border-t border-white/5 flex items-center justify-end gap-2">
+            <div class="px-3.5 py-2 bg-gray-50/50 dark:bg-white/[0.015] border-t border-gray-100 dark:border-white/5 flex items-center justify-end gap-2">
               <template v-if="!readonly">
                 <!-- If match can be started -->
                 <UButton
@@ -2325,7 +2323,7 @@ defineExpose({
 }
 
 .v-bracket-line {
-  stroke: #475569;
+  stroke: #cbd5e1;
   stroke-width: 1.5;
   fill: none;
   stroke-linecap: round;
@@ -2334,15 +2332,6 @@ defineExpose({
 
 :root.dark .v-bracket-line {
   stroke: rgba(255, 255, 255, 0.2);
-}
-
-.v-bracket-line--active {
-  stroke: #2563eb;
-  stroke-width: 1.8;
-}
-
-:root.dark .v-bracket-line--active {
-  stroke: #3b82f6;
 }
 
 .scrollbar-none {
