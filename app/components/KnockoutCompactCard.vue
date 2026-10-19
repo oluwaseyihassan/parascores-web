@@ -37,6 +37,7 @@ const emit = defineEmits<{
   'swap-home-away': [round: number, matchIndex: number]
   'start-match': [fixture: Fixture]
   'control-match': [fixture: Fixture]
+  'show-legs': [matchup: any]
   'enter-arrange': []
 }>()
 
@@ -100,7 +101,9 @@ const isSlotSelected = (round: number, matchIndex: number, isHome: boolean): boo
 
 const handleCardClick = () => {
   if (props.isArranging) return
-  if (props.matchup?.fixtures?.[0]) {
+  if (props.matchup?.fixtures && props.matchup.fixtures.length > 1) {
+    emit('show-legs', props.matchup)
+  } else if (props.matchup?.fixtures?.[0]) {
     emit('control-match', props.matchup.fixtures[0])
   }
 }
@@ -222,6 +225,14 @@ const handleSlotSelect = (isHome: boolean, event: MouseEvent) => {
         class="text-[9px] font-semibold text-gray-400 -mt-0.5"
       >
         ({{ matchup.homePenaltyScore }} - {{ matchup.awayPenaltyScore }})
+      </div>
+
+      <!-- 2-Legs Indicator -->
+      <div
+        v-if="matchup.fixtures && matchup.fixtures.length > 1 && !isFinal"
+        class="text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 -mt-0.5"
+      >
+        {{ isCompleted || isLive ? 'agg' : '2 legs' }}
       </div>
 
       <!-- Grand Final Pill Badge -->

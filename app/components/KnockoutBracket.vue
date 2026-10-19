@@ -175,6 +175,99 @@ const activeMatchupsByRound = computed(() => {
   return matchupsByRound.value
 })
 
+// Two-legged ties breakdown modal state
+const showTwoLegModal = ref(false)
+const selectedTwoLegMatchupId = ref<string | null>(null)
+
+const selectedTwoLegMatchup = computed(() => {
+  if (!selectedTwoLegMatchupId.value) return null
+  for (const round of props.rounds) {
+    const list = activeMatchupsByRound.value[round] || []
+    const found = list.find((m: any) => m.id === selectedTwoLegMatchupId.value)
+    if (found) return found
+  }
+  return null
+})
+
+const openTwoLegModal = (matchup: any) => {
+  if (isArranging.value) return
+  if (!matchup || !matchup.fixtures || matchup.fixtures.length <= 1) return
+  selectedTwoLegMatchupId.value = matchup.id
+  showTwoLegModal.value = true
+}
+
+const handleStartLeg = (leg: Fixture) => {
+  showTwoLegModal.value = false
+  emit('start-match', leg)
+}
+
+const handleControlLeg = (leg: Fixture) => {
+  showTwoLegModal.value = false
+  emit('control-match', leg)
+}
+
+const getMatchupRoundName = (matchup: any): string => {
+  if (!matchup) return 'Knockout Tie'
+  for (const r of props.rounds) {
+    const list = activeMatchupsByRound.value[r] || []
+    const idx = list.findIndex((m: any) => m.id === matchup.id)
+    if (idx !== -1) {
+      const roundIdx = props.rounds.indexOf(r)
+      return props.getRoundDisplayName(r, roundIdx, props.rounds.length)
+    }
+  }
+  return 'Knockout Tie'
+}
+
+const formatLegDate = (dateStr?: string | null): string => {
+  if (!dateStr) return ''
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return ''
+    return d.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}
+
+const getFixtureWinner = (f: Fixture): 'home' | 'away' | 'draw' => {
+  if (!f || f.status !== FixtureStatus.COMPLETED) return 'draw'
+  const hs = f.homeScore ?? 0
+  const as = f.awayScore ?? 0
+  if (hs > as) return 'home'
+  if (as > hs) return 'away'
+  const hp = f.homePenaltyScore ?? 0
+  const ap = f.awayPenaltyScore ?? 0
+  if (hp > ap) return 'home'
+  if (ap > hp) return 'away'
+  return 'draw'
+}
+
+const getMatchupWinner = (m: any): 'home' | 'away' | 'draw' => {
+  if (!m || m.status !== FixtureStatus.COMPLETED) return 'draw'
+  const hs = m.homeScore ?? 0
+  const as = m.awayScore ?? 0
+  if (hs > as) return 'home'
+  if (as > hs) return 'away'
+  const hp = m.homePenaltyScore ?? 0
+  const ap = m.awayPenaltyScore ?? 0
+  if (hp > ap) return 'home'
+  if (ap > hp) return 'away'
+  return 'draw'
+}
+
+const getTeamName = (team: any, placeholder?: string | null): string => {
+  if (team) {
+    return team.customName || team.customShortName || team.user?.name || placeholder || 'TBD'
+  }
+  return placeholder || 'TBD'
+}
+
 const finalRound = computed(() => {
   if (props.rounds.length === 0) return 0
   return props.rounds[props.rounds.length - 1]!
@@ -1106,6 +1199,7 @@ defineExpose({
                 @swap-home-away="swapMatchHomeAway"
                 @start-match="emit('start-match', $event)"
                 @control-match="emit('control-match', $event)"
+                @show-legs="openTwoLegModal"
                 @enter-arrange="enterArrangeMode"
               />
             </div>
@@ -1165,6 +1259,7 @@ defineExpose({
             @swap-home-away="swapMatchHomeAway"
             @start-match="emit('start-match', $event)"
             @control-match="emit('control-match', $event)"
+            @show-legs="openTwoLegModal"
             @enter-arrange="enterArrangeMode"
           />
 
@@ -1183,6 +1278,7 @@ defineExpose({
               @swap-home-away="swapMatchHomeAway"
               @start-match="emit('start-match', $event)"
               @control-match="emit('control-match', $event)"
+              @show-legs="openTwoLegModal"
               @enter-arrange="enterArrangeMode"
             />
           </div>
@@ -1251,6 +1347,7 @@ defineExpose({
                 @swap-home-away="swapMatchHomeAway"
                 @start-match="emit('start-match', $event)"
                 @control-match="emit('control-match', $event)"
+                @show-legs="openTwoLegModal"
                 @enter-arrange="enterArrangeMode"
               />
             </div>
@@ -1338,6 +1435,7 @@ defineExpose({
                       @swap-home-away="swapMatchHomeAway"
                       @start-match="emit('start-match', $event)"
                       @control-match="emit('control-match', $event)"
+                      @show-legs="openTwoLegModal"
                       @enter-arrange="enterArrangeMode"
                     />
                     <KnockoutMatchCard
@@ -1354,6 +1452,7 @@ defineExpose({
                       @swap-home-away="swapMatchHomeAway"
                       @start-match="emit('start-match', $event)"
                       @control-match="emit('control-match', $event)"
+                      @show-legs="openTwoLegModal"
                       @enter-arrange="enterArrangeMode"
                     />
                   </div>
@@ -1440,6 +1539,7 @@ defineExpose({
                     @swap-home-away="swapMatchHomeAway"
                     @start-match="emit('start-match', $event)"
                     @control-match="emit('control-match', $event)"
+                    @show-legs="openTwoLegModal"
                     @enter-arrange="enterArrangeMode"
                   />
                   <KnockoutMatchCard
@@ -1455,6 +1555,7 @@ defineExpose({
                     @swap-home-away="swapMatchHomeAway"
                     @start-match="emit('start-match', $event)"
                     @control-match="emit('control-match', $event)"
+                    @show-legs="openTwoLegModal"
                     @enter-arrange="enterArrangeMode"
                   />
                 </div>
@@ -1478,6 +1579,7 @@ defineExpose({
                       @swap-home-away="swapMatchHomeAway"
                       @start-match="emit('start-match', $event)"
                       @control-match="emit('control-match', $event)"
+                      @show-legs="openTwoLegModal"
                       @enter-arrange="enterArrangeMode"
                     />
                     <KnockoutMatchCard
@@ -1493,6 +1595,7 @@ defineExpose({
                       @swap-home-away="swapMatchHomeAway"
                       @start-match="emit('start-match', $event)"
                       @control-match="emit('control-match', $event)"
+                      @show-legs="openTwoLegModal"
                       @enter-arrange="enterArrangeMode"
                     />
                   </div>
@@ -1570,6 +1673,7 @@ defineExpose({
                       @swap-home-away="swapMatchHomeAway"
                       @start-match="emit('start-match', $event)"
                       @control-match="emit('control-match', $event)"
+                      @show-legs="openTwoLegModal"
                       @enter-arrange="enterArrangeMode"
                     />
                     <KnockoutMatchCard
@@ -1586,6 +1690,7 @@ defineExpose({
                       @swap-home-away="swapMatchHomeAway"
                       @start-match="emit('start-match', $event)"
                       @control-match="emit('control-match', $event)"
+                      @show-legs="openTwoLegModal"
                       @enter-arrange="enterArrangeMode"
                     />
                   </div>
@@ -1661,6 +1766,7 @@ defineExpose({
                       @swap-home-away="swapMatchHomeAway"
                       @start-match="emit('start-match', $event)"
                       @control-match="emit('control-match', $event)"
+                      @show-legs="openTwoLegModal"
                       @enter-arrange="enterArrangeMode"
                     />
                     <KnockoutMatchCard
@@ -1677,6 +1783,7 @@ defineExpose({
                       @swap-home-away="swapMatchHomeAway"
                       @start-match="emit('start-match', $event)"
                       @control-match="emit('control-match', $event)"
+                      @show-legs="openTwoLegModal"
                       @enter-arrange="enterArrangeMode"
                     />
                   </div>
@@ -1739,6 +1846,7 @@ defineExpose({
                 @swap-home-away="swapMatchHomeAway"
                 @start-match="emit('start-match', $event)"
                 @control-match="emit('control-match', $event)"
+                @show-legs="openTwoLegModal"
                 @enter-arrange="enterArrangeMode"
               />
               <KnockoutMatchCard
@@ -1754,6 +1862,7 @@ defineExpose({
                 @swap-home-away="swapMatchHomeAway"
                 @start-match="emit('start-match', $event)"
                 @control-match="emit('control-match', $event)"
+                @show-legs="openTwoLegModal"
                 @enter-arrange="enterArrangeMode"
               />
             </div>
@@ -1763,6 +1872,281 @@ defineExpose({
       </div>
     </div>
   </div>
+
+  <!-- Two-Legged Knockout Ties Breakdown Modal -->
+  <UModal v-model:open="showTwoLegModal" :ui="{ content: 'sm:max-w-xl' }">
+    <template #content>
+      <div v-if="selectedTwoLegMatchup" class="bg-[#141416] text-white rounded-2xl border border-white/10 overflow-hidden shadow-2xl flex flex-col">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-white/[0.02]">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <h3 class="text-sm font-bold tracking-tight text-white uppercase truncate">
+              {{ getMatchupRoundName(selectedTwoLegMatchup) }} &mdash; 2 Legs Tie
+            </h3>
+          </div>
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-x-mark"
+            size="sm"
+            class="-mr-1.5 text-gray-400 hover:text-white"
+            @click="showTwoLegModal = false"
+          />
+        </div>
+
+        <!-- Aggregate Score Hero Banner -->
+        <div class="p-5 bg-gradient-to-b from-white/[0.04] to-transparent border-b border-white/10">
+          <div class="text-[10px] font-bold uppercase tracking-widest text-gray-400 text-center mb-3">
+            Aggregate Score
+          </div>
+          <div class="flex items-center justify-between gap-4">
+            <!-- Home Team -->
+            <div class="flex-1 flex flex-col items-center text-center min-w-0">
+              <div class="w-12 h-12 rounded-full overflow-hidden bg-white/5 border border-white/15 flex items-center justify-center mb-2 shadow-inner">
+                <img
+                  v-if="selectedTwoLegMatchup.homeTeam?.logoUrl"
+                  :src="selectedTwoLegMatchup.homeTeam.logoUrl"
+                  :alt="selectedTwoLegMatchup.homeTeam?.customName"
+                  class="w-full h-full object-cover"
+                />
+                <span v-else class="text-sm font-bold text-gray-300">
+                  {{ (selectedTwoLegMatchup.homeTeam?.customName || selectedTwoLegMatchup.homeTeamPlaceholder || 'H').charAt(0).toUpperCase() }}
+                </span>
+              </div>
+              <span
+                class="text-sm font-bold truncate max-w-full"
+                :class="getMatchupWinner(selectedTwoLegMatchup) === 'home' ? 'text-white font-extrabold' : 'text-gray-300'"
+              >
+                {{ getTeamName(selectedTwoLegMatchup.homeTeam, selectedTwoLegMatchup.homeTeamPlaceholder) }}
+              </span>
+            </div>
+
+            <!-- Score Display -->
+            <div class="flex flex-col items-center shrink-0 px-2">
+              <div class="text-3xl font-black tracking-widest text-white leading-none flex items-center gap-2">
+                <span>{{ selectedTwoLegMatchup.homeScore ?? 0 }}</span>
+                <span class="text-gray-500 font-normal">-</span>
+                <span>{{ selectedTwoLegMatchup.awayScore ?? 0 }}</span>
+              </div>
+
+              <!-- Penalties badge if any -->
+              <div
+                v-if="selectedTwoLegMatchup.homePenaltyScore != null && selectedTwoLegMatchup.awayPenaltyScore != null"
+                class="mt-1 text-xs font-semibold text-emerald-400"
+              >
+                ({{ selectedTwoLegMatchup.homePenaltyScore }} - {{ selectedTwoLegMatchup.awayPenaltyScore }} pens)
+              </div>
+
+              <!-- Outcome / Status pill -->
+              <div class="mt-2">
+                <span
+                  v-if="selectedTwoLegMatchup.status === FixtureStatus.COMPLETED"
+                  class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-emerald-400 border border-emerald-500/30"
+                >
+                  <UIcon name="i-heroicons-check" class="w-3 h-3" />
+                  FT (Decided)
+                </span>
+                <span
+                  v-else-if="selectedTwoLegMatchup.status === FixtureStatus.LIVE || selectedTwoLegMatchup.status === FixtureStatus.NORMAL_TIME_ENDED || selectedTwoLegMatchup.status === FixtureStatus.EXTRATIME"
+                  class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  LIVE IN PROGRESS
+                </span>
+                <span
+                  v-else
+                  class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-white/5 text-gray-400 border border-white/10"
+                >
+                  SCHEDULED
+                </span>
+              </div>
+            </div>
+
+            <!-- Away Team -->
+            <div class="flex-1 flex flex-col items-center text-center min-w-0">
+              <div class="w-12 h-12 rounded-full overflow-hidden bg-white/5 border border-white/15 flex items-center justify-center mb-2 shadow-inner">
+                <img
+                  v-if="selectedTwoLegMatchup.awayTeam?.logoUrl"
+                  :src="selectedTwoLegMatchup.awayTeam.logoUrl"
+                  :alt="selectedTwoLegMatchup.awayTeam?.customName"
+                  class="w-full h-full object-cover"
+                />
+                <span v-else class="text-sm font-bold text-gray-300">
+                  {{ (selectedTwoLegMatchup.awayTeam?.customName || selectedTwoLegMatchup.awayTeamPlaceholder || 'A').charAt(0).toUpperCase() }}
+                </span>
+              </div>
+              <span
+                class="text-sm font-bold truncate max-w-full"
+                :class="getMatchupWinner(selectedTwoLegMatchup) === 'away' ? 'text-white font-extrabold' : 'text-gray-300'"
+              >
+                {{ getTeamName(selectedTwoLegMatchup.awayTeam, selectedTwoLegMatchup.awayTeamPlaceholder) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Matches List: Leg 1 and Leg 2 -->
+        <div class="p-4 sm:p-5 flex flex-col gap-3 overflow-y-auto max-h-[60vh]">
+          <div
+            v-for="(fixture, idx) in selectedTwoLegMatchup.fixtures"
+            :key="fixture.id || idx"
+            class="rounded-xl border border-white/10 bg-[#191a1f] hover:border-white/20 transition-all duration-200 overflow-hidden shadow-sm"
+          >
+            <!-- Leg Header -->
+            <div class="flex items-center justify-between px-3.5 py-2 bg-white/[0.02] border-b border-white/5 text-xs">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-md font-bold text-[11px] bg-white/10 text-white">
+                  Leg {{ idx + 1 }}{{ idx === 1 ? ' (Deciding)' : '' }}
+                </span>
+                <span v-if="fixture.venue" class="text-gray-400 text-[11px] flex items-center gap-1">
+                  <UIcon name="i-heroicons-map-pin" class="w-3 h-3 text-gray-500" />
+                  {{ fixture.venue }}
+                </span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <span v-if="fixture.startTime" class="text-[11px] text-gray-400">
+                  {{ formatLegDate(fixture.startTime) }}
+                </span>
+                <span
+                  v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME"
+                  class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 flex items-center gap-1"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Live
+                </span>
+                <span
+                  v-else-if="fixture.status === FixtureStatus.COMPLETED"
+                  class="px-2 py-0.5 rounded text-[10px] font-bold bg-white/10 text-gray-300"
+                >
+                  FT
+                </span>
+                <span
+                  v-else
+                  class="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/5 text-gray-400"
+                >
+                  Scheduled
+                </span>
+              </div>
+            </div>
+
+            <!-- Teams & Leg Score Row -->
+            <div class="p-3.5 flex items-center justify-between gap-3">
+              <!-- Leg Home Team -->
+              <div class="flex-1 flex items-center gap-2.5 min-w-0">
+                <div class="w-7 h-7 rounded-full overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  <img
+                    v-if="fixture.homeTeam?.logoUrl"
+                    :src="fixture.homeTeam.logoUrl"
+                    :alt="fixture.homeTeam?.customName"
+                    class="w-full h-full object-cover"
+                  />
+                  <span v-else class="text-xs font-bold text-gray-300">
+                    {{ (fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'H').charAt(0).toUpperCase() }}
+                  </span>
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <span
+                    class="text-xs font-semibold truncate"
+                    :class="getFixtureWinner(fixture) === 'home' ? 'text-white font-bold' : 'text-gray-300'"
+                  >
+                    {{ getTeamName(fixture.homeTeam, fixture.homeTeamPlaceholder) }}
+                  </span>
+                  <span class="text-[10px] text-gray-500 uppercase font-medium">Home</span>
+                </div>
+              </div>
+
+              <!-- Leg Score -->
+              <div class="flex flex-col items-center shrink-0 px-2">
+                <div
+                  v-if="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME"
+                  class="text-base font-black tracking-wider text-white"
+                >
+                  <span>{{ fixture.homeScore ?? 0 }}</span>
+                  <span class="text-gray-500 mx-1.5">-</span>
+                  <span>{{ fixture.awayScore ?? 0 }}</span>
+                </div>
+                <div v-else class="text-xs font-bold text-gray-500">
+                  vs
+                </div>
+
+                <!-- Penalties if decided on penalties in this leg -->
+                <span
+                  v-if="fixture.homePenaltyScore != null && fixture.awayPenaltyScore != null"
+                  class="text-[10px] font-semibold text-gray-400 -mt-0.5"
+                >
+                  ({{ fixture.homePenaltyScore }} - {{ fixture.awayPenaltyScore }} pens)
+                </span>
+              </div>
+
+              <!-- Leg Away Team -->
+              <div class="flex-1 flex items-center justify-end gap-2.5 min-w-0 text-right">
+                <div class="flex flex-col min-w-0 items-end">
+                  <span
+                    class="text-xs font-semibold truncate"
+                    :class="getFixtureWinner(fixture) === 'away' ? 'text-white font-bold' : 'text-gray-300'"
+                  >
+                    {{ getTeamName(fixture.awayTeam, fixture.awayTeamPlaceholder) }}
+                  </span>
+                  <span class="text-[10px] text-gray-500 uppercase font-medium">Away</span>
+                </div>
+                <div class="w-7 h-7 rounded-full overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  <img
+                    v-if="fixture.awayTeam?.logoUrl"
+                    :src="fixture.awayTeam.logoUrl"
+                    :alt="fixture.awayTeam?.customName"
+                    class="w-full h-full object-cover"
+                  />
+                  <span v-else class="text-xs font-bold text-gray-300">
+                    {{ (fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'A').charAt(0).toUpperCase() }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Leg Action Footer -->
+            <div class="px-3.5 py-2 bg-white/[0.015] border-t border-white/5 flex items-center justify-end gap-2">
+              <template v-if="!readonly">
+                <!-- If match can be started -->
+                <UButton
+                  v-if="fixture.status === FixtureStatus.SCHEDULED && fixture.homeTeamId && fixture.awayTeamId"
+                  color="success"
+                  variant="solid"
+                  size="xs"
+                  icon="i-heroicons-play"
+                  label="Start Leg"
+                  :disabled="updatingMatch"
+                  @click="handleStartLeg(fixture)"
+                />
+                <!-- If match can be controlled / edited -->
+                <UButton
+                  v-else-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME || fixture.status === FixtureStatus.COMPLETED"
+                  color="neutral"
+                  variant="soft"
+                  size="xs"
+                  icon="i-heroicons-adjustments-horizontal"
+                  label="Match Control"
+                  @click="handleControlLeg(fixture)"
+                />
+              </template>
+              <template v-else>
+                <!-- Public Spectator view -->
+                <UButton
+                  color="neutral"
+                  variant="soft"
+                  size="xs"
+                  icon="i-heroicons-chart-bar"
+                  label="View Match"
+                  @click="handleControlLeg(fixture)"
+                />
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+  </UModal>
 </template>
 
 <style scoped>

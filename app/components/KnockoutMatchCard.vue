@@ -35,6 +35,7 @@ const emit = defineEmits<{
   'swap-home-away': [round: number, matchIndex: number]
   'start-match': [fixture: Fixture]
   'control-match': [fixture: Fixture]
+  'show-legs': [matchup: any]
   'enter-arrange': []
 }>()
 
@@ -122,6 +123,22 @@ const hasFooter = (matchup: any) => {
 
   return false
 }
+
+const handleCardClick = () => {
+  if (props.isArranging) return
+  if (props.matchup?.fixtures && props.matchup.fixtures.length > 1) {
+    emit('show-legs', props.matchup)
+  } else if (props.matchup?.fixtures?.[0]) {
+    emit('control-match', props.matchup.fixtures[0])
+  }
+}
+
+const handleSlotSelect = (isHome: boolean, event: MouseEvent) => {
+  if (props.isArranging) {
+    event.stopPropagation()
+    emit('slot-click', props.round, props.matchIndex, isHome)
+  }
+}
 </script>
 
 <template>
@@ -130,7 +147,9 @@ const hasFooter = (matchup: any) => {
     :class="{
       'match-card--live': matchup.status === FixtureStatus.LIVE || matchup.status === FixtureStatus.NORMAL_TIME_ENDED || matchup.status === FixtureStatus.EXTRATIME,
       'match-card--completed': matchup.status === FixtureStatus.COMPLETED,
+      'cursor-pointer': !isArranging,
     }"
+    @click="handleCardClick"
   >
     <!-- Home team row -->
     <div
@@ -141,7 +160,7 @@ const hasFooter = (matchup: any) => {
         'team-row--selectable': isArranging && matchup.status === FixtureStatus.SCHEDULED,
         'team-row--selected': isSlotSelected(round, matchIndex, true),
       }"
-      @click="emit('slot-click', round, matchIndex, true)"
+      @click="handleSlotSelect(true, $event)"
     >
       <div class="team-avatar">
         <img v-if="matchup.homeTeam?.logoUrl" :src="matchup.homeTeam.logoUrl" class="team-avatar__img" />
@@ -204,7 +223,7 @@ const hasFooter = (matchup: any) => {
         'team-row--selectable': isArranging && matchup.status === FixtureStatus.SCHEDULED,
         'team-row--selected': isSlotSelected(round, matchIndex, false),
       }"
-      @click="emit('slot-click', round, matchIndex, false)"
+      @click="handleSlotSelect(false, $event)"
     >
       <div class="team-avatar">
         <img v-if="matchup.awayTeam?.logoUrl" :src="matchup.awayTeam.logoUrl" class="team-avatar__img" />
