@@ -1495,9 +1495,7 @@ defineExpose({
                       }"
                     >
                       <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
-                        <path d="M 0 25 L 24 25 L 24 50" class="connector-line" />
-                        <path d="M 0 75 L 24 75 L 24 50" class="connector-line" />
-                        <path d="M 24 50 L 48 50" class="connector-line" />
+                        <path d="M 0 25 H 18 Q 24 25 24 30 V 70 Q 24 75 18 75 H 0 M 24 50 H 48" class="connector-line" />
                       </svg>
                     </div>
                   </template>
@@ -1641,9 +1639,7 @@ defineExpose({
                       }"
                     >
                       <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
-                        <path d="M 48 25 L 24 25 L 24 50" class="connector-line" />
-                        <path d="M 48 75 L 24 75 L 24 50" class="connector-line" />
-                        <path d="M 24 50 L 0 50" class="connector-line" />
+                        <path d="M 48 25 H 30 Q 24 25 24 30 V 70 Q 24 75 30 75 H 48 M 24 50 H 0" class="connector-line" />
                       </svg>
                     </div>
                   </template>
@@ -1814,9 +1810,7 @@ defineExpose({
                       }"
                     >
                       <svg class="connector-svg" viewBox="0 0 48 100" preserveAspectRatio="none">
-                        <path d="M 0 25 L 24 25 L 24 50" class="connector-line" />
-                        <path d="M 0 75 L 24 75 L 24 50" class="connector-line" />
-                        <path d="M 24 50 L 48 50" class="connector-line" />
+                        <path d="M 0 25 H 18 Q 24 25 24 30 V 70 Q 24 75 18 75 H 0 M 24 50 H 48" class="connector-line" />
                       </svg>
                     </div>
                   </template>
@@ -2299,14 +2293,16 @@ defineExpose({
 }
 
 .connector-line {
-  stroke: #d1d5db;
+  stroke: #cbd5e1;
   stroke-width: 1.5;
   fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 
 :root.dark .connector-line {
-  stroke: rgba(255,255,255,0.12);
+  stroke: rgba(255, 255, 255, 0.2);
 }
 
 /* ── 3rd place ────────────────────────────────────────────── */
