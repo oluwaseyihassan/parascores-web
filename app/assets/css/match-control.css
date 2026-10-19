@@ -1719,13 +1719,18 @@
 
 .mc-deck__extras {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 4px;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
 .mc-deck__extras .mc-btn {
   width: 100%;
   justify-content: center;
+  min-height: 32px;
+}
+
+.mc-deck__extras .mc-btn--miss {
+  grid-column: 1 / -1;
 }
 
 /* ── Quiet row (walkover demotion) ────────────────────────────── */
