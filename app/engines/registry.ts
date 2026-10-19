@@ -68,6 +68,15 @@ export function resolveEngine(sport?: string | null): SportEngine {
   return engines[key] ?? footballEngine
 }
 
-export function listEngines(): SportEngine[] {
-  return Object.values(engines)
+// Currently visible sports in tournament creation / settings
+const ACTIVE_SPORT_KEYS = ['football', 'esports']
+
+/**
+ * List registered sport engines.
+ * By default returns only the active sports (Football, Esports).
+ * Pass `{ all: true }` to retrieve all registered engines.
+ */
+export function listEngines(options?: { all?: boolean }): SportEngine[] {
+  if (options?.all) return Object.values(engines)
+  return ACTIVE_SPORT_KEYS.map((k) => engines[k]).filter(Boolean) as SportEngine[]
 }

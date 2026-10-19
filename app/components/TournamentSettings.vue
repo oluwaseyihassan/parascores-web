@@ -450,9 +450,15 @@ const visibilityOptions = [
   { label: 'Private', value: Visibility.PRIVATE, description: 'Only members and invited participants', icon: 'i-heroicons-lock-closed' }
 ]
 
-// Sport options come from the engine registry (registered engines get tailored
-// control surfaces); extras fall back to the default (football) surface
-const popularSports = [...listEngines().map((e) => e.label), 'Cricket', 'Rugby', 'Esports', 'Other']
+// Sport options come from the engine registry (currently restricted to Football and Esports);
+// preserves existing sport if a tournament was created previously with another sport
+const popularSports = computed(() => {
+  const defaults = listEngines().map((e) => e.label)
+  if (state.sport && !defaults.includes(state.sport)) {
+    return [...defaults, state.sport]
+  }
+  return defaults
+})
 
 // Set-scoring config only applies to set-based sport engines (tennis, volleyball…)
 const engineSetScoring = computed(() => {
