@@ -260,9 +260,12 @@ const canArrange = computed(() => {
   })
 })
 
-const COLUMN_WIDTH = 250
-const CONNECTOR_WIDTH = 48
-const FINAL_WIDTH = 260
+// Card density: 'compact' (UEFA style matching image) or 'expanded' (full card)
+const cardStyle = ref<'compact' | 'expanded'>('compact')
+
+const effectiveColWidth = computed(() => cardStyle.value === 'compact' ? 96 : 250)
+const effectiveConnWidth = computed(() => cardStyle.value === 'compact' ? 44 : 48)
+const effectiveFinalWidth = computed(() => cardStyle.value === 'compact' ? 100 : 260)
 
 const totalWingRows = computed(() => {
   const matches = Math.max(1, Math.ceil(firstRoundMatches.value / 2))
@@ -271,24 +274,56 @@ const totalWingRows = computed(() => {
 
 const dualGridColumns = computed(() => {
   const n = feederRounds.value.length
-  if (n === 0) return `${FINAL_WIDTH}px`
+  if (n === 0) return `${effectiveFinalWidth.value}px`
   const leftCols: string[] = []
   for (let i = 0; i < n; i++) {
-    leftCols.push(`${COLUMN_WIDTH}px`)
-    leftCols.push(`${CONNECTOR_WIDTH}px`)
+    leftCols.push(`${effectiveColWidth.value}px`)
+    leftCols.push(`${effectiveConnWidth.value}px`)
   }
-  const centerCol = `${FINAL_WIDTH}px`
+  const centerCol = `${effectiveFinalWidth.value}px`
   const rightCols: string[] = []
   for (let i = 0; i < n; i++) {
-    rightCols.push(`${CONNECTOR_WIDTH}px`)
-    rightCols.push(`${COLUMN_WIDTH}px`)
+    rightCols.push(`${effectiveConnWidth.value}px`)
+    rightCols.push(`${effectiveColWidth.value}px`)
   }
   return [...leftCols, centerCol, ...rightCols].join(' ')
 })
 
 const linearGridColumns = computed(() =>
-  props.rounds.map((_, i) => i < props.rounds.length - 1 ? `${COLUMN_WIDTH}px ${CONNECTOR_WIDTH}px` : `${COLUMN_WIDTH}px`).join(' ')
+  props.rounds.map((_, i) => i < props.rounds.length - 1 ? `${effectiveColWidth.value}px ${effectiveConnWidth.value}px` : `${effectiveColWidth.value}px`).join(' ')
 )
+
+// Vertical tree grid computations
+const verticalMaxWingMatches = computed(() => {
+  if (props.rounds.length === 0) return 1
+  const round0 = props.rounds[0]!
+  const round0Matches = activeMatchupsByRound.value[round0]?.length || 0
+  return Math.max(1, Math.ceil(round0Matches / 2))
+})
+
+const verticalTotalCols = computed(() => {
+  return verticalMaxWingMatches.value * 2
+})
+
+const verticalGridColumns = computed(() => {
+  return `repeat(${verticalTotalCols.value}, minmax(0, 1fr))`
+})
+
+const getWingMatchGridColumn = (roundIndex: number, matchIndexInWing: number) => {
+  const depth = getWingTreeDepth(roundIndex)
+  const span = Math.pow(2, depth)
+  const start = matchIndexInWing * span * 2 + 1
+  const end = start + span * 2
+  return `${start} / ${end}`
+}
+
+const getVerticalMergeGridColumn = (roundIndex: number, pairIndex: number) => {
+  const depth = getWingTreeDepth(roundIndex)
+  const span = Math.pow(2, depth)
+  const start = pairIndex * span * 4 + 1
+  const end = (pairIndex + 1) * span * 4 + 1
+  return `${start} / ${end}`
+}
 
 const getWingMatchups = (round: number, wing: 'left' | 'right') => {
   const allMatches = activeMatchupsByRound.value[round] || []
@@ -997,6 +1032,28 @@ defineExpose({
           <span>Arrange</span>
         </button>
 
+        <!-- Card Density Toggle (Compact vs Expanded) - only in horizontal mode -->
+        <div v-if="!isVertical" class="flex items-center rounded-lg border border-gray-200 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#141414]/90 text-xs">
+          <button
+            @click="cardStyle = 'compact'"
+            :class="cardStyle === 'compact' ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+            class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
+            title="Compact UEFA Style Cards"
+          >
+            <UIcon name="i-heroicons-squares-2x2" class="w-3.5 h-3.5" />
+            <span class="hidden sm:inline">Compact</span>
+          </button>
+          <button
+            @click="cardStyle = 'expanded'"
+            :class="cardStyle === 'expanded' ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+            class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-colors"
+            title="Expanded Cards with Full Names"
+          >
+            <UIcon name="i-heroicons-bars-3" class="w-3.5 h-3.5" />
+            <span class="hidden sm:inline">Expanded</span>
+          </button>
+        </div>
+
         <!-- Zoom Controls (Only in horizontal mode) -->
         <div v-if="!isVertical" class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#141414]/90 text-xs select-none">
           <button
@@ -1028,60 +1085,23 @@ defineExpose({
       </div>
     </div>
 
-    <!-- 1. MOBILE VERTICAL BRACKET FOR SMALLER SCREENS -->
-    <div v-if="isVertical" class="vertical-bracket-container w-full max-w-md mx-auto py-2">
-      <!-- Round Navigation Pills -->
-      <div v-if="rounds.length > 1" class="flex items-center gap-1.5 overflow-x-auto pb-3 mb-4 scrollbar-none px-1">
-        <button
-          @click="selectedMobileRound = null"
-          class="flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-all border"
-          :class="selectedMobileRound === null ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold' : 'bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'"
-        >
-          All Rounds
-        </button>
-        <button
-          v-for="(r, idx) in rounds"
-          :key="`m-pill-${r}`"
-          @click="selectedMobileRound = r"
-          class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border"
-          :class="selectedMobileRound === r ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold' : 'bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'"
-        >
-          <span>{{ getRoundDisplayName(r, idx, rounds.length) }}</span>
-          <span v-if="idx === rounds.length - 1" class="text-[11px]">🏆</span>
-        </button>
-      </div>
-
-      <!-- Vertical Rounds List -->
-      <div class="space-y-6">
-        <template v-for="(round, roundIdx) in displayedVerticalRounds" :key="`v-round-${round}`">
-          <!-- Final Round Section -->
-          <div v-if="round === finalRound" class="vertical-final-section">
-            <div class="flex items-center justify-center gap-2 mb-4">
-              <div class="h-px bg-gray-200 dark:bg-white/10 flex-1 max-w-[40px]" />
-              <span class="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-xs font-bold uppercase tracking-wider text-emerald-500 dark:text-emerald-400">
-                {{ getRoundDisplayName(round, rounds.indexOf(round), rounds.length) }}
-              </span>
-              <div class="h-px bg-gray-200 dark:bg-white/10 flex-1 max-w-[40px]" />
-            </div>
-
-            <!-- Trophy Showcase -->
-            <div class="mb-3 flex justify-center">
-              <BracketChampionTrophy
-                :champion="tournamentChampion"
-                :is-decided="!!tournamentChampion"
-              />
-            </div>
-
-            <!-- Grand Final Match Card -->
-            <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
-              <KnockoutMatchCard
-                :matchup="finalRoundMainMatchups[0]"
-                :round="finalRound"
-                :match-index="0"
+    <!-- 1. MOBILE VERTICAL BRACKET FOR SMALLER SCREENS (UEFA Style Vertical Tree) -->
+    <div v-if="isVertical" class="vertical-bracket-container w-full max-w-lg mx-auto py-3 px-1 select-none flex flex-col items-center">
+      <!-- TOP WING: Feeder rounds advancing downwards to Grand Final -->
+      <template v-for="(round, roundIdx) in feederRounds" :key="`v-left-round-${round}`">
+        <!-- Matches row -->
+        <div class="w-full grid gap-1.5" :style="{ gridTemplateColumns: verticalGridColumns }">
+          <template v-for="(matchup, mIdx) in getWingMatchups(round, 'left')" :key="`v-left-m-${matchup.id}`">
+            <div :style="{ gridColumn: getWingMatchGridColumn(roundIdx, mIdx) }" class="flex justify-center w-full">
+              <KnockoutCompactCard
+                :matchup="matchup"
+                :round="round"
+                :match-index="getGlobalMatchIndex(round, 'left', mIdx)"
                 :is-arranging="isArranging"
                 :selected-slot="selectedSlot"
                 :readonly="readonly"
                 :updating-match="updatingMatch"
+                :is-playoff-first-round="roundIdx === 0 && isPlayoffFirstRound"
                 @slot-click="handleSlotClick"
                 @swap-home-away="swapMatchHomeAway"
                 @start-match="emit('start-match', $event)"
@@ -1089,72 +1109,154 @@ defineExpose({
                 @enter-arrange="enterArrangeMode"
               />
             </div>
+          </template>
+        </div>
 
-            <!-- 3rd Place Play-off -->
-            <div v-if="thirdPlaceMatchups.length > 0" class="w-full mt-6">
-              <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 text-center">
-                3rd Place Play-off
-              </div>
-              <KnockoutMatchCard
-                :matchup="thirdPlaceMatchups[0]"
-                :round="finalRound"
-                :match-index="1"
-                :is-arranging="isArranging"
-                :selected-slot="selectedSlot"
-                :readonly="readonly"
-                :updating-match="updatingMatch"
-                @slot-click="handleSlotClick"
-                @swap-home-away="swapMatchHomeAway"
-                @start-match="emit('start-match', $event)"
-                @control-match="emit('control-match', $event)"
-                @enter-arrange="enterArrangeMode"
-              />
+        <!-- Connector row down -->
+        <div class="w-full">
+          <!-- If this is the last feeder round (Semi-Final 1), straight line down to Final -->
+          <template v-if="roundIdx === feederRounds.length - 1">
+            <div class="h-6 w-full flex justify-center">
+              <div class="w-px h-full bg-[#334155] dark:bg-white/20"></div>
             </div>
-          </div>
+          </template>
 
-          <!-- Feeder Round Section -->
-          <div v-else class="vertical-feeder-section">
-            <div class="flex items-center justify-center gap-2 mb-3">
-              <div class="h-px bg-gray-200 dark:bg-white/10 flex-1 max-w-[40px]" />
-              <span class="px-3 py-1 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                {{ getRoundDisplayName(round, rounds.indexOf(round), rounds.length) }}
-              </span>
-              <div class="h-px bg-gray-200 dark:bg-white/10 flex-1 max-w-[40px]" />
-            </div>
-
-            <!-- Matches in feeder round -->
-            <div class="space-y-4">
-              <template v-for="(matchup, mIdx) in (activeMatchupsByRound[round] || [])" :key="`v-match-${matchup.id}`">
-                <div>
-                  <KnockoutMatchCard
-                    :matchup="matchup"
-                    :round="round"
-                    :match-index="mIdx"
-                    :is-arranging="isArranging"
-                    :selected-slot="selectedSlot"
-                    :readonly="readonly"
-                    :updating-match="updatingMatch"
-                    :is-playoff-first-round="rounds.indexOf(round) === 0 && isPlayoffFirstRound"
-                    @slot-click="handleSlotClick"
-                    @swap-home-away="swapMatchHomeAway"
-                    @start-match="emit('start-match', $event)"
-                    @control-match="emit('control-match', $event)"
-                    @enter-arrange="enterArrangeMode"
-                  />
-                  <!-- Downward advancement indicator -->
-                  <div class="flex flex-col items-center my-2">
-                    <div class="w-px h-3.5 bg-gray-300 dark:bg-white/15" />
-                    <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 -mt-1" />
-                    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-500 mt-0.5">
-                      {{ getMatchAdvanceText(rounds.indexOf(round), mIdx) }}
-                    </span>
-                  </div>
+          <!-- 1-to-1 straight lines for Playoff round -->
+          <template v-else-if="roundIdx === 0 && isPlayoffFirstRound">
+            <div class="w-full grid gap-1.5 h-6" :style="{ gridTemplateColumns: verticalGridColumns }">
+              <template v-for="mIdx in getWingMatchups(round, 'left').length" :key="`v-conn-str-${mIdx}`">
+                <div :style="{ gridColumn: getWingMatchGridColumn(0, mIdx - 1) }" class="flex justify-center">
+                  <div class="w-px h-full bg-[#334155] dark:bg-white/20"></div>
                 </div>
               </template>
             </div>
+          </template>
+
+          <!-- Binary merge down for intermediate rounds -->
+          <template v-else>
+            <div class="w-full grid gap-1.5 h-8" :style="{ gridTemplateColumns: verticalGridColumns }">
+              <template v-for="pairIdx in Math.ceil(getWingMatchups(round, 'left').length / 2)" :key="`v-conn-bin-${pairIdx}`">
+                <div :style="{ gridColumn: getVerticalMergeGridColumn(roundIdx, pairIdx - 1) }" class="w-full h-8">
+                  <svg class="w-full h-full" viewBox="0 0 100 36" preserveAspectRatio="none">
+                    <path d="M 25 0 V 12 Q 25 18 31 18 H 44 Q 50 18 50 24 V 36" class="v-bracket-line" />
+                    <path d="M 75 0 V 12 Q 75 18 69 18 H 56 Q 50 18 50 24 V 36" class="v-bracket-line" />
+                  </svg>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- CENTER ROW: Grand Final centered at 50% + Trophy Showcase on the Right -->
+      <div class="w-full relative flex items-center justify-center py-2 min-h-[90px]">
+        <!-- Grand Final Match Card (Exact horizontal 50% center) -->
+        <div v-if="finalRoundMainMatchups.length > 0" class="flex flex-col items-center z-10">
+          <KnockoutCompactCard
+            :matchup="finalRoundMainMatchups[0]"
+            :round="finalRound"
+            :match-index="0"
+            :is-final="true"
+            :is-arranging="isArranging"
+            :selected-slot="selectedSlot"
+            :readonly="readonly"
+            :updating-match="updatingMatch"
+            @slot-click="handleSlotClick"
+            @swap-home-away="swapMatchHomeAway"
+            @start-match="emit('start-match', $event)"
+            @control-match="emit('control-match', $event)"
+            @enter-arrange="enterArrangeMode"
+          />
+
+          <!-- 3rd Place Match underneath if present -->
+          <div v-if="thirdPlaceMatchups.length > 0" class="mt-4 flex flex-col items-center">
+            <span class="text-[9px] font-semibold text-gray-400 uppercase tracking-wider mb-1">3rd Place</span>
+            <KnockoutCompactCard
+              :matchup="thirdPlaceMatchups[0]"
+              :round="finalRound"
+              :match-index="1"
+              :is-arranging="isArranging"
+              :selected-slot="selectedSlot"
+              :readonly="readonly"
+              :updating-match="updatingMatch"
+              @slot-click="handleSlotClick"
+              @swap-home-away="swapMatchHomeAway"
+              @start-match="emit('start-match', $event)"
+              @control-match="emit('control-match', $event)"
+              @enter-arrange="enterArrangeMode"
+            />
           </div>
-        </template>
+        </div>
+
+        <!-- Right: Trophy Showcase in the right wing whitespace -->
+        <div class="absolute right-0 sm:right-2 flex flex-col items-center pointer-events-none scale-90 sm:scale-100">
+          <BracketChampionTrophy
+            :champion="tournamentChampion"
+            :is-decided="!!tournamentChampion"
+          />
+        </div>
       </div>
+
+      <!-- BOTTOM WING: Feeder rounds advancing upwards into Grand Final -->
+      <template v-for="(round, revIdx) in reversedFeederRounds" :key="`v-right-round-${round}`">
+        <!-- Connector row up -->
+        <div class="w-full">
+          <!-- If revIdx === 0 (Semi-Final 2), straight line up into Grand Final -->
+          <template v-if="revIdx === 0">
+            <div class="h-6 w-full flex justify-center">
+              <div class="w-px h-full bg-[#2563eb] dark:bg-blue-500"></div>
+            </div>
+          </template>
+
+          <!-- 1-to-1 straight lines for Playoff round -->
+          <template v-else-if="(feederRounds.length - 1 - revIdx) === 0 && isPlayoffFirstRound">
+            <div class="w-full grid gap-1.5 h-6" :style="{ gridTemplateColumns: verticalGridColumns }">
+              <template v-for="mIdx in getWingMatchups(round, 'right').length" :key="`v-b-conn-str-${mIdx}`">
+                <div :style="{ gridColumn: getWingMatchGridColumn(0, mIdx - 1) }" class="flex justify-center">
+                  <div class="w-px h-full bg-[#2563eb] dark:bg-blue-500"></div>
+                </div>
+              </template>
+            </div>
+          </template>
+
+          <!-- Binary merge up into round above -->
+          <template v-else>
+            <div class="w-full grid gap-1.5 h-8" :style="{ gridTemplateColumns: verticalGridColumns }">
+              <template v-for="pairIdx in Math.ceil(getWingMatchups(round, 'right').length / 2)" :key="`v-b-conn-bin-${pairIdx}`">
+                <div :style="{ gridColumn: getVerticalMergeGridColumn(feederRounds.length - 1 - revIdx, pairIdx - 1) }" class="w-full h-8">
+                  <svg class="w-full h-full" viewBox="0 0 100 36" preserveAspectRatio="none">
+                    <path d="M 25 36 V 24 Q 25 18 31 18 H 44 Q 50 18 50 12 V 0" class="v-bracket-line v-bracket-line--active" />
+                    <path d="M 75 36 V 24 Q 75 18 69 18 H 56 Q 50 18 50 12 V 0" class="v-bracket-line v-bracket-line--active" />
+                  </svg>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <!-- Matches row -->
+        <div class="w-full grid gap-1.5" :style="{ gridTemplateColumns: verticalGridColumns }">
+          <template v-for="(matchup, mIdx) in getWingMatchups(round, 'right')" :key="`v-right-m-${matchup.id}`">
+            <div :style="{ gridColumn: getWingMatchGridColumn(feederRounds.length - 1 - revIdx, mIdx) }" class="flex justify-center w-full">
+              <KnockoutCompactCard
+                :matchup="matchup"
+                :round="round"
+                :match-index="getGlobalMatchIndex(round, 'right', mIdx)"
+                :is-arranging="isArranging"
+                :selected-slot="selectedSlot"
+                :readonly="readonly"
+                :updating-match="updatingMatch"
+                :is-playoff-first-round="(feederRounds.length - 1 - revIdx) === 0 && isPlayoffFirstRound"
+                @slot-click="handleSlotClick"
+                @swap-home-away="swapMatchHomeAway"
+                @start-match="emit('start-match', $event)"
+                @control-match="emit('control-match', $event)"
+                @enter-arrange="enterArrangeMode"
+              />
+            </div>
+          </template>
+        </div>
+      </template>
     </div>
 
     <!-- 2. HORIZONTAL BRACKET FOR LARGE SCREENS -->
@@ -1222,7 +1324,24 @@ defineExpose({
                     class="match-cell"
                     :style="{ gridRow: getWingMatchGridRow(roundIdx, mIdx) }"
                   >
+                    <KnockoutCompactCard
+                      v-if="cardStyle === 'compact'"
+                      :matchup="matchup"
+                      :round="round"
+                      :match-index="getGlobalMatchIndex(round, 'left', mIdx)"
+                      :is-arranging="isArranging"
+                      :selected-slot="selectedSlot"
+                      :readonly="readonly"
+                      :updating-match="updatingMatch"
+                      :is-playoff-first-round="roundIdx === 0 && isPlayoffFirstRound"
+                      @slot-click="handleSlotClick"
+                      @swap-home-away="swapMatchHomeAway"
+                      @start-match="emit('start-match', $event)"
+                      @control-match="emit('control-match', $event)"
+                      @enter-arrange="enterArrangeMode"
+                    />
                     <KnockoutMatchCard
+                      v-else
                       :matchup="matchup"
                       :round="round"
                       :match-index="getGlobalMatchIndex(round, 'left', mIdx)"
@@ -1306,8 +1425,25 @@ defineExpose({
                 </div>
 
                 <!-- Center Slot: Grand Final Match Card (Exact 50% vertical center connecting left & right) -->
-                <div v-if="finalRoundMainMatchups.length > 0" class="w-full">
+                <div v-if="finalRoundMainMatchups.length > 0" class="w-full flex justify-center">
+                  <KnockoutCompactCard
+                    v-if="cardStyle === 'compact'"
+                    :matchup="finalRoundMainMatchups[0]"
+                    :round="finalRound"
+                    :match-index="0"
+                    :is-final="true"
+                    :is-arranging="isArranging"
+                    :selected-slot="selectedSlot"
+                    :readonly="readonly"
+                    :updating-match="updatingMatch"
+                    @slot-click="handleSlotClick"
+                    @swap-home-away="swapMatchHomeAway"
+                    @start-match="emit('start-match', $event)"
+                    @control-match="emit('control-match', $event)"
+                    @enter-arrange="enterArrangeMode"
+                  />
                   <KnockoutMatchCard
+                    v-else
                     :matchup="finalRoundMainMatchups[0]"
                     :round="finalRound"
                     :match-index="0"
@@ -1325,11 +1461,27 @@ defineExpose({
 
                 <!-- Bottom Slot: 3rd Place Play-off Match underneath Grand Final -->
                 <div v-if="thirdPlaceMatchups.length > 0" class="final-bottom-slot">
-                  <div class="w-full">
+                  <div class="w-full flex flex-col items-center">
                     <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 text-center">
                       3rd Place Play-off
                     </div>
+                    <KnockoutCompactCard
+                      v-if="cardStyle === 'compact'"
+                      :matchup="thirdPlaceMatchups[0]"
+                      :round="finalRound"
+                      :match-index="1"
+                      :is-arranging="isArranging"
+                      :selected-slot="selectedSlot"
+                      :readonly="readonly"
+                      :updating-match="updatingMatch"
+                      @slot-click="handleSlotClick"
+                      @swap-home-away="swapMatchHomeAway"
+                      @start-match="emit('start-match', $event)"
+                      @control-match="emit('control-match', $event)"
+                      @enter-arrange="enterArrangeMode"
+                    />
                     <KnockoutMatchCard
+                      v-else
                       :matchup="thirdPlaceMatchups[0]"
                       :round="finalRound"
                       :match-index="1"
@@ -1404,7 +1556,24 @@ defineExpose({
                     class="match-cell"
                     :style="{ gridRow: getWingMatchGridRow(feederRounds.length - 1 - revIdx, mIdx) }"
                   >
+                    <KnockoutCompactCard
+                      v-if="cardStyle === 'compact'"
+                      :matchup="matchup"
+                      :round="round"
+                      :match-index="getGlobalMatchIndex(round, 'right', mIdx)"
+                      :is-arranging="isArranging"
+                      :selected-slot="selectedSlot"
+                      :readonly="readonly"
+                      :updating-match="updatingMatch"
+                      :is-playoff-first-round="(feederRounds.length - 1 - revIdx) === 0 && isPlayoffFirstRound"
+                      @slot-click="handleSlotClick"
+                      @swap-home-away="swapMatchHomeAway"
+                      @start-match="emit('start-match', $event)"
+                      @control-match="emit('control-match', $event)"
+                      @enter-arrange="enterArrangeMode"
+                    />
                     <KnockoutMatchCard
+                      v-else
                       :matchup="matchup"
                       :round="round"
                       :match-index="getGlobalMatchIndex(round, 'right', mIdx)"
@@ -1477,7 +1646,25 @@ defineExpose({
                       />
                     </div>
 
+                    <KnockoutCompactCard
+                      v-if="cardStyle === 'compact'"
+                      :matchup="matchup"
+                      :round="round"
+                      :match-index="matchIndex"
+                      :is-final="roundIndex === rounds.length - 1"
+                      :is-arranging="isArranging"
+                      :selected-slot="selectedSlot"
+                      :readonly="readonly"
+                      :updating-match="updatingMatch"
+                      :is-playoff-first-round="roundIndex === 0 && isPlayoffFirstRound"
+                      @slot-click="handleSlotClick"
+                      @swap-home-away="swapMatchHomeAway"
+                      @start-match="emit('start-match', $event)"
+                      @control-match="emit('control-match', $event)"
+                      @enter-arrange="enterArrangeMode"
+                    />
                     <KnockoutMatchCard
+                      v-else
                       :matchup="matchup"
                       :round="round"
                       :match-index="matchIndex"
@@ -1534,12 +1721,28 @@ defineExpose({
           </div>
 
           <!-- Linear 3rd Place Section -->
-          <div v-if="thirdPlaceMatchups.length > 0" class="third-place-section" :style="{ marginLeft: `${(rounds.length - 1) * (COLUMN_WIDTH + CONNECTOR_WIDTH)}px`, width: `${COLUMN_WIDTH}px` }">
-            <div v-for="matchup in thirdPlaceMatchups" :key="matchup.id">
-              <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+          <div v-if="thirdPlaceMatchups.length > 0" class="third-place-section" :style="{ marginLeft: `${(rounds.length - 1) * (effectiveColWidth + effectiveConnWidth)}px`, width: `${effectiveColWidth}px` }">
+            <div v-for="matchup in thirdPlaceMatchups" :key="matchup.id" class="flex flex-col items-center">
+              <div class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 text-center">
                 3rd Place Play-off
               </div>
+              <KnockoutCompactCard
+                v-if="cardStyle === 'compact'"
+                :matchup="matchup"
+                :round="finalRound"
+                :match-index="1"
+                :is-arranging="isArranging"
+                :selected-slot="selectedSlot"
+                :readonly="readonly"
+                :updating-match="updatingMatch"
+                @slot-click="handleSlotClick"
+                @swap-home-away="swapMatchHomeAway"
+                @start-match="emit('start-match', $event)"
+                @control-match="emit('control-match', $event)"
+                @enter-arrange="enterArrangeMode"
+              />
               <KnockoutMatchCard
+                v-else
                 :matchup="matchup"
                 :round="finalRound"
                 :match-index="1"
@@ -1731,10 +1934,31 @@ defineExpose({
   margin-top: 1rem;
 }
 
-/* ── Vertical Bracket (Mobile) ───────────────────────────── */
+/* ── Vertical Bracket (Mobile Tree) ───────────────────────── */
 .vertical-bracket-container {
   user-select: none;
   -webkit-user-select: none;
+}
+
+.v-bracket-line {
+  stroke: #475569;
+  stroke-width: 1.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:root.dark .v-bracket-line {
+  stroke: rgba(255, 255, 255, 0.2);
+}
+
+.v-bracket-line--active {
+  stroke: #2563eb;
+  stroke-width: 1.8;
+}
+
+:root.dark .v-bracket-line--active {
+  stroke: #3b82f6;
 }
 
 .scrollbar-none {
