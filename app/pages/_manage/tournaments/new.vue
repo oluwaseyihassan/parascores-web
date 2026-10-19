@@ -515,9 +515,8 @@ const visibilityOptions = [
   { label: 'Private', value: Visibility.PRIVATE, description: 'Invite only', icon: 'i-heroicons-lock-closed' }
 ]
 
-// Sport options come from the engine registry (registered engines get tailored
+// Sport options come from the engine registry (currently restricted to Football and Esports)
 const engineSports = listEngines()
-const extraSports = ['Cricket', 'Rugby', 'Other']
 
 // Decorative tile icons per engine key (monogram fallback when unmapped)
 const SPORT_ICONS: Record<string, string> = {
@@ -540,10 +539,6 @@ const SPORT_ICONS: Record<string, string> = {
 }
 
 const sportIcon = (key: string) => SPORT_ICONS[key] || null
-
-const showSportMore = ref(false)
-const isExtraSportSelected = computed(() => extraSports.includes(state.sport || ''))
-watch(isExtraSportSelected, (v) => { if (v) showSportMore.value = true })
 
 // Engine-driven creation surface: formats/options adapt to the selected sport
 const creationEngine = computed(() => resolveEngine(state.sport))
@@ -828,12 +823,12 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
                 <!-- Sport: tile grid (drives Step 2 formats via the engine) -->
                 <UFormField label="Sport" name="sport" required>
-                  <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  <div class="grid grid-cols-2 gap-2.5 max-w-sm">
                     <button
                       v-for="engine in engineSports"
                       :key="engine.key"
                       type="button"
-                      class="flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl border text-center transition-all"
+                      class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border text-center transition-all cursor-pointer"
                       :class="state.sport === engine.label
                         ? 'border-emerald-500/50 bg-emerald-500/[0.08] text-emerald-600 dark:text-emerald-400'
                         : 'border-subtle bg-black/[0.02] dark:bg-white/[0.03] text-muted hover:border-white/[0.16] hover:text-heading'"
@@ -845,26 +840,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                       <span v-else class="w-5 h-5 flex items-center justify-center text-[11px] font-extrabold">{{ engine.label.charAt(0) }}</span>
                       <span class="text-[11px] font-bold leading-tight">{{ engine.label }}</span>
                     </button>
-                    <button
-                      type="button"
-                      class="flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl border text-center transition-all"
-                      :class="isExtraSportSelected
-                        ? 'border-emerald-500/50 bg-emerald-500/[0.08] text-emerald-600 dark:text-emerald-400'
-                        : 'border-dashed border-subtle text-muted hover:border-white/[0.16] hover:text-heading'"
-                      :aria-pressed="isExtraSportSelected"
-                      @click="showSportMore = !showSportMore"
-                    >
-                      <UIcon name="i-heroicons-ellipsis-horizontal" class="w-5 h-5" />
-                      <span class="text-[11px] font-bold leading-tight">{{ isExtraSportSelected ? state.sport : 'More…' }}</span>
-                    </button>
                   </div>
-                  <USelect
-                    v-if="showSportMore"
-                    v-model="state.sport"
-                    :items="extraSports"
-                    placeholder="Other sports…"
-                    class="w-full sm:w-64 mt-2"
-                  />
                   <p class="text-[10.5px] text-muted mt-1.5">The sport decides which formats Step 2 offers (engines drive this).</p>
                 </UFormField>
 
