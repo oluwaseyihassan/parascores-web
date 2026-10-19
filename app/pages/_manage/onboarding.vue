@@ -24,13 +24,11 @@ const state = reactive<{
   description?: string
   organization_logo?: string
   phone?: string
-  color?: string
 }>({
   organization_name: undefined,
   description: undefined,
   organization_logo: undefined,
   phone: undefined,
-  color: undefined,
 })
 
 const error = ref('')
@@ -142,6 +140,24 @@ const handleLogoDrop = async (event: DragEvent) => {
   }
 }
 
+// Normalize phone numbers (e.g. 09012345678 -> +2349012345678, strips spaces/dashes)
+const normalizePhone = (val?: string): string | undefined => {
+  if (!val) return undefined
+  const cleaned = val.trim().replace(/[\s\-\(\)\.]/g, '')
+  if (!cleaned) return undefined
+  if (cleaned.startsWith('+')) return cleaned
+  if (/^0[789][01]\d{8}$/.test(cleaned)) {
+    return `+234${cleaned.slice(1)}`
+  }
+  if (/^0\d{10}$/.test(cleaned)) {
+    return `+234${cleaned.slice(1)}`
+  }
+  if (/^234\d{10}$/.test(cleaned)) {
+    return `+${cleaned}`
+  }
+  return cleaned.startsWith('+') ? cleaned : `+${cleaned}`
+}
+
 // Submit
 const handleCreate = async () => {
   if (!state.organization_name?.trim() || state.organization_name.trim().length < 2) {
@@ -159,9 +175,8 @@ const handleCreate = async () => {
       body: {
         name: state.organization_name.trim(),
         description: state.description?.trim() || undefined,
-        phone: state.phone?.trim() || undefined,
+        phone: normalizePhone(state.phone),
         logoUrl: state.organization_logo || undefined,
-        color: state.color || undefined,
       }
     })
 
@@ -262,18 +277,18 @@ const handleCreate = async () => {
 
               <div>
                 <label class="block text-[12px] font-semibold text-muted mb-1.5">
-                  What do you mostly run? <span class="font-normal text-muted/70">(optional)</span>
+                  Description <span class="font-normal text-muted/70">— What is your organization about? (optional)</span>
                 </label>
                 <UInput
                   v-model="state.description"
                   type="text"
-                  placeholder="e.g. University football leagues"
+                  placeholder="e.g. Campus sports council organizing leagues and tournaments"
                   size="lg"
                   class="w-full"
                   :disabled="loading"
                   @keyup.enter="goToNextStep"
                 />
-                <p class="text-[10.5px] text-muted mt-1.5">Shown on your public organization page.</p>
+                <p class="text-[10.5px] text-muted mt-1.5">Brief summary shown on your public organization page.</p>
               </div>
             </div>
 
@@ -380,55 +395,13 @@ const handleCreate = async () => {
                 <UInput
                   v-model="state.phone"
                   type="tel"
-                  placeholder="+234 800 000 0000"
+                  placeholder="e.g. 09012345678 or +234 800 000 0000"
                   size="lg"
                   class="w-full"
                   icon="i-heroicons-phone"
                   :disabled="loading"
                 />
-                <p class="text-[10.5px] text-muted mt-1.5">Visible to players for support queries.</p>
-              </div>
-
-              <!-- Brand color (honest empty state) -->
-              <div>
-                <label class="block text-[12px] font-semibold text-muted mb-1.5">
-                  Brand color <span class="font-normal text-muted/70">(optional)</span>
-                </label>
-                <div class="flex items-center gap-2.5">
-                  <button
-                    type="button"
-                    class="w-10 h-10 rounded-lg border border-subtle overflow-hidden shrink-0 relative cursor-pointer"
-                    :class="!state.color && 'checker-none'"
-                    :style="state.color ? { backgroundColor: state.color } : {}"
-                    :aria-label="'Pick brand color'"
-                    @click="($refs.colorPicker as HTMLInputElement)?.click()"
-                  >
-                    <span v-if="!state.color" class="absolute inset-0 flex items-center justify-center text-muted text-lg leading-none select-none">∅</span>
-                  </button>
-                  <input
-                    ref="colorPicker"
-                    type="color"
-                    v-model="state.color"
-                    class="sr-only"
-                  />
-                  <UInput
-                    v-model="state.color"
-                    placeholder="Default (emerald)"
-                    size="lg"
-                    class="flex-1 font-mono uppercase"
-                    :disabled="loading"
-                  />
-                  <UButton
-                    v-if="state.color"
-                    size="xs"
-                    color="neutral"
-                    variant="ghost"
-                    icon="i-heroicons-x-mark"
-                    aria-label="Clear color"
-                    @click="state.color = undefined"
-                  />
-                </div>
-                <p class="text-[10.5px] text-muted mt-1.5">Accent on your public pages. Leave empty for the Parascores default.</p>
+                <p class="text-[10.5px] text-muted mt-1.5">Visible to players for support queries (accepts local 090... or international format).</p>
               </div>
 
               <!-- Live preview -->
@@ -436,11 +409,10 @@ const handleCreate = async () => {
                 <label class="block text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted mb-1.5">Preview</label>
                 <div class="border border-subtle rounded-xl p-3.5 flex items-center gap-3 bg-black/[0.02] dark:bg-white/[0.02]">
                   <div
-                    class="w-11 h-11 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
-                    :style="{ backgroundColor: (state.color || '#10b981') + '20' }"
+                    class="w-11 h-11 rounded-xl overflow-hidden shrink-0 flex items-center justify-center bg-emerald-500/10 text-emerald-500"
                   >
                     <img v-if="state.organization_logo" :src="state.organization_logo" class="w-full h-full object-cover" />
-                    <span v-else class="text-lg font-extrabold" :style="{ color: state.color || '#10b981' }">
+                    <span v-else class="text-lg font-extrabold text-emerald-500">
                       {{ (state.organization_name || 'O').charAt(0).toUpperCase() }}
                     </span>
                   </div>
@@ -533,12 +505,3 @@ const handleCreate = async () => {
     </div>
   </div>
 </template>
-
-<style scoped>
-/* Checkerboard "no color" swatch */
-.checker-none {
-  background:
-    repeating-conic-gradient(rgba(128, 128, 128, 0.18) 0% 25%, transparent 0% 50%);
-  background-size: 10px 10px;
-}
-</style>
