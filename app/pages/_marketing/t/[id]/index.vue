@@ -526,6 +526,290 @@ const knockoutRounds = computed(() => Object.keys(knockoutByRound.value).sort((a
   return 0
 }))
 
+// --- Modern Fixtures Layout (FotMob / By-Round Style) ---
+const fixturesViewMode = ref<'by-round' | 'all'>('by-round')
+
+const viewModeMenuItems = computed(() => [
+  [
+    {
+      label: 'By round',
+      icon: fixturesViewMode.value === 'by-round' ? 'i-heroicons-check' : undefined,
+      onSelect: () => {
+        fixturesViewMode.value = 'by-round'
+      },
+    },
+    {
+      label: 'All rounds',
+      icon: fixturesViewMode.value === 'all' ? 'i-heroicons-check' : undefined,
+      onSelect: () => {
+        fixturesViewMode.value = 'all'
+      },
+    },
+  ],
+])
+
+interface FixtureRoundItem {
+  key: string
+  name: string
+  stage?: string
+  fixtures: Fixture[]
+}
+
+const allRoundsList = computed<FixtureRoundItem[]>(() => {
+  const list: FixtureRoundItem[] = []
+
+  if (isHybrid.value) {
+    // 1. Group stage rounds
+    for (const rKey of sortedRounds.value) {
+      const g = fixturesByRound.value[rKey]
+      if (g && g.fixtures.length > 0) {
+        list.push({
+          key: `gs::${rKey}`,
+          name: g.name,
+          stage: FixtureStage.GROUP_STAGE,
+          fixtures: g.fixtures,
+        })
+      }
+    }
+    // 2. Knockout stage rounds
+    for (const rKey of knockoutRounds.value) {
+      const g = knockoutByRound.value[rKey]
+      if (g && g.fixtures.length > 0) {
+        list.push({
+          key: `ko::${rKey}`,
+          name: g.name,
+          stage: FixtureStage.KNOCKOUT,
+          fixtures: g.fixtures,
+        })
+      }
+    }
+  } else if (tournament.value?.type === TournamentType.KNOCKOUT) {
+    for (const rKey of sortedRounds.value) {
+      const g = fixturesByRound.value[rKey]
+      if (g && g.fixtures.length > 0) {
+        list.push({
+          key: `ko::${rKey}`,
+          name: g.name,
+          stage: FixtureStage.KNOCKOUT,
+          fixtures: g.fixtures,
+        })
+      }
+    }
+  } else {
+    for (const rKey of sortedRounds.value) {
+      const g = fixturesByRound.value[rKey]
+      if (g && g.fixtures.length > 0) {
+        list.push({
+          key: `rnd::${rKey}`,
+          name: g.name,
+          stage: FixtureStage.GROUP_STAGE,
+          fixtures: g.fixtures,
+        })
+      }
+    }
+  }
+
+  return list
+})
+
+const selectedRoundKey = ref<string>('')
+const userHasManuallySelectedRound = ref(false)
+
+watch(
+  allRoundsList,
+  (rounds) => {
+    if (!rounds.length) {
+      selectedRoundKey.value = ''
+      return
+    }
+
+    if (userHasManuallySelectedRound.value && selectedRoundKey.value && rounds.some(r => r.key === selectedRoundKey.value)) {
+      return
+    }
+
+    // Auto-detect current active round:
+    // 1. Check if any round has live matches
+    const liveRound = rounds.find(r => r.fixtures.some(f =>
+      f.status === FixtureStatus.LIVE ||
+      f.status === FixtureStatus.NORMAL_TIME_ENDED ||
+      f.status === FixtureStatus.EXTRATIME
+    ))
+    if (liveRound) {
+      selectedRoundKey.value = liveRound.key
+      return
+    }
+
+    // 2. Find first round that has uncompleted matches (SCHEDULED)
+    const activeRound = rounds.find(r => r.fixtures.some(f =>
+      f.status !== FixtureStatus.COMPLETED && f.status !== FixtureStatus.CANCELLED
+    ))
+    if (activeRound) {
+      selectedRoundKey.value = activeRound.key
+      return
+    }
+
+    // 3. Fallback to latest round or first round
+    selectedRoundKey.value = rounds[rounds.length - 1]?.key || rounds[0]!.key
+  },
+  { immediate: true },
+)
+
+const currentRoundIndex = computed(() => {
+  return allRoundsList.value.findIndex(r => r.key === selectedRoundKey.value)
+})
+
+const currentRound = computed(() => {
+  if (currentRoundIndex.value >= 0) {
+    return allRoundsList.value[currentRoundIndex.value]
+  }
+  return allRoundsList.value[0] || null
+})
+
+const isPrevRoundDisabled = computed(() => currentRoundIndex.value <= 0)
+const isNextRoundDisabled = computed(() =>
+  currentRoundIndex.value === -1 || currentRoundIndex.value >= allRoundsList.value.length - 1
+)
+
+function goToPrevRound() {
+  if (isPrevRoundDisabled.value) return
+  const prev = allRoundsList.value[currentRoundIndex.value - 1]
+  if (prev) {
+    selectedRoundKey.value = prev.key
+    userHasManuallySelectedRound.value = true
+  }
+}
+
+function goToNextRound() {
+  if (isNextRoundDisabled.value) return
+  const next = allRoundsList.value[currentRoundIndex.value + 1]
+  if (next) {
+    selectedRoundKey.value = next.key
+    userHasManuallySelectedRound.value = true
+  }
+}
+
+const roundDropdownItems = computed(() => {
+  if (allRoundsList.value.length === 0) return []
+
+  if (isHybrid.value) {
+    const gs = allRoundsList.value.filter(r => r.stage === FixtureStage.GROUP_STAGE)
+    const ko = allRoundsList.value.filter(r => r.stage === FixtureStage.KNOCKOUT)
+
+    const sections: any[] = []
+    if (gs.length > 0) {
+      sections.push(
+        gs.map(r => ({
+          label: r.name,
+          icon: selectedRoundKey.value === r.key ? 'i-heroicons-check' : undefined,
+          onSelect: () => {
+            selectedRoundKey.value = r.key
+            userHasManuallySelectedRound.value = true
+          },
+        }))
+      )
+    }
+    if (ko.length > 0) {
+      sections.push(
+        ko.map(r => ({
+          label: r.name,
+          icon: selectedRoundKey.value === r.key ? 'i-heroicons-check' : undefined,
+          onSelect: () => {
+            selectedRoundKey.value = r.key
+            userHasManuallySelectedRound.value = true
+          },
+        }))
+      )
+    }
+    return sections
+  }
+
+  return [
+    allRoundsList.value.map(r => ({
+      label: r.name,
+      icon: selectedRoundKey.value === r.key ? 'i-heroicons-check' : undefined,
+      onSelect: () => {
+        selectedRoundKey.value = r.key
+        userHasManuallySelectedRound.value = true
+      },
+    })),
+  ]
+})
+
+function formatFixtureDayHeader(dateStr?: string | null): string {
+  if (!dateStr) return 'Today'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return 'Today'
+
+  const today = new Date()
+  const todayStr = today.toDateString()
+  const dStr = d.toDateString()
+  if (dStr === todayStr) return 'Today'
+
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (dStr === yesterday.toDateString()) return 'Yesterday'
+
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  if (dStr === tomorrow.toDateString()) return 'Tomorrow'
+
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+interface FixtureDateGroup {
+  dateKey: string
+  dateLabel: string
+  fixtures: Fixture[]
+}
+
+function getRoundDateGroups(roundFixtures: Fixture[]): FixtureDateGroup[] {
+  if (!roundFixtures || roundFixtures.length === 0) return []
+
+  const hasDates = roundFixtures.some(f => f.startTime)
+  if (!hasDates) {
+    return [{
+      dateKey: 'today',
+      dateLabel: 'Today',
+      fixtures: roundFixtures,
+    }]
+  }
+
+  const map = new Map<string, { label: string; fixtures: Fixture[] }>()
+
+  for (const f of roundFixtures) {
+    let key = 'undated'
+    let label = 'Matches'
+    if (f.startTime) {
+      const d = new Date(f.startTime)
+      if (!isNaN(d.getTime())) {
+        key = d.toISOString().split('T')[0]!
+        label = formatFixtureDayHeader(f.startTime)
+      }
+    }
+    if (!map.has(key)) {
+      map.set(key, { label, fixtures: [] })
+    }
+    map.get(key)!.fixtures.push(f)
+  }
+
+  const sortedKeys = Array.from(map.keys()).sort((a, b) => {
+    if (a === 'undated') return 1
+    if (b === 'undated') return -1
+    return a.localeCompare(b)
+  })
+
+  return sortedKeys.map(k => ({
+    dateKey: k,
+    dateLabel: map.get(k)!.label,
+    fixtures: map.get(k)!.fixtures,
+  }))
+}
+
+const currentRoundDateGroups = computed(() => {
+  if (!currentRound.value) return []
+  return getRoundDateGroups(currentRound.value.fixtures)
+})
+
 // Standings grouped by group
 const standingsByGroup = computed(() => {
   const grouped: Record<string, Standing[]> = {}
@@ -1110,308 +1394,441 @@ function getTeamCards(fixture: any, isHome: boolean) {
         <div v-show="!selectedFixtureId && !selectedParticipantId" class="animate-in fade-in duration-300">
           <!-- ====== FIXTURES TAB ====== -->
           <div v-if="activeTab === 'fixtures'">
-            
-            <!-- Filters & Controls -->
-            <div v-if="tournament.twoLegsKnockout && fixtures.length > 0" class="flex justify-end mb-4">
-              <div class="flex items-center gap-1.5">
-                <UButton
-                  size="sm"
-                  :color="legFilter === 'ALL' ? 'primary' : 'neutral'"
-                  :variant="legFilter === 'ALL' ? 'solid' : 'soft'"
-                  label="All"
-                  @click="legFilter = 'ALL';"
-                />
-                <UButton
-                  size="sm"
-                  :color="legFilter === '1' ? 'primary' : 'neutral'"
-                  :variant="legFilter === '1' ? 'solid' : 'soft'"
-                  label="Leg 1"
-                  @click="legFilter = '1';"
-                />
-                <UButton
-                  size="sm"
-                  :color="legFilter === '2' ? 'primary' : 'neutral'"
-                  :variant="legFilter === '2' ? 'solid' : 'soft'"
-                  label="Leg 2"
-                  @click="legFilter = '2';"
-                />
-              </div>
-            </div>
-
             <div v-if="filteredFixtures.length === 0" class="text-center py-16">
-            <p class="text-sm text-gray-500">No fixtures available for this filter.</p>
-          </div>
-          <div v-else class="space-y-4">
-            <!-- Group Stage label for hybrid or group -->
-            <div v-if="(isHybrid || tournament?.type === 'GROUP') && groupStageFixtures.length > 0" class="flex items-center gap-2 px-1 mb-1">
-              <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-              <span class="text-xs font-bold text-gray-500">Group Stage</span>
+              <p class="text-sm text-gray-500">No fixtures available for this filter.</p>
             </div>
 
-            <div v-for="round in sortedRounds" :key="round" class="border rounded-xl overflow-hidden transition-colors bg-white shadow-sm border-gray-100 dark:bg-[#1a1a1a] dark:border-white/[0.06]">
-              <!-- Round Header -->
-              <button
-                @click="toggleRound(round)"
-                class="w-full flex items-center justify-between px-5 py-3 cursor-pointer select-none border-b"
-                :class="collapsedRounds.has(round) ? 'border-transparent' : 'border-gray-100 dark:border-white/[0.06]'"
-              >
-                <h3 class="text-sm font-bold text-gray-500">
-                  {{ fixturesByRound[round]?.name }}
-                </h3>
-                <svg
-                  class="w-4 h-4 text-gray-500 transition-transform duration-200"
-                  :class="collapsedRounds.has(round) ? '-rotate-90' : 'rotate-0'"
-                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              <!-- Fixtures -->
-              <div class="round-content" :class="{ collapsed: collapsedRounds.has(round) }">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-                  <button
-                    type="button"
-                    @click="selectedFixtureId = fixture.id"
-                    v-for="(fixture, i) in fixturesByRound[round]?.fixtures"
-                    :key="fixture.id"
-                    class="rounded-xl border overflow-hidden transition-all group flex flex-col text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50 w-full"
-                    :class="['bg-white border-gray-100 shadow-sm hover:border-emerald-500/30 dark:bg-[#1a1a1a] dark:border-white/[0.08] dark:hover:border-emerald-500/50']"
+            <!-- Modern Fixtures Card Layout (FotMob Style) -->
+            <div v-else class="max-w-3xl mx-auto">
+              <!-- Outer Card -->
+              <div class="bg-white dark:bg-[#181818] border border-gray-200/80 dark:border-white/[0.06] rounded-2xl p-4 sm:p-5 shadow-sm">
+                <!-- Top Filter / Controls Bar -->
+                <div class="flex items-center justify-between gap-3 mb-2">
+                  <!-- Left: "By round" dropdown -->
+                  <UDropdownMenu
+                    :items="viewModeMenuItems"
+                    :content="{ align: 'start', side: 'bottom', sideOffset: 6 }"
+                    :ui="{ content: 'min-w-[140px]' }"
                   >
-                    <!-- Header -->
-                    <div class="flex items-center justify-between px-3.5 py-2 text-xs font-bold border-b transition-colors bg-gray-50 border-gray-100 text-gray-600 dark:bg-[#1a1a1a] dark:border-white/[0.06] dark:text-gray-500">
-                      <span>
-                        {{ fixture.venue ? `${fixture.group?.name || getRoundName(fixture)} · ${fixture.venue}` : (fixture.group?.name || getRoundName(fixture)) }}
-                      </span>
-                      <div class="flex items-center gap-2">
-                        <span v-if="getLivestreamInfo(fixture)" class="flex items-center gap-1 text-[10px] font-bold text-rose-500 uppercase">
-                          <UIcon :name="getLivestreamInfo(fixture)!.icon" class="w-3 h-3" :class="getLivestreamInfo(fixture)!.color" />
-                          <span>Live</span>
-                        </span>
-                        <span v-if="fixture.status === FixtureStatus.SCHEDULED" class="font-medium text-gray-400">
-                          {{ fixture.startTime ? formatDateTimeShort(fixture.startTime) : 'TBD' }}
-                        </span>
-                        <div v-else-if="fixture.status === FixtureStatus.CANCELLED" class="flex items-center gap-2">
-                          <span class="text-red-400">CANC</span>
-                        </div>
-                        <span v-else-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME" class="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
-                          <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
-                          {{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}
-                        </span>
-                        <span v-else-if="fixture.status === FixtureStatus.COMPLETED" class="text-[10px] font-bold text-emerald-500 uppercase">
-                          FT
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <!-- Body -->
-                    <div class="flex items-center justify-between p-3.5 flex-1 gap-4">
-                      <!-- Teams -->
-                      <div class="flex flex-col gap-3 min-w-0 flex-1">
-                        <!-- Home -->
-                        <div class="flex items-center gap-2.5 min-w-0">
-                          <div class="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0">
-                            <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
-                            <span v-else class="flex items-center justify-center w-full h-full text-[9px] md:text-[10px] font-bold text-gray-500 uppercase">
-                              {{ (fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD').charAt(0) }}
-                            </span>
-                          </div>
-                          <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, true)">
-                            {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
-                          </span>
-                          <div v-if="getTeamCards(fixture, true).red > 0" class="w-3 h-4 bg-red-500 rounded-[2px] flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0">
-                            {{ getTeamCards(fixture, true).red }}
-                          </div>
-                          <div v-if="getTeamCards(fixture, true).yellow > 0" class="w-3 h-4 bg-yellow-400 rounded-[2px] flex items-center justify-center text-[10px] font-bold text-black shadow-sm shrink-0">
-                            {{ getTeamCards(fixture, true).yellow }}
-                          </div>
-                          <span v-if="flashingFixtures.get(fixture.id) === 'home'" class="goal-text shrink-0 ml-1">GOAL!!!</span>
-                        </div>
-                        
-                        <!-- Away -->
-                        <div class="flex items-center gap-2.5 min-w-0">
-                          <div class="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0">
-                            <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
-                            <span v-else class="flex items-center justify-center w-full h-full text-[9px] md:text-[10px] font-bold text-gray-500 uppercase">
-                              {{ (fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD').charAt(0) }}
-                            </span>
-                          </div>
-                          <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, false)">
-                            {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
-                          </span>
-                          <div v-if="getTeamCards(fixture, false).red > 0" class="w-3 h-4 bg-red-500 rounded-[2px] flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0">
-                            {{ getTeamCards(fixture, false).red }}
-                          </div>
-                          <div v-if="getTeamCards(fixture, false).yellow > 0" class="w-3 h-4 bg-yellow-400 rounded-[2px] flex items-center justify-center text-[10px] font-bold text-black shadow-sm shrink-0">
-                            {{ getTeamCards(fixture, false).yellow }}
-                          </div>
-                          <span v-if="flashingFixtures.get(fixture.id) === 'away'" class="goal-text shrink-0 ml-1">GOAL!!!</span>
-                        </div>
-                      </div>
-
-                      <!-- Score/Time -->
-                      <div class="flex flex-col items-center justify-center pl-4 border-l min-w-[3.5rem] border-gray-100 dark:border-white/[0.06]">
-                        <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.EXTRATIME || fixture.status === FixtureStatus.COMPLETED">
-                          <div class="flex flex-col items-center gap-1">
-                            <div class="flex items-baseline gap-1">
-                               <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true)">{{ fixture.homeScore ?? 0 }}</span>
-                               <span v-if="fixture.homePenaltyScore != null" class="text-[10px] font-semibold text-gray-400">({{ fixture.homePenaltyScore }})</span>
-                            </div>
-                            <span class="text-[9px] font-bold text-gray-500/50 uppercase">-</span>
-                            <div class="flex items-baseline gap-1">
-                               <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, false)">{{ fixture.awayScore ?? 0 }}</span>
-                               <span v-if="fixture.awayPenaltyScore != null" class="text-[10px] font-semibold text-gray-400">({{ fixture.awayPenaltyScore }})</span>
-                            </div>
-                          </div>
-                        </template>
-                        <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
-                           <span class="text-[11px] font-bold text-red-400">CANC</span>
-                        </template>
-                        <template v-else>
-                          <div class="flex flex-col items-center gap-1 opacity-20">
-                            <span class="text-[14px] leading-none transition-colors font-bold">-</span>
-                            <span class="text-[9px] font-bold uppercase">&nbsp;</span>
-                            <span class="text-[14px] leading-none transition-colors font-bold">-</span>
-                          </div>
-                        </template>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Knockout fixtures for hybrid -->
-            <template v-if="isHybrid && knockoutFixtures.length > 0">
-              <div class="flex items-center gap-2 px-1 mt-3 mb-1">
-                <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-                <span class="text-xs font-bold text-gray-500">Knockout Stage</span>
-              </div>
-
-              <div v-for="round in knockoutRounds" :key="'ko-' + round" class="border rounded-xl overflow-hidden transition-colors bg-white shadow-sm border-gray-100 dark:bg-[#1a1a1a] dark:border-white/[0.06]">
-                <button
-                  @click="toggleRound('ko::' + round)"
-                  class="w-full flex items-center justify-between px-5 py-3 cursor-pointer select-none border-b"
-                  :class="collapsedRounds.has('ko::' + round) ? 'border-transparent' : 'border-gray-100 dark:border-white/[0.06]'"
-                >
-                  <h3 class="text-sm font-bold text-gray-500">
-                    {{ knockoutByRound[round]?.name }}
-                  </h3>
-                  <svg
-                    class="w-4 h-4 text-gray-500 transition-transform duration-200"
-                    :class="collapsedRounds.has('ko::' + round) ? '-rotate-90' : 'rotate-0'"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-
-                <div class="round-content" :class="{ collapsed: collapsedRounds.has('ko::' + round) }">
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                     <button
                       type="button"
-                      @click="selectedFixtureId = fixture.id"
-                      v-for="(fixture, i) in knockoutByRound[round]?.fixtures"
-                      :key="fixture.id"
-                      class="rounded-xl border overflow-hidden transition-all group flex flex-col text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50 w-full"
-                      :class="['bg-white border-gray-100 shadow-sm hover:border-emerald-500/30 dark:bg-[#1a1a1a] dark:border-white/[0.08] dark:hover:border-emerald-500/50']"
+                      class="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-gray-800 dark:text-neutral-200 hover:text-black dark:hover:text-white px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-white/[0.06] dark:hover:bg-white/10 transition-colors cursor-pointer"
                     >
-                      <!-- Header -->
-                      <div class="flex items-center justify-between px-3.5 py-2 text-xs font-bold border-b transition-colors bg-gray-50 border-gray-100 text-gray-600 dark:bg-[#1a1a1a] dark:border-white/[0.06] dark:text-gray-500">
-                        <span>
-                          {{ fixture.venue ? `${fixture.group?.name || getRoundName(fixture)} · ${fixture.venue}` : (fixture.group?.name || getRoundName(fixture)) }}
-                        </span>
-                        <div class="flex items-center gap-2">
-                          <span v-if="getLivestreamInfo(fixture)" class="flex items-center gap-1 text-[10px] font-bold text-rose-500 uppercase">
-                            <UIcon :name="getLivestreamInfo(fixture)!.icon" class="w-3 h-3" :class="getLivestreamInfo(fixture)!.color" />
-                            <span>Live</span>
-                          </span>
-                          <span v-if="fixture.status === FixtureStatus.SCHEDULED" class="font-medium text-gray-400">
-                            {{ fixture.startTime ? formatDateTimeShort(fixture.startTime) : 'TBD' }}
-                          </span>
-                          <div v-else-if="fixture.status === FixtureStatus.CANCELLED" class="flex items-center gap-2">
-                            <span class="text-red-400">CANC</span>
-                          </div>
-                          <span v-else-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME" class="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
-                            {{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}
-                          </span>
-                          <span v-else-if="fixture.status === FixtureStatus.COMPLETED" class="text-[10px] font-bold text-emerald-500 uppercase">
-                            FT
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <!-- Body -->
-                      <div class="flex items-center justify-between p-3.5 flex-1 gap-4">
-                        <!-- Teams -->
-                        <div class="flex flex-col gap-3 min-w-0 flex-1">
-                          <!-- Home -->
-                          <div class="flex items-center gap-2.5 min-w-0">
-                            <div class="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0">
-                              <img v-if="fixture.homeTeam?.logoUrl" :src="fixture.homeTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
-                              <span v-else class="flex items-center justify-center w-full h-full text-[9px] md:text-[10px] font-bold text-gray-500 uppercase">
-                                {{ (fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD').charAt(0) }}
-                              </span>
-                            </div>
-                            <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, true)">
-                              {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
-                            </span>
-                            <span v-if="flashingFixtures.get(fixture.id) === 'home'" class="goal-text shrink-0">GOAL!!!</span>
-                          </div>
-                          
-                          <!-- Away -->
-                          <div class="flex items-center gap-2.5 min-w-0">
-                            <div class="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0">
-                              <img v-if="fixture.awayTeam?.logoUrl" :src="fixture.awayTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
-                              <span v-else class="flex items-center justify-center w-full h-full text-[9px] md:text-[10px] font-bold text-gray-500 uppercase">
-                                {{ (fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD').charAt(0) }}
-                              </span>
-                            </div>
-                            <span class="text-[13px] truncate transition-colors" :class="getTeamClass(fixture, false)">
-                              {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
-                            </span>
-                            <span v-if="flashingFixtures.get(fixture.id) === 'away'" class="goal-text shrink-0">GOAL!!!</span>
-                          </div>
-                        </div>
+                      <span>{{ fixturesViewMode === 'by-round' ? 'By round' : 'All rounds' }}</span>
+                      <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 text-gray-500 dark:text-neutral-400" />
+                    </button>
+                  </UDropdownMenu>
 
-                        <!-- Score/Time -->
-                        <div class="flex flex-col items-center justify-center pl-4 border-l min-w-[3.5rem] border-gray-100 dark:border-white/[0.06]">
-                        <template v-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME || fixture.status === FixtureStatus.COMPLETED">
-                            <div class="flex flex-col items-center gap-1">
-                              <div class="flex items-baseline gap-1">
-                                 <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, true)">{{ fixture.homeScore ?? 0 }}</span>
-                                 <span v-if="fixture.homePenaltyScore != null" class="text-[10px] font-semibold text-gray-400">({{ fixture.homePenaltyScore }})</span>
-                              </div>
-                              <span class="text-[9px] font-bold text-gray-500/50 uppercase">-</span>
-                              <div class="flex items-baseline gap-1">
-                                 <span class="text-[14px] leading-none transition-colors" :class="getScoreClass(fixture, false)">{{ fixture.awayScore ?? 0 }}</span>
-                                 <span v-if="fixture.awayPenaltyScore != null" class="text-[10px] font-semibold text-gray-400">({{ fixture.awayPenaltyScore }})</span>
-                              </div>
-                              <div v-if="getMatchAggregate(fixture)" class="text-[9px] sm:text-[10px] font-bold text-emerald-500/80 mt-0.5 uppercase tracking-wider whitespace-nowrap">
-                                {{ getMatchAggregate(fixture) }}
-                              </div>
-                            </div>
-                          </template>
-                          <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
-                             <span class="text-[11px] font-bold text-red-400">CANC</span>
-                          </template>
-                          <template v-else>
-                            <div class="flex flex-col items-center gap-1 opacity-20">
-                              <span class="text-[14px] leading-none transition-colors font-bold">-</span>
-                              <span class="text-[9px] font-bold uppercase">&nbsp;</span>
-                              <span class="text-[14px] leading-none transition-colors font-bold">-</span>
-                            </div>
-                          </template>
-                        </div>
-                      </div>
+                  <!-- Right: Two Legs Filter (if applicable) -->
+                  <div v-if="tournament.twoLegsKnockout && fixtures.length > 0" class="flex items-center gap-1">
+                    <button
+                      type="button"
+                      @click="legFilter = 'ALL'"
+                      class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                      :class="legFilter === 'ALL'
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-white/10'"
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      @click="legFilter = '1'"
+                      class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                      :class="legFilter === '1'
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-white/10'"
+                    >
+                      Leg 1
+                    </button>
+                    <button
+                      type="button"
+                      @click="legFilter = '2'"
+                      class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                      :class="legFilter === '2'
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-white/10'"
+                    >
+                      Leg 2
                     </button>
                   </div>
                 </div>
+
+                <!-- Stepper: < Round X v > (Only in 'by-round' mode) -->
+                <div v-if="fixturesViewMode === 'by-round'" class="flex items-center justify-between py-2 sm:py-3 mb-1">
+                  <!-- Prev Round Button -->
+                  <button
+                    type="button"
+                    @click="goToPrevRound"
+                    :disabled="isPrevRoundDisabled"
+                    class="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200 dark:bg-[#252525] dark:hover:bg-[#323232] text-gray-700 dark:text-gray-300 disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer shrink-0"
+                    aria-label="Previous round"
+                  >
+                    <UIcon name="i-heroicons-chevron-left" class="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+
+                  <!-- Round Dropdown Trigger -->
+                  <UDropdownMenu
+                    v-if="roundDropdownItems.length > 0"
+                    :items="roundDropdownItems"
+                    :content="{ align: 'center', side: 'bottom', sideOffset: 8 }"
+                    :ui="{ content: 'max-h-80 overflow-y-auto min-w-[200px]' }"
+                  >
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1.5 text-sm sm:text-base font-bold text-gray-900 dark:text-white hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors cursor-pointer select-none"
+                    >
+                      <span>{{ currentRound?.name || 'Round' }}</span>
+                      <UIcon name="i-heroicons-chevron-down" class="w-4 h-4 text-gray-400" />
+                    </button>
+                  </UDropdownMenu>
+                  <span
+                    v-else
+                    class="text-sm sm:text-base font-bold text-gray-900 dark:text-white"
+                  >
+                    {{ currentRound?.name || 'Round' }}
+                  </span>
+
+                  <!-- Next Round Button -->
+                  <button
+                    type="button"
+                    @click="goToNextRound"
+                    :disabled="isNextRoundDisabled"
+                    class="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200 dark:bg-[#252525] dark:hover:bg-[#323232] text-gray-700 dark:text-gray-300 disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer shrink-0"
+                    aria-label="Next round"
+                  >
+                    <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                </div>
+
+                <!-- Matches Section: Single Round View -->
+                <div v-if="fixturesViewMode === 'by-round'" class="space-y-4">
+                  <div
+                    v-for="group in currentRoundDateGroups"
+                    :key="group.dateKey"
+                    class="space-y-1"
+                  >
+                    <!-- Date Pill / Banner -->
+                    <div class="bg-gray-100 dark:bg-[#242424] text-xs sm:text-sm font-bold text-gray-900 dark:text-white px-3.5 py-2.5 rounded-xl flex items-center justify-between">
+                      <span>{{ group.dateLabel }}</span>
+                    </div>
+
+                    <!-- Fixtures in Date Group -->
+                    <div class="divide-y divide-gray-100 dark:divide-white/[0.04]">
+                      <button
+                        type="button"
+                        v-for="fixture in group.fixtures"
+                        :key="fixture.id"
+                        @click="selectedFixtureId = fixture.id"
+                        class="w-full flex items-center py-3 px-2 sm:px-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors cursor-pointer text-left focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+                      >
+                        <!-- Status Pill on Left -->
+                        <div class="w-10 sm:w-12 shrink-0 flex items-center justify-start">
+                          <!-- FT (Completed) -->
+                          <span
+                            v-if="fixture.status === FixtureStatus.COMPLETED"
+                            class="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-gray-100 dark:bg-[#262626] text-gray-500 dark:text-neutral-400"
+                          >
+                            FT
+                          </span>
+                          <!-- Live -->
+                          <span
+                            v-else-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME"
+                            class="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-red-500/15 text-red-500 dark:text-red-400 flex items-center gap-1"
+                          >
+                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                            <span>{{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}</span>
+                          </span>
+                          <!-- Cancelled -->
+                          <span
+                            v-else-if="fixture.status === FixtureStatus.CANCELLED"
+                            class="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-red-500/15 text-red-400"
+                          >
+                            CANC
+                          </span>
+                          <!-- Scheduled / Time -->
+                          <span
+                            v-else
+                            class="text-[11px] font-medium text-gray-400 dark:text-neutral-500"
+                          >
+                            {{ fixture.startTime ? formatTime24(fixture.startTime) : 'TBD' }}
+                          </span>
+                        </div>
+
+                        <!-- Matchup Grid: Home (Right) | Score (Center) | Away (Left) -->
+                        <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                          <!-- Home Team -->
+                          <div class="flex items-center justify-end gap-2 sm:gap-2.5 min-w-0">
+                            <span
+                              v-if="flashingFixtures.get(fixture.id) === 'home'"
+                              class="goal-text shrink-0 text-xs font-bold text-emerald-500 mr-1"
+                            >
+                              GOAL!
+                            </span>
+                            <span
+                              class="text-xs sm:text-[14px] font-semibold truncate text-right transition-colors"
+                              :class="getTeamClass(fixture, true)"
+                            >
+                              {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
+                            </span>
+                            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0 p-0.5 flex items-center justify-center">
+                              <img
+                                v-if="fixture.homeTeam?.logoUrl"
+                                :src="fixture.homeTeam.logoUrl"
+                                class="w-full h-full object-contain"
+                              />
+                              <span v-else class="text-[9px] font-bold text-gray-500 uppercase">
+                                {{ (fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD').charAt(0) }}
+                              </span>
+                            </div>
+                            <!-- Red / Yellow card indicator for home team -->
+                            <div
+                              v-if="getTeamCards(fixture, true).red > 0"
+                              class="w-2.5 h-3.5 bg-red-500 rounded-[1px] shrink-0"
+                              title="Red card"
+                            />
+                            <div
+                              v-if="getTeamCards(fixture, true).yellow > 0"
+                              class="w-2.5 h-3.5 bg-yellow-400 rounded-[1px] shrink-0"
+                              title="Yellow card"
+                            />
+                          </div>
+
+                          <!-- Score / Center -->
+                          <div class="flex flex-col items-center justify-center px-1.5 sm:px-3 min-w-[50px] sm:min-w-[62px] shrink-0 text-center">
+                            <!-- Completed or Live Score -->
+                            <template v-if="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME">
+                              <div class="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-[15px] font-bold tabular-nums tracking-wide text-gray-900 dark:text-white">
+                                <span :class="getScoreClass(fixture, true)">{{ fixture.homeScore ?? 0 }}</span>
+                                <span class="text-gray-400 dark:text-neutral-500 text-xs font-normal">-</span>
+                                <span :class="getScoreClass(fixture, false)">{{ fixture.awayScore ?? 0 }}</span>
+                              </div>
+                              <span
+                                v-if="fixture.homePenaltyScore != null && fixture.awayPenaltyScore != null"
+                                class="text-[9px] sm:text-[10px] font-medium text-gray-400 dark:text-neutral-500 mt-0.5"
+                              >
+                                ({{ fixture.homePenaltyScore }} - {{ fixture.awayPenaltyScore }} pen)
+                              </span>
+                              <span
+                                v-if="getMatchAggregate(fixture)"
+                                class="text-[9px] font-bold text-emerald-500 uppercase tracking-wider mt-0.5"
+                              >
+                                {{ getMatchAggregate(fixture) }}
+                              </span>
+                            </template>
+                            <!-- Cancelled -->
+                            <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
+                              <span class="text-xs font-bold text-red-500">CANC</span>
+                            </template>
+                            <!-- Scheduled -->
+                            <template v-else>
+                              <span class="text-xs font-semibold text-gray-400 dark:text-neutral-500 tracking-wider">vs</span>
+                            </template>
+                          </div>
+
+                          <!-- Away Team -->
+                          <div class="flex items-center justify-start gap-2 sm:gap-2.5 min-w-0">
+                            <!-- Red / Yellow card indicator for away team -->
+                            <div
+                              v-if="getTeamCards(fixture, false).red > 0"
+                              class="w-2.5 h-3.5 bg-red-500 rounded-[1px] shrink-0"
+                              title="Red card"
+                            />
+                            <div
+                              v-if="getTeamCards(fixture, false).yellow > 0"
+                              class="w-2.5 h-3.5 bg-yellow-400 rounded-[1px] shrink-0"
+                              title="Yellow card"
+                            />
+                            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0 p-0.5 flex items-center justify-center">
+                              <img
+                                v-if="fixture.awayTeam?.logoUrl"
+                                :src="fixture.awayTeam.logoUrl"
+                                class="w-full h-full object-contain"
+                              />
+                              <span v-else class="text-[9px] font-bold text-gray-500 uppercase">
+                                {{ (fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD').charAt(0) }}
+                              </span>
+                            </div>
+                            <span
+                              class="text-xs sm:text-[14px] font-semibold truncate text-left transition-colors"
+                              :class="getTeamClass(fixture, false)"
+                            >
+                              {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
+                            </span>
+                            <span
+                              v-if="flashingFixtures.get(fixture.id) === 'away'"
+                              class="goal-text shrink-0 text-xs font-bold text-emerald-500 ml-1"
+                            >
+                              GOAL!
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Matches Section: All Rounds View -->
+                <div v-else class="space-y-6">
+                  <div
+                    v-for="roundItem in allRoundsList"
+                    :key="roundItem.key"
+                    class="space-y-3"
+                  >
+                    <!-- Round Header Banner -->
+                    <div class="bg-gray-100 dark:bg-[#242424] text-xs sm:text-sm font-bold text-gray-900 dark:text-white px-3.5 py-2.5 rounded-xl flex items-center justify-between">
+                      <span>{{ roundItem.name }}</span>
+                      <span class="text-[11px] font-medium text-gray-500 dark:text-neutral-400">{{ roundItem.fixtures.length }} {{ roundItem.fixtures.length === 1 ? 'match' : 'matches' }}</span>
+                    </div>
+
+                    <!-- Fixtures List -->
+                    <div class="divide-y divide-gray-100 dark:divide-white/[0.04]">
+                      <button
+                        type="button"
+                        v-for="fixture in roundItem.fixtures"
+                        :key="fixture.id"
+                        @click="selectedFixtureId = fixture.id"
+                        class="w-full flex items-center py-3 px-2 sm:px-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors cursor-pointer text-left focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+                      >
+                        <!-- Status Pill on Left -->
+                        <div class="w-10 sm:w-12 shrink-0 flex items-center justify-start">
+                          <span
+                            v-if="fixture.status === FixtureStatus.COMPLETED"
+                            class="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-gray-100 dark:bg-[#262626] text-gray-500 dark:text-neutral-400"
+                          >
+                            FT
+                          </span>
+                          <span
+                            v-else-if="fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME"
+                            class="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-red-500/15 text-red-500 dark:text-red-400 flex items-center gap-1"
+                          >
+                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                            <span>{{ matchTimer.formatMinuteLabel(fixture) || 'LIVE' }}</span>
+                          </span>
+                          <span
+                            v-else-if="fixture.status === FixtureStatus.CANCELLED"
+                            class="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-red-500/15 text-red-400"
+                          >
+                            CANC
+                          </span>
+                          <span
+                            v-else
+                            class="text-[11px] font-medium text-gray-400 dark:text-neutral-500"
+                          >
+                            {{ fixture.startTime ? formatTime24(fixture.startTime) : 'TBD' }}
+                          </span>
+                        </div>
+
+                        <!-- Matchup Grid -->
+                        <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                          <!-- Home Team -->
+                          <div class="flex items-center justify-end gap-2 sm:gap-2.5 min-w-0">
+                            <span
+                              v-if="flashingFixtures.get(fixture.id) === 'home'"
+                              class="goal-text shrink-0 text-xs font-bold text-emerald-500 mr-1"
+                            >
+                              GOAL!
+                            </span>
+                            <span
+                              class="text-xs sm:text-[14px] font-semibold truncate text-right transition-colors"
+                              :class="getTeamClass(fixture, true)"
+                            >
+                              {{ fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD' }}
+                            </span>
+                            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0 p-0.5 flex items-center justify-center">
+                              <img
+                                v-if="fixture.homeTeam?.logoUrl"
+                                :src="fixture.homeTeam.logoUrl"
+                                class="w-full h-full object-contain"
+                              />
+                              <span v-else class="text-[9px] font-bold text-gray-500 uppercase">
+                                {{ (fixture.homeTeam?.customShortName || fixture.homeTeam?.customName || fixture.homeTeamPlaceholder || 'TBD').charAt(0) }}
+                              </span>
+                            </div>
+                            <div
+                              v-if="getTeamCards(fixture, true).red > 0"
+                              class="w-2.5 h-3.5 bg-red-500 rounded-[1px] shrink-0"
+                              title="Red card"
+                            />
+                            <div
+                              v-if="getTeamCards(fixture, true).yellow > 0"
+                              class="w-2.5 h-3.5 bg-yellow-400 rounded-[1px] shrink-0"
+                              title="Yellow card"
+                            />
+                          </div>
+
+                          <!-- Score -->
+                          <div class="flex flex-col items-center justify-center px-1.5 sm:px-3 min-w-[50px] sm:min-w-[62px] shrink-0 text-center">
+                            <template v-if="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE || fixture.status === FixtureStatus.NORMAL_TIME_ENDED || fixture.status === FixtureStatus.EXTRATIME">
+                              <div class="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-[15px] font-bold tabular-nums tracking-wide text-gray-900 dark:text-white">
+                                <span :class="getScoreClass(fixture, true)">{{ fixture.homeScore ?? 0 }}</span>
+                                <span class="text-gray-400 dark:text-neutral-500 text-xs font-normal">-</span>
+                                <span :class="getScoreClass(fixture, false)">{{ fixture.awayScore ?? 0 }}</span>
+                              </div>
+                              <span
+                                v-if="fixture.homePenaltyScore != null && fixture.awayPenaltyScore != null"
+                                class="text-[9px] sm:text-[10px] font-medium text-gray-400 dark:text-neutral-500 mt-0.5"
+                              >
+                                ({{ fixture.homePenaltyScore }} - {{ fixture.awayPenaltyScore }} pen)
+                              </span>
+                              <span
+                                v-if="getMatchAggregate(fixture)"
+                                class="text-[9px] font-bold text-emerald-500 uppercase tracking-wider mt-0.5"
+                              >
+                                {{ getMatchAggregate(fixture) }}
+                              </span>
+                            </template>
+                            <template v-else-if="fixture.status === FixtureStatus.CANCELLED">
+                              <span class="text-xs font-bold text-red-500">CANC</span>
+                            </template>
+                            <template v-else>
+                              <span class="text-xs font-semibold text-gray-400 dark:text-neutral-500 tracking-wider">vs</span>
+                            </template>
+                          </div>
+
+                          <!-- Away Team -->
+                          <div class="flex items-center justify-start gap-2 sm:gap-2.5 min-w-0">
+                            <div
+                              v-if="getTeamCards(fixture, false).red > 0"
+                              class="w-2.5 h-3.5 bg-red-500 rounded-[1px] shrink-0"
+                              title="Red card"
+                            />
+                            <div
+                              v-if="getTeamCards(fixture, false).yellow > 0"
+                              class="w-2.5 h-3.5 bg-yellow-400 rounded-[1px] shrink-0"
+                              title="Yellow card"
+                            />
+                            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-0 p-0.5 flex items-center justify-center">
+                              <img
+                                v-if="fixture.awayTeam?.logoUrl"
+                                :src="fixture.awayTeam.logoUrl"
+                                class="w-full h-full object-contain"
+                              />
+                              <span v-else class="text-[9px] font-bold text-gray-500 uppercase">
+                                {{ (fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD').charAt(0) }}
+                              </span>
+                            </div>
+                            <span
+                              class="text-xs sm:text-[14px] font-semibold truncate text-left transition-colors"
+                              :class="getTeamClass(fixture, false)"
+                            >
+                              {{ fixture.awayTeam?.customShortName || fixture.awayTeam?.customName || fixture.awayTeamPlaceholder || 'TBD' }}
+                            </span>
+                            <span
+                              v-if="flashingFixtures.get(fixture.id) === 'away'"
+                              class="goal-text shrink-0 text-xs font-bold text-emerald-500 ml-1"
+                            >
+                              GOAL!
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </template>
+            </div>
           </div>
-        </div>
 
         <!-- ====== STANDINGS TAB ====== -->
         <div v-else-if="activeTab === 'standings'">
