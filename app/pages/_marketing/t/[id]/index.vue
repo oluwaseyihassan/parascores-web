@@ -230,18 +230,45 @@ const showBracketTab = computed(() => {
   return tournament.value.type === TournamentType.KNOCKOUT || tournament.value.type === TournamentType.HYBRID
 })
 
-const seasonLabel = computed(() => {
-  if (!tournament.value?.start_date) {
-    return new Date().getFullYear().toString()
-  }
-  const startYear = new Date(tournament.value.start_date).getFullYear()
-  if (tournament.value.end_date) {
-    const endYear = new Date(tournament.value.end_date).getFullYear()
+function getSeasonFallbackYear(t: { start_date?: string | null; end_date?: string | null }): string {
+  if (!t.start_date) return new Date().getFullYear().toString()
+  const startYear = new Date(t.start_date).getFullYear()
+  if (t.end_date) {
+    const endYear = new Date(t.end_date).getFullYear()
     if (endYear > startYear) {
       return `${startYear}/${endYear}`
     }
   }
   return `${startYear}`
+}
+
+const seasonLabel = computed(() => {
+  if (tournament.value?.seasonName) {
+    return tournament.value.seasonName
+  }
+  return getSeasonFallbackYear(tournament.value || {})
+})
+
+const seasonMenuItems = computed(() => {
+  const list = tournament.value?.seasons || []
+  if (list.length <= 1) return []
+
+  return [
+    list.map((s) => {
+      const isCurrent = s.id === tournament.value?.id
+      const label = s.seasonName || getSeasonFallbackYear(s)
+      return {
+        label,
+        icon: isCurrent ? 'i-heroicons-check' : undefined,
+        active: isCurrent,
+        onSelect: () => {
+          if (!isCurrent) {
+            navigateTo(toTournament(s))
+          }
+        },
+      }
+    }),
+  ]
 })
 
 const shareTournament = async () => {
@@ -777,9 +804,28 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
             <!-- Right: Season Pill & Follow Button -->
             <div class="flex items-center gap-2 sm:gap-2.5">
-              <div class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-100 dark:bg-neutral-800/90 border border-gray-200 dark:border-neutral-700/70 text-xs font-semibold text-gray-800 dark:text-white select-none cursor-default">
+              <!-- Season Pill / Dropdown Menu -->
+              <UDropdownMenu
+                v-if="seasonMenuItems.length > 0"
+                :items="seasonMenuItems"
+                :content="{ align: 'end', side: 'bottom', sideOffset: 6 }"
+                :ui="{ content: 'min-w-[150px]' }"
+              >
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800/90 dark:hover:bg-neutral-700 border border-gray-200 dark:border-neutral-700/70 text-xs font-semibold text-gray-800 dark:text-white transition-colors cursor-pointer shadow-sm"
+                  title="Switch season"
+                >
+                  <span>{{ seasonLabel }}</span>
+                  <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 text-gray-500 dark:text-neutral-400" />
+                </button>
+              </UDropdownMenu>
+
+              <div
+                v-else
+                class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-100 dark:bg-neutral-800/90 border border-gray-200 dark:border-neutral-700/70 text-xs font-semibold text-gray-800 dark:text-white select-none cursor-default"
+              >
                 <span>{{ seasonLabel }}</span>
-                <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 text-gray-500 dark:text-neutral-400" />
               </div>
 
               <button
