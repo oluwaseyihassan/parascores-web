@@ -35,10 +35,11 @@ const playerStats = ref<any>(null)
 const playerStatsLoading = ref(false)
 
 const loadPlayerStats = async () => {
-  if (!tournamentId) return
+  const currentId = tournament.value?.id || targetIdentifier.value
+  if (!currentId) return
   playerStatsLoading.value = true
   try {
-    const res = await $publicApi<{success: boolean, data: any}>(`/tournaments/${tournamentId}/player-stats`)
+    const res = await $publicApi<{success: boolean, data: any}>(`/tournaments/${currentId}/player-stats`)
     if (res.data) {
       playerStats.value = res.data
     }
@@ -133,8 +134,11 @@ onBeforeUnmount(() => {
 // are present in the initial HTML for social media scrapers.
 const runtimeConfig = useRuntimeConfig()
 
+// Target identifier supports ?season= query param or route param ID/slug
+const targetIdentifier = computed(() => (route.query.season as string) || (route.params.id as string))
+
 const { data: overviewData, status, error: fetchError, refresh: refreshOverview } = await useAsyncData(
-  `tournament-overview-${tournamentId}`,
+  `tournament-overview-${targetIdentifier.value}`,
   () => $fetch<{
     success: boolean;
     data: {
@@ -146,16 +150,23 @@ const { data: overviewData, status, error: fetchError, refresh: refreshOverview 
       socials: Social[];
       venues: Venue[];
     }
-  }>(`/tournaments/${tournamentId}/overview`, {
+  }>(`/tournaments/${targetIdentifier.value}/overview`, {
     baseURL: runtimeConfig.public.API_BASE_URL as string,
   }),
-  { lazy: false }
+  {
+    watch: [targetIdentifier],
+    lazy: false,
+  }
 )
 
-// Backend returns the follower count as `_count.followers`; normalize it to `followerCount`.
+// Normalize follower count: if linked to a competition, use perpetual competition followers
 function normalizeFollowerCount(t: Tournament | null | undefined) {
-  if (t && t.followerCount == null && t._count?.followers != null) {
-    t.followerCount = t._count.followers
+  if (t) {
+    if (t.competition?._count?.followers != null) {
+      t.followerCount = t.competition._count.followers
+    } else if (t.followerCount == null && t._count?.followers != null) {
+      t.followerCount = t._count.followers
+    }
   }
 }
 
@@ -213,8 +224,17 @@ useSeoMeta({
 
 useHead({
   link: [
-    { rel: 'canonical', href: computed(() => `https://www.parascores.com/t/${tournamentId}`) }
-  ]
+    {
+      rel: 'canonical',
+      href: computed(() => {
+        const compSlug = tournament.value?.competition?.slug
+        if (compSlug) {
+          return `https://www.parascores.com/t/${compSlug}`
+        }
+        return `https://www.parascores.com/t/${tournamentId}`
+      }),
+    },
+  ],
 })
 
 // Computed
@@ -249,6 +269,20 @@ const seasonLabel = computed(() => {
   return getSeasonFallbackYear(tournament.value || {})
 })
 
+function switchSeason(s: { id: string; customName?: string | null }) {
+  const compSlug = tournament.value?.competition?.slug
+  if (compSlug && route.params.id === compSlug) {
+    router.push({
+      query: {
+        ...route.query,
+        season: s.customName || s.id,
+      },
+    })
+  } else {
+    navigateTo(toTournament(s))
+  }
+}
+
 const seasonMenuItems = computed(() => {
   const list = tournament.value?.seasons || []
   if (list.length <= 1) return []
@@ -256,14 +290,15 @@ const seasonMenuItems = computed(() => {
   return [
     list.map((s) => {
       const isCurrent = s.id === tournament.value?.id
-      const label = s.seasonName || getSeasonFallbackYear(s)
+      const baseLabel = s.seasonName || getSeasonFallbackYear(s)
+      const label = s.isCurrentSeason ? `${baseLabel} (Current)` : baseLabel
       return {
         label,
         icon: isCurrent ? 'i-heroicons-check' : undefined,
         active: isCurrent,
         onSelect: () => {
           if (!isCurrent) {
-            navigateTo(toTournament(s))
+            switchSeason(s)
           }
         },
       }
@@ -336,15 +371,18 @@ function notificationsEnabled(): boolean {
 }
 
 // Initialize follow state once auth is ready
-watch(() => authStore.isAuthenticated, async (isAuth) => {
-  if (isAuth) {
-    // If the store already has data, check it
-    if (tournamentStore.followedTournaments.length > 0) {
-      isFollowing.value = tournamentStore.followedTournaments.some(t => t.id === tournamentId || t.customName === tournamentId)
+watch([() => authStore.isAuthenticated, () => tournament.value?.id], async ([isAuth, tourneyId]) => {
+  if (isAuth && tourneyId) {
+    const compId = tournament.value?.competition_id || tournament.value?.competition?.id
+    if (compId) {
+      isFollowing.value = await tournamentStore.checkCompetitionFollowStatus(compId)
     } else {
-      // Fetch and then check
-      await tournamentStore.fetchFollowedTournaments()
-      isFollowing.value = tournamentStore.followedTournaments.some(t => t.id === tournamentId || t.customName === tournamentId)
+      if (tournamentStore.followedTournaments.length > 0) {
+        isFollowing.value = tournamentStore.followedTournaments.some(t => t.id === tourneyId || t.customName === tourneyId)
+      } else {
+        await tournamentStore.fetchFollowedTournaments()
+        isFollowing.value = tournamentStore.followedTournaments.some(t => t.id === tourneyId || t.customName === tourneyId)
+      }
     }
   } else {
     isFollowing.value = false
@@ -359,33 +397,40 @@ async function toggleFollow() {
   }
   
   const wasFollowing = isFollowing.value
-  // Optimistic UI update
   isFollowing.value = !wasFollowing
   togglingFollow.value = true
   try {
-      if (wasFollowing) {
-        await tournamentStore.unfollowTournament(tournamentId)
-        if (tournament.value && tournament.value.followerCount != null && tournament.value.followerCount > 0) {
-          tournament.value.followerCount--
-        }
-        toast.add({ title: 'Unfollowed', description: 'You have unfollowed this tournament.', color: 'neutral' })
+    const compId = tournament.value?.competition_id || tournament.value?.competition?.id
+    if (wasFollowing) {
+      if (compId) {
+        await tournamentStore.unfollowCompetition(compId)
       } else {
-        await tournamentStore.followTournament(tournamentId)
-        if (tournament.value) {
-          tournament.value.followerCount = (tournament.value.followerCount ?? 0) + 1
-        }
-        toast.add({ title: 'Followed', description: 'You are now following this tournament!', color: 'success' })
-        if (!notificationsEnabled()) {
-          toast.add({
-            title: 'Notifications Off',
-            description: 'Turn on notifications to get live match alerts for this tournament.',
-            color: 'warning',
-            actions: [{ label: 'Enable', onClick: () => { navigateTo('/following') } }]
-          })
-        }
+        await tournamentStore.unfollowTournament(tournament.value?.id || tournamentId)
       }
+      if (tournament.value && tournament.value.followerCount != null && tournament.value.followerCount > 0) {
+        tournament.value.followerCount--
+      }
+      toast.add({ title: 'Unfollowed', description: 'You have unfollowed this tournament.', color: 'neutral' })
+    } else {
+      if (compId) {
+        await tournamentStore.followCompetition(compId)
+      } else {
+        await tournamentStore.followTournament(tournament.value?.id || tournamentId)
+      }
+      if (tournament.value) {
+        tournament.value.followerCount = (tournament.value.followerCount ?? 0) + 1
+      }
+      toast.add({ title: 'Followed', description: 'You are now following this tournament!', color: 'success' })
+      if (!notificationsEnabled()) {
+        toast.add({
+          title: 'Notifications Off',
+          description: 'Turn on notifications to get live match alerts for this tournament.',
+          color: 'warning',
+          actions: [{ label: 'Enable', onClick: () => { navigateTo('/following') } }]
+        })
+      }
+    }
   } catch (err: any) {
-    // Revert on failure
     isFollowing.value = wasFollowing
     handleError(err, { title: 'Error', report: true })
   } finally {
@@ -809,13 +854,18 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 v-if="seasonMenuItems.length > 0"
                 :items="seasonMenuItems"
                 :content="{ align: 'end', side: 'bottom', sideOffset: 6 }"
-                :ui="{ content: 'min-w-[150px]' }"
+                :ui="{ content: 'min-w-[170px]' }"
               >
                 <button
                   type="button"
                   class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800/90 dark:hover:bg-neutral-700 border border-gray-200 dark:border-neutral-700/70 text-xs font-semibold text-gray-800 dark:text-white transition-colors cursor-pointer shadow-sm"
                   title="Switch season"
                 >
+                  <span
+                    v-if="tournament?.isCurrentSeason"
+                    class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"
+                    title="Active Season"
+                  />
                   <span>{{ seasonLabel }}</span>
                   <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 text-gray-500 dark:text-neutral-400" />
                 </button>
@@ -825,6 +875,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 v-else
                 class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-100 dark:bg-neutral-800/90 border border-gray-200 dark:border-neutral-700/70 text-xs font-semibold text-gray-800 dark:text-white select-none cursor-default"
               >
+                <span
+                  v-if="tournament?.isCurrentSeason"
+                  class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"
+                  title="Active Season"
+                />
                 <span>{{ seasonLabel }}</span>
               </div>
 

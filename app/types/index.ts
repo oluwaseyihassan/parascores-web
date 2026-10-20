@@ -111,6 +111,7 @@ export interface User {
   // Relations
   organizations?: OrganizationMember[];
   player_profiles?: Player[];
+  followed_competitions?: CompetitionFollower[];
 
   // Email Verification
   isEmailVerified: boolean;
@@ -143,6 +144,7 @@ export interface Organization {
 
   members?: OrganizationMember[];
   tournaments?: Tournament[];
+  competitions?: Competition[];
   socials?: Social[];
 }
 
@@ -220,9 +222,11 @@ export interface Tournament {
   numberOfGroups?: number | null;
   teamsPerGroup?: number | null;
 
-  // Seasons
+  // Seasons & Competitions
   seasonName?: string | null;
   parent_id?: string | null;
+  competition_id?: string | null;
+  isCurrentSeason?: boolean;
 
   // Relations
   groups?: Group[];
@@ -231,6 +235,7 @@ export interface Tournament {
   socials?: Social[];
   parent?: Tournament | null;
   seasons?: Tournament[];
+  competition?: Competition | null;
 
   start_date: string;
   end_date: string;
@@ -239,6 +244,34 @@ export interface Tournament {
 
   organization_id?: string | null;
   organization?: Organization | null;
+}
+
+export interface Competition {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  sport: string;
+  logoUrl?: string | null;
+  bannerUrl?: string | null;
+  organization_id: string;
+  organization?: Organization;
+  seasons?: Tournament[];
+  followers?: CompetitionFollower[];
+  _count?: {
+    followers?: number;
+    seasons?: number;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompetitionFollower {
+  userId: string;
+  competitionId: string;
+  createdAt: string;
+  competition?: Competition;
+  user?: User;
 }
 
 export interface Participant {

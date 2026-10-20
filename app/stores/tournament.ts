@@ -269,6 +269,65 @@ export const useTournamentStore = defineStore('tournament', () => {
     pagination.value = { page: 1, limit: 10, total: 0, totalPages: 0 }
   }
 
+  async function followCompetition(competitionId: string) {
+    try {
+      await $api(`/competitions/${competitionId}/follow`, { method: 'POST' })
+    } catch (err: any) {
+      console.error('Follow competition failed:', err)
+      throw err
+    }
+  }
+
+  async function unfollowCompetition(competitionId: string) {
+    try {
+      await $api(`/competitions/${competitionId}/follow`, { method: 'DELETE' })
+    } catch (err: any) {
+      console.error('Unfollow competition failed:', err)
+      throw err
+    }
+  }
+
+  async function checkCompetitionFollowStatus(competitionId: string): Promise<boolean> {
+    try {
+      const res = await $api<{ success: boolean; data: { isFollowing: boolean } }>(
+        `/competitions/${competitionId}/follow-status`,
+        { method: 'GET' },
+      )
+      return res.data?.isFollowing ?? false
+    } catch {
+      return false
+    }
+  }
+
+  async function setActiveSeason(tournamentId: string) {
+    try {
+      const res = await $api<ApiResponse<Tournament>>(`/tournaments/${tournamentId}/set-active-season`, {
+        method: 'PATCH',
+      })
+      if (currentTournament.value) {
+        if (currentTournament.value.id === tournamentId) {
+          currentTournament.value.isCurrentSeason = true
+        } else {
+          currentTournament.value.isCurrentSeason = false
+        }
+        if (currentTournament.value.seasons) {
+          currentTournament.value.seasons.forEach((s) => {
+            s.isCurrentSeason = (s.id === tournamentId)
+          })
+        }
+        if (currentTournament.value.competition?.seasons) {
+          currentTournament.value.competition.seasons.forEach((s) => {
+            s.isCurrentSeason = (s.id === tournamentId)
+          })
+        }
+      }
+      return res
+    } catch (err: any) {
+      console.error('Set active season failed:', err)
+      throw err
+    }
+  }
+
   return {
     // State
     tournaments,
@@ -289,11 +348,15 @@ export const useTournamentStore = defineStore('tournament', () => {
     loadMore,
     createTournament,
     startSeason,
+    setActiveSeason,
     updateTournament,
     deleteTournament,
     fetchFollowedTournaments,
     followTournament,
     unfollowTournament,
+    followCompetition,
+    unfollowCompetition,
+    checkCompetitionFollowStatus,
     setCurrentTournament,
     clearTournaments,
   }

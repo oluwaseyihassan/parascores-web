@@ -8,6 +8,7 @@ const route = useRoute();
 const tournamentStore = useTournamentStore();
 const { currentTournament: tournament } = storeToRefs(tournamentStore);
 const { handleError } = useErrors();
+const toast = useToast();
 
 const tournamentId = computed(() => route.params.id as string);
 
@@ -24,6 +25,60 @@ const seasonSchema = z.object({
   end_date: z.string().min(1, "End date is required"),
 });
 
+function suggestNextSeasonName(currentName?: string | null): string {
+  if (!currentName) {
+    const currentYear = new Date().getFullYear();
+    return `${currentYear}/${currentYear + 1}`;
+  }
+
+  // Check pattern "2024/2025" or "2024-2025"
+  const slashMatch = currentName.match(/^(\d{4})[/-](\d{4})$/);
+  if (slashMatch) {
+    const startYear = parseInt(slashMatch[1], 10);
+    const endYear = parseInt(slashMatch[2], 10);
+    const diff = endYear - startYear;
+    return `${endYear}/${endYear + diff}`;
+  }
+
+  // Check pattern "2024"
+  const singleYearMatch = currentName.match(/^(\d{4})$/);
+  if (singleYearMatch) {
+    const year = parseInt(singleYearMatch[1], 10);
+    return `${year + 1}`;
+  }
+
+  // Check pattern "Season 2" or "Edition 3"
+  const seasonNumMatch = currentName.match(/^(.*?)(\d+)$/);
+  if (seasonNumMatch) {
+    const prefix = seasonNumMatch[1];
+    const num = parseInt(seasonNumMatch[2], 10);
+    return `${prefix}${num + 1}`;
+  }
+
+  const currentYear = new Date().getFullYear();
+  return `${currentYear}/${currentYear + 1}`;
+}
+
+watch(open, (isOpen) => {
+  if (isOpen) {
+    if (!seasonState.seasonName) {
+      seasonState.seasonName = suggestNextSeasonName(
+        tournament.value?.seasonName || tournament.value?.name,
+      );
+    }
+    if (!seasonState.start_date) {
+      const now = new Date();
+      now.setDate(now.getDate() + 7);
+      seasonState.start_date = now.toISOString().slice(0, 16);
+    }
+    if (!seasonState.end_date) {
+      const end = new Date();
+      end.setMonth(end.getMonth() + 3);
+      seasonState.end_date = end.toISOString().slice(0, 16);
+    }
+  }
+});
+
 const handleStartSeason = async (event: FormSubmitEvent<any>) => {
   startingSeason.value = true;
   try {
@@ -31,8 +86,9 @@ const handleStartSeason = async (event: FormSubmitEvent<any>) => {
       tournament.value?.id || tournamentId.value,
       event.data,
     );
-    useToast().add({
+    toast.add({
       title: "New season started successfully",
+      description: "Followers have been carried over to this new edition.",
       color: "success",
     });
     open.value = false;
@@ -57,17 +113,25 @@ const handleStartSeason = async (event: FormSubmitEvent<any>) => {
         <template #header>
           <div class="flex items-center gap-2">
             <UIcon
-              name="i-heroicons-document-duplicate"
+              name="i-heroicons-arrow-path-rounded-square"
               class="w-5 h-5 text-indigo-500"
             />
-            <span class="font-semibold">Start New Season</span>
+            <span class="font-semibold text-gray-900 dark:text-white">Start New Season</span>
           </div>
-          <p class="text-sm text-gray-500 mt-2">
-            This will create a new tournament copying the rules, format, logo,
-            and settings of this tournament. Teams and fixtures will not be
-            copied.
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            This will create a new season edition copying rules, branding, and tournament configuration. Teams and fixtures will start fresh.
           </p>
         </template>
+
+        <div class="p-3 mb-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-700 dark:text-indigo-300 flex items-start gap-2.5">
+          <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+          <div>
+            <p class="font-medium text-indigo-900 dark:text-indigo-200">Perpetual Competition Series</p>
+            <p class="mt-0.5 text-indigo-700/80 dark:text-indigo-300/80">
+              All followers and fans of this competition will automatically remain subscribed and receive updates when this new season begins.
+            </p>
+          </div>
+        </div>
 
         <UForm
           :schema="seasonSchema"
@@ -78,7 +142,7 @@ const handleStartSeason = async (event: FormSubmitEvent<any>) => {
           <UFormField label="Season Name" name="seasonName" required>
             <UInput
               v-model="seasonState.seasonName"
-              placeholder="e.g. 2024/2025 or Season 3"
+              placeholder="e.g. 2025/2026 or Season 2"
             />
           </UFormField>
 
