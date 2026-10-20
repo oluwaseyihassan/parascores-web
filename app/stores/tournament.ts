@@ -299,6 +299,35 @@ export const useTournamentStore = defineStore('tournament', () => {
     }
   }
 
+  async function setActiveSeason(tournamentId: string) {
+    try {
+      const res = await $api<ApiResponse<Tournament>>(`/tournaments/${tournamentId}/set-active-season`, {
+        method: 'PATCH',
+      })
+      if (currentTournament.value) {
+        if (currentTournament.value.id === tournamentId) {
+          currentTournament.value.isCurrentSeason = true
+        } else {
+          currentTournament.value.isCurrentSeason = false
+        }
+        if (currentTournament.value.seasons) {
+          currentTournament.value.seasons.forEach((s) => {
+            s.isCurrentSeason = (s.id === tournamentId)
+          })
+        }
+        if (currentTournament.value.competition?.seasons) {
+          currentTournament.value.competition.seasons.forEach((s) => {
+            s.isCurrentSeason = (s.id === tournamentId)
+          })
+        }
+      }
+      return res
+    } catch (err: any) {
+      console.error('Set active season failed:', err)
+      throw err
+    }
+  }
+
   return {
     // State
     tournaments,
@@ -319,6 +348,7 @@ export const useTournamentStore = defineStore('tournament', () => {
     loadMore,
     createTournament,
     startSeason,
+    setActiveSeason,
     updateTournament,
     deleteTournament,
     fetchFollowedTournaments,
