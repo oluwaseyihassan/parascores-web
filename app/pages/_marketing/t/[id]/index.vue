@@ -860,19 +860,47 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
             <!-- Title & Subtitle -->
             <div class="min-w-0 flex-1">
-              <h1 class="text-xl sm:text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight truncate">
+              <h1 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight leading-snug truncate">
                 {{ tournament.name }}
               </h1>
-              <p class="text-xs sm:text-sm font-medium text-gray-500 dark:text-neutral-400 mt-0.5 flex flex-wrap items-center gap-2">
-                <span>{{ tournament.location || (tournament.organization ? tournament.organization.name : tournament.sport) }}</span>
-                <template v-if="winnerParticipant">
+              <!-- Organization & Location Row -->
+              <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs sm:text-sm font-medium text-gray-500 dark:text-neutral-400">
+                <NuxtLink
+                  v-if="tournament.organization"
+                  :to="toMain(`/org/${tournament.organization.slug}`)"
+                  class="inline-flex items-center gap-1.5 hover:text-gray-900 dark:hover:text-white transition-colors group"
+                >
+                  <img
+                    v-if="tournament.organization.logoUrl"
+                    :src="tournament.organization.logoUrl"
+                    :alt="tournament.organization.name"
+                    class="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                  />
+                  <span class="group-hover:underline">{{ tournament.organization.name }}</span>
+                  <UIcon
+                    v-if="tournament.organization.isVerified"
+                    name="i-heroicons-check-badge-solid"
+                    class="w-3.5 h-3.5 text-emerald-500 shrink-0"
+                    title="Verified Organization"
+                  />
+                </NuxtLink>
+                <span v-else-if="tournament.location || tournament.sport">
+                  {{ tournament.location || tournament.sport }}
+                </span>
+                <template v-if="tournament.organization && tournament.location">
                   <span class="text-gray-300 dark:text-neutral-600">•</span>
-                  <span class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold">
-                    <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5" />
-                    Winner: {{ winnerParticipant.customName }}
-                  </span>
+                  <span>{{ tournament.location }}</span>
                 </template>
-              </p>
+              </div>
+
+              <!-- Winner Row (Moved under organization name) -->
+              <div
+                v-if="winnerParticipant"
+                class="mt-1 flex items-center gap-1.5 text-xs sm:text-sm font-medium text-amber-600 dark:text-amber-400"
+              >
+                <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 shrink-0" />
+                <span>Winner: <strong class="font-semibold text-amber-700 dark:text-amber-300">{{ winnerParticipant.customName }}</strong></span>
+              </div>
             </div>
           </div>
         </div>
@@ -1649,6 +1677,26 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 <div class="flex items-center justify-between px-5 py-3">
                   <span class="text-sm text-gray-500">Type</span>
                   <span class="text-sm transition-colors text-gray-800 dark:text-gray-200">{{ formatType(tournament.type) }}</span>
+                </div>
+                <div v-if="tournament.organization" class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Organizer</span>
+                  <NuxtLink
+                    :to="toMain(`/org/${tournament.organization.slug}`)"
+                    class="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1.5"
+                  >
+                    <img
+                      v-if="tournament.organization.logoUrl"
+                      :src="tournament.organization.logoUrl"
+                      :alt="tournament.organization.name"
+                      class="w-4 h-4 rounded-full object-cover shrink-0"
+                    />
+                    <span>{{ tournament.organization.name }}</span>
+                    <UIcon
+                      v-if="tournament.organization.isVerified"
+                      name="i-heroicons-check-badge-solid"
+                      class="w-3.5 h-3.5 text-emerald-500 shrink-0"
+                    />
+                  </NuxtLink>
                 </div>
                 <div v-if="tournament.location" class="flex items-center justify-between px-5 py-3">
                   <span class="text-sm text-gray-500">Location</span>
