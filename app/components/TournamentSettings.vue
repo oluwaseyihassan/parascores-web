@@ -610,7 +610,7 @@ const navClass = (s: (typeof sections)[number]) => {
 
 // ─── Dirty tracking (sticky save bar) ────────────────────
 const SNAP_KEYS = [
-  'name', 'customName', 'description', 'sport', 'type', 'participantType', 'visibility',
+  'name', 'customName', 'seasonName', 'description', 'sport', 'type', 'participantType', 'visibility',
   'location', 'latitude', 'longitude', 'timezone', 'maxParticipants', 'autoApprove', 'isPaidRegistration',
   'registrationFee', 'registrationOpen', 'registrationClose', 'isPinned',
   'twoLegsKnockout', 'doubleRoundRobin', 'thirdPlaceMatch', 'unifiedStandings', 'hasKnockoutPlayoffs', 'setsToWin', 'gamesPerSet',
@@ -763,7 +763,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     await tournamentStore.updateTournament(props.tournament.id, {
       ...event.data,
       customName: event.data.customName || null,
-      seasonName: event.data.seasonName || null,
+      seasonName: event.data.seasonName?.trim() || null,
       description: event.data.description || null,
       location: event.data.location || null,
       isPaidRegistration: !!event.data.isPaidRegistration,

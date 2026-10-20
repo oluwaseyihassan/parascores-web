@@ -187,6 +187,11 @@ const visibilityLabels: Record<Visibility, { label: string; icon: string }> = {
               <span class="font-medium text-xs sm:text-sm">{{ formatDate(tournament.start_date) }} – {{ formatDate(tournament.end_date) }}</span>
             </div>
 
+            <div v-if="tournament.seasonName" class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 dark:border-gray-800">
+              <span class="text-xs sm:text-sm text-gray-500">Season</span>
+              <span class="font-medium text-xs sm:text-sm">{{ tournament.seasonName }}</span>
+            </div>
+
             <div v-if="tournament.location" class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 dark:border-gray-800">
               <span class="text-xs sm:text-sm text-gray-500">Location</span>
               <span class="font-medium text-xs sm:text-sm">{{ tournament.location }}</span>
