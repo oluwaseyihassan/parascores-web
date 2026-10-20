@@ -19,7 +19,8 @@ const { handleError, extractErrorMessage } = useErrors()
 // State — fetched via useAsyncData for SSR support (SEO meta tags)
 const selectedSponsor = ref<Sponsor | null>(null)
 const { toMain, toTournament } = useHost()
-const activeTab = ref<'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats' | 'chat'>(
+type TabKey = 'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats' | 'chat'
+const activeTab = ref<TabKey>(
   (route.query.tab as any) || 'info'
 )
 const selectedFixtureId = ref<string | null>(null)
@@ -54,11 +55,15 @@ watch(activeTab, (newTab) => {
   selectedFixtureId.value = null
   selectedParticipantId.value = null
   router.replace({ query: { ...route.query, tab: newTab } })
-})
+  scrollActiveTabIntoView()
+}, { flush: 'post' })
 
 watch(() => route.query.tab, (newTab) => {
   if (newTab && newTab !== activeTab.value) {
-    activeTab.value = newTab as any
+    const validTabs: TabKey[] = ['info', 'fixtures', 'standings', 'bracket', 'participants', 'stats', 'chat']
+    if (validTabs.includes(newTab as TabKey)) {
+      switchTab(newTab as TabKey)
+    }
   }
 })
 
@@ -202,6 +207,7 @@ onMounted(() => {
   if (tournament.value?.participantType === ParticipantType.TEAM) {
     loadPlayerStats()
   }
+  scrollActiveTabIntoView()
 })
 
 // SEO — runs during SSR so meta tags are in the initial HTML
@@ -249,6 +255,208 @@ const showBracketTab = computed(() => {
   if (!tournament.value) return false
   return tournament.value.type === TournamentType.KNOCKOUT || tournament.value.type === TournamentType.HYBRID
 })
+
+// Visible tabs in exact visual order as rendered in the sticky header nav
+const visibleTabs = computed<TabKey[]>(() => {
+  const tabs: TabKey[] = ['info']
+  if (standings.value.length > 0) {
+    tabs.push('standings')
+  }
+  if (showBracketTab.value) {
+    tabs.push('bracket')
+  }
+  tabs.push('fixtures')
+  if (isTeams.value) {
+    tabs.push('stats')
+  }
+  if (participants.value.length > 0) {
+    tabs.push('participants')
+  }
+  if (tournament.value?.chatEnabled) {
+    tabs.push('chat')
+  }
+  return tabs
+})
+
+const tabTransitionDirection = ref<'next' | 'prev'>('next')
+const tabsNavRef = ref<HTMLElement | null>(null)
+const contentSectionRef = ref<HTMLElement | null>(null)
+
+function scrollActiveTabIntoView() {
+  if (typeof window === 'undefined') return
+  nextTick(() => {
+    const el = document.getElementById(`tab-btn-${activeTab.value}`)
+    if (el) {
+      el.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      })
+    }
+  })
+}
+
+function switchTab(tab: TabKey, dir?: 'next' | 'prev') {
+  if (activeTab.value === tab) return
+  if (dir) {
+    tabTransitionDirection.value = dir
+  } else {
+    const currIdx = visibleTabs.value.indexOf(activeTab.value)
+    const newIdx = visibleTabs.value.indexOf(tab)
+    tabTransitionDirection.value = newIdx >= currIdx ? 'next' : 'prev'
+  }
+  activeTab.value = tab
+}
+
+function goToNextTab() {
+  const list = visibleTabs.value
+  const currIdx = list.indexOf(activeTab.value)
+  if (currIdx !== -1 && currIdx < list.length - 1) {
+    const next = list[currIdx + 1]
+    if (next) {
+      switchTab(next, 'next')
+      return true
+    }
+  }
+  return false
+}
+
+function goToPrevTab() {
+  const list = visibleTabs.value
+  const currIdx = list.indexOf(activeTab.value)
+  if (currIdx > 0) {
+    const prev = list[currIdx - 1]
+    if (prev) {
+      switchTab(prev, 'prev')
+      return true
+    }
+  }
+  return false
+}
+
+// Mouse drag-to-scroll on tab bar
+let isNavDragging = false
+let navStartX = 0
+let navScrollLeft = 0
+let navHasMoved = false
+
+function onNavMouseDown(e: MouseEvent) {
+  const nav = tabsNavRef.value
+  if (!nav) return
+  isNavDragging = true
+  navHasMoved = false
+  navStartX = e.pageX - nav.getBoundingClientRect().left
+  navScrollLeft = nav.scrollLeft
+}
+
+function onNavMouseMove(e: MouseEvent) {
+  if (!isNavDragging) return
+  const nav = tabsNavRef.value
+  if (!nav) return
+  const currentX = e.pageX - nav.getBoundingClientRect().left
+  const delta = currentX - navStartX
+  if (Math.abs(delta) > 5) {
+    navHasMoved = true
+  }
+  nav.scrollLeft = navScrollLeft - delta
+}
+
+function onNavMouseUp() {
+  isNavDragging = false
+  setTimeout(() => {
+    navHasMoved = false
+  }, 50)
+}
+
+function onNavMouseLeave() {
+  isNavDragging = false
+  setTimeout(() => {
+    navHasMoved = false
+  }, 50)
+}
+
+function handleTabClick(tab: TabKey) {
+  if (navHasMoved) {
+    return
+  }
+  switchTab(tab)
+}
+
+// Swipe gestures on tab content area
+const touchStartX = ref(0)
+const touchStartY = ref(0)
+const touchEndX = ref(0)
+const touchEndY = ref(0)
+const isTouchIgnored = ref(false)
+
+function isInsideScrollableHorizontal(el: Element | null): boolean {
+  if (typeof window === 'undefined' || !el) return false
+  let curr: Element | null = el
+  while (curr && curr !== contentSectionRef.value && curr !== document.body) {
+    if (curr instanceof HTMLInputElement && curr.type === 'range') {
+      return true
+    }
+    if (curr.scrollWidth > curr.clientWidth + 8) {
+      const style = window.getComputedStyle(curr)
+      if (style.overflowX === 'auto' || style.overflowX === 'scroll') {
+        return true
+      }
+    }
+    curr = curr.parentElement
+  }
+  return false
+}
+
+function onTouchStart(e: TouchEvent) {
+  if (selectedFixtureId.value || selectedParticipantId.value) {
+    isTouchIgnored.value = true
+    return
+  }
+  const touch = e.touches[0]
+  if (!touch) return
+
+  const target = e.target as Element | null
+  if (isInsideScrollableHorizontal(target)) {
+    isTouchIgnored.value = true
+    return
+  }
+
+  isTouchIgnored.value = false
+  touchStartX.value = touch.clientX
+  touchStartY.value = touch.clientY
+  touchEndX.value = touch.clientX
+  touchEndY.value = touch.clientY
+}
+
+function onTouchMove(e: TouchEvent) {
+  if (isTouchIgnored.value) return
+  const touch = e.touches[0]
+  if (!touch) return
+  touchEndX.value = touch.clientX
+  touchEndY.value = touch.clientY
+}
+
+function onTouchEnd() {
+  if (isTouchIgnored.value) return
+
+  const deltaX = touchEndX.value - touchStartX.value
+  const deltaY = touchEndY.value - touchStartY.value
+
+  const minSwipeDistance = 50
+  if (Math.abs(deltaX) >= minSwipeDistance && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+    if (deltaX < 0) {
+      goToNextTab()
+    } else {
+      goToPrevTab()
+    }
+  }
+
+  touchStartX.value = 0
+  touchStartY.value = 0
+  touchEndX.value = 0
+  touchEndY.value = 0
+  isTouchIgnored.value = false
+}
 
 function getSeasonFallbackYear(t: { start_date?: string | null; end_date?: string | null }): string {
   if (!t.start_date) return new Date().getFullYear().toString()
@@ -1111,7 +1319,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
               <button
                 v-if="hasLiveFixtures"
-                @click="activeTab = 'fixtures'"
+                @click="switchTab('fixtures')"
                 type="button"
                 class="w-9 h-9 rounded-full bg-rose-50 hover:bg-rose-100 dark:bg-neutral-800/90 dark:hover:bg-neutral-700 text-rose-600 dark:text-rose-400 flex items-center justify-center transition-colors border border-rose-200 dark:border-neutral-700/60 cursor-pointer shadow-sm relative"
                 title="Live matches happening now"
@@ -1248,13 +1456,21 @@ function getTeamCards(fixture: any, isHome: boolean) {
       <!-- Tabs Bar (Sticky) -->
       <section class="border-b sticky top-0 z-30 backdrop-blur-xl transition-colors border-gray-200 dark:border-neutral-800 bg-white/95 dark:bg-[#121212]/95">
         <div class="max-w-7xl mx-auto px-4 sm:px-6">
-          <nav class="flex items-center gap-6 overflow-x-auto hide-scrollbar whitespace-nowrap -mb-px">
+          <nav
+            ref="tabsNavRef"
+            class="flex items-center gap-6 overflow-x-auto hide-scrollbar whitespace-nowrap -mb-px select-none cursor-grab active:cursor-grabbing scroll-smooth"
+            @mousedown="onNavMouseDown"
+            @mousemove="onNavMouseMove"
+            @mouseup="onNavMouseUp"
+            @mouseleave="onNavMouseLeave"
+          >
             <!-- Overview (formerly Info) -->
             <button
-              @click="activeTab = 'info'"
+              id="tab-btn-info"
+              @click="handleTabClick('info')"
               type="button"
               :class="[
-                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative shrink-0',
                 activeTab === 'info'
                   ? 'font-bold text-gray-900 dark:text-white'
                   : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
@@ -1267,10 +1483,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <!-- Table (formerly Standings) -->
             <button
               v-if="standings.length > 0"
-              @click="activeTab = 'standings'"
+              id="tab-btn-standings"
+              @click="handleTabClick('standings')"
               type="button"
               :class="[
-                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative shrink-0',
                 activeTab === 'standings'
                   ? 'font-bold text-gray-900 dark:text-white'
                   : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
@@ -1283,10 +1500,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <!-- Knockout (formerly Bracket) -->
             <button
               v-if="showBracketTab"
-              @click="activeTab = 'bracket'"
+              id="tab-btn-bracket"
+              @click="handleTabClick('bracket')"
               type="button"
               :class="[
-                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative shrink-0',
                 activeTab === 'bracket'
                   ? 'font-bold text-gray-900 dark:text-white'
                   : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
@@ -1298,10 +1516,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
             <!-- Fixtures -->
             <button
-              @click="activeTab = 'fixtures'"
+              id="tab-btn-fixtures"
+              @click="handleTabClick('fixtures')"
               type="button"
               :class="[
-                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5 shrink-0',
                 activeTab === 'fixtures'
                   ? 'font-bold text-gray-900 dark:text-white'
                   : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
@@ -1323,10 +1542,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <!-- Player stats -->
             <button
               v-if="isTeams"
-              @click="activeTab = 'stats'"
+              id="tab-btn-stats"
+              @click="handleTabClick('stats')"
               type="button"
               :class="[
-                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative shrink-0',
                 activeTab === 'stats'
                   ? 'font-bold text-gray-900 dark:text-white'
                   : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
@@ -1339,10 +1559,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <!-- Teams -->
             <button
               v-if="participants.length > 0"
-              @click="activeTab = 'participants'"
+              id="tab-btn-participants"
+              @click="handleTabClick('participants')"
               type="button"
               :class="[
-                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative shrink-0',
                 activeTab === 'participants'
                   ? 'font-bold text-gray-900 dark:text-white'
                   : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
@@ -1355,10 +1576,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
             <!-- Match Hub -->
             <button
               v-if="tournament?.chatEnabled"
-              @click="activeTab = 'chat'"
+              id="tab-btn-chat"
+              @click="handleTabClick('chat')"
               type="button"
               :class="[
-                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5 shrink-0',
                 activeTab === 'chat'
                   ? 'font-bold text-gray-900 dark:text-white'
                   : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
@@ -1373,7 +1595,13 @@ function getTeamCards(fixture: any, isHome: boolean) {
       </section>
 
       <!-- Tab Content -->
-      <section class="max-w-7xl mx-auto px-4 py-8 relative min-h-[500px]">
+      <section
+        ref="contentSectionRef"
+        class="max-w-7xl mx-auto px-4 py-8 relative min-h-[500px] touch-pan-y overflow-x-hidden"
+        @touchstart.passive="onTouchStart"
+        @touchmove.passive="onTouchMove"
+        @touchend="onTouchEnd"
+      >
         
         <div v-if="selectedFixtureId" class="animate-in fade-in slide-in-from-bottom-4 duration-300">
           <MarketingFixtureDetails 
@@ -1391,9 +1619,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
           />
         </div>
 
-        <div v-show="!selectedFixtureId && !selectedParticipantId" class="animate-in fade-in duration-300">
-          <!-- ====== FIXTURES TAB ====== -->
-          <div v-if="activeTab === 'fixtures'">
+        <div v-show="!selectedFixtureId && !selectedParticipantId">
+          <Transition :name="tabTransitionDirection === 'next' ? 'tab-slide-next' : 'tab-slide-prev'" mode="out-in">
+            <div :key="activeTab" class="w-full">
+              <!-- ====== FIXTURES TAB ====== -->
+              <div v-if="activeTab === 'fixtures'">
             <div v-if="filteredFixtures.length === 0" class="text-center py-16">
               <p class="text-sm text-gray-500">No fixtures available for this filter.</p>
             </div>
@@ -2184,8 +2414,10 @@ function getTeamCards(fixture: any, isHome: boolean) {
             </div>
           </div>
         </div>
-        </div>
-      </section>
+      </div>
+    </Transition>
+  </div>
+</section>
     </div>
   </div>
 </template>
@@ -2228,6 +2460,40 @@ function getTeamCards(fixture: any, isHome: boolean) {
   }
 }
 
+/* Tab slide transitions */
+.tab-slide-next-enter-active,
+.tab-slide-next-leave-active,
+.tab-slide-prev-enter-active,
+.tab-slide-prev-leave-active {
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tab-slide-next-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+.tab-slide-next-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.tab-slide-prev-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+.tab-slide-prev-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+/* Hide scrollbar utility */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 </style>
 
 <style>
