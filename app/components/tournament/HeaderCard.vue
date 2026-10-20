@@ -213,6 +213,16 @@ const PLACEHOLDER_BANNER =
               >
                 Practice
               </UBadge>
+              <UBadge
+                v-if="tournament.seasonName"
+                color="neutral"
+                variant="subtle"
+                size="sm"
+                icon="i-heroicons-calendar"
+                class="shrink-0 font-medium"
+              >
+                {{ tournament.seasonName }}
+              </UBadge>
               <span
                 v-if="tournament.isPremium || isPro"
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm shrink-0"
