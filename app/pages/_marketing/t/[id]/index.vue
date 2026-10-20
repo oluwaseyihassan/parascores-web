@@ -230,6 +230,36 @@ const showBracketTab = computed(() => {
   return tournament.value.type === TournamentType.KNOCKOUT || tournament.value.type === TournamentType.HYBRID
 })
 
+const seasonLabel = computed(() => {
+  if (!tournament.value?.start_date) {
+    return new Date().getFullYear().toString()
+  }
+  const startYear = new Date(tournament.value.start_date).getFullYear()
+  if (tournament.value.end_date) {
+    const endYear = new Date(tournament.value.end_date).getFullYear()
+    if (endYear > startYear) {
+      return `${startYear}/${endYear}`
+    }
+  }
+  return `${startYear}`
+})
+
+const shareTournament = async () => {
+  if (typeof navigator !== 'undefined' && navigator.share) {
+    try {
+      await navigator.share({
+        title: tournament.value?.name,
+        url: window.location.href,
+      })
+      return
+    } catch {}
+  }
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    await navigator.clipboard.writeText(window.location.href)
+    toast.add({ title: 'Link copied', description: 'Tournament link copied to clipboard', color: 'success' })
+  }
+}
+
 // Validate active tab to prevent forced routing to unavailable tabs
 watchEffect(() => {
   if (!tournament.value || loading.value) return
@@ -707,193 +737,223 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
     <!-- Content -->
     <div v-else-if="tournament">
-      <!-- Hero Banner -->
-      <section class="relative border-b border-gray-200 dark:border-white/[0.05] bg-white dark:bg-[#0A0A0A]">
-        <!-- Banner Background top strictly 200-250px -->
-        <div class="h-48 md:h-64 relative w-full overflow-hidden">
-          <img v-if="tournament.bannerUrl" :src="tournament.bannerUrl" class="w-full h-full object-cover object-top" />
-          <div v-else class="w-full h-full bg-gray-200 dark:bg-gray-800/80"></div>
-          
-          <!-- Gradient overlay to blend and fade the bottom of the banner into the page background -->
-          <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white dark:from-[#0A0A0A] to-transparent pointer-events-none"></div>
+      <!-- Redesigned Minimal Tournament Header (Light & Dark Mode) -->
+      <section class="bg-white dark:bg-[#121212] border-b border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-5 pb-3">
+          <!-- Top Action Bar -->
+          <div class="flex items-center justify-between gap-3">
+            <!-- Left: Circular Action Buttons -->
+            <div class="flex items-center gap-2">
+              <button
+                @click="router.back()"
+                type="button"
+                class="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800/90 dark:hover:bg-neutral-700 text-gray-700 dark:text-white flex items-center justify-center transition-colors border border-gray-200 dark:border-neutral-700/60 cursor-pointer shadow-sm"
+                title="Back"
+              >
+                <UIcon name="i-heroicons-arrow-left" class="w-4 h-4" />
+              </button>
 
-          <!-- Back link over banner -->
-          <div class="absolute top-6 inset-x-0 z-10 w-full">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6">
-              <button @click="router.back()" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-xs font-semibold text-white/90 hover:text-white transition-all border border-white/10 cursor-pointer">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Back
+              <button
+                v-if="hasLiveFixtures"
+                @click="activeTab = 'fixtures'"
+                type="button"
+                class="w-9 h-9 rounded-full bg-rose-50 hover:bg-rose-100 dark:bg-neutral-800/90 dark:hover:bg-neutral-700 text-rose-600 dark:text-rose-400 flex items-center justify-center transition-colors border border-rose-200 dark:border-neutral-700/60 cursor-pointer shadow-sm relative"
+                title="Live matches happening now"
+              >
+                <UIcon name="i-heroicons-tv" class="w-4 h-4" />
+                <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500"></span>
+              </button>
+              <button
+                v-else
+                @click="shareTournament"
+                type="button"
+                class="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800/90 dark:hover:bg-neutral-700 text-gray-700 dark:text-white flex items-center justify-center transition-colors border border-gray-200 dark:border-neutral-700/60 cursor-pointer shadow-sm"
+                title="Share tournament"
+              >
+                <UIcon name="i-heroicons-share" class="w-4 h-4" />
+              </button>
+            </div>
+
+            <!-- Right: Season Pill & Follow Button -->
+            <div class="flex items-center gap-2 sm:gap-2.5">
+              <div class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-100 dark:bg-neutral-800/90 border border-gray-200 dark:border-neutral-700/70 text-xs font-semibold text-gray-800 dark:text-white select-none cursor-default">
+                <span>{{ seasonLabel }}</span>
+                <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 text-gray-500 dark:text-neutral-400" />
+              </div>
+
+              <button
+                type="button"
+                @click="toggleFollow"
+                :disabled="togglingFollow"
+                class="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-150 cursor-pointer disabled:opacity-50 shadow-sm"
+                :class="isFollowing
+                  ? 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200 dark:bg-neutral-800 dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-700 flex items-center gap-1.5'
+                  : 'bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200'"
+              >
+                <UIcon v-if="isFollowing" name="i-heroicons-check" class="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+                <span>{{ isFollowing ? 'Following' : 'Follow' }}</span>
               </button>
             </div>
           </div>
-        </div>
 
-        <!-- Header Content Container (overlapping banner) -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 relative pb-8">
-          <div class="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-end -mt-16 md:-mt-20">
-            <!-- Logo overlapping -->
-            <div class="w-32 h-32 md:w-40 md:h-40 rounded-3xl overflow-hidden border-4 shadow-2xl flex-shrink-0 relative group z-10 bg-white border-white dark:bg-[#0A0A0A] dark:border-[#0A0A0A]">
-              <img v-if="tournament.logoUrl" :src="tournament.logoUrl" class="w-full h-full object-cover bg-gray-50 dark:bg-white/5" />
-              <span v-else class="flex items-center justify-center w-full h-full text-5xl font-bold text-gray-400 bg-gray-50 dark:text-white/40 dark:bg-white/5">
+          <!-- Tournament Identity Row -->
+          <div class="flex items-center gap-3.5 sm:gap-4 pt-4 pb-2">
+            <!-- Logo -->
+            <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-100 dark:bg-neutral-800/90 border border-gray-200 dark:border-neutral-700/60 shrink-0 flex items-center justify-center p-1.5 shadow-md">
+              <img
+                v-if="tournament.logoUrl"
+                :src="tournament.logoUrl"
+                :alt="tournament.name"
+                class="w-full h-full object-contain"
+              />
+              <span v-else class="text-xl sm:text-2xl font-black text-gray-700 dark:text-white/80">
                 {{ tournament.name.charAt(0).toUpperCase() }}
               </span>
             </div>
 
-            <!-- Text Content -->
-            <div class="flex-1 text-center md:text-left pt-2 md:pt-0 pb-2 flex flex-col items-center md:items-start w-full">
-              <!-- Bar containing badges & actions -->
-              <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-3 w-full">
-
-              </div>
-              
-              <h1 class="text-3xl md:text-5xl lg:text-5xl font-extrabold tracking-tight mb-4 text-gray-900 dark:text-white">
+            <!-- Title & Subtitle -->
+            <div class="min-w-0 flex-1">
+              <h1 class="text-xl sm:text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight truncate">
                 {{ tournament.name }}
               </h1>
-
-              <!-- Meta Info -->
-              <div class="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-3 text-sm font-medium text-gray-600 dark:text-gray-400">
-                <div v-if="tournament.organization" class="flex flex-col items-center gap-1.5 w-full md:flex-row md:w-auto md:gap-2">
-                  <span>Hosted by</span>
-                  <NuxtLink :to="toMain('/org/' + tournament.organization.slug)" class="flex items-center gap-2 px-2.5 py-1 rounded-lg transition-colors border cursor-pointer group bg-gray-50 hover:bg-gray-100 border-gray-200 dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/5">
-                    <img v-if="tournament.organization.logoUrl" :src="tournament.organization.logoUrl" class="w-5 h-5 rounded-full object-cover shrink-0 ring-1 ring-black/5 dark:ring-white/10" />
-                    <span class="font-semibold transition-colors text-gray-700 group-hover:text-gray-900 dark:text-gray-200 dark:group-hover:text-white">{{ tournament.organization.name }}</span>
-                    <UIcon v-if="tournament.organization.isVerified" name="i-heroicons-check-badge-solid" class="w-4 h-4 text-blue-400 shrink-0" title="Verified Organization" />
-                  </NuxtLink>
-                </div>
-                
-                <div class="flex items-center gap-1.5 w-full justify-center md:w-auto" v-if="tournament.location">
-                  <UIcon name="i-heroicons-map-pin" class="w-4 h-4 opacity-70" />
-                  <span>{{ tournament.location }}</span>
-                </div>
-                <div class="flex items-center gap-1.5 w-full justify-center md:w-auto" v-if="tournament.start_date">
-                  <UIcon name="i-heroicons-calendar" class="w-4 h-4 opacity-70" />
-                  <span>{{ formatDate(tournament.start_date) }}</span>
-                </div>
-              </div>
-              
-              <!-- Follow Button & Winner Badge -->
-              <div class="mt-5 flex flex-col sm:flex-row items-center gap-3">
-                <UButton
-                  size="md"
-                  :color="isFollowing ? 'neutral' : 'success'"
-                  :variant="isFollowing ? 'soft' : 'solid'"
-                  :icon="isFollowing ? 'i-heroicons-check' : 'i-heroicons-plus'"
-                  :loading="togglingFollow"
-                  @click="toggleFollow"
-                  class="rounded-full px-5 font-bold shadow-sm"
-                >
-                  {{ isFollowing ? 'Unfollow' : 'Follow' }}
-                </UButton>
-
-                <span v-if="tournament.followerCount != null" class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ formatCount(tournament.followerCount) }} follower{{ tournament.followerCount === 1 ? '' : 's' }}
-                </span>
-
-                <!-- Winner Badge in Hero -->
-                <div v-if="winnerParticipant" class="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400 text-black font-black uppercase tracking-widest text-[11px] shadow-lg shadow-amber-400/20 animate-in zoom-in duration-500 whitespace-nowrap">
-                  <UIcon name="i-heroicons-trophy-solid" class="w-4 h-4 shrink-0" />
-                  Winner: {{ winnerParticipant.customName }}
-                </div>
-              </div>
+              <p class="text-xs sm:text-sm font-medium text-gray-500 dark:text-neutral-400 mt-0.5 flex flex-wrap items-center gap-2">
+                <span>{{ tournament.location || (tournament.organization ? tournament.organization.name : tournament.sport) }}</span>
+                <template v-if="winnerParticipant">
+                  <span class="text-gray-300 dark:text-neutral-600">•</span>
+                  <span class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold">
+                    <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5" />
+                    Winner: {{ winnerParticipant.customName }}
+                  </span>
+                </template>
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Tabs -->
-      <section class="border-b sticky top-0 z-40 backdrop-blur-xl transition-colors border-gray-200 bg-white/80 dark:border-white/10 dark:bg-[#0A0A0A]/80">
+      <!-- Tabs Bar (Sticky) -->
+      <section class="border-b sticky top-0 z-30 backdrop-blur-xl transition-colors border-gray-200 dark:border-neutral-800 bg-white/95 dark:bg-[#121212]/95">
         <div class="max-w-7xl mx-auto px-4 sm:px-6">
-          <nav class="flex gap-6 -mb-px overflow-x-auto hide-scrollbar whitespace-nowrap">
+          <nav class="flex items-center gap-6 overflow-x-auto hide-scrollbar whitespace-nowrap -mb-px">
+            <!-- Overview (formerly Info) -->
             <button
               @click="activeTab = 'info'"
+              type="button"
               :class="[
-                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative',
                 activeTab === 'info'
-                  ? 'text-gray-900 border-gray-900 dark:text-white dark:border-white'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'font-bold text-gray-900 dark:text-white'
+                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
-              Info
+              Overview
+              <span v-if="activeTab === 'info'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
-            <button
-              @click="activeTab = 'fixtures'"
-              :class="[
-                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
-                activeTab === 'fixtures'
-                  ? 'text-gray-900 border-gray-900 dark:text-white dark:border-white'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 dark:hover:text-gray-300'
-              ]"
-            >
-              Fixtures
-              <span v-if="fixtures.length" :class="[
-                'px-2 py-0.5 rounded-full text-xs font-semibold',
-                activeTab === 'fixtures' 
-                  ? 'bg-gray-100 text-gray-900 dark:bg-white/10 dark:text-white'
-                  : 'bg-gray-50 dark:bg-white/5'
-              ]">{{ fixtures.length }}</span>
-            </button>
+
+            <!-- Table (formerly Standings) -->
             <button
               v-if="standings.length > 0"
               @click="activeTab = 'standings'"
+              type="button"
               :class="[
-                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative',
                 activeTab === 'standings'
-                  ? 'text-gray-900 border-gray-900 dark:text-white dark:border-white'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'font-bold text-gray-900 dark:text-white'
+                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
-              Standings
+              Table
+              <span v-if="activeTab === 'standings'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
+
+            <!-- Knockout (formerly Bracket) -->
             <button
               v-if="showBracketTab"
               @click="activeTab = 'bracket'"
+              type="button"
               :class="[
-                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative',
                 activeTab === 'bracket'
-                  ? 'text-gray-900 border-gray-900 dark:text-white dark:border-white'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'font-bold text-gray-900 dark:text-white'
+                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
-              Bracket
+              Knockout
+              <span v-if="activeTab === 'bracket'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
+
+            <!-- Fixtures -->
             <button
-              v-if="participants.length > 0"
-              @click="activeTab = 'participants'"
+              @click="activeTab = 'fixtures'"
+              type="button"
               :class="[
-                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
-                activeTab === 'participants'
-                  ? 'text-gray-900 border-gray-900 dark:text-white dark:border-white'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 dark:hover:text-gray-300'
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5',
+                activeTab === 'fixtures'
+                  ? 'font-bold text-gray-900 dark:text-white'
+                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
-              {{ participantsTabName }}
+              <span>Fixtures</span>
+              <span
+                v-if="fixtures.length"
+                :class="[
+                  'px-1.5 py-0.2 rounded-full text-[10px] font-semibold transition-colors',
+                  activeTab === 'fixtures'
+                    ? 'bg-gray-200 text-gray-900 dark:bg-white/20 dark:text-white'
+                    : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-neutral-400'
+                ]"
+              >{{ fixtures.length }}</span>
+              <span v-if="activeTab === 'fixtures'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
+
+            <!-- Player stats -->
             <button
               v-if="isTeams"
               @click="activeTab = 'stats'"
+              type="button"
               :class="[
-                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-2',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative',
                 activeTab === 'stats'
-                  ? 'text-gray-900 border-gray-900 dark:text-white dark:border-white'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'font-bold text-gray-900 dark:text-white'
+                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
-               Player Stats
+              Player stats
+              <span v-if="activeTab === 'stats'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
+
+            <!-- Teams -->
+            <button
+              v-if="participants.length > 0"
+              @click="activeTab = 'participants'"
+              type="button"
+              :class="[
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative',
+                activeTab === 'participants'
+                  ? 'font-bold text-gray-900 dark:text-white'
+                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
+              ]"
+            >
+              {{ participantsTabName }}
+              <span v-if="activeTab === 'participants'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
+            </button>
+
+            <!-- Match Hub -->
             <button
               v-if="tournament?.chatEnabled"
               @click="activeTab = 'chat'"
+              type="button"
               :class="[
-                'py-4 text-sm font-bold border-b-2 transition-colors duration-200 flex items-center gap-1.5',
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5',
                 activeTab === 'chat'
-                  ? 'text-gray-900 border-gray-900 dark:text-white dark:border-white'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'font-bold text-gray-900 dark:text-white'
+                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
               <UIcon name="i-heroicons-bolt" class="w-4 h-4 text-amber-500 dark:text-amber-400" />
               <span>Match Hub</span>
+              <span v-if="activeTab === 'chat'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
           </nav>
         </div>
