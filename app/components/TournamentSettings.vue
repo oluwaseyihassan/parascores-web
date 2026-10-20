@@ -289,6 +289,7 @@ const schema = z.object({
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Only lowercase letters, numbers, and hyphens allowed')
     .optional()
     .or(z.literal('')),
+  seasonName: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   sport: z.string().min(1, 'Sport is required'),
   type: z.nativeEnum(TournamentType),
@@ -322,6 +323,7 @@ type Schema = z.output<typeof schema>
 const state = reactive<Partial<Schema>>({
   name: props.tournament.name,
   customName: props.tournament.customName || '',
+  seasonName: props.tournament.seasonName || '',
   description: props.tournament.description || '',
   sport: props.tournament.sport,
   type: props.tournament.type,
@@ -761,6 +763,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     await tournamentStore.updateTournament(props.tournament.id, {
       ...event.data,
       customName: event.data.customName || null,
+      seasonName: event.data.seasonName || null,
       description: event.data.description || null,
       location: event.data.location || null,
       isPaidRegistration: !!event.data.isPaidRegistration,
@@ -875,6 +878,16 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                     Lowercase letters, numbers, and hyphens only
                   </span>
                 </template>
+              </UFormField>
+
+              <UFormField label="Season / Edition" name="seasonName" hint="e.g. 2025/2026, Season 1, Spring 2026">
+                <UInput
+                  v-model="state.seasonName"
+                  placeholder="e.g. 2025/2026 or Season 1"
+                  icon="i-heroicons-calendar"
+                  size="md"
+                  class="w-full"
+                />
               </UFormField>
 
               <UFormField label="Description" name="description">

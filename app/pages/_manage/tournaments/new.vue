@@ -321,6 +321,7 @@ const schema = z.object({
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Only lowercase letters, numbers, and hyphens allowed (e.g. my-tournament-2026)')
     .optional()
     .or(z.literal('')),
+  seasonName: z.string().optional().nullable(),
   description: z.string().optional(),
   sport: z.string().min(1, 'Sport is required'),
   type: z.nativeEnum(TournamentType),
@@ -352,6 +353,7 @@ type Schema = z.output<typeof schema>
 const state = reactive<Partial<Schema>>({
   name: '',
   customName: '',
+  seasonName: '',
   description: '',
   sport: '',
   type: TournamentType.ROUND_ROBIN,
@@ -609,6 +611,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     const response = await tournamentStore.createTournament({
       ...event.data,
       customName: event.data.customName || undefined,
+      seasonName: event.data.seasonName || undefined,
       isPaidRegistration: !!event.data.isPaidRegistration,
       registrationFee: event.data.isPaidRegistration && event.data.registrationFee
         ? Math.round(event.data.registrationFee * 100)
@@ -819,6 +822,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                       <span>This URL is already taken.</span>
                     </span>
                   </template>
+                </UFormField>
+
+                <UFormField label="Season / Edition" name="seasonName" hint="e.g. 2025/2026, Season 1, Spring 2026">
+                  <UInput
+                    v-model="state.seasonName"
+                    placeholder="e.g. 2025/2026 or Spring 2026"
+                    icon="i-heroicons-calendar"
+                    class="w-full"
+                  />
                 </UFormField>
 
                 <!-- Sport: tile grid (drives Step 2 formats via the engine) -->
@@ -1175,6 +1187,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 <div class="flex items-center gap-2 flex-wrap">
                   <h2 class="text-lg font-extrabold text-heading">{{ state.name || 'Untitled tournament' }}</h2>
                   <UBadge size="xs" color="primary" variant="subtle">{{ state.visibility }}</UBadge>
+                  <UBadge v-if="state.seasonName" size="xs" color="neutral" variant="outline">{{ state.seasonName }}</UBadge>
                 </div>
                 <p class="text-[12px] text-muted mt-1">
                   {{ state.sport }}<template v-if="state.location"> · {{ state.location }}</template>
