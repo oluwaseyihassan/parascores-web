@@ -5,6 +5,9 @@ import {
   detectHighlightPlatform,
   getHighlightPlatformInfo,
   normalizeHighlightUrl,
+  getHighlightEmbedUrl,
+  isTikTokShortUrl,
+  resolveTikTokShortUrl,
 } from "~/utils/highlights";
 
 export function useHighlights(
@@ -127,11 +130,20 @@ export function useHighlights(
 
     savingHighlight.value = true;
     try {
+      let embedUrl = getHighlightEmbedUrl(normalized, newHighlightPlatform.value);
+      if (!embedUrl && isTikTokShortUrl(normalized)) {
+        const resolved = await resolveTikTokShortUrl(normalized);
+        if (resolved?.embedUrl) {
+          embedUrl = resolved.embedUrl;
+        }
+      }
+
       const res = await fixtureStore.createHighlight(fixtureId, {
         externalUrl: normalized,
         platform: newHighlightPlatform.value,
         caption: newHighlightCaption.value || null,
         duration: newHighlightDuration.value || null,
+        embedUrl: embedUrl || null,
       });
 
       const created = res?.data;
@@ -148,7 +160,7 @@ export function useHighlights(
                 ...(targetEvent.metadata || {}),
                 highlightId: created.id,
                 highlightUrl: created.externalUrl,
-                highlightEmbedUrl: created.embedUrl,
+                highlightEmbedUrl: created.embedUrl || embedUrl,
                 highlightPlatform: created.platform,
                 highlightThumbnailUrl: created.thumbnailUrl,
                 highlightCaption: created.caption,

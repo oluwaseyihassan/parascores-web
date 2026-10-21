@@ -10,6 +10,8 @@ import {
   normalizeHighlightUrl,
   getHighlightEmbedUrl,
   getHighlightThumbnailUrl,
+  isTikTokShortUrl,
+  resolveTikTokShortUrl,
 } from "~/utils/highlights";
 
 export function useMatchEvents(options: {
@@ -125,7 +127,13 @@ export function useMatchEvents(options: {
         } else if (editEventData.highlightUrl.trim()) {
           const normalized = normalizeHighlightUrl(editEventData.highlightUrl);
           const platform = normalized ? detectHighlightPlatform(normalized) : null;
-          const embedUrl = normalized ? getHighlightEmbedUrl(normalized, platform) : null;
+          let embedUrl = normalized ? getHighlightEmbedUrl(normalized, platform) : null;
+          if (!embedUrl && normalized && isTikTokShortUrl(normalized)) {
+            const resolved = await resolveTikTokShortUrl(normalized);
+            if (resolved?.embedUrl) {
+              embedUrl = resolved.embedUrl;
+            }
+          }
           const thumbUrl = normalized ? getHighlightThumbnailUrl(normalized, platform) : null;
 
           let createdHighlightId: string | undefined = undefined;
