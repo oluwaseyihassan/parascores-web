@@ -28,6 +28,7 @@ export interface UpdateFixtureData {
   livestreamUrl?: string | null;
   livestreamPlatform?: LivestreamPlatform | string | null;
   allowReopen?: boolean;
+  config?: Record<string, any>;
 }
 
 export interface CreateFixtureData {

@@ -33,7 +33,7 @@ const fixture = ref<Fixture | null>(null);
 const { allowsSelfReporting } = useTournamentFeatures(tournament);
 const loading = ref(true);
 const error = ref<string | null>(null);
-const activeTab = ref<"events" | "info" | "lineups" | "highlights">("events");
+const activeTab = ref<"events" | "stats" | "info" | "lineups" | "highlights">("events");
 const activeMobileLineupTeam = ref<"home" | "away">("home");
 const highlights = ref<Highlight[]>([]);
 const loadingHighlights = ref(false);
@@ -984,6 +984,17 @@ const awaySubs = computed(() => {
               "
             >
               Match Events
+            </button>
+            <button
+              @click="activeTab = 'stats'"
+              class="pb-2 sm:pb-3 text-xs sm:text-sm font-medium border-b-2 transition-colors duration-200 cursor-pointer"
+              :class="
+                activeTab === 'stats'
+                  ? 'border-emerald-500 text-emerald-400'
+                  : tabInactiveClass
+              "
+            >
+              Stats
             </button>
             <button
               @click="activeTab = 'info'"
@@ -2564,6 +2575,14 @@ const awaySubs = computed(() => {
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Match Stats Tab -->
+        <div v-show="activeTab === 'stats'">
+          <MarketingMatchStats
+            :fixture="fixture"
+            :tournament="tournament"
+          />
         </div>
 
         <!-- Match Info Tab -->
