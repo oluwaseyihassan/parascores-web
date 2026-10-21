@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { z } from 'zod'
-import type { FormSubmitEvent } from '@nuxt/ui'
+import type { FormSubmitEvent, FormErrorEvent } from '@nuxt/ui'
 import { TournamentType, ParticipantType, Visibility, type Tournament } from '~/types'
 import { CalendarDate, type DateValue } from '@internationalized/date'
 import { listEngines, resolveEngine } from '~/engines/registry'
@@ -61,6 +61,7 @@ const setError = (msg: string | null) => {
 
 // Wizard state
 const currentStep = ref(1)
+const maxReachedStep = ref(1)
 const steps = [
   { step: 1, title: 'Identity', description: 'Name, sport & branding', icon: 'i-heroicons-identification' },
   { step: 2, title: 'Structure', description: 'Format & participants', icon: 'i-heroicons-trophy' },
@@ -71,6 +72,7 @@ const steps = [
 // Review-step edit links jump back to the owning step
 const jumpTo = (step: number) => {
   currentStep.value = step
+  maxReachedStep.value = Math.max(maxReachedStep.value, step)
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -78,69 +80,6 @@ const nextStepLabel = computed(() => {
   if (currentStep.value >= steps.length) return 'Create tournament'
   return `Next: ${steps[currentStep.value]?.title}`
 })
-
-watch(currentStep, () => {
-  error.value = null
-})
-
-const nextStep = async () => {
-  if (currentStep.value < steps.length) {
-    // Basic validation for Step 1
-    if (currentStep.value === 1) {
-      if (!state.name || state.name.length < 3) {
-        setError('Tournament name is required (min 3 characters)')
-        return
-      }
-      if (!state.sport) {
-        setError('Please select a sport')
-        return
-      }
-      if (state.customName && nameAvailable.value === false) {
-        setError('Custom URL is already taken')
-        return
-      }
-    }
-
-    // Basic validation for Step 2
-    if (currentStep.value === 2) {
-      if (state.maxParticipants === undefined || state.maxParticipants === null || state.maxParticipants as any === '') {
-        setError('Max participants is required')
-        return
-      }
-      if (typeof state.maxParticipants === 'number' && state.maxParticipants < 2) {
-        setError('Must have at least 2 participants')
-        return
-      }
-    }
-
-    // Basic validation for Step 3
-    if (currentStep.value === 3) {
-      if (!state.start_date) {
-        setError('Start date is required')
-        return
-      }
-      if (!state.end_date) {
-        setError('End date is required')
-        return
-      }
-      if (!state.organization_id) {
-        setError('Organization selection is required')
-        return
-      }
-      if (state.isPaidRegistration && (state.registrationFee === null || state.registrationFee === undefined || state.registrationFee as any === '')) {
-        setError('Registration fee is required')
-        return
-      }
-      if (state.isPaidRegistration && typeof state.registrationFee === 'number' && state.registrationFee < 0) {
-        setError('Registration fee must be positive')
-        return
-      }
-    }
-
-    currentStep.value++
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-}
 
 const prevStep = () => {
   if (currentStep.value > 1) {
@@ -446,6 +385,160 @@ watch(() => state.customName, (val) => {
   }, 500)
 })
 
+interface FormStepError {
+  field: string
+  label: string
+  message: string
+  step: number
+  stepTitle: string
+}
+
+const FIELD_TO_STEP: Record<string, { step: number; stepTitle: string; label: string }> = {
+  name: { step: 1, stepTitle: 'Identity', label: 'Tournament name' },
+  customName: { step: 1, stepTitle: 'Identity', label: 'Custom URL' },
+  seasonName: { step: 1, stepTitle: 'Identity', label: 'Season / Edition' },
+  sport: { step: 1, stepTitle: 'Identity', label: 'Sport' },
+  description: { step: 1, stepTitle: 'Identity', label: 'Description' },
+  location: { step: 1, stepTitle: 'Identity', label: 'Location' },
+  latitude: { step: 1, stepTitle: 'Identity', label: 'Latitude' },
+  longitude: { step: 1, stepTitle: 'Identity', label: 'Longitude' },
+  type: { step: 2, stepTitle: 'Structure', label: 'Format & template' },
+  participantType: { step: 2, stepTitle: 'Structure', label: 'Participant type' },
+  maxParticipants: { step: 2, stepTitle: 'Structure', label: 'Max participants' },
+  twoLegsKnockout: { step: 2, stepTitle: 'Structure', label: 'Two-legged ties' },
+  doubleRoundRobin: { step: 2, stepTitle: 'Structure', label: 'Double round robin' },
+  thirdPlaceMatch: { step: 2, stepTitle: 'Structure', label: 'Third-place match' },
+  unifiedStandings: { step: 2, stepTitle: 'Structure', label: 'Unified standings' },
+  hasKnockoutPlayoffs: { step: 2, stepTitle: 'Structure', label: 'Knockout playoffs' },
+  start_date: { step: 3, stepTitle: 'Logistics', label: 'Start date' },
+  end_date: { step: 3, stepTitle: 'Logistics', label: 'End date' },
+  timezone: { step: 3, stepTitle: 'Logistics', label: 'Timezone' },
+  organization_id: { step: 3, stepTitle: 'Logistics', label: 'Organization' },
+  visibility: { step: 3, stepTitle: 'Logistics', label: 'Visibility' },
+  registrationFee: { step: 3, stepTitle: 'Logistics', label: 'Registration fee' },
+}
+
+const showValidationErrors = ref(false)
+
+const allErrors = computed<FormStepError[]>(() => {
+  const issues: FormStepError[] = []
+
+  const parsed = schema.safeParse(state)
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const field = String(issue.path[0] || '')
+      const meta = FIELD_TO_STEP[field] || { step: 1, stepTitle: 'Identity', label: field }
+      if (!issues.some(i => i.field === field)) {
+        issues.push({
+          field,
+          label: meta.label,
+          message: issue.message,
+          step: meta.step,
+          stepTitle: meta.stepTitle,
+        })
+      }
+    }
+  }
+
+  if (state.customName && nameAvailable.value === false) {
+    if (!issues.some(i => i.field === 'customName')) {
+      issues.push({
+        field: 'customName',
+        label: 'Custom URL',
+        message: 'This URL is already taken',
+        step: 1,
+        stepTitle: 'Identity',
+      })
+    }
+  }
+
+  if (state.isPaidRegistration) {
+    if (state.registrationFee === null || state.registrationFee === undefined || (state.registrationFee as any) === '') {
+      if (!issues.some(i => i.field === 'registrationFee')) {
+        issues.push({
+          field: 'registrationFee',
+          label: 'Registration fee',
+          message: 'Registration fee is required for paid registration',
+          step: 3,
+          stepTitle: 'Logistics',
+        })
+      }
+    }
+  }
+
+  return issues
+})
+
+const currentStepErrors = computed(() => allErrors.value.filter(e => e.step === currentStep.value))
+const otherStepErrors = computed(() => allErrors.value.filter(e => e.step !== currentStep.value))
+
+const getStepErrorCount = (step: number) => {
+  return allErrors.value.filter(e => e.step === step).length
+}
+
+const getStepCircleClass = (step: number) => {
+  const hasErr = getStepErrorCount(step) > 0 && showValidationErrors.value
+  if (hasErr) {
+    return 'border-red-500 text-red-500 bg-red-500/10 ring-4 ring-red-500/10'
+  }
+  if (step < currentStep.value) {
+    return 'bg-emerald-500 border-emerald-500 text-white'
+  }
+  if (step === currentStep.value) {
+    return 'border-emerald-500 text-emerald-500 ring-4 ring-emerald-500/10 bg-surface'
+  }
+  return 'border-black/15 dark:border-white/[0.12] text-muted bg-surface'
+}
+
+watch(allErrors, (newIssues) => {
+  if (newIssues.length === 0) {
+    showValidationErrors.value = false
+  }
+})
+
+const nextStep = async () => {
+  if (currentStep.value < steps.length) {
+    const stepIssues = allErrors.value.filter(e => e.step === currentStep.value)
+    if (stepIssues.length > 0) {
+      showValidationErrors.value = true
+      setError(`${stepIssues[0].label}: ${stepIssues[0].message}`)
+      return
+    }
+
+    if (currentStep.value === 1) {
+      if (checkingName.value) {
+        setError('Please wait for custom URL availability check to complete')
+        return
+      }
+      if (state.customName && nameAvailable.value === false) {
+        showValidationErrors.value = true
+        setError('Custom URL is already taken')
+        return
+      }
+    }
+
+    error.value = null
+    currentStep.value++
+    maxReachedStep.value = Math.max(maxReachedStep.value, currentStep.value)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+function onFormError(event?: FormErrorEvent) {
+  showValidationErrors.value = true
+  const issues = allErrors.value
+  if (issues.length > 0) {
+    const first = issues[0]
+    toast.add({
+      title: 'Action Required',
+      description: `${issues.length} ${issues.length === 1 ? 'issue needs' : 'issues need'} your attention. Taking you to Step ${first.step} (${first.stepTitle}).`,
+      color: 'error',
+      icon: 'i-heroicons-exclamation-triangle'
+    })
+    jumpTo(first.step)
+  }
+}
+
 // Persistence logic
 onMounted(async () => {
   const orgId = authStore.currentOrganization?.id
@@ -480,6 +573,7 @@ onMounted(async () => {
       }
       if (data.currentStep) {
         currentStep.value = data.currentStep
+        maxReachedStep.value = Math.max(maxReachedStep.value, data.currentStep)
       }
     } catch (e) {
       console.error('Failed to restore tournament draft', e)
@@ -604,6 +698,20 @@ const timezones = [
 
 // Submit handler
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  const issues = allErrors.value
+  if (issues.length > 0) {
+    showValidationErrors.value = true
+    const first = issues[0]
+    toast.add({
+      title: 'Action Required',
+      description: `Please fix ${first.label} in Step ${first.step} (${first.stepTitle}): ${first.message}`,
+      color: 'error',
+      icon: 'i-heroicons-exclamation-triangle'
+    })
+    jumpTo(first.step)
+    return
+  }
+
   error.value = null
   loading.value = true
 
@@ -644,24 +752,35 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       <aside class="lg:sticky lg:top-4">
         <div class="bg-surface border border-subtle rounded-2xl p-3">
           <!-- Mobile: compact progress -->
-          <div class="flex lg:hidden items-center gap-2 px-1">
-            <span class="text-[11px] font-bold text-muted">Step {{ currentStep }} of {{ steps.length }}</span>
-            <div class="flex-1 h-1.5 rounded-full bg-black/10 dark:bg-white/[0.08] overflow-hidden">
+          <div class="flex lg:hidden flex-col gap-2 px-1">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-bold text-muted">Step {{ currentStep }} of {{ steps.length }}</span>
+              <span class="text-[11px] font-bold text-emerald-500">{{ steps[currentStep - 1]?.title }}</span>
+              <span
+                v-if="showValidationErrors && allErrors.length > 0"
+                class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/25"
+              >
+                {{ allErrors.length }} {{ allErrors.length === 1 ? 'issue' : 'issues' }}
+              </span>
+            </div>
+            <div class="w-full h-1.5 rounded-full bg-black/10 dark:bg-white/[0.08] overflow-hidden">
               <div class="h-full bg-emerald-500 transition-all duration-500" :style="{ width: `${(currentStep / steps.length) * 100}%` }"></div>
             </div>
-            <span class="text-[11px] font-bold text-emerald-500">{{ steps[currentStep - 1]?.title }}</span>
           </div>
 
           <!-- Desktop: vertical steps -->
-          <div class="hidden lg:block">
+          <div class="hidden lg:block space-y-1">
             <button
               v-for="s in steps"
               :key="s.step"
               type="button"
-              class="w-full flex gap-3 px-2 py-2.5 text-left relative group"
-              :class="s.step < currentStep ? 'cursor-pointer' : 'cursor-default'"
+              class="w-full flex gap-3 px-2 py-2.5 text-left relative group rounded-xl transition-colors"
+              :class="[
+                (s.step <= maxReachedStep || (showValidationErrors && getStepErrorCount(s.step) > 0)) ? 'cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.03]' : 'cursor-default opacity-75',
+                s.step === currentStep ? 'bg-black/[0.03] dark:bg-white/[0.04]' : ''
+              ]"
               :aria-current="s.step === currentStep ? 'step' : undefined"
-              @click="s.step < currentStep ? jumpTo(s.step) : null"
+              @click="(s.step <= maxReachedStep || (showValidationErrors && getStepErrorCount(s.step) > 0)) ? jumpTo(s.step) : null"
             >
               <!-- connector -->
               <span
@@ -671,21 +790,34 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               ></span>
               <span
                 class="w-6 h-6 rounded-full flex items-center justify-center border-2 shrink-0 z-10 transition-all text-[11px] font-extrabold"
-                :class="s.step < currentStep
-                  ? 'bg-emerald-500 border-emerald-500 text-white'
-                  : s.step === currentStep
-                    ? 'border-emerald-500 text-emerald-500 ring-4 ring-emerald-500/10 bg-surface'
-                    : 'border-black/15 dark:border-white/[0.12] text-muted bg-surface'"
+                :class="getStepCircleClass(s.step)"
               >
-                <UIcon v-if="s.step < currentStep" name="i-heroicons-check" class="w-3.5 h-3.5" />
+                <UIcon
+                  v-if="showValidationErrors && getStepErrorCount(s.step) > 0"
+                  name="i-heroicons-exclamation-triangle"
+                  class="w-3.5 h-3.5 text-red-500"
+                />
+                <UIcon
+                  v-else-if="s.step < currentStep"
+                  name="i-heroicons-check"
+                  class="w-3.5 h-3.5"
+                />
                 <template v-else>{{ s.step }}</template>
               </span>
-              <span class="min-w-0">
-                <span
-                  class="block text-[12.5px] font-bold transition-colors"
-                  :class="s.step <= currentStep ? 'text-heading' : 'text-muted'"
-                >{{ s.title }}</span>
-                <span class="block text-[10.5px] text-muted mt-0.5">{{ s.description }}</span>
+              <span class="min-w-0 flex-1">
+                <span class="flex items-center justify-between gap-1">
+                  <span
+                    class="block text-[12.5px] font-bold transition-colors"
+                    :class="s.step === currentStep ? 'text-heading' : s.step <= maxReachedStep ? 'text-heading/90' : 'text-muted'"
+                  >{{ s.title }}</span>
+                  <span
+                    v-if="showValidationErrors && getStepErrorCount(s.step) > 0"
+                    class="px-1.5 py-0.2 text-[9.5px] font-extrabold rounded-full bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/25 shrink-0"
+                  >
+                    {{ getStepErrorCount(s.step) }}
+                  </span>
+                </span>
+                <span class="block text-[10.5px] text-muted mt-0.5 truncate">{{ s.description }}</span>
               </span>
             </button>
 
@@ -724,7 +856,71 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </template>
         </UAlert>
 
-        <UForm :schema="schema" :state="state" @submit="onSubmit">
+        <!-- Cross-step validation issues banner -->
+        <div
+          v-if="showValidationErrors && allErrors.length > 0"
+          class="mb-4 rounded-2xl border border-red-500/30 bg-red-500/[0.06] dark:bg-red-500/[0.1] p-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300"
+        >
+          <div class="flex items-start gap-3">
+            <span class="w-8 h-8 rounded-xl bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 mt-0.5">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-4.5 h-4.5" />
+            </span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <h3 class="text-[13.5px] font-bold text-red-600 dark:text-red-400">
+                  {{ allErrors.length }} {{ allErrors.length === 1 ? 'issue prevents' : 'issues prevent' }} tournament creation
+                </h3>
+                <span class="text-[11px] text-muted font-medium">Click any issue to jump directly to it</span>
+              </div>
+              <p class="text-[12px] text-body mt-0.5">
+                Please resolve the following required fields before submitting:
+              </p>
+
+              <div class="mt-3 flex flex-col gap-1.5">
+                <div
+                  v-for="err in allErrors"
+                  :key="err.field"
+                  class="flex items-center justify-between gap-3 p-2 rounded-xl border text-[12px] transition-all"
+                  :class="err.step === currentStep
+                    ? 'bg-red-500/10 border-red-500/30'
+                    : 'bg-surface/80 hover:bg-surface border-subtle cursor-pointer hover:border-red-500/30'"
+                  @click="jumpTo(err.step)"
+                >
+                  <div class="flex items-center gap-2 min-w-0">
+                    <UBadge
+                      size="xs"
+                      :color="err.step === currentStep ? 'error' : 'neutral'"
+                      variant="subtle"
+                      class="shrink-0 font-bold"
+                    >
+                      Step {{ err.step }}: {{ err.stepTitle }}
+                    </UBadge>
+                    <span class="font-semibold text-heading truncate">{{ err.label }}</span>
+                    <span class="text-muted text-[11.5px] truncate hidden sm:inline">— {{ err.message }}</span>
+                  </div>
+
+                  <div class="shrink-0 flex items-center gap-1.5">
+                    <span v-if="err.step === currentStep" class="text-[11px] font-bold text-red-600 dark:text-red-400">
+                      On this page
+                    </span>
+                    <UButton
+                      v-else
+                      size="xs"
+                      color="error"
+                      variant="soft"
+                      trailing-icon="i-heroicons-arrow-right"
+                      label="Fix"
+                      class="font-bold text-[11px]"
+                      @click.stop="jumpTo(err.step)"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <UForm :schema="schema" :state="state" @submit="onSubmit" @error="onFormError">
 
           <!-- ═══ STEP 1: IDENTITY ═══ -->
           <div v-if="currentStep === 1" class="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -1168,6 +1364,39 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
           <!-- ═══ STEP 4: REVIEW ═══ -->
           <div v-if="currentStep === 4" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <!-- Validation Summary Card in Step 4 -->
+            <div
+              v-if="allErrors.length > 0"
+              class="mb-4 p-4 rounded-2xl bg-amber-500/[0.08] dark:bg-amber-500/[0.12] border border-amber-500/30"
+            >
+              <div class="flex items-start gap-3">
+                <span class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4" />
+                </span>
+                <div class="flex-1 min-w-0">
+                  <h3 class="text-[13px] font-bold text-amber-700 dark:text-amber-400">
+                    Cannot create tournament yet
+                  </h3>
+                  <p class="text-[12px] text-body mt-0.5">
+                    There {{ allErrors.length === 1 ? 'is' : 'are' }} {{ allErrors.length }} incomplete or invalid {{ allErrors.length === 1 ? 'field' : 'fields' }} from earlier steps that must be fixed before launching:
+                  </p>
+                  <div class="mt-2.5 flex flex-wrap gap-2">
+                    <UButton
+                      v-for="err in allErrors"
+                      :key="err.field"
+                      size="xs"
+                      color="warning"
+                      variant="soft"
+                      trailing-icon="i-heroicons-arrow-right"
+                      :label="`Fix ${err.label} (Step ${err.step})`"
+                      class="font-bold text-[11px]"
+                      @click="jumpTo(err.step)"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <section class="bg-surface border border-subtle rounded-2xl overflow-hidden">
               <!-- Fan-page hero preview -->
               <div class="relative">
@@ -1259,15 +1488,23 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 class="font-bold"
                 @click="nextStep"
               />
-              <UButton
-                v-else
-                type="submit"
-                label="Create tournament"
-                color="primary"
-                icon="i-heroicons-sparkles"
-                class="font-bold"
-                :loading="loading"
-              />
+              <div v-else class="flex items-center gap-2">
+                <span
+                  v-if="allErrors.length > 0 && showValidationErrors"
+                  class="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-red-500 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/20"
+                >
+                  <UIcon name="i-heroicons-exclamation-circle" class="w-3.5 h-3.5" />
+                  {{ allErrors.length }} {{ allErrors.length === 1 ? 'issue remaining' : 'issues remaining' }}
+                </span>
+                <UButton
+                  type="submit"
+                  label="Create tournament"
+                  :color="allErrors.length > 0 && showValidationErrors ? 'error' : 'primary'"
+                  :icon="allErrors.length > 0 && showValidationErrors ? 'i-heroicons-exclamation-triangle' : 'i-heroicons-sparkles'"
+                  class="font-bold"
+                  :loading="loading"
+                />
+              </div>
             </div>
           </div>
         </UForm>
