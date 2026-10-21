@@ -23,8 +23,23 @@ type TabKey = 'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | '
 const activeTab = ref<TabKey>(
   (route.query.tab as any) || 'info'
 )
-const selectedFixtureId = ref<string | null>(null)
 const selectedParticipantId = ref<string | null>(null)
+
+function getFixtureUrl(fixtureId: string) {
+  const tId = tournament.value?.customName || tournament.value?.id || tournamentId
+  return toMain(`/t/${tId}/fixture/${fixtureId}`)
+}
+
+function openFixture(fixtureId: string) {
+  if (isDragging.value) return
+  navigateTo(getFixtureUrl(fixtureId))
+}
+
+function onFixtureClick(e: MouseEvent) {
+  if (isDragging.value) {
+    e.preventDefault()
+  }
+}
 
 // Goal Flash state
 const flashingFixtures = ref<Map<string, 'home' | 'away'>>(new Map())
@@ -52,7 +67,6 @@ const loadPlayerStats = async () => {
 }
 
 watch(activeTab, (newTab) => {
-  selectedFixtureId.value = null
   selectedParticipantId.value = null
   router.replace({ query: { ...route.query, tab: newTab } })
   scrollActiveTabIntoView()
@@ -428,7 +442,7 @@ function isInsideScrollableHorizontal(el: Element | null): boolean {
 }
 
 function onTouchStart(e: TouchEvent) {
-  if (selectedFixtureId.value || selectedParticipantId.value) {
+  if (selectedParticipantId.value) {
     isTouchIgnored.value = true
     return
   }
@@ -1666,15 +1680,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
         @touchend="onTouchEnd"
       >
         
-        <div v-if="selectedFixtureId" class="animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <MarketingFixtureDetails 
-            :tournamentId="tournamentId" 
-            :fixtureId="selectedFixtureId" 
-            @back="selectedFixtureId = null" 
-          />
-        </div>
-
-        <div v-else-if="selectedParticipantId" class="animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div v-if="selectedParticipantId" class="animate-in fade-in slide-in-from-bottom-4 duration-300">
           <MarketingTeamDetails 
             :tournamentId="tournamentId" 
             :participantId="selectedParticipantId" 
@@ -1682,7 +1688,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
           />
         </div>
 
-                <div v-show="!selectedFixtureId && !selectedParticipantId" class="w-full overflow-hidden">
+        <div v-show="!selectedParticipantId" class="w-full overflow-hidden">
           <div
             class="flex w-full items-start will-change-transform"
             :style="trackStyle"
@@ -1975,8 +1981,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :two-legs-knockout="tournament.twoLegsKnockout"
               :third-place-match="tournament.thirdPlaceMatch"
               :readonly="true"
-              @control-match="(fixture) => selectedFixtureId = fixture.id"
-              @start-match="(fixture) => selectedFixtureId = fixture.id"
+              @control-match="(fixture) => openFixture(fixture.id)"
+              @start-match="(fixture) => openFixture(fixture.id)"
             />
           </div>
             </div>
@@ -2107,11 +2113,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
                     <!-- Fixtures in Date Group -->
                     <div class="divide-y divide-gray-100 dark:divide-white/[0.04]">
-                      <button
-                        type="button"
+                      <NuxtLink
                         v-for="fixture in group.fixtures"
                         :key="fixture.id"
-                        @click="selectedFixtureId = fixture.id"
+                        :to="getFixtureUrl(fixture.id)"
+                        @click="onFixtureClick"
                         class="w-full flex items-center py-3 px-2 sm:px-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors cursor-pointer text-left focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
                       >
                         <!-- Status Pill on Left -->
@@ -2255,7 +2261,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                             </span>
                           </div>
                         </div>
-                      </button>
+                      </NuxtLink>
                     </div>
                   </div>
                 </div>
@@ -2275,11 +2281,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
                     <!-- Fixtures List -->
                     <div class="divide-y divide-gray-100 dark:divide-white/[0.04]">
-                      <button
-                        type="button"
+                      <NuxtLink
                         v-for="fixture in roundItem.fixtures"
                         :key="fixture.id"
-                        @click="selectedFixtureId = fixture.id"
+                        :to="getFixtureUrl(fixture.id)"
+                        @click="onFixtureClick"
                         class="w-full flex items-center py-3 px-2 sm:px-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors cursor-pointer text-left focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
                       >
                         <!-- Status Pill on Left -->
@@ -2414,7 +2420,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                             </span>
                           </div>
                         </div>
-                      </button>
+                      </NuxtLink>
                     </div>
                   </div>
                 </div>
