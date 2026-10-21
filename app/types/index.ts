@@ -317,6 +317,24 @@ export interface ResultEntry {
   } | null;
 }
 
+export interface TeamMatchStats {
+  possession?: number;
+  shots?: number;
+  shotsOnTarget?: number;
+  corners?: number;
+  fouls?: number;
+  offsides?: number;
+  saves?: number;
+  passes?: number;
+  yellowCards?: number;
+  redCards?: number;
+}
+
+export interface FixtureMatchStats {
+  home: TeamMatchStats;
+  away: TeamMatchStats;
+}
+
 export interface Fixture {
   id: string;
   tournament_id: string;

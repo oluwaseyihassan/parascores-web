@@ -74,7 +74,7 @@ const loadingHighlights = ref(false);
 const showHighlightsCollapsible = ref(false);
 const showMotmCollapsible = ref(false);
 
-const activeTab = ref<"live" | "setup" | "events" | "media">("live");
+const activeTab = ref<"live" | "setup" | "events" | "media" | "stats">("live");
 
 const highlightsApi = useHighlights(
   () => selectedFixture.value?.id,
@@ -1144,6 +1144,14 @@ const downloadGraphic = async () => {
               mediaTabBadge
             }}</span>
           </button>
+          <button
+            class="mc-tab"
+            :class="{ 'mc-tab--active': activeTab === 'stats' }"
+            @click="activeTab = 'stats'"
+          >
+            <UIcon name="i-heroicons-chart-bar" class="w-4 h-4" />
+            <span>Stats</span>
+          </button>
         </div>
 
         <!-- Body / Tab Panes -->
@@ -1337,6 +1345,18 @@ const downloadGraphic = async () => {
             />
 
             <MatchHighlightsPanel v-model:collapsed="showHighlightsCollapsible" />
+          </div>
+
+          <!-- Stats Tab -->
+          <div v-show="activeTab === 'stats'" class="mc-tab-pane">
+            <MatchStatsPanel
+              :fixture="selectedFixture"
+              :tournament="props.tournament"
+              @stats-updated="(updatedFixture) => {
+                selectedFixture = updatedFixture;
+                emit('fixture-updated', updatedFixture);
+              }"
+            />
           </div>
         </div>
 
