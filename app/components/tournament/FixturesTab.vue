@@ -67,7 +67,6 @@ const goalsPerMatch = computed(() => (fixturesPlayed.value ? (goalsScored.value 
 const liveHere = computed(() =>
   tournament.value ? liveFixtures.value.filter((f) => f.tournament_id === tournament.value!.id) : [],
 );
-const topScorersMini = computed(() => (props.playerStats?.topScorers || []).slice(0, 3));
 
 // Race tournaments render fixtures as ranked events, not head-to-head cards.
 // Driven by the sport engine (works for tournaments created before RACE type
@@ -1035,9 +1034,7 @@ const showAddEventModal = ref(false);
       </p>
     </UCard>
 
-    <div v-else class="grid gap-4 items-start mt-4" :class="topScorersMini.length ? 'lg:grid-cols-[1.7fr_1fr]' : ''">
-    <div class="min-w-0">
-    <UCard>
+    <UCard v-else class="mt-4">
       <template #header>
         <div
           class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -1407,37 +1404,6 @@ const showAddEventModal = ref(false);
       </template>
 
     </UCard>
-    </div>
-
-    <!-- Side rail (redesign): top scorers -->
-    <aside v-if="topScorersMini.length" class="flex flex-col gap-4">
-
-      <UCard v-if="topScorersMini.length">
-        <template #header>
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-bold">Top scorers</span>
-            <button class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline" @click="emit('go-to-tab', 'stats')">All stats →</button>
-          </div>
-        </template>
-        <div class="-my-2">
-          <div
-            v-for="(item, i) in topScorersMini"
-            :key="i"
-            class="flex items-center gap-3 py-2 text-sm border-b border-gray-100 dark:border-white/5 last:border-b-0"
-          >
-            <span class="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300 shrink-0">
-              {{ (item.player?.name || '?').charAt(0).toUpperCase() }}
-            </span>
-            <span class="flex-1 min-w-0">
-              <span class="block truncate font-semibold text-gray-900 dark:text-white">{{ item.player?.name || 'Unknown' }}</span>
-              <span class="block text-[11px] text-gray-500 dark:text-gray-400 truncate">{{ item.teamName }}</span>
-            </span>
-            <span class="font-mono text-base font-bold text-emerald-500">{{ item.goals }}</span>
-          </div>
-        </div>
-      </UCard>
-    </aside>
-    </div>
 
     <!-- Add Fixture Modal -->
     <TournamentFixtureAddModal ref="fixtureAddModal" />
