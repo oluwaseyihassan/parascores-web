@@ -278,7 +278,36 @@ const visibleTabs = computed<TabKey[]>(() => {
   return tabs
 })
 
-const tabTransitionDirection = ref<'next' | 'prev'>('next')
+const isDragging = ref(false)
+const isAnimating = ref(false)
+const dragDeltaX = ref(0)
+let startClientX = 0
+let startClientY = 0
+let touchStartTime = 0
+let isHorizontalGesture: boolean | null = null
+let animationTimeout: any = null
+const isTouchIgnored = ref(false)
+
+const activeTabIndex = computed(() => {
+  const idx = visibleTabs.value.indexOf(activeTab.value)
+  return idx >= 0 ? idx : 0
+})
+
+const trackStyle = computed(() => {
+  const baseOffset = -activeTabIndex.value * 100
+  if (isDragging.value) {
+    return {
+      transform: `translateX(calc(${baseOffset}% + ${dragDeltaX.value}px))`,
+      transition: 'none',
+    }
+  } else {
+    return {
+      transform: `translateX(${baseOffset}%)`,
+      transition: 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+    }
+  }
+})
+
 const tabsNavRef = ref<HTMLElement | null>(null)
 const contentSectionRef = ref<HTMLElement | null>(null)
 
@@ -296,16 +325,14 @@ function scrollActiveTabIntoView() {
   })
 }
 
-function switchTab(tab: TabKey, dir?: 'next' | 'prev') {
+function switchTab(tab: TabKey) {
   if (activeTab.value === tab) return
-  if (dir) {
-    tabTransitionDirection.value = dir
-  } else {
-    const currIdx = visibleTabs.value.indexOf(activeTab.value)
-    const newIdx = visibleTabs.value.indexOf(tab)
-    tabTransitionDirection.value = newIdx >= currIdx ? 'next' : 'prev'
-  }
+  isAnimating.value = true
   activeTab.value = tab
+  clearTimeout(animationTimeout)
+  animationTimeout = setTimeout(() => {
+    isAnimating.value = false
+  }, 330)
 }
 
 function goToNextTab() {
@@ -314,7 +341,7 @@ function goToNextTab() {
   if (currIdx !== -1 && currIdx < list.length - 1) {
     const next = list[currIdx + 1]
     if (next) {
-      switchTab(next, 'next')
+      switchTab(next)
       return true
     }
   }
@@ -327,7 +354,7 @@ function goToPrevTab() {
   if (currIdx > 0) {
     const prev = list[currIdx - 1]
     if (prev) {
-      switchTab(prev, 'prev')
+      switchTab(prev)
       return true
     }
   }
@@ -382,13 +409,6 @@ function handleTabClick(tab: TabKey) {
   switchTab(tab)
 }
 
-// Swipe gestures on tab content area
-const touchStartX = ref(0)
-const touchStartY = ref(0)
-const touchEndX = ref(0)
-const touchEndY = ref(0)
-const isTouchIgnored = ref(false)
-
 function isInsideScrollableHorizontal(el: Element | null): boolean {
   if (typeof window === 'undefined' || !el) return false
   let curr: Element | null = el
@@ -422,40 +442,83 @@ function onTouchStart(e: TouchEvent) {
   }
 
   isTouchIgnored.value = false
-  touchStartX.value = touch.clientX
-  touchStartY.value = touch.clientY
-  touchEndX.value = touch.clientX
-  touchEndY.value = touch.clientY
+  startClientX = touch.clientX
+  startClientY = touch.clientY
+  touchStartTime = Date.now()
+  dragDeltaX.value = 0
+  isHorizontalGesture = null
 }
 
 function onTouchMove(e: TouchEvent) {
   if (isTouchIgnored.value) return
   const touch = e.touches[0]
   if (!touch) return
-  touchEndX.value = touch.clientX
-  touchEndY.value = touch.clientY
-}
 
-function onTouchEnd() {
-  if (isTouchIgnored.value) return
+  const dx = touch.clientX - startClientX
+  const dy = touch.clientY - startClientY
 
-  const deltaX = touchEndX.value - touchStartX.value
-  const deltaY = touchEndY.value - touchStartY.value
-
-  const minSwipeDistance = 50
-  if (Math.abs(deltaX) >= minSwipeDistance && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
-    if (deltaX < 0) {
-      goToNextTab()
-    } else {
-      goToPrevTab()
+  if (isHorizontalGesture === null) {
+    if (Math.abs(dx) > 7 || Math.abs(dy) > 7) {
+      if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+        isHorizontalGesture = true
+        isDragging.value = true
+      } else {
+        isHorizontalGesture = false
+      }
     }
   }
 
-  touchStartX.value = 0
-  touchStartY.value = 0
-  touchEndX.value = 0
-  touchEndY.value = 0
-  isTouchIgnored.value = false
+  if (isHorizontalGesture === true) {
+    // Edge resistance damping
+    if (activeTabIndex.value === 0 && dx > 0) {
+      dragDeltaX.value = dx * 0.32
+    } else if (activeTabIndex.value === visibleTabs.value.length - 1 && dx < 0) {
+      dragDeltaX.value = dx * 0.32
+    } else {
+      dragDeltaX.value = dx
+    }
+  }
+}
+
+function onTouchEnd() {
+  if (isTouchIgnored.value || !isHorizontalGesture) {
+    isDragging.value = false
+    dragDeltaX.value = 0
+    isHorizontalGesture = null
+    return
+  }
+
+  const duration = Date.now() - touchStartTime
+  const velocity = Math.abs(dragDeltaX.value) / Math.max(duration, 1)
+  const isFlick = velocity > 0.4 && Math.abs(dragDeltaX.value) > 25
+  const isThreshold = Math.abs(dragDeltaX.value) > 55
+
+  if ((isThreshold || isFlick) && dragDeltaX.value < 0) {
+    // Swipe left -> next tab
+    if (activeTabIndex.value < visibleTabs.value.length - 1) {
+      const nextTab = visibleTabs.value[activeTabIndex.value + 1]
+      if (nextTab) {
+        switchTab(nextTab)
+      }
+    }
+  } else if ((isThreshold || isFlick) && dragDeltaX.value > 0) {
+    // Swipe right -> prev tab
+    if (activeTabIndex.value > 0) {
+      const prevTab = visibleTabs.value[activeTabIndex.value - 1]
+      if (prevTab) {
+        switchTab(prevTab)
+      }
+    }
+  }
+
+  dragDeltaX.value = 0
+  isDragging.value = false
+  isAnimating.value = true
+  clearTimeout(animationTimeout)
+  animationTimeout = setTimeout(() => {
+    isAnimating.value = false
+  }, 330)
+  isHorizontalGesture = null
 }
 
 function getSeasonFallbackYear(t: { start_date?: string | null; end_date?: string | null }): string {
@@ -1619,12 +1682,311 @@ function getTeamCards(fixture: any, isHome: boolean) {
           />
         </div>
 
-        <div v-show="!selectedFixtureId && !selectedParticipantId">
-          <Transition :name="tabTransitionDirection === 'next' ? 'tab-slide-next' : 'tab-slide-prev'" mode="out-in">
-            <div :key="activeTab" class="w-full">
-              <!-- ====== FIXTURES TAB ====== -->
-              <div v-if="activeTab === 'fixtures'">
-            <div v-if="filteredFixtures.length === 0" class="text-center py-16">
+                <div v-show="!selectedFixtureId && !selectedParticipantId" class="w-full overflow-hidden">
+          <div
+            class="flex w-full items-start will-change-transform"
+            :style="trackStyle"
+          >
+            <!-- ====== OVERVIEW (INFO) TAB ====== -->
+            <div
+              class="w-full shrink-0 min-w-full"
+              :class="activeTab === 'info' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
+            >
+              <div class="flex flex-col gap-6">
+
+
+            <!-- About Section (First) -->
+            <div v-if="tournament.description || (socials && socials.length > 0)" class="border rounded-xl overflow-hidden bg-white border-gray-200 shadow-sm dark:bg-[#1a1a1a] dark:border-white/[0.06]">
+              <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between border-gray-100 dark:border-white/[0.06]">
+                <h3 class="text-sm font-bold text-gray-500">About</h3>
+                
+                <!-- Socials in Header -->
+                <div v-if="socials && socials.length > 0" class="flex items-center gap-3">
+                  <a
+                    v-for="social in socials"
+                    :key="social.id"
+                    :href="social.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-gray-400 hover:text-emerald-400 transition-colors tooltip"
+                    :title="social.handle || social.platform"
+                  >
+                    <SocialsTwitterIcon v-if="social.platform === 'twitter'" class="w-4 h-4" />
+                    <SocialsInstagramIcon v-else-if="social.platform === 'instagram'" class="w-4 h-4" />
+                    <SocialsWebIcon v-else-if="social.platform === 'website'" class="w-4 h-4" />
+                    <UIcon v-else-if="social.platform === 'facebook'" name="i-simple-icons-facebook" class="w-4 h-4" />
+                    <UIcon v-else-if="social.platform === 'youtube'" name="i-simple-icons-youtube" class="w-4 h-4" />
+                    <UIcon v-else-if="social.platform === 'tiktok'" name="i-simple-icons-tiktok" class="w-4 h-4" />
+                    <UIcon v-else-if="social.platform === 'discord'" name="i-simple-icons-discord" class="w-4 h-4" />
+                    <UIcon v-else-if="social.platform === 'twitch'" name="i-simple-icons-twitch" class="w-4 h-4" />
+                    <UIcon v-else name="i-heroicons-globe-alt" class="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
+              <div v-if="tournament.description" class="p-5">
+                <p class="text-sm leading-relaxed whitespace-pre-line text-gray-600 dark:text-gray-300">
+                  {{ tournament.description }}
+                </p>
+              </div>
+            </div>
+
+            <div v-if="sponsors && sponsors.length > 0" class="border rounded-xl overflow-hidden mt-6 bg-white border-gray-200 shadow-sm dark:bg-[#1a1a1a] dark:border-white/[0.06]">
+              <div class="px-5 py-3.5 border-b transition-colors flex items-center gap-2 border-gray-100 dark:border-white/[0.06]">
+                <UIcon name="i-heroicons-building-office-2" class="w-4 h-4 text-gray-400" />
+                <h3 class="text-sm font-bold text-gray-500">Sponsors</h3>
+              </div>
+              <div class="p-8 flex flex-wrap justify-center items-center gap-8 sm:gap-12 md:gap-16">
+                <template v-for="sponsor in sponsors" :key="sponsor.id">
+                  <button
+                    class="group flex flex-col items-center justify-center transition-transform duration-300 cursor-pointer hover:scale-105"
+                    @click="selectedSponsor = sponsor"
+                  >
+                    <div class="h-16 sm:h-20 lg:h-24 max-w-[160px] sm:max-w-[200px] flex items-center justify-center mb-0">
+                      <img v-if="sponsor.logoUrl" :src="sponsor.logoUrl" :alt="sponsor.name" class="w-full h-full object-contain filter dark:brightness-90 dark:group-hover:brightness-100 transition-all" />
+                      <span v-else class="text-xl font-bold text-gray-400">{{ sponsor.name }}</span>
+                    </div>
+                  </button>
+                </template>
+              </div>
+
+              <!-- Sponsor Detail Modal -->
+              <Teleport to="body">
+                <Transition name="sponsor-modal">
+                  <div
+                    v-if="selectedSponsor"
+                    class="fixed inset-0 z-[100] flex items-center justify-center px-4"
+                    @click.self="selectedSponsor = null"
+                  >
+                    <!-- Backdrop -->
+                    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="selectedSponsor = null" />
+
+                    <!-- Card -->
+                    <div
+                      class="relative w-full max-w-sm rounded-2xl border p-6 shadow-2xl transition-all bg-white border-gray-200 dark:bg-[#1a1a1a] dark:border-white/10"
+                    >
+                      <!-- Close Button -->
+                      <button
+                        class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-500 dark:hover:bg-white/10 dark:text-gray-400"
+                        @click="selectedSponsor = null"
+                      >
+                        <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+                      </button>
+
+                      <!-- Logo -->
+                      <div class="flex justify-center mb-5">
+                        <div
+                          class="w-28 h-28 rounded-xl flex items-center justify-center overflow-hidden border bg-gray-50 border-gray-100 dark:bg-white/5 dark:border-white/10"
+                        >
+                          <img
+                            v-if="selectedSponsor.logoUrl"
+                            :src="selectedSponsor.logoUrl"
+                            :alt="selectedSponsor.name"
+                            class="w-full h-full object-contain p-3"
+                          />
+                          <span v-else class="text-3xl font-bold text-gray-400">
+                            {{ selectedSponsor.name.charAt(0).toUpperCase() }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- Name -->
+                      <h3
+                        class="text-xl font-bold text-center mb-1 break-words overflow-hidden text-gray-900 dark:text-white"
+                      >
+                        {{ selectedSponsor.name }}
+                      </h3>
+
+                      <p class="text-xs text-center text-gray-500 mb-5">
+                        {{ selectedSponsor.description || 'Tournament Sponsor' }}
+                      </p>
+
+                      <!-- Website Link -->
+                      <a
+                        v-if="selectedSponsor.websiteUrl"
+                        :href="selectedSponsor.websiteUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                      >
+                        <UIcon name="i-heroicons-globe-alt" class="w-4 h-4" />
+                        Visit Website
+                      </a>
+
+                      <div
+                        v-else
+                        class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-gray-400 bg-gray-50 dark:text-gray-500 dark:bg-white/5"
+                      >
+                        <UIcon name="i-heroicons-globe-alt" class="w-4 h-4" />
+                        No website available
+                      </div>
+                    </div>
+                  </div>
+                </Transition>
+              </Teleport>
+            </div>
+
+            <!-- Tournament Info (Last) -->
+            <div class="border rounded-xl overflow-hidden mt-6 bg-white border-gray-200 shadow-sm dark:bg-[#1a1a1a] dark:border-white/[0.06]">
+              <div class="px-5 py-3.5 border-b transition-colors border-gray-100 dark:border-white/[0.06]">
+                <h3 class="text-sm font-bold text-gray-500">Tournament Info</h3>
+              </div>
+              <div class="divide-y transition-colors divide-gray-100 dark:divide-white/[0.04]">
+                <div class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Dates</span>
+                  <span class="text-sm transition-colors text-gray-800 dark:text-gray-200">{{ formatDate(tournament.start_date) }} — {{ formatDate(tournament.end_date) }}</span>
+                </div>
+                <div class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Sport</span>
+                  <span class="text-sm transition-colors capitalize text-gray-800 dark:text-gray-200">{{ tournament.sport }}</span>
+                </div>
+                <div class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Type</span>
+                  <span class="text-sm transition-colors text-gray-800 dark:text-gray-200">{{ formatType(tournament.type) }}</span>
+                </div>
+                <div v-if="tournament.organization" class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Organizer</span>
+                  <NuxtLink
+                    :to="toMain(`/org/${tournament.organization.slug}`)"
+                    class="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1.5"
+                  >
+                    <img
+                      v-if="tournament.organization.logoUrl"
+                      :src="tournament.organization.logoUrl"
+                      :alt="tournament.organization.name"
+                      class="w-4 h-4 rounded-full object-cover shrink-0"
+                    />
+                    <span>{{ tournament.organization.name }}</span>
+                    <UIcon
+                      v-if="tournament.organization.isVerified"
+                      name="i-heroicons-check-badge-solid"
+                      class="w-3.5 h-3.5 text-emerald-500 shrink-0"
+                    />
+                  </NuxtLink>
+                </div>
+                <div v-if="tournament.location" class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Location</span>
+                  <span class="text-sm transition-colors text-gray-800 dark:text-gray-200">{{ tournament.location }}</span>
+                </div>
+                <div v-if="uniqueVenues.length > 0" class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm text-gray-500">Venues</span>
+                  <span class="text-sm transition-colors text-right pl-4 text-gray-800 dark:text-gray-200">
+                    {{ uniqueVenues.join(', ') }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+            </div>
+
+            <!-- ====== STANDINGS TAB ====== -->
+            <div
+              v-if="standings.length > 0"
+              class="w-full shrink-0 min-w-full"
+              :class="activeTab === 'standings' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
+            >
+              <div v-if="standings.length === 0" class="text-center py-16">
+            <p class="text-sm text-gray-500">No standings available yet.</p>
+          </div>
+          <div v-else class="space-y-6 w-full mx-auto">
+            <div v-for="(groupStandings, groupName) in standingsByGroup" :key="groupName">
+              <div class="flex items-center justify-between mb-3 px-1">
+                <h4 v-if="groupName !== 'default'" class="text-xs font-bold text-gray-500">
+                  {{ groupName }}
+                </h4>
+              </div>
+              <div class="border rounded-xl overflow-x-auto transition-colors bg-white shadow-sm border-gray-100 dark:bg-[#1a1a1a] dark:border-white/[0.06]">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="border-b transition-colors border-gray-100 dark:border-white/[0.06]">
+                      <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-bold text-gray-500 sticky left-0 z-20 bg-white dark:bg-[#1a1a1a]">#</th>
+                      <th class="text-left w-1/2 px-3 py-3 text-[11px] font-bold text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">Team</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">P</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">W</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">D</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">L</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GF</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GA</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GD</th>
+                      <th class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[11px] font-bold text-emerald-400">Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr 
+                      v-for="(standing, index) in groupStandings" 
+                      :key="standing.id"
+                      @click="selectedParticipantId = standing.participant_id"
+                      class="border-t transition-colors cursor-pointer border-gray-100 hover:bg-gray-100 dark:border-white/[0.04] dark:hover:bg-white/[0.04]"
+                    >
+                      <td class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[13px] font-bold text-gray-500 sticky left-0 z-10 bg-white dark:bg-[#1a1a1a]">{{ standing.position || index + 1 }}</td>
+                      <td class="text-left w-[170px] md:w-auto min-w-[170px] px-3 py-3 sticky left-[32px] md:left-[40px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">
+                        <div class="flex items-center gap-2 md:gap-2.5">
+                          <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
+                            <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
+                            <span v-else class="flex items-center justify-center w-full h-full text-[8px] md:text-[9px] font-bold text-gray-500">
+                              {{ (standing.participant?.customShortName || standing.participant?.customName || 'T').charAt(0) }}
+                            </span>
+                          </div>
+                          <div class="flex flex-col min-w-0">
+                            <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px] text-gray-800 dark:text-gray-200">{{ standing.participant?.customShortName || standing.participant?.customName || 'Unknown' }}</span>
+                            <NuxtLink 
+                              v-if="standing.participant?.team_id || standing.participant?.team?.id"
+                              :to="`/team/${standing.participant?.team_id || standing.participant?.team?.id}`"
+                              class="text-[9px] text-emerald-500 font-black uppercase tracking-widest hover:underline mt-0.5"
+                              @click.stop
+                            >
+                              Team History
+                            </NuxtLink>
+                          </div>
+
+                        </div>
+                      </td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.played }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.wins }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.draws }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.losses }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsFor }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsAgainst }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px]" :class="standing.goalDiff > 0 ? 'text-emerald-400' : standing.goalDiff < 0 ? 'text-red-400' : 'text-gray-500'">
+                        {{ standing.goalDiff > 0 ? '+' : '' }}{{ standing.goalDiff }}
+                      </td>
+                      <td class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[12px] md:text-[13px] font-bold text-gray-900 dark:text-white">{{ standing.points }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+            </div>
+
+            <!-- ====== BRACKET TAB ====== -->
+            <div
+              v-if="showBracketTab"
+              class="w-full shrink-0 min-w-full"
+              :class="activeTab === 'bracket' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
+            >
+              <div v-if="bracketRounds.length === 0" class="text-center py-16">
+            <p class="text-sm text-gray-500">No bracket data available yet.</p>
+          </div>
+          <div v-else class="px-4 pb-12">
+            <KnockoutBracket
+              :fixtures-by-round="bracketFixturesByRound"
+              :rounds="bracketRounds"
+              :get-round-display-name="(round, index, total) => getRoundDisplayName(index, total, bracketFixturesByRound[round]?.[0]?.roundName)"
+              :two-legs-knockout="tournament.twoLegsKnockout"
+              :third-place-match="tournament.thirdPlaceMatch"
+              :readonly="true"
+              @control-match="(fixture) => selectedFixtureId = fixture.id"
+              @start-match="(fixture) => selectedFixtureId = fixture.id"
+            />
+          </div>
+            </div>
+
+            <!-- ====== FIXTURES TAB ====== -->
+            <div
+              class="w-full shrink-0 min-w-full"
+              :class="activeTab === 'fixtures' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
+            >
+              <div v-if="filteredFixtures.length === 0" class="text-center py-16">
               <p class="text-sm text-gray-500">No fixtures available for this filter.</p>
             </div>
 
@@ -2058,106 +2420,26 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 </div>
               </div>
             </div>
-          </div>
-
-        <!-- ====== STANDINGS TAB ====== -->
-        <div v-else-if="activeTab === 'standings'">
-          <div v-if="standings.length === 0" class="text-center py-16">
-            <p class="text-sm text-gray-500">No standings available yet.</p>
-          </div>
-          <div v-else class="space-y-6 w-full mx-auto">
-            <div v-for="(groupStandings, groupName) in standingsByGroup" :key="groupName">
-              <div class="flex items-center justify-between mb-3 px-1">
-                <h4 v-if="groupName !== 'default'" class="text-xs font-bold text-gray-500">
-                  {{ groupName }}
-                </h4>
-              </div>
-              <div class="border rounded-xl overflow-x-auto transition-colors bg-white shadow-sm border-gray-100 dark:bg-[#1a1a1a] dark:border-white/[0.06]">
-                <table class="w-full text-sm">
-                  <thead>
-                    <tr class="border-b transition-colors border-gray-100 dark:border-white/[0.06]">
-                      <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-bold text-gray-500 sticky left-0 z-20 bg-white dark:bg-[#1a1a1a]">#</th>
-                      <th class="text-left w-1/2 px-3 py-3 text-[11px] font-bold text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">Team</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">P</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">W</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">D</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">L</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GF</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GA</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GD</th>
-                      <th class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[11px] font-bold text-emerald-400">Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr 
-                      v-for="(standing, index) in groupStandings" 
-                      :key="standing.id"
-                      @click="selectedParticipantId = standing.participant_id"
-                      class="border-t transition-colors cursor-pointer border-gray-100 hover:bg-gray-100 dark:border-white/[0.04] dark:hover:bg-white/[0.04]"
-                    >
-                      <td class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[13px] font-bold text-gray-500 sticky left-0 z-10 bg-white dark:bg-[#1a1a1a]">{{ standing.position || index + 1 }}</td>
-                      <td class="text-left w-[170px] md:w-auto min-w-[170px] px-3 py-3 sticky left-[32px] md:left-[40px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">
-                        <div class="flex items-center gap-2 md:gap-2.5">
-                          <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
-                            <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
-                            <span v-else class="flex items-center justify-center w-full h-full text-[8px] md:text-[9px] font-bold text-gray-500">
-                              {{ (standing.participant?.customShortName || standing.participant?.customName || 'T').charAt(0) }}
-                            </span>
-                          </div>
-                          <div class="flex flex-col min-w-0">
-                            <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px] text-gray-800 dark:text-gray-200">{{ standing.participant?.customShortName || standing.participant?.customName || 'Unknown' }}</span>
-                            <NuxtLink 
-                              v-if="standing.participant?.team_id || standing.participant?.team?.id"
-                              :to="`/team/${standing.participant?.team_id || standing.participant?.team?.id}`"
-                              class="text-[9px] text-emerald-500 font-black uppercase tracking-widest hover:underline mt-0.5"
-                              @click.stop
-                            >
-                              Team History
-                            </NuxtLink>
-                          </div>
-
-                        </div>
-                      </td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.played }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.wins }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.draws }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.losses }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsFor }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsAgainst }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px]" :class="standing.goalDiff > 0 ? 'text-emerald-400' : standing.goalDiff < 0 ? 'text-red-400' : 'text-gray-500'">
-                        {{ standing.goalDiff > 0 ? '+' : '' }}{{ standing.goalDiff }}
-                      </td>
-                      <td class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[12px] md:text-[13px] font-bold text-gray-900 dark:text-white">{{ standing.points }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
             </div>
-          </div>
-        </div>
 
-        <!-- ====== BRACKET TAB ====== -->
-        <div v-else-if="activeTab === 'bracket'">
-          <div v-if="bracketRounds.length === 0" class="text-center py-16">
-            <p class="text-sm text-gray-500">No bracket data available yet.</p>
+            <!-- ====== STATS TAB ====== -->
+            <div
+              v-if="isTeams"
+              class="w-full shrink-0 min-w-full"
+              :class="activeTab === 'stats' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
+            >
+              <div class="max-w-7xl mx-auto">
+            <MarketingPlayerStatsLeaderboard :stats="playerStats" :loading="playerStatsLoading" />
           </div>
-          <div v-else class="px-4 pb-12">
-            <KnockoutBracket
-              :fixtures-by-round="bracketFixturesByRound"
-              :rounds="bracketRounds"
-              :get-round-display-name="(round, index, total) => getRoundDisplayName(index, total, bracketFixturesByRound[round]?.[0]?.roundName)"
-              :two-legs-knockout="tournament.twoLegsKnockout"
-              :third-place-match="tournament.thirdPlaceMatch"
-              :readonly="true"
-              @control-match="(fixture) => selectedFixtureId = fixture.id"
-              @start-match="(fixture) => selectedFixtureId = fixture.id"
-            />
-          </div>
-        </div>
+            </div>
 
-        <!-- ====== PARTICIPANTS TAB ====== -->
-        <div v-else-if="activeTab === 'participants'">
-          <div v-if="participants.length === 0" class="text-center py-16">
+            <!-- ====== PARTICIPANTS TAB ====== -->
+            <div
+              v-if="participants.length > 0"
+              class="w-full shrink-0 min-w-full"
+              :class="activeTab === 'participants' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
+            >
+              <div v-if="participants.length === 0" class="text-center py-16">
             <p class="text-sm text-gray-500">No {{ participantsTabName.toLowerCase() }} available yet.</p>
           </div>
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -2200,18 +2482,15 @@ function getTeamCards(fixture: any, isHome: boolean) {
               </div>
             </button>
           </div>
-        </div>
+            </div>
 
-        <!-- ====== STATS TAB ====== -->
-        <div v-else-if="activeTab === 'stats'">
-          <div class="max-w-7xl mx-auto">
-            <MarketingPlayerStatsLeaderboard :stats="playerStats" :loading="playerStatsLoading" />
-          </div>
-        </div>
-
-        <!-- ====== CHAT TAB ====== -->
-        <div v-else-if="activeTab === 'chat' && tournament?.chatEnabled">
-          <!-- pb clears the fixed mobile bottom nav so the composer stays visible -->
+            <!-- ====== CHAT TAB ====== -->
+            <div
+              v-if="tournament?.chatEnabled"
+              class="w-full shrink-0 min-w-full"
+              :class="activeTab === 'chat' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
+            >
+              <!-- pb clears the fixed mobile bottom nav so the composer stays visible -->
           <div class="max-w-3xl mx-auto pb-24 md:pb-8">
             <ChatTournamentChat
               :tournament-id="tournament.id"
@@ -2225,199 +2504,10 @@ function getTeamCards(fixture: any, isHome: boolean) {
               @score-submitted="() => refreshOverview()"
             />
           </div>
-        </div>
-
-        <!-- ====== INFO TAB ====== -->
-        <div v-else-if="activeTab === 'info'" class="">
-          <div class="flex flex-col gap-6">
-
-
-            <!-- About Section (First) -->
-            <div v-if="tournament.description || (socials && socials.length > 0)" class="border rounded-xl overflow-hidden bg-white border-gray-200 shadow-sm dark:bg-[#1a1a1a] dark:border-white/[0.06]">
-              <div class="px-5 py-3.5 border-b transition-colors flex items-center justify-between border-gray-100 dark:border-white/[0.06]">
-                <h3 class="text-sm font-bold text-gray-500">About</h3>
-                
-                <!-- Socials in Header -->
-                <div v-if="socials && socials.length > 0" class="flex items-center gap-3">
-                  <a
-                    v-for="social in socials"
-                    :key="social.id"
-                    :href="social.url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-gray-400 hover:text-emerald-400 transition-colors tooltip"
-                    :title="social.handle || social.platform"
-                  >
-                    <SocialsTwitterIcon v-if="social.platform === 'twitter'" class="w-4 h-4" />
-                    <SocialsInstagramIcon v-else-if="social.platform === 'instagram'" class="w-4 h-4" />
-                    <SocialsWebIcon v-else-if="social.platform === 'website'" class="w-4 h-4" />
-                    <UIcon v-else-if="social.platform === 'facebook'" name="i-simple-icons-facebook" class="w-4 h-4" />
-                    <UIcon v-else-if="social.platform === 'youtube'" name="i-simple-icons-youtube" class="w-4 h-4" />
-                    <UIcon v-else-if="social.platform === 'tiktok'" name="i-simple-icons-tiktok" class="w-4 h-4" />
-                    <UIcon v-else-if="social.platform === 'discord'" name="i-simple-icons-discord" class="w-4 h-4" />
-                    <UIcon v-else-if="social.platform === 'twitch'" name="i-simple-icons-twitch" class="w-4 h-4" />
-                    <UIcon v-else name="i-heroicons-globe-alt" class="w-4 h-4" />
-                  </a>
-                </div>
-              </div>
-              <div v-if="tournament.description" class="p-5">
-                <p class="text-sm leading-relaxed whitespace-pre-line text-gray-600 dark:text-gray-300">
-                  {{ tournament.description }}
-                </p>
-              </div>
-            </div>
-
-            <div v-if="sponsors && sponsors.length > 0" class="border rounded-xl overflow-hidden mt-6 bg-white border-gray-200 shadow-sm dark:bg-[#1a1a1a] dark:border-white/[0.06]">
-              <div class="px-5 py-3.5 border-b transition-colors flex items-center gap-2 border-gray-100 dark:border-white/[0.06]">
-                <UIcon name="i-heroicons-building-office-2" class="w-4 h-4 text-gray-400" />
-                <h3 class="text-sm font-bold text-gray-500">Sponsors</h3>
-              </div>
-              <div class="p-8 flex flex-wrap justify-center items-center gap-8 sm:gap-12 md:gap-16">
-                <template v-for="sponsor in sponsors" :key="sponsor.id">
-                  <button
-                    class="group flex flex-col items-center justify-center transition-transform duration-300 cursor-pointer hover:scale-105"
-                    @click="selectedSponsor = sponsor"
-                  >
-                    <div class="h-16 sm:h-20 lg:h-24 max-w-[160px] sm:max-w-[200px] flex items-center justify-center mb-0">
-                      <img v-if="sponsor.logoUrl" :src="sponsor.logoUrl" :alt="sponsor.name" class="w-full h-full object-contain filter dark:brightness-90 dark:group-hover:brightness-100 transition-all" />
-                      <span v-else class="text-xl font-bold text-gray-400">{{ sponsor.name }}</span>
-                    </div>
-                  </button>
-                </template>
-              </div>
-
-              <!-- Sponsor Detail Modal -->
-              <Teleport to="body">
-                <Transition name="sponsor-modal">
-                  <div
-                    v-if="selectedSponsor"
-                    class="fixed inset-0 z-[100] flex items-center justify-center px-4"
-                    @click.self="selectedSponsor = null"
-                  >
-                    <!-- Backdrop -->
-                    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="selectedSponsor = null" />
-
-                    <!-- Card -->
-                    <div
-                      class="relative w-full max-w-sm rounded-2xl border p-6 shadow-2xl transition-all bg-white border-gray-200 dark:bg-[#1a1a1a] dark:border-white/10"
-                    >
-                      <!-- Close Button -->
-                      <button
-                        class="absolute top-3 right-3 p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-500 dark:hover:bg-white/10 dark:text-gray-400"
-                        @click="selectedSponsor = null"
-                      >
-                        <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
-                      </button>
-
-                      <!-- Logo -->
-                      <div class="flex justify-center mb-5">
-                        <div
-                          class="w-28 h-28 rounded-xl flex items-center justify-center overflow-hidden border bg-gray-50 border-gray-100 dark:bg-white/5 dark:border-white/10"
-                        >
-                          <img
-                            v-if="selectedSponsor.logoUrl"
-                            :src="selectedSponsor.logoUrl"
-                            :alt="selectedSponsor.name"
-                            class="w-full h-full object-contain p-3"
-                          />
-                          <span v-else class="text-3xl font-bold text-gray-400">
-                            {{ selectedSponsor.name.charAt(0).toUpperCase() }}
-                          </span>
-                        </div>
-                      </div>
-
-                      <!-- Name -->
-                      <h3
-                        class="text-xl font-bold text-center mb-1 break-words overflow-hidden text-gray-900 dark:text-white"
-                      >
-                        {{ selectedSponsor.name }}
-                      </h3>
-
-                      <p class="text-xs text-center text-gray-500 mb-5">
-                        {{ selectedSponsor.description || 'Tournament Sponsor' }}
-                      </p>
-
-                      <!-- Website Link -->
-                      <a
-                        v-if="selectedSponsor.websiteUrl"
-                        :href="selectedSponsor.websiteUrl"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-                      >
-                        <UIcon name="i-heroicons-globe-alt" class="w-4 h-4" />
-                        Visit Website
-                      </a>
-
-                      <div
-                        v-else
-                        class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-gray-400 bg-gray-50 dark:text-gray-500 dark:bg-white/5"
-                      >
-                        <UIcon name="i-heroicons-globe-alt" class="w-4 h-4" />
-                        No website available
-                      </div>
-                    </div>
-                  </div>
-                </Transition>
-              </Teleport>
-            </div>
-
-            <!-- Tournament Info (Last) -->
-            <div class="border rounded-xl overflow-hidden mt-6 bg-white border-gray-200 shadow-sm dark:bg-[#1a1a1a] dark:border-white/[0.06]">
-              <div class="px-5 py-3.5 border-b transition-colors border-gray-100 dark:border-white/[0.06]">
-                <h3 class="text-sm font-bold text-gray-500">Tournament Info</h3>
-              </div>
-              <div class="divide-y transition-colors divide-gray-100 dark:divide-white/[0.04]">
-                <div class="flex items-center justify-between px-5 py-3">
-                  <span class="text-sm text-gray-500">Dates</span>
-                  <span class="text-sm transition-colors text-gray-800 dark:text-gray-200">{{ formatDate(tournament.start_date) }} — {{ formatDate(tournament.end_date) }}</span>
-                </div>
-                <div class="flex items-center justify-between px-5 py-3">
-                  <span class="text-sm text-gray-500">Sport</span>
-                  <span class="text-sm transition-colors capitalize text-gray-800 dark:text-gray-200">{{ tournament.sport }}</span>
-                </div>
-                <div class="flex items-center justify-between px-5 py-3">
-                  <span class="text-sm text-gray-500">Type</span>
-                  <span class="text-sm transition-colors text-gray-800 dark:text-gray-200">{{ formatType(tournament.type) }}</span>
-                </div>
-                <div v-if="tournament.organization" class="flex items-center justify-between px-5 py-3">
-                  <span class="text-sm text-gray-500">Organizer</span>
-                  <NuxtLink
-                    :to="toMain(`/org/${tournament.organization.slug}`)"
-                    class="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1.5"
-                  >
-                    <img
-                      v-if="tournament.organization.logoUrl"
-                      :src="tournament.organization.logoUrl"
-                      :alt="tournament.organization.name"
-                      class="w-4 h-4 rounded-full object-cover shrink-0"
-                    />
-                    <span>{{ tournament.organization.name }}</span>
-                    <UIcon
-                      v-if="tournament.organization.isVerified"
-                      name="i-heroicons-check-badge-solid"
-                      class="w-3.5 h-3.5 text-emerald-500 shrink-0"
-                    />
-                  </NuxtLink>
-                </div>
-                <div v-if="tournament.location" class="flex items-center justify-between px-5 py-3">
-                  <span class="text-sm text-gray-500">Location</span>
-                  <span class="text-sm transition-colors text-gray-800 dark:text-gray-200">{{ tournament.location }}</span>
-                </div>
-                <div v-if="uniqueVenues.length > 0" class="flex items-center justify-between px-5 py-3">
-                  <span class="text-sm text-gray-500">Venues</span>
-                  <span class="text-sm transition-colors text-right pl-4 text-gray-800 dark:text-gray-200">
-                    {{ uniqueVenues.join(', ') }}
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
-      </div>
-    </Transition>
-  </div>
-</section>
+      </section>
     </div>
   </div>
 </template>
