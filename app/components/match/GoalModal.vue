@@ -6,6 +6,8 @@ import {
   getHighlightPlatformInfo,
   getHighlightEmbedUrl,
   formatHighlightEmbedUrl,
+  isTikTokShortUrl,
+  resolveTikTokShortUrl,
 } from "~/utils/highlights";
 
 const open = defineModel<boolean>("open", { default: false });
@@ -63,16 +65,45 @@ const detectedPlatformInfo = computed(() => {
   return getHighlightPlatformInfo(detectedPlatform.value);
 });
 
+const resolvingUrl = ref(false);
+const resolvedEmbedUrl = ref<string | null>(null);
+
 const previewEmbedUrl = computed(() => {
   if (selectedHighlightId.value) {
     const found = (props.highlights || []).find((h) => h.id === selectedHighlightId.value);
     return formatHighlightEmbedUrl(found?.embedUrl || null);
+  }
+  if (resolvedEmbedUrl.value) {
+    return resolvedEmbedUrl.value;
   }
   if (highlightUrl.value && detectedPlatform.value) {
     return getHighlightEmbedUrl(highlightUrl.value, detectedPlatform.value);
   }
   return null;
 });
+
+watch(
+  () => highlightUrl.value,
+  async (val) => {
+    resolvedEmbedUrl.value = null;
+    if (!val) return;
+    const trimmed = val.trim();
+    if (isTikTokShortUrl(trimmed)) {
+      resolvingUrl.value = true;
+      try {
+        const resolved = await resolveTikTokShortUrl(trimmed);
+        if (resolved?.embedUrl) {
+          resolvedEmbedUrl.value = resolved.embedUrl;
+        }
+      } catch {
+        // fail silently
+      } finally {
+        resolvingUrl.value = false;
+      }
+    }
+  },
+  { immediate: true },
+);
 
 watch(selectedHighlightId, (id) => {
   if (id) {
@@ -285,6 +316,13 @@ watch(selectedHighlightId, (id) => {
                     <UIcon :name="detectedPlatformInfo.icon" class="w-3.5 h-3.5" />
                     <span>{{ detectedPlatformInfo.label }}</span>
                   </UBadge>
+                  <span
+                    v-if="resolvingUrl"
+                    class="text-xs text-amber-500 flex items-center gap-1 font-medium"
+                  >
+                    <UIcon name="i-heroicons-arrow-path" class="w-3 h-3 animate-spin" />
+                    <span>Resolving…</span>
+                  </span>
                 </div>
 
                 <button

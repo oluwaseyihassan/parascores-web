@@ -3,6 +3,8 @@ import {
   getHighlightPlatformInfo,
   getHighlightEmbedUrl,
   formatHighlightEmbedUrl,
+  isTikTokShortUrl,
+  resolveTikTokShortUrl,
 } from "~/utils/highlights";
 
 const open = defineModel<boolean>("open", { default: false });
@@ -23,15 +25,46 @@ const platformInfo = computed(() => {
   return getHighlightPlatformInfo(props.highlight?.platform);
 });
 
+const asyncResolvedUrl = ref<string | null>(null);
+const isResolving = ref(false);
+
 const resolvedEmbedUrl = computed(() => {
   if (props.highlight?.embedUrl) {
     return formatHighlightEmbedUrl(props.highlight.embedUrl);
+  }
+  if (asyncResolvedUrl.value) {
+    return asyncResolvedUrl.value;
   }
   if (props.highlight?.externalUrl) {
     return getHighlightEmbedUrl(props.highlight.externalUrl, props.highlight.platform);
   }
   return null;
 });
+
+watch(
+  () => [props.highlight?.externalUrl, props.highlight?.embedUrl, open.value],
+  async () => {
+    asyncResolvedUrl.value = null;
+    if (!open.value) return;
+    if (props.highlight?.embedUrl) return;
+
+    const ext = props.highlight?.externalUrl;
+    if (ext && isTikTokShortUrl(ext)) {
+      isResolving.value = true;
+      try {
+        const resolved = await resolveTikTokShortUrl(ext);
+        if (resolved?.embedUrl) {
+          asyncResolvedUrl.value = resolved.embedUrl;
+        }
+      } catch {
+        // fallback to non-embed
+      } finally {
+        isResolving.value = false;
+      }
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -80,9 +113,18 @@ const resolvedEmbedUrl = computed(() => {
         </template>
 
         <div class="space-y-4">
+          <!-- Resolving state for short links -->
+          <div
+            v-if="isResolving"
+            class="aspect-[9/16] max-h-[500px] w-full max-w-[320px] sm:max-w-[360px] mx-auto rounded-xl flex flex-col items-center justify-center gap-3 bg-black shadow-xl ring-1 ring-black/10 dark:ring-white/10 text-white"
+          >
+            <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-rose-500" />
+            <span class="text-xs text-neutral-400">Loading TikTok video…</span>
+          </div>
+
           <!-- Video Frame -->
           <div
-            v-if="resolvedEmbedUrl"
+            v-else-if="resolvedEmbedUrl"
             class="aspect-[9/16] max-h-[500px] w-full max-w-[320px] sm:max-w-[360px] mx-auto rounded-xl overflow-hidden bg-black shadow-xl ring-1 ring-black/10 dark:ring-white/10"
           >
             <iframe

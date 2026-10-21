@@ -576,6 +576,7 @@ export const useFixtureStore = defineStore("fixture", () => {
       platform: string;
       caption?: string | null;
       duration?: number | null;
+      embedUrl?: string | null;
     },
   ) {
     loading.value = true;
@@ -590,6 +591,7 @@ export const useFixtureStore = defineStore("fixture", () => {
             platform: data.platform,
             caption: data.caption || null,
             duration: data.duration || null,
+            ...(data.embedUrl ? { embedUrl: data.embedUrl } : {}),
           },
         },
       );

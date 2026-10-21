@@ -34,8 +34,8 @@ export const HIGHLIGHT_PLATFORMS: HighlightPlatformInfo[] = [
     label: "TikTok",
     icon: "i-simple-icons-tiktok",
     color: "text-black dark:text-white",
-    domains: ["tiktok.com", "www.tiktok.com", "vm.tiktok.com"],
-    placeholder: "https://tiktok.com/@user/video/...",
+    domains: ["tiktok.com", "www.tiktok.com", "vm.tiktok.com", "vt.tiktok.com", "m.tiktok.com"],
+    placeholder: "https://tiktok.com/@user/video/... or vt.tiktok.com/...",
     supportsEmbed: true,
   },
 ];
@@ -105,21 +105,13 @@ export function getHighlightEmbedUrl(
     }
 
     if (detected === HighlightPlatform.TIKTOK) {
-      const match = parsed.pathname.match(
-        /\/(?:video|v|embed(?:|v2)|player\/v1)\/(\d+)/i,
-      );
-      let videoId = match ? match[1] : null;
-
-      if (!videoId) {
-        const segments = parsed.pathname.split("/").filter(Boolean);
-        const last = segments[segments.length - 1];
-        if (last && /^\d+$/.test(last)) {
-          videoId = last;
-        }
-      }
-
+      const videoId = extractTikTokVideoId(url);
       if (videoId) {
         return `https://www.tiktok.com/player/v1/${videoId}`;
+      }
+      const cached = tiktokResolutionCache.get(url.trim());
+      if (cached) {
+        return cached.embedUrl;
       }
     }
   } catch {
@@ -183,3 +175,122 @@ export function normalizeHighlightUrl(url: string): string | null {
 export function isValidHighlightUrl(url: string): boolean {
   return !!normalizeHighlightUrl(url) && !!detectHighlightPlatform(url);
 }
+
+export function extractTikTokVideoId(url: string): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(
+      /\/(?:video|v|embed(?:|v2)|player\/v1)\/(\d+)/i,
+    );
+    if (match) return match[1];
+
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    const last = segments[segments.length - 1];
+    if (last && /^\d{15,22}$/.test(last)) {
+      return last;
+    }
+
+    const itemId =
+      parsed.searchParams.get("item_id") ||
+      parsed.searchParams.get("video_id");
+    if (itemId && /^\d+$/.test(itemId)) {
+      return itemId;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function isTikTokUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    return (
+      hostname === "tiktok.com" ||
+      hostname.endsWith(".tiktok.com") ||
+      hostname === "douyin.com" ||
+      hostname.endsWith(".douyin.com")
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function isTikTokShortUrl(url: string): boolean {
+  if (!isTikTokUrl(url)) return false;
+  return !extractTikTokVideoId(url);
+}
+
+const tiktokResolutionCache = new Map<
+  string,
+  { videoId: string; embedUrl: string; canonicalUrl?: string }
+>();
+
+export async function resolveTikTokShortUrl(
+  url: string,
+): Promise<{ videoId: string; embedUrl: string; canonicalUrl?: string } | null> {
+  if (!url) return null;
+  const trimmed = url.trim();
+
+  const directId = extractTikTokVideoId(trimmed);
+  if (directId) {
+    const res = {
+      videoId: directId,
+      embedUrl: `https://www.tiktok.com/player/v1/${directId}`,
+      canonicalUrl: trimmed,
+    };
+    tiktokResolutionCache.set(trimmed, res);
+    return res;
+  }
+
+  if (tiktokResolutionCache.has(trimmed)) {
+    return tiktokResolutionCache.get(trimmed)!;
+  }
+
+  // 1. Try Nitro server resolver endpoint
+  try {
+    const res = await $fetch<{
+      videoId: string;
+      embedUrl: string;
+      canonicalUrl?: string;
+    }>(`/api/highlights/resolve-tiktok?url=${encodeURIComponent(trimmed)}`);
+
+    if (res?.videoId && res?.embedUrl) {
+      tiktokResolutionCache.set(trimmed, res);
+      return res;
+    }
+  } catch {
+    // Fallback to client-side oEmbed
+  }
+
+  // 2. Direct browser oEmbed fallback (TikTok oEmbed supports CORS: *)
+  try {
+    const oembedRes = await fetch(
+      `https://www.tiktok.com/oembed?url=${encodeURIComponent(trimmed)}`,
+      { signal: AbortSignal.timeout(3500) },
+    );
+    if (oembedRes.ok) {
+      const data: any = await oembedRes.json();
+      const videoId =
+        data.embed_product_id ||
+        (data.html && data.html.match(/player\/v1\/(\d+)/i)?.[1]);
+      if (videoId) {
+        const result = {
+          videoId,
+          embedUrl: `https://www.tiktok.com/player/v1/${videoId}`,
+          canonicalUrl: data.provider_url || trimmed,
+        };
+        tiktokResolutionCache.set(trimmed, result);
+        return result;
+      }
+    }
+  } catch {
+    // Both failed
+  }
+
+  return null;
+}
+
