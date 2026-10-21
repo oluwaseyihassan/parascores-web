@@ -272,14 +272,13 @@ const showBracketTab = computed(() => {
 
 // Visible tabs in exact visual order as rendered in the sticky header nav
 const visibleTabs = computed<TabKey[]>(() => {
-  const tabs: TabKey[] = ['info']
+  const tabs: TabKey[] = ['info', 'fixtures']
   if (standings.value.length > 0) {
     tabs.push('standings')
   }
   if (showBracketTab.value) {
     tabs.push('bracket')
   }
-  tabs.push('fixtures')
   if (isTeams.value) {
     tabs.push('stats')
   }
@@ -1557,6 +1556,31 @@ function getTeamCards(fixture: any, isHome: boolean) {
               <span v-if="activeTab === 'info'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
 
+            <!-- Fixtures -->
+            <button
+              id="tab-btn-fixtures"
+              @click="handleTabClick('fixtures')"
+              type="button"
+              :class="[
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5 shrink-0',
+                activeTab === 'fixtures'
+                  ? 'font-bold text-gray-900 dark:text-white'
+                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
+              ]"
+            >
+              <span>Fixtures</span>
+              <span
+                v-if="fixtures.length"
+                :class="[
+                  'px-1.5 py-0.2 rounded-full text-[10px] font-semibold transition-colors',
+                  activeTab === 'fixtures'
+                    ? 'bg-gray-200 text-gray-900 dark:bg-white/20 dark:text-white'
+                    : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-neutral-400'
+                ]"
+              >{{ fixtures.length }}</span>
+              <span v-if="activeTab === 'fixtures'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
+            </button>
+
             <!-- Table (formerly Standings) -->
             <button
               v-if="standings.length > 0"
@@ -1589,31 +1613,6 @@ function getTeamCards(fixture: any, isHome: boolean) {
             >
               Knockout
               <span v-if="activeTab === 'bracket'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
-            </button>
-
-            <!-- Fixtures -->
-            <button
-              id="tab-btn-fixtures"
-              @click="handleTabClick('fixtures')"
-              type="button"
-              :class="[
-                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5 shrink-0',
-                activeTab === 'fixtures'
-                  ? 'font-bold text-gray-900 dark:text-white'
-                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
-              ]"
-            >
-              <span>Fixtures</span>
-              <span
-                v-if="fixtures.length"
-                :class="[
-                  'px-1.5 py-0.2 rounded-full text-[10px] font-semibold transition-colors',
-                  activeTab === 'fixtures'
-                    ? 'bg-gray-200 text-gray-900 dark:bg-white/20 dark:text-white'
-                    : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-neutral-400'
-                ]"
-              >{{ fixtures.length }}</span>
-              <span v-if="activeTab === 'fixtures'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
 
             <!-- Player stats -->
@@ -1881,109 +1880,6 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 </div>
               </div>
             </div>
-          </div>
-            </div>
-
-            <!-- ====== STANDINGS TAB ====== -->
-            <div
-              v-if="standings.length > 0"
-              class="w-full shrink-0 min-w-full"
-              :class="activeTab === 'standings' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
-            >
-              <div v-if="standings.length === 0" class="text-center py-16">
-            <p class="text-sm text-gray-500">No standings available yet.</p>
-          </div>
-          <div v-else class="space-y-6 w-full mx-auto">
-            <div v-for="(groupStandings, groupName) in standingsByGroup" :key="groupName">
-              <div class="flex items-center justify-between mb-3 px-1">
-                <h4 v-if="groupName !== 'default'" class="text-xs font-bold text-gray-500">
-                  {{ groupName }}
-                </h4>
-              </div>
-              <div class="border rounded-xl overflow-x-auto transition-colors bg-white shadow-sm border-gray-100 dark:bg-[#1a1a1a] dark:border-white/[0.06]">
-                <table class="w-full text-sm">
-                  <thead>
-                    <tr class="border-b transition-colors border-gray-100 dark:border-white/[0.06]">
-                      <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-bold text-gray-500 sticky left-0 z-20 bg-white dark:bg-[#1a1a1a]">#</th>
-                      <th class="text-left w-1/2 px-3 py-3 text-[11px] font-bold text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">Team</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">P</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">W</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">D</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">L</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GF</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GA</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GD</th>
-                      <th class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[11px] font-bold text-emerald-400">Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr 
-                      v-for="(standing, index) in groupStandings" 
-                      :key="standing.id"
-                      @click="selectedParticipantId = standing.participant_id"
-                      class="border-t transition-colors cursor-pointer border-gray-100 hover:bg-gray-100 dark:border-white/[0.04] dark:hover:bg-white/[0.04]"
-                    >
-                      <td class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[13px] font-bold text-gray-500 sticky left-0 z-10 bg-white dark:bg-[#1a1a1a]">{{ standing.position || index + 1 }}</td>
-                      <td class="text-left w-[170px] md:w-auto min-w-[170px] px-3 py-3 sticky left-[32px] md:left-[40px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">
-                        <div class="flex items-center gap-2 md:gap-2.5">
-                          <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
-                            <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
-                            <span v-else class="flex items-center justify-center w-full h-full text-[8px] md:text-[9px] font-bold text-gray-500">
-                              {{ (standing.participant?.customShortName || standing.participant?.customName || 'T').charAt(0) }}
-                            </span>
-                          </div>
-                          <div class="flex flex-col min-w-0">
-                            <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px] text-gray-800 dark:text-gray-200">{{ standing.participant?.customShortName || standing.participant?.customName || 'Unknown' }}</span>
-                            <NuxtLink 
-                              v-if="standing.participant?.team_id || standing.participant?.team?.id"
-                              :to="`/team/${standing.participant?.team_id || standing.participant?.team?.id}`"
-                              class="text-[9px] text-emerald-500 font-black uppercase tracking-widest hover:underline mt-0.5"
-                              @click.stop
-                            >
-                              Team History
-                            </NuxtLink>
-                          </div>
-
-                        </div>
-                      </td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.played }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.wins }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.draws }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.losses }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsFor }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsAgainst }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px]" :class="standing.goalDiff > 0 ? 'text-emerald-400' : standing.goalDiff < 0 ? 'text-red-400' : 'text-gray-500'">
-                        {{ standing.goalDiff > 0 ? '+' : '' }}{{ standing.goalDiff }}
-                      </td>
-                      <td class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[12px] md:text-[13px] font-bold text-gray-900 dark:text-white">{{ standing.points }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-            </div>
-
-            <!-- ====== BRACKET TAB ====== -->
-            <div
-              v-if="showBracketTab"
-              class="w-full shrink-0 min-w-full"
-              :class="activeTab === 'bracket' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
-            >
-              <div v-if="bracketRounds.length === 0" class="text-center py-16">
-            <p class="text-sm text-gray-500">No bracket data available yet.</p>
-          </div>
-          <div v-else class="px-4 pb-12">
-            <KnockoutBracket
-              :fixtures-by-round="bracketFixturesByRound"
-              :rounds="bracketRounds"
-              :get-round-display-name="(round, index, total) => getRoundDisplayName(index, total, bracketFixturesByRound[round]?.[0]?.roundName)"
-              :two-legs-knockout="tournament.twoLegsKnockout"
-              :third-place-match="tournament.thirdPlaceMatch"
-              :readonly="true"
-              @control-match="(fixture) => openFixture(fixture.id)"
-              @start-match="(fixture) => openFixture(fixture.id)"
-            />
           </div>
             </div>
 
@@ -2426,6 +2322,109 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 </div>
               </div>
             </div>
+            </div>
+
+            <!-- ====== STANDINGS TAB ====== -->
+            <div
+              v-if="standings.length > 0"
+              class="w-full shrink-0 min-w-full"
+              :class="activeTab === 'standings' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
+            >
+              <div v-if="standings.length === 0" class="text-center py-16">
+            <p class="text-sm text-gray-500">No standings available yet.</p>
+          </div>
+          <div v-else class="space-y-6 w-full mx-auto">
+            <div v-for="(groupStandings, groupName) in standingsByGroup" :key="groupName">
+              <div class="flex items-center justify-between mb-3 px-1">
+                <h4 v-if="groupName !== 'default'" class="text-xs font-bold text-gray-500">
+                  {{ groupName }}
+                </h4>
+              </div>
+              <div class="border rounded-xl overflow-x-auto transition-colors bg-white shadow-sm border-gray-100 dark:bg-[#1a1a1a] dark:border-white/[0.06]">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="border-b transition-colors border-gray-100 dark:border-white/[0.06]">
+                      <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-bold text-gray-500 sticky left-0 z-20 bg-white dark:bg-[#1a1a1a]">#</th>
+                      <th class="text-left w-1/2 px-3 py-3 text-[11px] font-bold text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">Team</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">P</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">W</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">D</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">L</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GF</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GA</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GD</th>
+                      <th class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[11px] font-bold text-emerald-400">Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr 
+                      v-for="(standing, index) in groupStandings" 
+                      :key="standing.id"
+                      @click="selectedParticipantId = standing.participant_id"
+                      class="border-t transition-colors cursor-pointer border-gray-100 hover:bg-gray-100 dark:border-white/[0.04] dark:hover:bg-white/[0.04]"
+                    >
+                      <td class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[13px] font-bold text-gray-500 sticky left-0 z-10 bg-white dark:bg-[#1a1a1a]">{{ standing.position || index + 1 }}</td>
+                      <td class="text-left w-[170px] md:w-auto min-w-[170px] px-3 py-3 sticky left-[32px] md:left-[40px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">
+                        <div class="flex items-center gap-2 md:gap-2.5">
+                          <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
+                            <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
+                            <span v-else class="flex items-center justify-center w-full h-full text-[8px] md:text-[9px] font-bold text-gray-500">
+                              {{ (standing.participant?.customShortName || standing.participant?.customName || 'T').charAt(0) }}
+                            </span>
+                          </div>
+                          <div class="flex flex-col min-w-0">
+                            <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px] text-gray-800 dark:text-gray-200">{{ standing.participant?.customShortName || standing.participant?.customName || 'Unknown' }}</span>
+                            <NuxtLink 
+                              v-if="standing.participant?.team_id || standing.participant?.team?.id"
+                              :to="`/team/${standing.participant?.team_id || standing.participant?.team?.id}`"
+                              class="text-[9px] text-emerald-500 font-black uppercase tracking-widest hover:underline mt-0.5"
+                              @click.stop
+                            >
+                              Team History
+                            </NuxtLink>
+                          </div>
+
+                        </div>
+                      </td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.played }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.wins }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.draws }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.losses }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsFor }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsAgainst }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px]" :class="standing.goalDiff > 0 ? 'text-emerald-400' : standing.goalDiff < 0 ? 'text-red-400' : 'text-gray-500'">
+                        {{ standing.goalDiff > 0 ? '+' : '' }}{{ standing.goalDiff }}
+                      </td>
+                      <td class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[12px] md:text-[13px] font-bold text-gray-900 dark:text-white">{{ standing.points }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+            </div>
+
+            <!-- ====== BRACKET TAB ====== -->
+            <div
+              v-if="showBracketTab"
+              class="w-full shrink-0 min-w-full"
+              :class="activeTab === 'bracket' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
+            >
+              <div v-if="bracketRounds.length === 0" class="text-center py-16">
+            <p class="text-sm text-gray-500">No bracket data available yet.</p>
+          </div>
+          <div v-else class="px-4 pb-12">
+            <KnockoutBracket
+              :fixtures-by-round="bracketFixturesByRound"
+              :rounds="bracketRounds"
+              :get-round-display-name="(round, index, total) => getRoundDisplayName(index, total, bracketFixturesByRound[round]?.[0]?.roundName)"
+              :two-legs-knockout="tournament.twoLegsKnockout"
+              :third-place-match="tournament.thirdPlaceMatch"
+              :readonly="true"
+              @control-match="(fixture) => openFixture(fixture.id)"
+              @start-match="(fixture) => openFixture(fixture.id)"
+            />
+          </div>
             </div>
 
             <!-- ====== STATS TAB ====== -->
