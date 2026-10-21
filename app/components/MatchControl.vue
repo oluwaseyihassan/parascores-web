@@ -649,20 +649,26 @@ const confirmGoal = async () => {
       } else if (goalData.highlightUrl.trim()) {
         const normalized = normalizeHighlightUrl(goalData.highlightUrl);
         const platform = normalized ? detectHighlightPlatform(normalized) : null;
+        let finalHighlightUrl = normalized;
         let embedUrl = normalized ? getHighlightEmbedUrl(normalized, platform) : null;
         if (!embedUrl && normalized && isTikTokShortUrl(normalized)) {
           const resolved = await resolveTikTokShortUrl(normalized);
           if (resolved?.embedUrl) {
             embedUrl = resolved.embedUrl;
           }
+          if (resolved?.canonicalUrl) {
+            finalHighlightUrl = resolved.canonicalUrl;
+          } else if (resolved?.videoId) {
+            finalHighlightUrl = `https://www.tiktok.com/@tiktok/video/${resolved.videoId}`;
+          }
         }
         const thumbUrl = normalized ? getHighlightThumbnailUrl(normalized, platform) : null;
 
         let createdHighlightId: string | undefined = undefined;
-        if (selectedFixture.value.id && normalized && platform) {
+        if (selectedFixture.value.id && finalHighlightUrl && platform) {
           try {
             const res = await fixtureStore.createHighlight(selectedFixture.value.id, {
-              externalUrl: normalized,
+              externalUrl: finalHighlightUrl,
               platform: platform,
               caption: goalData.highlightCaption.trim() || undefined,
             });
@@ -677,7 +683,7 @@ const confirmGoal = async () => {
 
         if (normalized) {
           eventMetadata = {
-            highlightUrl: normalized,
+            highlightUrl: finalHighlightUrl || normalized,
             highlightPlatform: platform || undefined,
             highlightEmbedUrl: embedUrl || undefined,
             highlightThumbnailUrl: thumbUrl || undefined,

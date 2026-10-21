@@ -2736,18 +2736,18 @@ const awaySubs = computed(() => {
               No highlights available yet.
             </p>
           </div>
-          <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div v-else class="flex flex-col items-center space-y-6 max-w-sm sm:max-w-[400px] mx-auto w-full">
             <div
               v-for="highlight in highlights"
               :key="highlight.id"
-              class="border rounded-xl overflow-hidden"
+              class="w-full border rounded-2xl overflow-hidden"
               :class="
                 isDark
-                  ? 'bg-[#1a1a1a] border-white/[0.06]'
+                  ? 'bg-[#1a1a1a] border-white/[0.08]'
                   : 'bg-white border-gray-200 shadow-sm'
               "
             >
-              <div class="aspect-[9/16] max-h-[480px] w-full bg-black">
+              <div class="aspect-[9/16] w-full bg-black">
                 <iframe
                   v-if="highlight.embedUrl"
                   :src="formatHighlightEmbedUrl(highlight.embedUrl)"
@@ -2759,7 +2759,7 @@ const awaySubs = computed(() => {
                   :title="highlight.caption || 'Match highlight'"
                 />
               </div>
-              <div class="p-3 space-y-1">
+              <div class="p-3.5 space-y-1.5">
                 <div class="flex items-center justify-between">
                   <span
                     class="text-xs font-medium text-gray-500 dark:text-gray-400"
