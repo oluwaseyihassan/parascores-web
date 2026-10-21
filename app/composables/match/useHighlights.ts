@@ -130,16 +130,22 @@ export function useHighlights(
 
     savingHighlight.value = true;
     try {
+      let finalUrl = normalized;
       let embedUrl = getHighlightEmbedUrl(normalized, newHighlightPlatform.value);
       if (!embedUrl && isTikTokShortUrl(normalized)) {
         const resolved = await resolveTikTokShortUrl(normalized);
         if (resolved?.embedUrl) {
           embedUrl = resolved.embedUrl;
         }
+        if (resolved?.canonicalUrl) {
+          finalUrl = resolved.canonicalUrl;
+        } else if (resolved?.videoId) {
+          finalUrl = `https://www.tiktok.com/@tiktok/video/${resolved.videoId}`;
+        }
       }
 
       const res = await fixtureStore.createHighlight(fixtureId, {
-        externalUrl: normalized,
+        externalUrl: finalUrl,
         platform: newHighlightPlatform.value,
         caption: newHighlightCaption.value || null,
         duration: newHighlightDuration.value || null,

@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
         return {
           videoId,
           embedUrl: `https://www.tiktok.com/player/v1/${videoId}`,
-          canonicalUrl: data.provider_url || rawUrl,
+          canonicalUrl: `https://www.tiktok.com/@tiktok/video/${videoId}`,
         };
       }
     }

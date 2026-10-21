@@ -183,7 +183,7 @@ export function extractTikTokVideoId(url: string): string | null {
     const match = parsed.pathname.match(
       /\/(?:video|v|embed(?:|v2)|player\/v1)\/(\d+)/i,
     );
-    if (match) return match[1];
+    if (match?.[1]) return match[1];
 
     const segments = parsed.pathname.split("/").filter(Boolean);
     const last = segments[segments.length - 1];
@@ -281,7 +281,7 @@ export async function resolveTikTokShortUrl(
         const result = {
           videoId,
           embedUrl: `https://www.tiktok.com/player/v1/${videoId}`,
-          canonicalUrl: data.provider_url || trimmed,
+          canonicalUrl: `https://www.tiktok.com/@tiktok/video/${videoId}`,
         };
         tiktokResolutionCache.set(trimmed, result);
         return result;
