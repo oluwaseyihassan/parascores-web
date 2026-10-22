@@ -45,6 +45,15 @@ export function useFixtureMaintenance() {
           await standingStore.fetchStandings(
             tournament.value?.id || tournamentId.value,
           );
+          // Clear any wizard drafts stored in localStorage for this tournament
+          const tid = tournament.value?.id || tournamentId.value;
+          if (tid && typeof window !== "undefined") {
+            try {
+              localStorage.removeItem(`gsw-progress-${tid}`);
+              localStorage.removeItem(`kw-progress-${tid}`);
+              localStorage.removeItem(`atk-progress-${tid}`);
+            } catch {}
+          }
           useToast().add({
             title: "Fixtures cleared successfully",
             color: "success",
@@ -69,6 +78,13 @@ export function useFixtureMaintenance() {
             tournament.value?.id || tournamentId.value,
             "KNOCKOUT",
           );
+          const tid = tournament.value?.id || tournamentId.value;
+          if (tid && typeof window !== "undefined") {
+            try {
+              localStorage.removeItem(`kw-progress-${tid}`);
+              localStorage.removeItem(`atk-progress-${tid}`);
+            } catch {}
+          }
           useToast().add({
             title: "Knockout fixtures cleared",
             color: "success",

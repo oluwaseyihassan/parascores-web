@@ -73,6 +73,29 @@ const clearProgress = () => {
   try { localStorage.removeItem(STORAGE_KEY) } catch {}
 }
 
+const resetWizardState = (showToast = false) => {
+  clearProgress()
+  step.value = 1
+  const count = props.participants.length
+  if (count <= 2) config.bracketSize = 2
+  else if (count <= 4) config.bracketSize = 4
+  else if (count <= 8) config.bracketSize = 8
+  else if (count <= 16) config.bracketSize = 16
+  else config.bracketSize = 32
+
+  selectedParticipantIds.value = []
+  bracketAssignments.value = new Array(config.bracketSize).fill('bye')
+
+  if (showToast) {
+    toast.add({
+      title: 'Bracket Wizard Reset',
+      description: 'Reset bracket configuration.',
+      color: 'neutral',
+      icon: 'i-heroicons-arrow-path'
+    })
+  }
+}
+
 // Auto-save whenever key state changes
 watch([step, config, selectedParticipantIds, bracketAssignments], () => {
   if (props.open) saveProgress()
@@ -88,18 +111,7 @@ watch(() => props.open, (isOpen) => {
       return
     }
 
-    step.value = 1
-    
-    // Calculate ideal bracket size based on participants
-    const count = props.participants.length
-    if (count <= 2) config.bracketSize = 2
-    else if (count <= 4) config.bracketSize = 4
-    else if (count <= 8) config.bracketSize = 8
-    else if (count <= 16) config.bracketSize = 16
-    else config.bracketSize = 32
-
-    selectedParticipantIds.value = []
-    bracketAssignments.value = new Array(config.bracketSize).fill('bye')
+    resetWizardState()
   }
 })
 
@@ -189,7 +201,7 @@ const handleFinish = async () => {
     }
     
     toast.add({ title: 'Brackets Created', color: 'success' })
-    clearProgress()
+    resetWizardState()
     emit('generated')
     closeWizard()
   } catch (error: any) {
@@ -303,7 +315,19 @@ const previewFixturesByRound = computed(() => {
         <div class="p-6 border-b border-gray-100 dark:border-white/[0.05] shrink-0">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-bold text-gray-900 dark:text-white">Knockout Bracket Setup</h3>
-            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" @click="closeWizard" />
+            <div class="flex items-center gap-2">
+              <UButton
+                v-if="step > 1 || selectedParticipantIds.length > 0"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                icon="i-heroicons-arrow-path"
+                label="Start Fresh"
+                title="Discard draft and reset"
+                @click="resetWizardState(true)"
+              />
+              <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" @click="closeWizard" />
+            </div>
           </div>
           
           <!-- Progress Steps -->
