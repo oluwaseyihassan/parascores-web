@@ -1182,7 +1182,7 @@ const showAddEventModal = ref(false);
 
       <!-- Empty State -->
       <div
-        v-else-if="!fixtures.length && !participants.length"
+        v-else-if="!fixtures.length"
         class="py-6 sm:py-8 text-center text-gray-400 text-sm"
       >
         <UIcon

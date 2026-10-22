@@ -328,8 +328,49 @@ const addFixtureState = reactive({
 // Record<string, string[]> where keys are "Group A", "Group B", etc.
 const groupAssignments = ref<Record<string, string[]>>({})
 
+// ── Initialize Groups ─────────────────────────────────────────
+const initializeGroups = () => {
+  const groups: Record<string, string[]> = {}
+  const existingGroups = props.groups || props.tournament.groups || []
+
+  // Use existing assignments if requested
+  if (config.assignmentMethod === 'existing' && existingGroups.length > 0) {
+    existingGroups.forEach(g => {
+      groups[g.name] = props.participants
+        .filter(p => p.groupId === g.id)
+        .map(p => p.id)
+    })
+    groupAssignments.value = groups
+    return
+  }
+
+  // Otherwise, default to automatic generation/distribution
+  for (let i = 0; i < config.numberOfGroups; i++) {
+    const label = config.unifiedStandings ? `Pot ${i + 1}` : `Group ${String.fromCharCode(65 + i)}`
+    groups[label] = []
+  }
+
+  // Distribute teams evenly initially
+  const teams = [...props.participants]
+  if (config.shuffleParticipants) {
+    teams.sort(() => Math.random() - 0.5)
+  }
+
+  teams.forEach((p, index) => {
+    const groupIndex = index % config.numberOfGroups
+    const label = config.unifiedStandings ? `Pot ${groupIndex + 1}` : `Group ${String.fromCharCode(65 + groupIndex)}`
+    if (!groups[label]) {
+      groups[label] = []
+    }
+    groups[label].push(p.id)
+  })
+
+  groupAssignments.value = groups
+}
+
 // ── LocalStorage persistence ─────────────────────────────────
 const saveProgress = () => {
+  if (!props.open) return
   try {
     const data = {
       step: step.value,
@@ -341,6 +382,58 @@ const saveProgress = () => {
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   } catch { /* quota exceeded or SSR */ }
+}
+
+const clearProgress = () => {
+  try { localStorage.removeItem(STORAGE_KEY) } catch {}
+}
+
+const resetWizardState = (showToast = false) => {
+  clearProgress()
+  step.value = 1
+  config.schedulingMethod = 'auto'
+  config.shuffleParticipants = false
+  config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
+  config.unifiedStandings = props.tournament.unifiedStandings ?? false
+  config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
+  config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
+  config.generateKnockout = props.tournament.type === TournamentType.HYBRID
+  config.advancingPerGroup = 2
+
+  const existingGroups = props.groups || props.tournament.groups || []
+  if (props.tournament.type === TournamentType.ROUND_ROBIN) {
+    config.assignmentMethod = 'auto'
+    config.numberOfGroups = 1
+  } else if (existingGroups.length > 0) {
+    config.assignmentMethod = 'existing'
+    config.numberOfGroups = existingGroups.length
+  } else {
+    config.assignmentMethod = 'auto'
+    if (!props.tournament.numberOfGroups) {
+      config.numberOfGroups = props.participants.length <= 4 ? 1 : Math.ceil(props.participants.length / 4)
+    } else {
+      config.numberOfGroups = props.tournament.numberOfGroups
+    }
+  }
+
+  manualFixtures.value = []
+  addFixtureState.homeTeamId = ''
+  addFixtureState.awayTeamId = ''
+  addFixtureState.round = 1
+  addFixtureState.startTime = ''
+  addFixtureState.venue = ''
+
+  initializeGroups()
+  initializeKnockoutMatchups(true)
+
+  if (showToast) {
+    toast.add({
+      title: 'Wizard Reset',
+      description: 'Reset to automatic fixture scheduling.',
+      color: 'neutral',
+      icon: 'i-heroicons-arrow-path'
+    })
+  }
 }
 
 const loadProgress = (): boolean => {
@@ -358,6 +451,15 @@ const loadProgress = (): boolean => {
     Object.assign(config, data.config)
     if (config.doubleRoundRobin === undefined) {
       config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
+    }
+    if (config.unifiedStandings === undefined) {
+      config.unifiedStandings = props.tournament.unifiedStandings ?? false
+    }
+    if (config.hasKnockoutPlayoffs === undefined) {
+      config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
+    }
+    if (props.tournament.thirdPlaceMatch && !config.hasThirdPlace) {
+      config.hasThirdPlace = true
     }
     groupAssignments.value = data.groupAssignments || {}
     manualFixtures.value = data.manualFixtures || []
@@ -387,33 +489,21 @@ onMounted(() => {
       config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
     }
   } else {
-    config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
-    config.unifiedStandings = props.tournament.unifiedStandings ?? false
-    config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
-    config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
+    resetWizardState()
   }
 })
 
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
-    if (!loadProgress()) {
-      config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
-      config.unifiedStandings = props.tournament.unifiedStandings ?? false
-      config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
-      config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
+    if (loadProgress()) {
+      toast.add({
+        title: 'Progress Restored',
+        description: 'Your previous wizard progress has been loaded.',
+        color: 'neutral',
+        icon: 'i-heroicons-arrow-path'
+      })
     } else {
-      if (config.doubleRoundRobin === undefined) {
-        config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
-      }
-      if (config.unifiedStandings === undefined) {
-        config.unifiedStandings = props.tournament.unifiedStandings ?? false
-      }
-      if (config.hasKnockoutPlayoffs === undefined) {
-        config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
-      }
-      if (props.tournament.thirdPlaceMatch && !config.hasThirdPlace) {
-        config.hasThirdPlace = true
-      }
+      resetWizardState()
     }
   }
 })
@@ -442,14 +532,17 @@ watch(() => props.tournament.hasKnockoutPlayoffs, (val) => {
   }
 })
 
-const clearProgress = () => {
-  try { localStorage.removeItem(STORAGE_KEY) } catch {}
-}
-
-// Auto-save whenever key state changes
+// Auto-save whenever key state changes while wizard is open
 watch([step, config, groupAssignments, manualFixtures, knockoutMatchups], () => {
   if (props.open) saveProgress()
 }, { deep: true })
+
+// Clear manual fixtures if user toggles schedulingMethod back to auto
+watch(() => config.schedulingMethod, (newMethod) => {
+  if (newMethod === 'auto' && manualFixtures.value.length > 0) {
+    manualFixtures.value = []
+  }
+})
 
 const venueOptions = computed(() => {
   return venues.value.map(v => ({ label: v.name, value: v.name }))
@@ -516,40 +609,7 @@ const awayParticipantOptions = computed(() => {
     }))
 })
 
-// Initialize group assignments when opening
-watch(() => props.open, (isOpen) => {
-  if (isOpen) {
-    // Try to restore saved progress first
-    const restored = loadProgress()
-    if (restored) {
-      toast.add({ title: 'Progress Restored', description: 'Your previous wizard progress has been loaded.', color: 'neutral', icon: 'i-heroicons-arrow-path' })
-      return
-    }
-    
-    step.value = 1
-    
-    // Check for existing groups to set initial config
-    const existingGroups = props.groups || props.tournament.groups || []
-    if (props.tournament.type === TournamentType.ROUND_ROBIN) {
-       config.assignmentMethod = 'auto'
-       config.numberOfGroups = 1
-    } else if (existingGroups.length > 0) {
-       config.assignmentMethod = 'existing'
-       config.numberOfGroups = existingGroups.length
-    } else {
-       config.assignmentMethod = 'auto'
-       if (!props.tournament.numberOfGroups) {
-          config.numberOfGroups = props.participants.length <= 4 ? 1 : Math.ceil(props.participants.length / 4)
-       } else {
-          config.numberOfGroups = props.tournament.numberOfGroups
-       }
-    }
 
-    // Initialize groups and knockout matchups
-    initializeGroups()
-    initializeKnockoutMatchups(true)
-  }
-})
 
 // Re-initialize groups if essential config changes
 watch([() => config.assignmentMethod, () => config.numberOfGroups, () => config.shuffleParticipants, () => config.unifiedStandings], () => {
@@ -580,45 +640,6 @@ watch(() => addFixtureState.round, (newRound) => {
 })
 
 
-const initializeGroups = () => {
-  const groups: Record<string, string[]> = {}
-  const existingGroups = props.groups || props.tournament.groups || []
-
-  // Use existing assignments if requested
-  if (config.assignmentMethod === 'existing' && existingGroups.length > 0) {
-      existingGroups.forEach(g => {
-          // Import participants that belong to this group
-          groups[g.name] = props.participants
-              .filter(p => p.groupId === g.id)
-              .map(p => p.id)
-      })
-      groupAssignments.value = groups
-      return
-  }
-
-  // Otherwise, default to automatic generation/distribution
-  for (let i = 0; i < config.numberOfGroups; i++) {
-    const label = config.unifiedStandings ? `Pot ${i + 1}` : `Group ${String.fromCharCode(65 + i)}`
-    groups[label] = []
-  }
-  
-  // Distribute teams evenly initially
-  const teams = [...props.participants]
-  if (config.shuffleParticipants) {
-    teams.sort(() => Math.random() - 0.5)
-  }
-
-  teams.forEach((p, index) => {
-    const groupIndex = index % config.numberOfGroups
-    const label = config.unifiedStandings ? `Pot ${groupIndex + 1}` : `Group ${String.fromCharCode(65 + groupIndex)}`
-    if (!groups[label]) {
-      groups[label] = []
-    }
-    groups[label].push(p.id)
-  })
-
-  groupAssignments.value = groups
-}
 
 const nextStep = () => {
   if (step.value === 1) {
@@ -744,7 +765,7 @@ const handleFinish = async (force = false) => {
       color: 'success'
     })
     
-    clearProgress()
+    resetWizardState()
     emit('finish')
     closeWizard()
   } catch (err: any) {
@@ -817,7 +838,19 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
             <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
               {{ config.unifiedStandings ? 'Seeding & Pots Setup' : (props.tournament.type === TournamentType.ROUND_ROBIN ? 'Round Robin Setup' : 'Group Stage Setup') }}
             </h3>
-            <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" size="sm" @click="closeWizard" />
+            <div class="flex items-center gap-2">
+              <UButton
+                v-if="step > 1 || manualFixtures.length > 0 || config.schedulingMethod === 'manual'"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                icon="i-heroicons-arrow-path"
+                label="Start Fresh"
+                title="Discard draft and reset to default automatic setup"
+                @click="resetWizardState(true)"
+              />
+              <UButton color="neutral" variant="ghost" icon="i-heroicons-x-mark" size="sm" @click="closeWizard" />
+            </div>
           </div>
           
           <!-- Stepper -->
