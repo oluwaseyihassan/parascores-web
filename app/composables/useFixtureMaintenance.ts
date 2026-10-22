@@ -47,12 +47,30 @@ export function useFixtureMaintenance() {
           );
           // Clear any wizard drafts stored in localStorage for this tournament
           const tid = tournament.value?.id || tournamentId.value;
-          if (tid && typeof window !== "undefined") {
+          const slug = tournament.value?.customName;
+          if (typeof window !== "undefined") {
             try {
-              localStorage.removeItem(`gsw-progress-${tid}`);
-              localStorage.removeItem(`kw-progress-${tid}`);
-              localStorage.removeItem(`atk-progress-${tid}`);
+              for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (!key) continue;
+                if (
+                  key.startsWith("gsw-progress-") ||
+                  key.startsWith("kw-progress-") ||
+                  key.startsWith("atk-progress-")
+                ) {
+                  if (
+                    !tid ||
+                    (tid && key.includes(tid)) ||
+                    (slug && key.includes(slug))
+                  ) {
+                    localStorage.removeItem(key);
+                  }
+                }
+              }
             } catch {}
+          }
+          if (tid) {
+            await fixtureStore.fetchFixtures(tid);
           }
           useToast().add({
             title: "Fixtures cleared successfully",
@@ -79,11 +97,30 @@ export function useFixtureMaintenance() {
             "KNOCKOUT",
           );
           const tid = tournament.value?.id || tournamentId.value;
-          if (tid && typeof window !== "undefined") {
+          const slug = tournament.value?.customName;
+          if (typeof window !== "undefined") {
             try {
-              localStorage.removeItem(`kw-progress-${tid}`);
-              localStorage.removeItem(`atk-progress-${tid}`);
+              for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (!key) continue;
+                if (
+                  key.startsWith("kw-progress-") ||
+                  key.startsWith("atk-progress-") ||
+                  key.startsWith("gsw-progress-")
+                ) {
+                  if (
+                    !tid ||
+                    (tid && key.includes(tid)) ||
+                    (slug && key.includes(slug))
+                  ) {
+                    localStorage.removeItem(key);
+                  }
+                }
+              }
             } catch {}
+          }
+          if (tid) {
+            await fixtureStore.fetchFixtures(tid);
           }
           useToast().add({
             title: "Knockout fixtures cleared",

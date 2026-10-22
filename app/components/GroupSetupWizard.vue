@@ -368,9 +368,13 @@ const initializeGroups = () => {
   groupAssignments.value = groups
 }
 
-// ── LocalStorage persistence ─────────────────────────────────
+// ── LocalStorage persistence & Draft Management ───────────────
+const isResetting = ref(false)
+const hasPendingDraft = ref(false)
+const pendingDraftData = ref<any>(null)
+
 const saveProgress = () => {
-  if (!props.open) return
+  if (!props.open || isResetting.value) return
   try {
     const data = {
       step: step.value,
@@ -385,11 +389,31 @@ const saveProgress = () => {
 }
 
 const clearProgress = () => {
-  try { localStorage.removeItem(STORAGE_KEY) } catch {}
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+    if (props.tournament?.customName) {
+      localStorage.removeItem(`gsw-progress-${props.tournament.customName}`)
+    }
+    if (typeof window !== 'undefined') {
+      const tid = props.tournament?.id
+      const slug = props.tournament?.customName
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('gsw-progress-')) {
+          if (!tid || (tid && key.includes(tid)) || (slug && key.includes(slug))) {
+            localStorage.removeItem(key)
+          }
+        }
+      }
+    }
+  } catch {}
 }
 
-const resetWizardState = (showToast = false) => {
-  clearProgress()
+const resetWizardState = (showToast = false, keepStorage = false) => {
+  isResetting.value = true
+  if (!keepStorage) {
+    clearProgress()
+  }
   step.value = 1
   config.schedulingMethod = 'auto'
   config.shuffleParticipants = false
@@ -426,6 +450,10 @@ const resetWizardState = (showToast = false) => {
   initializeGroups()
   initializeKnockoutMatchups(true)
 
+  nextTick(() => {
+    isResetting.value = false
+  })
+
   if (showToast) {
     toast.add({
       title: 'Wizard Reset',
@@ -436,75 +464,85 @@ const resetWizardState = (showToast = false) => {
   }
 }
 
-const loadProgress = (): boolean => {
+const getSavedDraft = (): any | null => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return false
+    if (!raw) return null
     const data = JSON.parse(raw)
     // Expire after 24 hours
     if (Date.now() - data.savedAt > 24 * 60 * 60 * 1000) {
-      localStorage.removeItem(STORAGE_KEY)
-      return false
+      clearProgress()
+      return null
     }
-    // Restore state
-    step.value = data.step || 1
-    Object.assign(config, data.config)
-    if (config.doubleRoundRobin === undefined) {
-      config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
+    // Only consider it a draft if user entered manual fixtures or advanced past step 1 or chose manual
+    if (data.manualFixtures?.length > 0 || data.step > 1 || data.config?.schedulingMethod === 'manual') {
+      return data
     }
-    if (config.unifiedStandings === undefined) {
-      config.unifiedStandings = props.tournament.unifiedStandings ?? false
-    }
-    if (config.hasKnockoutPlayoffs === undefined) {
-      config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
-    }
-    if (props.tournament.thirdPlaceMatch && !config.hasThirdPlace) {
-      config.hasThirdPlace = true
-    }
-    groupAssignments.value = data.groupAssignments || {}
-    manualFixtures.value = data.manualFixtures || []
-    if (data.knockoutMatchups?.length) {
-      knockoutMatchups.value = data.knockoutMatchups
-    } else {
-      initializeKnockoutMatchups(true)
-    }
-    return true
+    return null
   } catch {
-    return false
+    return null
   }
 }
 
-onMounted(() => {
-  if (loadProgress()) {
-    if (config.doubleRoundRobin === undefined) {
-      config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
-    }
-    if (config.unifiedStandings === undefined) {
-      config.unifiedStandings = props.tournament.unifiedStandings ?? false
-    }
-    if (config.hasKnockoutPlayoffs === undefined) {
-      config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
-    }
-    if (config.hasThirdPlace === undefined || (props.tournament.thirdPlaceMatch && !config.hasThirdPlace)) {
-      config.hasThirdPlace = props.tournament.thirdPlaceMatch ?? false
-    }
-  } else {
-    resetWizardState()
+const restoreDraft = () => {
+  if (!pendingDraftData.value) return
+  const data = pendingDraftData.value
+  step.value = data.step || 1
+  Object.assign(config, data.config)
+  if (config.doubleRoundRobin === undefined) {
+    config.doubleRoundRobin = props.tournament.doubleRoundRobin ?? false
   }
+  if (config.unifiedStandings === undefined) {
+    config.unifiedStandings = props.tournament.unifiedStandings ?? false
+  }
+  if (config.hasKnockoutPlayoffs === undefined) {
+    config.hasKnockoutPlayoffs = props.tournament.hasKnockoutPlayoffs ?? true
+  }
+  if (props.tournament.thirdPlaceMatch && !config.hasThirdPlace) {
+    config.hasThirdPlace = true
+  }
+  groupAssignments.value = data.groupAssignments || {}
+  manualFixtures.value = data.manualFixtures || []
+  if (data.knockoutMatchups?.length) {
+    knockoutMatchups.value = data.knockoutMatchups
+  } else {
+    initializeKnockoutMatchups(true)
+  }
+  hasPendingDraft.value = false
+  pendingDraftData.value = null
+  toast.add({
+    title: 'Draft Restored',
+    description: 'Your previous wizard draft has been loaded.',
+    color: 'neutral',
+    icon: 'i-heroicons-arrow-path'
+  })
+}
+
+const discardDraft = (showToast = true) => {
+  clearProgress()
+  hasPendingDraft.value = false
+  pendingDraftData.value = null
+  resetWizardState(showToast, false)
+}
+
+onMounted(() => {
+  resetWizardState()
 })
 
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
-    if (loadProgress()) {
-      toast.add({
-        title: 'Progress Restored',
-        description: 'Your previous wizard progress has been loaded.',
-        color: 'neutral',
-        icon: 'i-heroicons-arrow-path'
-      })
+    const draft = getSavedDraft()
+    resetWizardState(false, !!draft)
+    if (draft) {
+      pendingDraftData.value = draft
+      hasPendingDraft.value = true
     } else {
-      resetWizardState()
+      hasPendingDraft.value = false
+      pendingDraftData.value = null
     }
+  } else {
+    hasPendingDraft.value = false
+    pendingDraftData.value = null
   }
 })
 
@@ -534,13 +572,16 @@ watch(() => props.tournament.hasKnockoutPlayoffs, (val) => {
 
 // Auto-save whenever key state changes while wizard is open
 watch([step, config, groupAssignments, manualFixtures, knockoutMatchups], () => {
-  if (props.open) saveProgress()
+  if (props.open && !isResetting.value) saveProgress()
 }, { deep: true })
 
-// Clear manual fixtures if user toggles schedulingMethod back to auto
+// Clear manual fixtures and discard draft if user toggles schedulingMethod back to auto
 watch(() => config.schedulingMethod, (newMethod) => {
-  if (newMethod === 'auto' && manualFixtures.value.length > 0) {
-    manualFixtures.value = []
+  if (newMethod === 'auto') {
+    if (manualFixtures.value.length > 0) {
+      manualFixtures.value = []
+    }
+    discardDraft(false)
   }
 })
 
@@ -572,6 +613,11 @@ const roundOptions = computed(() => {
   // Return exactly the expected number of matchdays
   const count = Math.max(1, expectedRounds)
   return Array.from({ length: count }, (_, i) => ({ label: `Matchday ${i + 1}`, value: i + 1 }))
+})
+
+const teamsPerGroupAvg = computed(() => {
+  if (!config.numberOfGroups) return 0
+  return props.participants.length / config.numberOfGroups
 })
 
 // Filter participants based on current round selections
@@ -646,6 +692,9 @@ const nextStep = () => {
     if (config.numberOfGroups < 1) {
       toast.add({ title: config.unifiedStandings ? 'Invalid pot count' : 'Invalid group count', color: 'error' })
       return
+    }
+    if (hasPendingDraft.value) {
+      discardDraft(false)
     }
     initializeGroups()
     step.value = 2
@@ -782,9 +831,16 @@ const handleFinish = async (force = false) => {
       color: 'success'
     })
     
+    isResetting.value = true
+    clearProgress()
+    hasPendingDraft.value = false
+    pendingDraftData.value = null
     resetWizardState()
     emit('finish')
     closeWizard()
+    nextTick(() => {
+      isResetting.value = false
+    })
   } catch (err: any) {
     const message = err?.data?.message || err?.message || extractErrorMessage(err) || 'Could not generate fixtures. Please try again.'
     toast.add({
@@ -907,6 +963,26 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
         <div v-if="step !== 3" class="p-4 sm:p-8 flex-1 min-h-0 overflow-y-auto scroll-smooth">
           <!-- Step 1: Config -->
           <div v-if="step === 1" class="max-w-md mx-auto space-y-6">
+            <!-- Draft Recovery Banner -->
+            <div
+              v-if="hasPendingDraft && pendingDraftData"
+              class="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25"
+            >
+              <div class="flex items-center gap-2.5 min-w-0">
+                <UIcon name="i-heroicons-document-text" class="w-5 h-5 text-amber-500 shrink-0" />
+                <div class="min-w-0">
+                  <p class="text-xs font-semibold text-gray-900 dark:text-white truncate">Unsaved Draft Available</p>
+                  <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                    {{ pendingDraftData.manualFixtures?.length ? `${pendingDraftData.manualFixtures.length} manual fixture(s) saved` : 'Unsaved wizard progress detected' }}
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <UButton size="xs" color="primary" label="Resume Draft" @click="restoreDraft" />
+                <UButton size="xs" color="neutral" variant="ghost" label="Discard" @click="discardDraft(true)" />
+              </div>
+            </div>
+
             <div class="bg-primary-50/50 dark:bg-primary-950/20 p-4 rounded-xl border border-primary-100 dark:border-primary-900/30 mb-8">
               <p class="text-sm text-primary-700 dark:text-primary-300">
                 {{ props.tournament.type === TournamentType.ROUND_ROBIN
@@ -983,6 +1059,18 @@ const getParticipantById = (id: string) => props.participants.find(p => p.id ===
                 </p>
               </div>
               <USwitch v-model="config.doubleRoundRobin" />
+            </div>
+
+            <!-- Notice when 2 teams per group in Single Round Robin -->
+            <div
+              v-if="!config.doubleRoundRobin && !config.unifiedStandings && teamsPerGroupAvg <= 2 && props.participants.length >= 2"
+              class="flex items-start gap-2.5 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-700 dark:text-blue-300"
+            >
+              <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
+              <div>
+                <span class="font-semibold">Format Notice:</span> With {{ Math.round(teamsPerGroupAvg) }} teams per group in Single Round Robin, each group only plays 1 match (Matchday 1 only).
+                If you need Home & Away matches (2 matchdays), toggle on <strong>Double Round Robin</strong> above.
+              </div>
             </div>
 
             <!-- Tournament Style / League Phase Model -->
