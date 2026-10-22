@@ -757,11 +757,28 @@ const handleFinish = async (force = false) => {
           stage: props.tournament.type === TournamentType.KNOCKOUT ? 'KNOCKOUT' : 'GROUP_STAGE'
         }))
       )
+
+      // When tournament is HYBRID and generateKnockout is enabled, generate the knockout stage bracket
+      if (isHybrid.value && config.generateKnockout) {
+        await fixtureStore.generateKnockoutPlaceholders(props.tournament.id, {
+          numberOfGroups: config.numberOfGroups,
+          advancingPerGroup: config.advancingPerGroup,
+          hasThirdPlace: config.hasThirdPlace,
+          knockoutMatchups: knockoutMatchups.value,
+          unifiedStandings: config.unifiedStandings,
+          hasKnockoutPlayoffs: config.unifiedStandings && config.hasKnockoutPlayoffs,
+          groupAssignments: groupAssignments.value,
+        })
+      }
     }
     
     toast.add({
-      title: config.unifiedStandings ? 'League Phase Setup Complete' : 'Group Stage Setup Complete',
-      description: 'Fixtures have been generated successfully.',
+      title: isHybrid.value && config.generateKnockout
+        ? 'Hybrid Tournament Setup Complete'
+        : (config.unifiedStandings ? 'League Phase Setup Complete' : 'Group Stage Setup Complete'),
+      description: isHybrid.value && config.generateKnockout
+        ? 'Group stage and knockout bracket fixtures have been generated successfully.'
+        : 'Fixtures have been generated successfully.',
       color: 'success'
     })
     

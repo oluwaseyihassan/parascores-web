@@ -65,6 +65,18 @@ export interface GenerateFixturesOptions {
   matchesPerPot?: number;
 }
 
+export interface GenerateKnockoutPlaceholdersOptions {
+  numberOfGroups?: number;
+  advancingPerGroup?: number;
+  hasThirdPlace?: boolean;
+  startDate?: string;
+  intervalMinutes?: number;
+  knockoutMatchups?: { home: string; away: string }[];
+  unifiedStandings?: boolean;
+  hasKnockoutPlayoffs?: boolean;
+  groupAssignments?: Record<string, string[]>;
+}
+
 export const useFixtureStore = defineStore("fixture", () => {
   const { extractErrorMessage } = useErrors();
   const fixtures = ref<Fixture[]>([]);
@@ -341,6 +353,35 @@ export const useFixtureStore = defineStore("fixture", () => {
     } catch (err: any) {
       error.value = extractErrorMessage(err);
       console.error("Advance to knockout failed:", error.value);
+      throw err;
+    } finally {
+      generating.value = false;
+    }
+  }
+
+  // Generate knockout stage placeholders (for hybrid tournaments or manual setups)
+  async function generateKnockoutPlaceholders(
+    tournamentId: string,
+    options?: GenerateKnockoutPlaceholdersOptions,
+  ) {
+    generating.value = true;
+    error.value = null;
+    try {
+      const response = await $api<
+        ApiResponse<{
+          message: string;
+          rounds: { round: number; roundName: string; fixtures: Fixture[] }[];
+          fixtures?: Fixture[];
+        }>
+      >(`/fixtures/tournaments/${tournamentId}/knockout/placeholders`, {
+        method: "POST",
+        body: options,
+      });
+      await fetchFixtures(tournamentId);
+      return response;
+    } catch (err: any) {
+      error.value = extractErrorMessage(err);
+      console.error("Generate knockout placeholders failed:", error.value);
       throw err;
     } finally {
       generating.value = false;
@@ -787,5 +828,6 @@ export const useFixtureStore = defineStore("fixture", () => {
     updateKnockoutPairings,
     createFixture,
     createBulkFixtures,
+    generateKnockoutPlaceholders,
   };
 });
