@@ -266,6 +266,8 @@ export const useFixtureStore = defineStore("fixture", () => {
       } else if (Array.isArray(response.data)) {
         // Fallback for old API response (if needed)
         fixtures.value = response.data;
+      } else {
+        fixtures.value = [];
       }
       return response;
     } catch (err: any) {
