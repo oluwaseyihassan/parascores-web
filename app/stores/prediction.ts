@@ -70,18 +70,6 @@ export function isFixturePredictionLocked(fixture: Fixture): boolean {
   return false
 }
 
-// Simulated peer participants to create a lively community contest when starting out
-const MOCK_PEERS = [
-  { id: 'peer-1', name: 'Tunde Adeyemi', picture: null },
-  { id: 'peer-2', name: 'Chioma Okeke', picture: null },
-  { id: 'peer-3', name: 'Femi Balogun', picture: null },
-  { id: 'peer-4', name: 'Kelechi Iheanacho Fan', picture: null },
-  { id: 'peer-5', name: 'Zainab Bello', picture: null },
-  { id: 'peer-6', name: 'Emeka Nwosu', picture: null },
-  { id: 'peer-7', name: 'David Oladele', picture: null },
-  { id: 'peer-8', name: 'Amara Williams', picture: null },
-]
-
 export const usePredictionStore = defineStore('prediction', () => {
   const authStore = useAuthStore()
 
@@ -230,15 +218,14 @@ export const usePredictionStore = defineStore('prediction', () => {
       const count = fixPreds.length
 
       if (count === 0) {
-        // Fallback default neutral stats
         statsByFixture.value[fix.id] = {
           fixtureId: fix.id,
           totalPredictions: 0,
-          homeWinPercentage: 45,
-          drawPercentage: 25,
-          awayWinPercentage: 30,
-          avgHomeScore: 1.5,
-          avgAwayScore: 1.1,
+          homeWinPercentage: 0,
+          drawPercentage: 0,
+          awayWinPercentage: 0,
+          avgHomeScore: 0,
+          avgAwayScore: 0,
           mostPredictedScore: null,
         }
         continue
@@ -287,48 +274,13 @@ export const usePredictionStore = defineStore('prediction', () => {
     }
   }
 
-  // Generate simulated peer predictions so the contest has a realistic leaderboard
-  function generateMockPeerPredictions(
-    tournamentId: string,
-    fixtures: Fixture[],
-  ): Prediction[] {
-    const list: Prediction[] = []
-    const sampleScores = [
-      [2, 1], [1, 0], [3, 1], [0, 0], [1, 1],
-      [2, 2], [0, 2], [1, 2], [2, 0], [3, 0],
-    ]
-
-    for (const peer of MOCK_PEERS) {
-      for (let i = 0; i < fixtures.length; i++) {
-        const fix = fixtures[i]
-        // deterministic pseudo-random choice
-        const hash = (peer.id.charCodeAt(5) + i * 7) % sampleScores.length
-        const [h, a] = sampleScores[hash]
-
-        list.push({
-          id: `pred-${peer.id}-${fix.id}`,
-          tournamentId,
-          fixtureId: fix.id,
-          userId: peer.id,
-          user: peer,
-          homeScore: h,
-          awayScore: a,
-          createdAt: new Date(Date.now() - (fixtures.length - i) * 86400000).toISOString(),
-          updatedAt: new Date(Date.now() - (fixtures.length - i) * 86400000).toISOString(),
-        })
-      }
-    }
-
-    return list
-  }
-
   // Load predictions for a tournament
   async function loadPredictions(tournament: Tournament, fixtures: Fixture[]) {
     const tournamentId = tournament.id
     loading.value = true
 
     try {
-      // 1. Try to fetch from backend API
+      // 1. Fetch from backend API
       let serverPredictions: Prediction[] = []
       try {
         const res = await $publicApi<{ success: boolean; data: Prediction[] }>(
@@ -346,7 +298,7 @@ export const usePredictionStore = defineStore('prediction', () => {
       const localUserPreds = getLocalStoredPredictions(tournamentId, uid)
       const guestPreds = uid ? getLocalStoredPredictions(tournamentId, 'guest') : []
 
-      // Combine user predictions (local takes precedence for offline / freshly saved)
+      // Combine real user predictions (local takes precedence for offline / freshly saved)
       const userMap = new Map<string, Prediction>()
       for (const p of serverPredictions) {
         userMap.set(`${p.userId}_${p.fixtureId}`, p)
@@ -358,19 +310,10 @@ export const usePredictionStore = defineStore('prediction', () => {
         userMap.set(`${p.userId}_${p.fixtureId}`, p)
       }
 
-      // 3. Add simulated peer predictors to create a rich contest leaderboard
-      const peerPreds = generateMockPeerPredictions(tournamentId, fixtures)
-      for (const p of peerPreds) {
-        const key = `${p.userId}_${p.fixtureId}`
-        if (!userMap.has(key)) {
-          userMap.set(key, p)
-        }
-      }
-
       const allPredictions = Array.from(userMap.values())
       predictionsByTournament.value[tournamentId] = allPredictions
 
-      // 4. Compute leaderboard & stats
+      // 3. Compute leaderboard & stats
       computeLeaderboardAndStats(tournamentId, tournament, fixtures)
     } finally {
       loading.value = false
