@@ -217,6 +217,8 @@ const isRaceTournament = computed(() =>
   !!resolveEngine(tournament.value?.sport).race,
 );
 
+const { isEsports } = useTournamentFeatures(tournament);
+
 // Pending requests badge for the Participants tab
 const totalPendingRequests = computed(() => {
   if (!participants.value) return 0;
@@ -303,12 +305,14 @@ const tabItems = computed(() => {
     });
   }
 
-  // Match Hub tab (esports & operations — announcements, self-reporting & results)
-  items.push({
-    slot: "chat",
-    label: "Match Hub",
-    icon: "i-heroicons-bolt",
-  });
+  // Match Hub tab (only available for esports tournaments)
+  if (isEsports.value) {
+    items.push({
+      slot: "chat",
+      label: "Match Hub",
+      icon: "i-heroicons-bolt",
+    });
+  }
 
   // Add settings tab
   items.push({
@@ -344,6 +348,7 @@ watch(activeTab, (newIdx) => {
 });
 
 const goToTab = (slot: string) => {
+  if (slot === "chat" && !isEsports.value) return;
   const i = tabItems.value.findIndex((t) => t.slot === slot);
   if (i >= 0) {
     activeTab.value = String(i);
@@ -628,7 +633,7 @@ provide(SportEngineKey, computed(() => resolveEngine(tournament.value?.sport)));
 
             <!-- Chat Tab -->
             <template #chat>
-              <TournamentChatTab />
+              <TournamentChatTab v-if="isEsports" />
             </template>
 
             <!-- Settings Tab -->

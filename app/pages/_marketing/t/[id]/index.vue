@@ -77,6 +77,7 @@ watch(() => route.query.tab, (newTab) => {
   if (newTab && newTab !== activeTab.value) {
     const validTabs: TabKey[] = ['info', 'fixtures', 'standings', 'bracket', 'participants', 'stats', 'chat', 'predictions']
     if (validTabs.includes(newTab as TabKey)) {
+      if (newTab === 'chat' && !showMatchHub.value) return
       switchTab(newTab as TabKey)
     }
   }
@@ -271,6 +272,9 @@ const showBracketTab = computed(() => {
   return tournament.value.type === TournamentType.KNOCKOUT || tournament.value.type === TournamentType.HYBRID
 })
 
+const { isEsports } = useTournamentFeatures(tournament)
+const showMatchHub = computed(() => isEsports.value && !!tournament.value?.chatEnabled)
+
 const showPredictionsTab = computed(() => {
   const isFootball = (tournament.value?.sport || '').toLowerCase() === 'football'
   const predictionConfig = tournament.value?.scoringRules?.prediction
@@ -292,7 +296,7 @@ const visibleTabs = computed<TabKey[]>(() => {
   if (participants.value.length > 0) {
     tabs.push('participants')
   }
-  if (tournament.value?.chatEnabled) {
+  if (showMatchHub.value) {
     tabs.push('chat')
   }
   if (showPredictionsTab.value) {
@@ -629,7 +633,7 @@ watchEffect(() => {
   else if (activeTab.value === 'standings' && standings.value.length === 0) activeTab.value = 'info'
   else if (activeTab.value === 'participants' && participants.value.length === 0) activeTab.value = 'info'
   else if (activeTab.value === 'stats' && !isTeams.value) activeTab.value = 'info'
-  else if (activeTab.value === 'chat' && !tournament.value?.chatEnabled) activeTab.value = 'info'
+  else if (activeTab.value === 'chat' && !showMatchHub.value) activeTab.value = 'info'
   else if (activeTab.value === 'predictions' && !showPredictionsTab.value) activeTab.value = 'info'
 })
 
@@ -1662,7 +1666,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
             <!-- Match Hub -->
             <button
-              v-if="tournament?.chatEnabled"
+              v-if="showMatchHub"
               id="tab-btn-chat"
               @click="handleTabClick('chat')"
               type="button"
@@ -2520,7 +2524,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
             <!-- ====== CHAT TAB ====== -->
             <div
-              v-if="tournament?.chatEnabled"
+              v-if="showMatchHub"
               class="w-full shrink-0 min-w-full"
               :class="activeTab === 'chat' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
             >

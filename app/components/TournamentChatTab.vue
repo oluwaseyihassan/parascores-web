@@ -12,7 +12,7 @@ const { handleError } = useErrors()
 const toast = useToast()
 
 const tournamentId = computed(() => tournament.value?.id ?? '')
-const { allowsSelfReporting } = useTournamentFeatures(tournament)
+const { allowsSelfReporting, isEsports } = useTournamentFeatures(tournament)
 
 // ─── Rail form state (initialized from the tournament) ───
 const form = reactive({
@@ -136,7 +136,12 @@ const automationOpen = ref(false)
 </script>
 
 <template>
-  <div v-if="tournament" class="mt-3 sm:mt-4 grid gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_320px] items-start">
+  <div v-if="tournament && !isEsports" class="mt-4 p-8 text-center rounded-2xl bg-surface border border-subtle">
+    <UIcon name="i-heroicons-bolt-slash" class="w-10 h-10 mx-auto text-muted mb-2" />
+    <p class="text-sm font-semibold text-heading">Match Hub is only available for esports tournaments</p>
+    <p class="text-xs text-muted mt-1">This feature is reserved for esports tournaments with self-reporting and match coordination.</p>
+  </div>
+  <div v-else-if="tournament" class="mt-3 sm:mt-4 grid gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_320px] items-start">
     <!-- Room -->
     <ChatTournamentChat
       :key="String(form.chatEnabled)"
