@@ -1695,7 +1695,6 @@ function getTeamCards(fixture: any, isHome: boolean) {
                   : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
-              <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-emerald-500" />
               <span>Predictions</span>
               <span v-if="activeTab === 'predictions'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>

@@ -102,53 +102,45 @@ const userEntry = computed(() => {
 
 <template>
   <div class="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 py-6">
-    <!-- Hero / Contest Summary -->
-    <div
-      class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 p-6 sm:p-8"
-    >
-      <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-3">
-            <UIcon name="i-heroicons-sparkles" class="w-3.5 h-3.5" />
-            Official Score Prediction Contest
-          </div>
-          <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-            Predict &amp; Win
-          </h2>
-          <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2 max-w-xl">
-            Predict match scores before kickoff, earn points for exact scores and correct outcomes, and compete on the tournament leaderboard!
-          </p>
+    <!-- Header & Summary -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100 dark:border-white/[0.06]">
+      <div>
+        <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+          Match Predictions
+        </h2>
+        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Predict match scores before kickoff and compete on the leaderboard.
+        </p>
+      </div>
+
+      <!-- Quick Stats Pill Row -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+        <div class="px-3.5 py-1.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 text-center shrink-0">
+          <span class="block text-sm font-bold font-mono text-gray-900 dark:text-white">
+            {{ openFixtures.length }}
+          </span>
+          <span class="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Open</span>
         </div>
 
-        <!-- Quick Stats Pill Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 shrink-0">
-          <div class="p-3 rounded-2xl bg-white/70 dark:bg-white/[0.04] border border-gray-200/60 dark:border-white/10 text-center">
-            <span class="block text-xl font-bold font-mono text-gray-900 dark:text-white">
-              {{ openFixtures.length }}
-            </span>
-            <span class="text-[11px] text-gray-500 font-medium">Open Matches</span>
-          </div>
+        <div class="px-3.5 py-1.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 text-center shrink-0">
+          <span class="block text-sm font-bold font-mono text-gray-900 dark:text-white">
+            {{ userPredictions.length }}
+          </span>
+          <span class="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Picks</span>
+        </div>
 
-          <div class="p-3 rounded-2xl bg-white/70 dark:bg-white/[0.04] border border-gray-200/60 dark:border-white/10 text-center">
-            <span class="block text-xl font-bold font-mono text-gray-900 dark:text-white">
-              {{ userPredictions.length }}
-            </span>
-            <span class="text-[11px] text-gray-500 font-medium">Your Picks</span>
-          </div>
+        <div class="px-3.5 py-1.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 text-center shrink-0">
+          <span class="block text-sm font-bold font-mono text-emerald-500">
+            {{ userEntry?.totalPoints ?? 0 }}
+          </span>
+          <span class="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Pts</span>
+        </div>
 
-          <div class="p-3 rounded-2xl bg-white/70 dark:bg-white/[0.04] border border-gray-200/60 dark:border-white/10 text-center">
-            <span class="block text-xl font-bold font-mono text-emerald-500">
-              {{ userEntry?.totalPoints ?? 0 }}
-            </span>
-            <span class="text-[11px] text-gray-500 font-medium">Your Points</span>
-          </div>
-
-          <div class="p-3 rounded-2xl bg-white/70 dark:bg-white/[0.04] border border-gray-200/60 dark:border-white/10 text-center">
-            <span class="block text-xl font-bold font-mono text-amber-500">
-              {{ userEntry?.rank ? `#${userEntry.rank}` : '-' }}
-            </span>
-            <span class="text-[11px] text-gray-500 font-medium">Rank</span>
-          </div>
+        <div class="px-3.5 py-1.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 text-center shrink-0">
+          <span class="block text-sm font-bold font-mono text-amber-500">
+            {{ userEntry?.rank ? `#${userEntry.rank}` : '-' }}
+          </span>
+          <span class="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Rank</span>
         </div>
       </div>
     </div>
