@@ -975,29 +975,7 @@ const awaySubs = computed(() => {
           </div>
         </div>
 
-        <!-- Quick Prediction Callout when match is SCHEDULED -->
-        <div
-          v-if="showPredictions && fixture && fixture.status === FixtureStatus.SCHEDULED && activeTab !== 'predictions'"
-          class="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 mt-3 sm:mt-4"
-        >
-          <div
-            class="flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer transition-colors"
-            :class="[
-              isDark
-                ? 'bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/15 text-emerald-400'
-                : 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100 text-emerald-800'
-            ]"
-            @click="activeTab = 'predictions'"
-          >
-            <div class="flex items-center gap-2">
-              <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-emerald-500 shrink-0" />
-              <span>Predict this match before kickoff to climb the tournament leaderboard!</span>
-            </div>
-            <span class="font-bold flex items-center gap-1">
-              Predict now <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5" />
-            </span>
-          </div>
-        </div>
+
 
         <div class="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 mt-2 sm:mt-4">
           <nav
@@ -1067,15 +1045,14 @@ const awaySubs = computed(() => {
             <button
               v-if="showPredictions"
               @click="activeTab = 'predictions'"
-              class="pb-2 sm:pb-3 text-xs sm:text-sm font-medium border-b-2 transition-colors duration-200 flex items-center gap-1.5"
+              class="pb-2 sm:pb-3 text-xs sm:text-sm font-medium border-b-2 transition-colors duration-200"
               :class="
                 activeTab === 'predictions'
                   ? 'border-emerald-500 text-emerald-400'
                   : tabInactiveClass
               "
             >
-              <UIcon name="i-heroicons-sparkles" class="w-3.5 h-3.5 text-emerald-500" />
-              <span>Predictions</span>
+              Predictions
             </button>
           </nav>
         </div>

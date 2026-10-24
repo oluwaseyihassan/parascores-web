@@ -60,19 +60,30 @@ const evaluation = computed(() => {
   return calculatePredictionPoints(props.prediction, props.fixture, config.value)
 })
 
-// Quick pick helpers
-function setQuickResult(type: 'home' | 'draw' | 'away') {
+const selectedOutcome = computed<'home' | 'draw' | 'away'>(() => {
+  if (homeScore.value > awayScore.value) return 'home'
+  if (homeScore.value === awayScore.value) return 'draw'
+  return 'away'
+})
+
+function selectOutcome(type: 'home' | 'draw' | 'away') {
   if (isLocked.value) return
   isEditing.value = true
   if (type === 'home') {
-    homeScore.value = 2
-    awayScore.value = 1
+    if (homeScore.value <= awayScore.value) {
+      homeScore.value = 2
+      awayScore.value = 1
+    }
   } else if (type === 'draw') {
-    homeScore.value = 1
-    awayScore.value = 1
+    if (homeScore.value !== awayScore.value) {
+      homeScore.value = 1
+      awayScore.value = 1
+    }
   } else {
-    homeScore.value = 1
-    awayScore.value = 2
+    if (awayScore.value <= homeScore.value) {
+      homeScore.value = 1
+      awayScore.value = 2
+    }
   }
 }
 
@@ -134,6 +145,11 @@ const awayTeamName = computed(
     'Away Team',
 )
 
+const totalVotesFormatted = computed(() => {
+  const count = props.stats?.totalPredictions ?? 0
+  return count > 0 ? count.toLocaleString() : '0'
+})
+
 async function handleSavePrediction() {
   if (isLocked.value) {
     toast.add({
@@ -163,10 +179,9 @@ async function handleSavePrediction() {
         awayScore: awayScore.value,
       })
       toast.add({
-        title: 'Prediction Saved!',
-        description: `Predicted: ${homeTeamName.value} ${homeScore.value} - ${awayScore.value} ${awayTeamName.value}`,
+        title: 'Prediction Saved',
+        description: `${homeTeamName.value} ${homeScore.value} - ${awayScore.value} ${awayTeamName.value}`,
         color: 'success',
-        icon: 'i-heroicons-check-circle',
       })
     } else {
       toast.add({
@@ -189,76 +204,64 @@ async function handleSavePrediction() {
 
 <template>
   <div
-    class="relative rounded-2xl border transition-all overflow-hidden bg-white dark:bg-[#0d0d0d]"
-    :class="[
-      evaluation?.status === 'EXACT'
-        ? 'border-amber-500/50 shadow-lg shadow-amber-500/10 ring-1 ring-amber-500/30'
-        : evaluation?.status === 'CORRECT_RESULT'
-          ? 'border-emerald-500/40 shadow-md shadow-emerald-500/10'
-          : isSaved && !isLocked
-            ? 'border-emerald-500/30 dark:border-emerald-500/20'
-            : 'border-gray-200 dark:border-white/[0.08]',
-    ]"
+    class="rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-[#121212] overflow-hidden transition-all shadow-xs"
   >
-    <!-- Top banner / Round info & Lock status -->
+    <!-- Top Meta Row -->
     <div
-      class="flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/[0.05] text-xs"
+      class="flex items-center justify-between px-4 py-2.5 bg-gray-50/70 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/[0.05] text-xs text-gray-500 dark:text-gray-400"
     >
-      <div class="flex items-center gap-2">
-        <span class="font-medium text-gray-500 dark:text-gray-400">
-          {{ fixture.roundName || `Round ${fixture.round}` }}
-        </span>
-        <span class="text-gray-300 dark:text-white/20">·</span>
-        <span class="text-gray-500 dark:text-gray-400 font-mono">
-          #{{ fixture.matchNumber }}
-        </span>
+      <div class="flex items-center gap-1.5 font-medium truncate">
+        <span>{{ fixture.roundName || `Round ${fixture.round}` }}</span>
+        <span class="opacity-40">·</span>
+        <span class="font-mono">#{{ fixture.matchNumber }}</span>
       </div>
 
-      <div class="flex items-center gap-1.5">
-        <!-- Live status -->
+      <div>
         <span
           v-if="fixture.status === FixtureStatus.LIVE"
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 animate-pulse"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-500/10 text-red-500"
         >
-          <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
           LIVE
         </span>
-
-        <!-- Completed match -->
         <span
           v-else-if="fixture.status === FixtureStatus.COMPLETED"
-          class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300"
+          class="text-[11px] font-medium text-gray-400"
         >
           Full Time
         </span>
-
-        <!-- Countdown badge -->
         <span
           v-else
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
-          :class="[
-            isLocked
-              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
-          ]"
+          class="text-[11px] font-medium"
+          :class="isLocked ? 'text-gray-400' : 'text-emerald-500 dark:text-emerald-400'"
         >
-          <UIcon
-            :name="isLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-clock'"
-            class="w-3.5 h-3.5"
-          />
           {{ kickoffText }}
         </span>
       </div>
     </div>
 
-    <!-- Match Teams & Score section -->
+    <!-- Main Body: FotMob-style "Who will win?" -->
     <div class="p-4 sm:p-5">
-      <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-4">
-        <!-- Home Team -->
-        <div class="flex flex-col items-center sm:items-end text-center sm:text-right">
-          <div
-            class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center p-2 mb-2 shadow-xs"
-          >
+      <h3 class="text-center font-bold text-sm sm:text-base text-gray-900 dark:text-white mb-3">
+        Who will win?
+      </h3>
+
+      <!-- 3-Column Outcome Grid (Home / Draw / Away) -->
+      <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
+        <!-- 1. Home Column -->
+        <button
+          type="button"
+          :disabled="isLocked"
+          class="flex flex-col items-center justify-between p-3 rounded-xl border transition-all text-center"
+          :class="[
+            selectedOutcome === 'home'
+              ? 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-500/10 ring-1 ring-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+              : 'border-gray-200 dark:border-white/[0.06] bg-gray-50/60 dark:bg-white/[0.03] hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-800 dark:text-gray-200',
+            isLocked ? 'cursor-default' : 'cursor-pointer'
+          ]"
+          @click="selectOutcome('home')"
+        >
+          <div class="w-10 h-10 rounded-full flex items-center justify-center p-1 mb-1.5 shrink-0">
             <img
               v-if="fixture.homeTeam?.logoUrl"
               :src="fixture.homeTeam.logoUrl"
@@ -268,107 +271,55 @@ async function handleSavePrediction() {
             <UIcon
               v-else
               name="i-heroicons-shield-check"
-              class="w-6 h-6 text-gray-400"
+              class="w-7 h-7 text-gray-400"
             />
           </div>
-          <p
-            class="font-semibold text-sm sm:text-base text-gray-900 dark:text-white line-clamp-1"
-          >
+          <span class="text-[11px] sm:text-xs font-semibold line-clamp-1 w-full mb-1">
             {{ homeTeamName }}
-          </p>
-          <span
-            v-if="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE"
-            class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-mono"
-          >
-            Actual: {{ fixture.homeScore ?? 0 }}
           </span>
-        </div>
+          <span class="text-sm sm:text-base font-bold font-mono text-gray-900 dark:text-white">
+            {{ stats?.homeWinPercentage ?? 45 }}%
+          </span>
+        </button>
 
-        <!-- Center: Prediction Stepper or Result Display -->
-        <div class="flex flex-col items-center justify-center px-2">
-          <!-- Active Prediction Stepper (pre-match) -->
-          <div v-if="!isLocked && isEditing" class="flex items-center gap-2 sm:gap-3">
-            <!-- Home counter -->
-            <div class="flex items-center bg-gray-100 dark:bg-[#1a1a1a] rounded-xl p-1 border border-gray-200 dark:border-white/10">
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                icon="i-heroicons-minus"
-                class="rounded-lg h-7 w-7 p-0 flex items-center justify-center"
-                @click="adjustScore('home', -1)"
-              />
-              <span
-                class="w-7 text-center font-bold text-base sm:text-lg font-mono text-gray-900 dark:text-white"
-              >
-                {{ homeScore }}
-              </span>
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                icon="i-heroicons-plus"
-                class="rounded-lg h-7 w-7 p-0 flex items-center justify-center"
-                @click="adjustScore('home', 1)"
-              />
-            </div>
-
-            <span class="text-gray-400 font-bold text-sm">:</span>
-
-            <!-- Away counter -->
-            <div class="flex items-center bg-gray-100 dark:bg-[#1a1a1a] rounded-xl p-1 border border-gray-200 dark:border-white/10">
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                icon="i-heroicons-minus"
-                class="rounded-lg h-7 w-7 p-0 flex items-center justify-center"
-                @click="adjustScore('away', -1)"
-              />
-              <span
-                class="w-7 text-center font-bold text-base sm:text-lg font-mono text-gray-900 dark:text-white"
-              >
-                {{ awayScore }}
-              </span>
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                icon="i-heroicons-plus"
-                class="rounded-lg h-7 w-7 p-0 flex items-center justify-center"
-                @click="adjustScore('away', 1)"
-              />
-            </div>
+        <!-- 2. Draw Column -->
+        <button
+          type="button"
+          :disabled="isLocked"
+          class="flex flex-col items-center justify-between p-3 rounded-xl border transition-all text-center"
+          :class="[
+            selectedOutcome === 'draw'
+              ? 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-500/10 ring-1 ring-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+              : 'border-gray-200 dark:border-white/[0.06] bg-gray-50/60 dark:bg-white/[0.03] hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-800 dark:text-gray-200',
+            isLocked ? 'cursor-default' : 'cursor-pointer'
+          ]"
+          @click="selectOutcome('draw')"
+        >
+          <div class="w-10 h-10 rounded-full flex items-center justify-center mb-1.5 shrink-0">
+            <span class="text-xl font-bold font-mono text-gray-400 dark:text-gray-500">X</span>
           </div>
+          <span class="text-[11px] sm:text-xs font-semibold line-clamp-1 w-full mb-1">
+            Draw
+          </span>
+          <span class="text-sm sm:text-base font-bold font-mono text-gray-900 dark:text-white">
+            {{ stats?.drawPercentage ?? 25 }}%
+          </span>
+        </button>
 
-          <!-- Saved Static View (or Locked) -->
-          <div v-else class="flex flex-col items-center">
-            <div
-              class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gray-100 dark:bg-white/[0.04] border border-gray-200 dark:border-white/10"
-            >
-              <span
-                class="text-xl sm:text-2xl font-bold font-mono text-gray-900 dark:text-white"
-              >
-                {{ prediction ? prediction.homeScore : homeScore }}
-              </span>
-              <span class="text-gray-400 font-bold text-sm">-</span>
-              <span
-                class="text-xl sm:text-2xl font-bold font-mono text-gray-900 dark:text-white"
-              >
-                {{ prediction ? prediction.awayScore : awayScore }}
-              </span>
-            </div>
-            <span class="text-[11px] text-gray-400 dark:text-gray-500 mt-1 font-medium">
-              Your Prediction
-            </span>
-          </div>
-        </div>
-
-        <!-- Away Team -->
-        <div class="flex flex-col items-center sm:items-start text-center sm:text-left">
-          <div
-            class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center p-2 mb-2 shadow-xs"
-          >
+        <!-- 3. Away Column -->
+        <button
+          type="button"
+          :disabled="isLocked"
+          class="flex flex-col items-center justify-between p-3 rounded-xl border transition-all text-center"
+          :class="[
+            selectedOutcome === 'away'
+              ? 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-500/10 ring-1 ring-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+              : 'border-gray-200 dark:border-white/[0.06] bg-gray-50/60 dark:bg-white/[0.03] hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-800 dark:text-gray-200',
+            isLocked ? 'cursor-default' : 'cursor-pointer'
+          ]"
+          @click="selectOutcome('away')"
+        >
+          <div class="w-10 h-10 rounded-full flex items-center justify-center p-1 mb-1.5 shrink-0">
             <img
               v-if="fixture.awayTeam?.logoUrl"
               :src="fixture.awayTeam.logoUrl"
@@ -378,165 +329,161 @@ async function handleSavePrediction() {
             <UIcon
               v-else
               name="i-heroicons-shield-check"
-              class="w-6 h-6 text-gray-400"
+              class="w-7 h-7 text-gray-400"
             />
           </div>
-          <p
-            class="font-semibold text-sm sm:text-base text-gray-900 dark:text-white line-clamp-1"
-          >
+          <span class="text-[11px] sm:text-xs font-semibold line-clamp-1 w-full mb-1">
             {{ awayTeamName }}
-          </p>
-          <span
-            v-if="fixture.status === FixtureStatus.COMPLETED || fixture.status === FixtureStatus.LIVE"
-            class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-mono"
-          >
-            Actual: {{ fixture.awayScore ?? 0 }}
           </span>
-        </div>
-      </div>
-
-      <!-- Quick outcome presets (pre-kickoff when editing) -->
-      <div
-        v-if="!isLocked && isEditing"
-        class="flex items-center justify-center gap-1.5 mt-4 pt-3 border-t border-gray-100 dark:border-white/[0.05]"
-      >
-        <button
-          type="button"
-          class="px-2.5 py-1 rounded-lg text-xs font-medium border border-gray-200 dark:border-white/10 hover:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-gray-600 dark:text-gray-300 transition-colors"
-          @click="setQuickResult('home')"
-        >
-          1 · Home Win
-        </button>
-        <button
-          type="button"
-          class="px-2.5 py-1 rounded-lg text-xs font-medium border border-gray-200 dark:border-white/10 hover:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-gray-600 dark:text-gray-300 transition-colors"
-          @click="setQuickResult('draw')"
-        >
-          X · Draw
-        </button>
-        <button
-          type="button"
-          class="px-2.5 py-1 rounded-lg text-xs font-medium border border-gray-200 dark:border-white/10 hover:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-gray-600 dark:text-gray-300 transition-colors"
-          @click="setQuickResult('away')"
-        >
-          2 · Away Win
+          <span class="text-sm sm:text-base font-bold font-mono text-gray-900 dark:text-white">
+            {{ stats?.awayWinPercentage ?? 30 }}%
+          </span>
         </button>
       </div>
 
-      <!-- Actions & Points Status -->
-      <div class="mt-4 pt-3 border-t border-gray-100 dark:border-white/[0.05] flex flex-col sm:flex-row items-center justify-between gap-3">
-        <!-- Completed Match Award Banner -->
-        <div v-if="evaluation" class="w-full sm:w-auto">
-          <div
-            v-if="evaluation.status === 'EXACT'"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400"
-          >
-            <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-amber-500" />
-            <span class="text-xs font-bold">
-              🎯 Exact Score Hit! +{{ config.exactScorePoints }} pts
+      <!-- Total votes line (FotMob style) -->
+      <p class="text-center text-xs text-gray-400 dark:text-gray-500 mb-3">
+        Total votes: {{ totalVotesFormatted }}
+      </p>
+
+      <!-- Score adjustment & Save Action (Pre-kickoff) -->
+      <div v-if="!isLocked" class="pt-3 border-t border-gray-100 dark:border-white/[0.05] space-y-3">
+        <!-- Score stepper (when editing or setting score) -->
+        <div v-if="isEditing" class="flex items-center justify-center gap-3">
+          <span class="text-xs text-gray-500 font-medium mr-1">Score:</span>
+
+          <!-- Home Counter -->
+          <div class="inline-flex items-center bg-gray-100 dark:bg-white/[0.05] rounded-xl p-0.5 border border-gray-200 dark:border-white/10">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-minus"
+              class="w-7 h-7 p-0 flex items-center justify-center"
+              @click="adjustScore('home', -1)"
+            />
+            <span class="w-7 text-center font-bold text-base font-mono text-gray-900 dark:text-white">
+              {{ homeScore }}
             </span>
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-plus"
+              class="w-7 h-7 p-0 flex items-center justify-center"
+              @click="adjustScore('home', 1)"
+            />
           </div>
-          <div
-            v-else-if="evaluation.status === 'CORRECT_RESULT'"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
-          >
-            <UIcon name="i-heroicons-check" class="w-4 h-4 text-emerald-500" />
-            <span class="text-xs font-bold">
-              ✅ Correct Result! +{{ config.correctResultPoints }} pts
+
+          <span class="font-bold text-gray-400 text-sm">-</span>
+
+          <!-- Away Counter -->
+          <div class="inline-flex items-center bg-gray-100 dark:bg-white/[0.05] rounded-xl p-0.5 border border-gray-200 dark:border-white/10">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-minus"
+              class="w-7 h-7 p-0 flex items-center justify-center"
+              @click="adjustScore('away', -1)"
+            />
+            <span class="w-7 text-center font-bold text-base font-mono text-gray-900 dark:text-white">
+              {{ awayScore }}
             </span>
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-plus"
+              class="w-7 h-7 p-0 flex items-center justify-center"
+              @click="adjustScore('away', 1)"
+            />
           </div>
-          <div
-            v-else-if="evaluation.status === 'INCORRECT'"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-white/[0.05] text-gray-500 text-xs"
-          >
-            <UIcon name="i-heroicons-x-mark" class="w-4 h-4" />
-            <span>Missed outcome · 0 pts</span>
-          </div>
-          <div
-            v-else-if="evaluation.status === 'PENDING'"
-            class="flex items-center gap-2 text-xs text-gray-400 font-medium"
-          >
-            <UIcon name="i-heroicons-lock-closed" class="w-3.5 h-3.5" />
-            <span>Locked · Awaiting final score</span>
-          </div>
-        </div>
-
-        <!-- Open state message if no completed score yet -->
-        <div v-else-if="isLocked" class="text-xs text-gray-400 font-medium flex items-center gap-1.5">
-          <UIcon name="i-heroicons-lock-closed" class="w-3.5 h-3.5" />
-          <span>Match in progress or ended</span>
-        </div>
-
-        <div v-else-if="isSaved && !isEditing" class="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-          <UIcon name="i-heroicons-check-circle" class="w-4 h-4" />
-          <span>Prediction locked in! You can edit until kickoff.</span>
-        </div>
-
-        <div v-else class="text-xs text-gray-400">
-          Earn <span class="font-bold text-gray-900 dark:text-white">{{ config.exactScorePoints }} pts</span> for exact score, <span class="font-bold text-gray-900 dark:text-white">{{ config.correctResultPoints }} pt</span> for outcome.
         </div>
 
         <!-- Buttons -->
-        <div v-if="!isLocked" class="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <div v-if="isEditing">
           <UButton
-            v-if="isSaved && !isEditing"
-            size="sm"
-            variant="outline"
-            color="neutral"
-            icon="i-heroicons-pencil-square"
-            label="Change"
-            @click="isEditing = true"
+            block
+            size="md"
+            color="primary"
+            class="rounded-full font-semibold shadow-xs"
+            :loading="isSubmitting"
+            :label="isSaved ? 'Update Prediction' : 'Save Prediction'"
+            @click="handleSavePrediction"
           />
+        </div>
+
+        <!-- Saved State Summary -->
+        <div
+          v-else
+          class="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200/80 dark:border-white/10 text-xs"
+        >
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-check-circle" class="w-4 h-4 text-emerald-500 shrink-0" />
+            <span class="text-gray-700 dark:text-gray-300">
+              Your prediction: <strong class="font-mono text-gray-900 dark:text-white">{{ homeScore }} - {{ awayScore }}</strong>
+            </span>
+          </div>
 
           <UButton
-            v-if="isEditing"
-            size="sm"
-            color="primary"
-            :loading="isSubmitting"
-            icon="i-heroicons-check"
-            :label="isSaved ? 'Update Prediction' : 'Save Prediction'"
-            class="w-full sm:w-auto"
-            @click="handleSavePrediction"
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            label="Change"
+            @click="isEditing = true"
           />
         </div>
       </div>
 
-      <!-- Community Consensus Bar -->
-      <div v-if="stats && stats.totalPredictions > 0" class="mt-4 pt-3 border-t border-gray-100 dark:border-white/[0.05]">
-        <div class="flex items-center justify-between text-[11px] text-gray-500 mb-1.5 font-medium">
-          <span class="flex items-center gap-1">
-            <UIcon name="i-heroicons-user-group" class="w-3.5 h-3.5 text-gray-400" />
-            Community Consensus ({{ stats.totalPredictions }} predictions)
-          </span>
-          <span v-if="stats.mostPredictedScore">
-            Most predicted: <strong class="text-gray-900 dark:text-white font-mono">{{ stats.mostPredictedScore.home }} - {{ stats.mostPredictedScore.away }}</strong>
-          </span>
-        </div>
+      <!-- Completed match evaluation banner -->
+      <div
+        v-else-if="evaluation"
+        class="pt-3 border-t border-gray-100 dark:border-white/[0.05] flex items-center justify-between text-xs"
+      >
+        <span class="text-gray-500 font-medium">
+          Actual: <strong class="font-mono text-gray-900 dark:text-white">{{ fixture.homeScore ?? 0 }} - {{ fixture.awayScore ?? 0 }}</strong>
+          <span class="mx-1 text-gray-300 dark:text-white/20">·</span>
+          Pick: <strong class="font-mono text-gray-900 dark:text-white">{{ homeScore }} - {{ awayScore }}</strong>
+        </span>
 
-        <!-- Segmented bar -->
-        <div class="h-2 w-full rounded-full overflow-hidden flex bg-gray-100 dark:bg-white/[0.06]">
-          <div
-            :style="{ width: `${stats.homeWinPercentage}%` }"
-            class="bg-emerald-500 h-full transition-all"
-            :title="`Home Win: ${stats.homeWinPercentage}%`"
-          ></div>
-          <div
-            :style="{ width: `${stats.drawPercentage}%` }"
-            class="bg-amber-400 h-full transition-all"
-            :title="`Draw: ${stats.drawPercentage}%`"
-          ></div>
-          <div
-            :style="{ width: `${stats.awayWinPercentage}%` }"
-            class="bg-indigo-500 h-full transition-all"
-            :title="`Away Win: ${stats.awayWinPercentage}%`"
-          ></div>
-        </div>
+        <UBadge
+          v-if="evaluation.status === 'EXACT'"
+          color="primary"
+          variant="subtle"
+          size="sm"
+        >
+          Exact Score (+{{ config.exactScorePoints }} pts)
+        </UBadge>
+        <UBadge
+          v-else-if="evaluation.status === 'CORRECT_RESULT'"
+          color="primary"
+          variant="subtle"
+          size="sm"
+        >
+          Correct Result (+{{ config.correctResultPoints }} pt)
+        </UBadge>
+        <UBadge
+          v-else-if="evaluation.status === 'INCORRECT'"
+          color="neutral"
+          variant="subtle"
+          size="sm"
+        >
+          Missed (0 pts)
+        </UBadge>
+      </div>
 
-        <div class="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500 mt-1 font-mono">
-          <span class="text-emerald-500 font-semibold">1: {{ stats.homeWinPercentage }}%</span>
-          <span class="text-amber-500 font-semibold">X: {{ stats.drawPercentage }}%</span>
-          <span class="text-indigo-400 font-semibold">2: {{ stats.awayWinPercentage }}%</span>
-        </div>
+      <!-- Match Locked state (when in progress or no evaluation yet) -->
+      <div
+        v-else-if="isLocked"
+        class="pt-3 border-t border-gray-100 dark:border-white/[0.05] text-center text-xs text-gray-400"
+      >
+        <span v-if="isSaved">
+          Your prediction: <strong class="font-mono text-gray-900 dark:text-white">{{ homeScore }} - {{ awayScore }}</strong> (Locked)
+        </span>
+        <span v-else>
+          Predictions closed for this match
+        </span>
       </div>
     </div>
   </div>

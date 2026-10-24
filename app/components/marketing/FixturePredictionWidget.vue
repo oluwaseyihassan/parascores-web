@@ -36,21 +36,17 @@ function goToTournamentPredictions() {
 </script>
 
 <template>
-  <div v-if="isEnabled" class="space-y-3">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-emerald-500" />
-        <h3 class="text-sm font-bold text-gray-900 dark:text-white">
-          Score Prediction Challenge
-        </h3>
-      </div>
+  <div v-if="isEnabled" class="max-w-xl mx-auto space-y-3">
+    <div class="flex items-center justify-between px-1">
+      <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">
+        Match Prediction
+      </span>
 
       <UButton
         size="xs"
         variant="ghost"
         color="neutral"
-        icon="i-heroicons-trophy"
-        label="View Leaderboard"
+        label="Leaderboard →"
         @click="goToTournamentPredictions"
       />
     </div>
@@ -60,7 +56,6 @@ function goToTournamentPredictions() {
       :tournament="tournament"
       :prediction="prediction"
       :stats="stats"
-      compact
     />
   </div>
 </template>

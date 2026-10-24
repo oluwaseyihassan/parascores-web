@@ -64,9 +64,9 @@ const thirdPlace = computed(() => props.leaderboard[2] || null)
 
       <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
         <div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/[0.03] px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/[0.06]">
-          <span>🎯 Exact: <strong class="text-gray-900 dark:text-white">{{ config.exactScorePoints }} pts</strong></span>
+          <span>Exact score: <strong class="text-gray-900 dark:text-white">{{ config.exactScorePoints }} pts</strong></span>
           <span class="text-gray-300 dark:text-white/20">·</span>
-          <span>✅ Outcome: <strong class="text-gray-900 dark:text-white">{{ config.correctResultPoints }} pt</strong></span>
+          <span>Outcome: <strong class="text-gray-900 dark:text-white">{{ config.correctResultPoints }} pt</strong></span>
         </div>
 
         <UButton
@@ -83,7 +83,7 @@ const thirdPlace = computed(() => props.leaderboard[2] || null)
     <!-- Pinned User Rank Card (if user has participated) -->
     <div
       v-if="currentUserEntry"
-      class="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/30 flex items-center justify-between gap-4"
+      class="p-4 rounded-2xl bg-gray-50 dark:bg-white/[0.03] border border-emerald-500/30 flex items-center justify-between gap-4"
     >
       <div class="flex items-center gap-3">
         <div
@@ -148,7 +148,7 @@ const thirdPlace = computed(() => props.leaderboard[2] || null)
       <!-- 1st Place (Center, Elevated) -->
       <div
         v-if="firstPlace"
-        class="flex flex-col items-center p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-amber-500/10 to-amber-500/5 dark:bg-[#121008] border-2 border-amber-500/40 relative text-center -translate-y-2 shadow-lg shadow-amber-500/5"
+        class="flex flex-col items-center p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#121212] border-2 border-amber-500/40 relative text-center -translate-y-2 shadow-sm"
       >
         <div
           class="w-8 h-8 rounded-full bg-amber-400 text-amber-950 font-black text-sm flex items-center justify-center absolute -top-4 shadow-md border-2 border-white dark:border-[#0d0d0d]"
