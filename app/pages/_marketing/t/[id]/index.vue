@@ -2,6 +2,7 @@
 import type { Tournament, Fixture, Standing, Participant, Sponsor, Social, Venue } from '~/types'
 import { TournamentType, FixtureStatus, FixtureStage, ParticipantType, ParticipantStatus } from '~/types'
 import { getLivestreamPlatformInfo, detectLivestreamPlatform } from '~/utils/livestream'
+import MarketingTournamentPredictionsTab from '~/components/marketing/TournamentPredictionsTab.vue'
 
 definePageMeta({
   layout: 'feed'
@@ -19,7 +20,7 @@ const { handleError, extractErrorMessage } = useErrors()
 // State — fetched via useAsyncData for SSR support (SEO meta tags)
 const selectedSponsor = ref<Sponsor | null>(null)
 const { toMain, toTournament } = useHost()
-type TabKey = 'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats' | 'chat'
+type TabKey = 'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats' | 'chat' | 'predictions'
 const activeTab = ref<TabKey>(
   (route.query.tab as any) || 'info'
 )
@@ -74,7 +75,7 @@ watch(activeTab, (newTab) => {
 
 watch(() => route.query.tab, (newTab) => {
   if (newTab && newTab !== activeTab.value) {
-    const validTabs: TabKey[] = ['info', 'fixtures', 'standings', 'bracket', 'participants', 'stats', 'chat']
+    const validTabs: TabKey[] = ['info', 'fixtures', 'standings', 'bracket', 'participants', 'stats', 'chat', 'predictions']
     if (validTabs.includes(newTab as TabKey)) {
       switchTab(newTab as TabKey)
     }
@@ -270,6 +271,12 @@ const showBracketTab = computed(() => {
   return tournament.value.type === TournamentType.KNOCKOUT || tournament.value.type === TournamentType.HYBRID
 })
 
+const showPredictionsTab = computed(() => {
+  const isFootball = (tournament.value?.sport || '').toLowerCase() === 'football'
+  const predictionConfig = tournament.value?.scoringRules?.prediction
+  return isFootball && predictionConfig?.enabled === true
+})
+
 // Visible tabs in exact visual order as rendered in the sticky header nav
 const visibleTabs = computed<TabKey[]>(() => {
   const tabs: TabKey[] = ['info', 'fixtures']
@@ -287,6 +294,9 @@ const visibleTabs = computed<TabKey[]>(() => {
   }
   if (tournament.value?.chatEnabled) {
     tabs.push('chat')
+  }
+  if (showPredictionsTab.value) {
+    tabs.push('predictions')
   }
   return tabs
 })
@@ -610,7 +620,7 @@ const shareTournament = async () => {
 watchEffect(() => {
   if (!tournament.value || loading.value) return
   
-  const validTabs = ['info', 'fixtures', 'standings', 'bracket', 'participants', 'stats', 'chat']
+  const validTabs = ['info', 'fixtures', 'standings', 'bracket', 'participants', 'stats', 'chat', 'predictions']
   if (!validTabs.includes(activeTab.value)) {
     activeTab.value = 'info'
   }
@@ -620,6 +630,7 @@ watchEffect(() => {
   else if (activeTab.value === 'participants' && participants.value.length === 0) activeTab.value = 'info'
   else if (activeTab.value === 'stats' && !isTeams.value) activeTab.value = 'info'
   else if (activeTab.value === 'chat' && !tournament.value?.chatEnabled) activeTab.value = 'info'
+  else if (activeTab.value === 'predictions' && !showPredictionsTab.value) activeTab.value = 'info'
 })
 
 // Chat: the viewer posts as their confirmed participant identity (organizers post from manage)
@@ -1666,6 +1677,24 @@ function getTeamCards(fixture: any, isHome: boolean) {
               <span>Match Hub</span>
               <span v-if="activeTab === 'chat'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
+
+            <!-- Predictions Tab -->
+            <button
+              v-if="showPredictionsTab"
+              id="tab-btn-predictions"
+              @click="handleTabClick('predictions')"
+              type="button"
+              :class="[
+                'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5 shrink-0',
+                activeTab === 'predictions'
+                  ? 'font-bold text-gray-900 dark:text-white'
+                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
+              ]"
+            >
+              <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-emerald-500" />
+              <span>Predictions</span>
+              <span v-if="activeTab === 'predictions'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
+            </button>
           </nav>
         </div>
       </section>
@@ -2509,6 +2538,19 @@ function getTeamCards(fixture: any, isHome: boolean) {
               @score-submitted="() => refreshOverview()"
             />
           </div>
+            </div>
+
+            <!-- ====== PREDICTIONS TAB ====== -->
+            <div
+              v-if="showPredictionsTab"
+              class="w-full shrink-0 min-w-full"
+              :class="activeTab === 'predictions' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
+            >
+              <MarketingTournamentPredictionsTab
+                :tournament="tournament"
+                :fixtures="fixtures"
+                @open-fixture="openFixture"
+              />
             </div>
           </div>
         </div>
