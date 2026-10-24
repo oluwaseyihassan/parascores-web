@@ -278,7 +278,7 @@ async function handleSavePrediction() {
             {{ homeTeamName }}
           </span>
           <span class="text-sm sm:text-base font-bold font-mono text-gray-900 dark:text-white">
-            {{ stats?.homeWinPercentage ?? 45 }}%
+            {{ stats && stats.totalPredictions > 0 ? `${stats.homeWinPercentage}%` : '-' }}
           </span>
         </button>
 
@@ -302,7 +302,7 @@ async function handleSavePrediction() {
             Draw
           </span>
           <span class="text-sm sm:text-base font-bold font-mono text-gray-900 dark:text-white">
-            {{ stats?.drawPercentage ?? 25 }}%
+            {{ stats && stats.totalPredictions > 0 ? `${stats.drawPercentage}%` : '-' }}
           </span>
         </button>
 
@@ -336,7 +336,7 @@ async function handleSavePrediction() {
             {{ awayTeamName }}
           </span>
           <span class="text-sm sm:text-base font-bold font-mono text-gray-900 dark:text-white">
-            {{ stats?.awayWinPercentage ?? 30 }}%
+            {{ stats && stats.totalPredictions > 0 ? `${stats.awayWinPercentage}%` : '-' }}
           </span>
         </button>
       </div>
