@@ -3,6 +3,7 @@ import { useRoute } from "#imports";
 import type { Tournament, Fixture, MatchEvent, Highlight } from "~/types";
 import { FixtureStatus, MatchEventType, MatchHalf } from "~/types";
 import LivestreamEmbed from "~/components/marketing/LivestreamEmbed.vue";
+import MarketingFixturePredictionWidget from "~/components/marketing/FixturePredictionWidget.vue";
 import { getHighlightPlatformInfo, formatHighlightEmbedUrl, getHighlightEmbedUrl } from "~/utils/highlights";
 
 const { toMain, isManage } = useHost();
@@ -33,7 +34,11 @@ const fixture = ref<Fixture | null>(null);
 const { allowsSelfReporting } = useTournamentFeatures(tournament);
 const loading = ref(true);
 const error = ref<string | null>(null);
-const activeTab = ref<"events" | "stats" | "info" | "lineups" | "highlights">("events");
+const activeTab = ref<"events" | "stats" | "info" | "lineups" | "highlights" | "predictions">("events");
+const showPredictions = computed(() => {
+  const isFootball = (tournament.value?.sport || '').toLowerCase() === 'football';
+  return isFootball && tournament.value?.scoringRules?.prediction?.enabled === true;
+});
 const activeMobileLineupTeam = ref<"home" | "away">("home");
 const highlights = ref<Highlight[]>([]);
 const loadingHighlights = ref(false);
@@ -969,6 +974,31 @@ const awaySubs = computed(() => {
             </div>
           </div>
         </div>
+
+        <!-- Quick Prediction Callout when match is SCHEDULED -->
+        <div
+          v-if="showPredictions && fixture && fixture.status === FixtureStatus.SCHEDULED && activeTab !== 'predictions'"
+          class="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 mt-3 sm:mt-4"
+        >
+          <div
+            class="flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer transition-colors"
+            :class="[
+              isDark
+                ? 'bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/15 text-emerald-400'
+                : 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100 text-emerald-800'
+            ]"
+            @click="activeTab = 'predictions'"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-sparkles" class="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>Predict this match before kickoff to climb the tournament leaderboard!</span>
+            </div>
+            <span class="font-bold flex items-center gap-1">
+              Predict now <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5" />
+            </span>
+          </div>
+        </div>
+
         <div class="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 mt-2 sm:mt-4">
           <nav
             class="flex gap-4 sm:gap-6 border-b transition-colors"
@@ -1033,6 +1063,19 @@ const awaySubs = computed(() => {
                 class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
                 >{{ highlights.length }}</span
               >
+            </button>
+            <button
+              v-if="showPredictions"
+              @click="activeTab = 'predictions'"
+              class="pb-2 sm:pb-3 text-xs sm:text-sm font-medium border-b-2 transition-colors duration-200 flex items-center gap-1.5"
+              :class="
+                activeTab === 'predictions'
+                  ? 'border-emerald-500 text-emerald-400'
+                  : tabInactiveClass
+              "
+            >
+              <UIcon name="i-heroicons-sparkles" class="w-3.5 h-3.5 text-emerald-500" />
+              <span>Predictions</span>
             </button>
           </nav>
         </div>
@@ -2786,6 +2829,15 @@ const awaySubs = computed(() => {
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Predictions Tab -->
+        <div v-show="activeTab === 'predictions'" class="py-4">
+          <MarketingFixturePredictionWidget
+            v-if="tournament && fixture"
+            :tournament="tournament"
+            :fixture="fixture"
+          />
         </div>
       </section>
     </div>

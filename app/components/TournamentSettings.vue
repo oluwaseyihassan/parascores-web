@@ -499,6 +499,12 @@ const applyPreset = (p: (typeof pointsPresets)[number]) => {
 }
 const pointsPreview = computed(() => `→ 2 wins + 1 draw = ${2 * pointsWin.value + pointsDraw.value} pts`)
 
+// ─── Score Predictions (Fan Engagement) ───────────────────
+const isFootballSport = computed(() => (state.sport || props.tournament.sport || '').toLowerCase() === 'football')
+const predictionEnabled = ref(props.tournament.scoringRules?.prediction?.enabled === true)
+const predictionExactScorePoints = ref(Number(props.tournament.scoringRules?.prediction?.exactScorePoints ?? 3))
+const predictionCorrectResultPoints = ref(Number(props.tournament.scoringRules?.prediction?.correctResultPoints ?? 1))
+
 // ─── Registration window ─────────────────────────────────
 const regWindowChip = computed(() => {
   const open = state.registrationOpen ? new Date(state.registrationOpen).getTime() : null
@@ -622,6 +628,7 @@ function buildSnapshot() {
   o.start_date = dateToISOString(parseDateString(state.start_date))
   o.end_date = dateToISOString(parseDateString(state.end_date))
   o.points = [pointsWin.value, pointsDraw.value, pointsLoss.value]
+  o.prediction = [predictionEnabled.value, predictionExactScorePoints.value, predictionCorrectResultPoints.value]
   o.logo = logoPreview.value
   o.banner = bannerPreview.value
   return JSON.stringify(o)
@@ -649,6 +656,9 @@ function discardChanges() {
   startDate.value = parseDateString(sav.start_date)
   endDate.value = parseDateString(sav.end_date)
   ;[pointsWin.value, pointsDraw.value, pointsLoss.value] = sav.points
+  if (sav.prediction) {
+    ;[predictionEnabled.value, predictionExactScorePoints.value, predictionCorrectResultPoints.value] = sav.prediction
+  }
   logoFile.value = null
   logoPreview.value = sav.logo
   bannerFile.value = null
@@ -756,6 +766,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       win: pointsWin.value,
       draw: pointsDraw.value,
       loss: pointsLoss.value,
+      prediction: {
+        enabled: predictionEnabled.value,
+        exactScorePoints: Math.max(1, Number(predictionExactScorePoints.value || 3)),
+        correctResultPoints: Math.max(0, Number(predictionCorrectResultPoints.value || 1)),
+      },
     }
     if (event.data.setsToWin) scoringRules.setsToWin = event.data.setsToWin
     if (event.data.gamesPerSet) scoringRules.gamesPerSet = event.data.gamesPerSet
@@ -1447,6 +1462,60 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                       class="w-full"
                     />
                   </UFormField>
+                </div>
+              </div>
+
+              <!-- Score predictions (football tournaments) -->
+              <div v-if="isFootballSport" class="space-y-3 pt-4 border-t border-gray-100 dark:border-white/[0.06]">
+                <div class="flex items-center justify-between p-3.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.05]">
+                  <div class="flex-1 pr-3">
+                    <div class="flex items-center gap-1.5">
+                      <p class="font-medium text-sm text-gray-900 dark:text-white">Fan Score Predictions</p>
+                      <UBadge size="xs" color="primary" variant="subtle">Interactive</UBadge>
+                    </div>
+                    <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5">
+                      Allow fans to predict scores before kickoff, earn points, and climb the tournament leaderboard.
+                    </p>
+                  </div>
+                  <USwitch v-model="predictionEnabled" />
+                </div>
+
+                <div v-if="predictionEnabled" class="p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Points for Exact Score</p>
+                      <UInput
+                        v-model.number="predictionExactScorePoints"
+                        type="number"
+                        min="1"
+                        max="20"
+                        size="sm"
+                        class="w-full font-mono font-bold"
+                      />
+                      <span class="text-[10px] text-gray-400 mt-1 block">
+                        Awarded when home and away scores match exactly (e.g. 2-1)
+                      </span>
+                    </div>
+
+                    <div>
+                      <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Points for Correct Outcome</p>
+                      <UInput
+                        v-model.number="predictionCorrectResultPoints"
+                        type="number"
+                        min="0"
+                        max="10"
+                        size="sm"
+                        class="w-full font-mono font-bold"
+                      />
+                      <span class="text-[10px] text-gray-400 mt-1 block">
+                        Awarded when the predicted winner or draw is correct
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium pt-1 border-t border-emerald-500/15">
+                    → Fans predict 2-1: Final score 2-1 gets <strong>{{ predictionExactScorePoints }} pts</strong>. Final score 1-0 gets <strong>{{ predictionCorrectResultPoints }} pts</strong>.
+                  </div>
                 </div>
               </div>
             </div>

@@ -698,3 +698,5 @@ declare global {
     }>;
   }
 }
+
+export * from './prediction';
