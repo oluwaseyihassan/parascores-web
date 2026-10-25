@@ -176,12 +176,12 @@ function getMatchAggregate(match: Fixture) {
 </script>
 
 <template>
-  <div>
+  <div class="max-w-5xl mx-auto py-6 sm:py-8 px-4 sm:px-6 min-h-screen">
     <!-- Loading -->
     <div v-if="loading" class="flex items-center justify-center min-h-[60vh]">
       <div class="flex flex-col items-center gap-4">
         <div class="w-10 h-10 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-        <span class="text-sm text-gray-400">Loading team...</span>
+        <span class="text-sm font-medium text-black dark:text-gray-400">Loading team...</span>
       </div>
     </div>
 
@@ -189,13 +189,13 @@ function getMatchAggregate(match: Fixture) {
     <div v-else-if="error" class="flex items-center justify-center min-h-[60vh]">
       <div class="text-center">
         <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
-          <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
         </div>
-        <h3 class="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Team not found</h3>
-        <p class="text-sm text-gray-400 mb-4">{{ error }}</p>
-        <button @click="$emit('back')" class="text-sm text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer">
+        <h3 class="text-lg font-bold mb-2 text-black dark:text-white">Team not found</h3>
+        <p class="text-sm text-black dark:text-gray-400 mb-4">{{ error }}</p>
+        <button @click="$emit('back')" class="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline transition-colors cursor-pointer">
           ← Back
         </button>
       </div>
@@ -204,25 +204,42 @@ function getMatchAggregate(match: Fixture) {
     <!-- Content -->
     <div v-else-if="participant && tournament">
       <!-- Team Header -->
-      <section class="relative overflow-hidden transition-colors" :class="isDark ? 'bg-transparent border-white/[0.06]' : 'bg-transparent border-gray-200'">
-        <div class="relative max-w-7xl mx-auto px-6 pt-6 pb-0">
-          <!-- Back button -->
-          <button @click="$emit('back')" class="inline-flex items-center gap-2 text-xs hover:text-emerald-400 transition-colors mb-6 cursor-pointer text-gray-500 dark:text-gray-400">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back
-          </button>
+      <section class="relative overflow-hidden transition-colors">
+        <div>
+          <!-- Header Top: Back button & Tournament pill -->
+          <div class="flex items-center justify-between gap-3 mb-6">
+            <button
+              @click="$emit('back')"
+              class="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-black dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer group"
+            >
+              <svg class="w-4 h-4 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              <span>Back</span>
+            </button>
+
+            <!-- Tournament pill / link -->
+            <NuxtLink
+              v-if="tournament"
+              :to="toMain(`/t/${tournament.customName || tournament.id}`)"
+              :external="isManage"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-black dark:text-white bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 transition-colors shrink-0"
+            >
+              <img v-if="tournament.logoUrl" :src="tournament.logoUrl" :alt="tournament.name" class="w-4 h-4 rounded-full object-cover" />
+              <UIcon v-else name="i-heroicons-trophy" class="w-3.5 h-3.5 text-emerald-500" />
+              <span class="truncate max-w-[150px] sm:max-w-[200px]">{{ tournament.name }}</span>
+            </NuxtLink>
+          </div>
 
           <!-- Header info -->
           <div class="pb-6 flex flex-col items-center">
-            <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden mb-3 flex items-center justify-center ring-1 bg-gray-100 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
+            <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden mb-3 flex items-center justify-center ring-1 bg-gray-100 ring-gray-200 dark:bg-white/5 dark:ring-white/10 shadow-sm">
               <img v-if="participant.logoUrl" :src="participant.logoUrl" class="w-full h-full object-cover p-2" />
-              <span v-else class="text-3xl font-bold text-gray-400">
+              <span v-else class="text-3xl font-bold text-black dark:text-gray-400">
                 {{ (participant.customShortName || participant.customName || 'T').charAt(0).toUpperCase() }}
               </span>
             </div>
-            <h1 class="text-xl md:text-2xl font-bold transition-colors text-center text-gray-900 dark:text-white">
+            <h1 class="text-2xl md:text-3xl font-extrabold transition-colors text-center text-black dark:text-white tracking-tight">
               {{ participant.customShortName || participant.customName || 'Unnamed Team' }}
             </h1>
 
@@ -233,51 +250,54 @@ function getMatchAggregate(match: Fixture) {
                  variant="soft" 
                  color="neutral"
                  icon="i-heroicons-clock"
-                 class="rounded-full px-5 font-bold shadow-sm hover:scale-105 active:scale-95 transition-all"
+                 class="rounded-full px-5 font-bold shadow-sm hover:scale-105 active:scale-95 transition-all text-black dark:text-white"
                >
                  View Team Profile & History
                </UButton>
             </div>
-
           </div>
         </div>
 
-        <div class="max-w-7xl mx-auto px-6 mt-4">
-          <nav class="flex gap-6 border-b transition-colors" :class="isDark ? 'border-white/[0.08]' : 'border-gray-200'">
+        <!-- Navigation Tabs -->
+        <div class="mt-4 border-b border-gray-200 dark:border-white/[0.08]">
+          <nav class="flex gap-8 justify-center sm:justify-start">
             <button
               @click="activeTab = 'squad'"
-              class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
-              :class="activeTab === 'squad' ? 'border-emerald-500 text-emerald-500' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+              class="pb-3 text-sm transition-colors duration-200 cursor-pointer relative"
+              :class="activeTab === 'squad' ? 'font-bold text-black dark:text-white' : 'font-semibold text-black/70 hover:text-black dark:text-gray-400 dark:hover:text-gray-300'"
             >
-              Squad
+              <span>Squad</span>
+              <span v-if="activeTab === 'squad'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
             <button
               @click="activeTab = 'matches'"
-              class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
-              :class="activeTab === 'matches' ? 'border-emerald-500 text-emerald-500' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+              class="pb-3 text-sm transition-colors duration-200 cursor-pointer relative"
+              :class="activeTab === 'matches' ? 'font-bold text-black dark:text-white' : 'font-semibold text-black/70 hover:text-black dark:text-gray-400 dark:hover:text-gray-300'"
             >
-              Matches
+              <span>Matches</span>
+              <span v-if="activeTab === 'matches'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
             <button
               v-if="hasStandings"
               @click="activeTab = 'standings'"
-              class="pb-3 text-sm font-medium border-b-2 transition-colors duration-200"
-              :class="activeTab === 'standings' ? 'border-emerald-500 text-emerald-500' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+              class="pb-3 text-sm transition-colors duration-200 cursor-pointer relative"
+              :class="activeTab === 'standings' ? 'font-bold text-black dark:text-white' : 'font-semibold text-black/70 hover:text-black dark:text-gray-400 dark:hover:text-gray-300'"
             >
-              Standings
+              <span>Standings</span>
+              <span v-if="activeTab === 'standings'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
             </button>
           </nav>
         </div>
       </section>
 
       <!-- Details Content -->
-      <section class="max-w-7xl mx-auto px-4 py-8">
+      <section class="py-8">
         <!-- Squad Tab -->
         <div v-show="activeTab === 'squad'">
           <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl px-5 py-4">
-            <h3 class="text-sm font-bold text-gray-500 mb-4 border-b pb-3" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">Players</h3>
+            <h3 class="text-sm font-bold text-black dark:text-white mb-4 border-b pb-3" :class="isDark ? 'border-white/[0.06]' : 'border-gray-200'">Players</h3>
             
-            <div v-if="squadPlayers.length === 0" class="py-8 text-center text-gray-500 text-sm">
+            <div v-if="squadPlayers.length === 0" class="py-12 text-center text-black dark:text-gray-400 text-sm font-medium">
               No players listed for this team.
             </div>
             
@@ -285,13 +305,13 @@ function getMatchAggregate(match: Fixture) {
               <NuxtLink v-for="player in squadPlayers" :key="player.id" 
                    :to="toMain(`/player/${player.id}`)"
                    :external="isManage"
-                   class="flex items-center gap-3 p-3 rounded-lg transition-colors border bg-gray-50 border-gray-100 dark:bg-white/5 dark:border-white/5 hover:bg-gray-100/50 dark:hover:bg-white/[0.08] cursor-pointer">
+                   class="flex items-center gap-3 p-3 rounded-lg transition-colors border bg-gray-50 border-gray-200 dark:bg-white/5 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/[0.08] cursor-pointer group">
                 <!-- Player Avatar Wrapper -->
                 <div class="relative w-10 h-10 flex-shrink-0">
                   <!-- Cropped Avatar Container -->
                   <div class="w-full h-full rounded-full overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 flex items-center justify-center">
                     <img v-if="player.avatarUrl" :src="player.avatarUrl" class="w-full h-full object-cover" />
-                    <span v-else class="text-sm font-bold text-gray-400 uppercase">
+                    <span v-else class="text-sm font-bold text-black dark:text-gray-400 uppercase">
                       {{ player.name.charAt(0) }}
                     </span>
                   </div>
@@ -303,7 +323,7 @@ function getMatchAggregate(match: Fixture) {
                 </div>
                 <div class="flex flex-col overflow-hidden">
                   <div class="flex items-center gap-1.5 min-w-0">
-                    <span class="text-sm font-semibold truncate transition-colors text-gray-900 dark:text-white group-hover:text-emerald-500">{{ player.name }}</span>
+                    <span class="text-sm font-bold truncate transition-colors text-black dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">{{ player.name }}</span>
                     <UIcon
                       v-if="player.userId && player.status === 'APPROVED'"
                       name="i-heroicons-check-badge-solid"
@@ -311,7 +331,7 @@ function getMatchAggregate(match: Fixture) {
                       title="Claimed & Verified Player"
                     />
                   </div>
-                  <span class="text-[11px] font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">{{ player.position ? player.position.split('-')[0] : 'Unknown' }}</span>
+                  <span class="text-[11px] font-semibold uppercase tracking-widest text-black/80 dark:text-gray-400">{{ player.position ? player.position.split('-')[0] : 'Unknown' }}</span>
                 </div>
               </NuxtLink>
             </div>
@@ -321,15 +341,15 @@ function getMatchAggregate(match: Fixture) {
         <!-- Matches Tab -->
         <div v-show="activeTab === 'matches'">
           <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
-            <div class="px-5 py-3.5 border-b" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-               <h3 class="text-sm font-bold text-gray-500">Team Matches</h3>
+            <div class="px-5 py-3.5 border-b" :class="isDark ? 'border-white/[0.06]' : 'border-gray-200'">
+               <h3 class="text-sm font-bold text-black dark:text-white">Team Matches</h3>
             </div>
             
-            <div v-if="participantFixtures.length === 0" class="py-12 text-center text-gray-500 text-sm">
+            <div v-if="participantFixtures.length === 0" class="py-12 text-center text-black dark:text-gray-400 text-sm font-medium">
               No matches found for this team.
             </div>
             
-            <div v-else class="divide-y" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-100'">
+            <div v-else class="divide-y" :class="isDark ? 'divide-white/[0.04]' : 'divide-gray-200'">
               <NuxtLink v-for="match in participantFixtures" :key="match.id" :to="toMain(`/t/${tournament.customName || tournament.id}/fixture/${match.id}`)"
                    :external="isManage"
                   class="block p-4 md:p-5 transition-colors group"
@@ -337,31 +357,31 @@ function getMatchAggregate(match: Fixture) {
                 
                 <!-- Mobile: Date above match row -->
                 <div class="sm:hidden flex items-center gap-2 mb-2.5">
-                  <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-500/80">{{ formatFullDate(match.startTime) }}</span>
-                  <span class="text-[11px] text-gray-300 dark:text-gray-600">·</span>
-                  <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400">{{ formatTime(match.startTime) }}</span>
-                  <span class="text-[11px] text-gray-300 dark:text-gray-600">·</span>
-                  <span class="text-[10px] font-bold text-gray-500 uppercase">{{ getRoundName(match) }}</span>
-                  <span v-if="match.status === 'LIVE' || match.status === 'NORMAL_TIME_ENDED' || match.status === 'EXTRATIME'" class="ml-auto text-[10px] font-bold text-emerald-500 uppercase tracking-widest animate-pulse">Live</span>
+                  <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">{{ formatFullDate(match.startTime) }}</span>
+                  <span class="text-[11px] text-black/40 dark:text-gray-600">·</span>
+                  <span class="text-[11px] font-semibold text-black dark:text-gray-300">{{ formatTime(match.startTime) }}</span>
+                  <span class="text-[11px] text-black/40 dark:text-gray-600">·</span>
+                  <span class="text-[10px] font-bold text-black dark:text-gray-400 uppercase">{{ getRoundName(match) }}</span>
+                  <span v-if="match.status === 'LIVE' || match.status === 'NORMAL_TIME_ENDED' || match.status === 'EXTRATIME'" class="ml-auto text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest animate-pulse">Live</span>
                 </div>
 
                 <div class="flex items-center gap-2 sm:gap-4">
                   <!-- Desktop: Date column -->
                   <div class="hidden sm:flex flex-col items-center justify-center text-center w-24 flex-shrink-0">
-                     <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-500/80">{{ formatFullDate(match.startTime) }}</span>
-                     <span class="text-[13px] font-medium text-gray-500 dark:text-gray-400">{{ formatTime(match.startTime) }}</span>
-                     <span class="text-[10px] font-bold text-gray-500 uppercase tracking-tight mt-0.5">{{ getRoundName(match) }}</span>
-                     <span v-if="match.status === 'LIVE' || match.status === 'NORMAL_TIME_ENDED' || match.status === 'EXTRATIME'" class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest animate-pulse">Live</span>
+                     <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">{{ formatFullDate(match.startTime) }}</span>
+                     <span class="text-[13px] font-semibold text-black dark:text-gray-300">{{ formatTime(match.startTime) }}</span>
+                     <span class="text-[10px] font-bold text-black dark:text-gray-400 uppercase tracking-tight mt-0.5">{{ getRoundName(match) }}</span>
+                     <span v-if="match.status === 'LIVE' || match.status === 'NORMAL_TIME_ENDED' || match.status === 'EXTRATIME'" class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest animate-pulse">Live</span>
                   </div>
                   
                   <!-- Home -->
                   <div class="flex-1 flex justify-end items-center gap-1.5 sm:gap-3 min-w-0">
-                    <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="match.homeTeamId === participant?.id ? 'text-gray-900 dark:text-white' : 'text-gray-500'">
+                    <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="match.homeTeamId === participant?.id ? 'text-black dark:text-white font-bold' : 'text-black dark:text-neutral-400 font-medium'">
                       {{ match.homeTeam?.customShortName || match.homeTeam?.customName || match.homeTeamPlaceholder || 'Home' }}
                     </span>
                     <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border bg-gray-100 border-gray-200 dark:bg-white/5 dark:border-white/5">
                       <img v-if="match.homeTeam?.logoUrl" :src="match.homeTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
-                      <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.homeTeam?.customShortName || match.homeTeam?.customName || 'H').charAt(0) }}</span>
+                      <span v-else class="text-[10px] text-black dark:text-gray-400 font-bold">{{ (match.homeTeam?.customShortName || match.homeTeam?.customName || 'H').charAt(0) }}</span>
                     </div>
                   </div>
                   
@@ -371,10 +391,10 @@ function getMatchAggregate(match: Fixture) {
                       <div class="inline-flex px-1.5 sm:px-2 py-1 rounded min-w-[42px] sm:min-w-[50px] justify-center text-xs sm:text-sm font-bold tracking-wider whitespace-nowrap" :class="getScoreBadgeClass(match)">
                          {{ match.homeScore ?? 0 }} - {{ match.awayScore ?? 0 }}
                       </div>
-                      <div v-if="match.homePenaltyScore != null && match.awayPenaltyScore != null" class="text-[10px] sm:text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-wider">
+                      <div v-if="match.homePenaltyScore != null && match.awayPenaltyScore != null" class="text-[10px] sm:text-[11px] font-bold text-black dark:text-gray-400 mt-1 uppercase tracking-wider">
                         ({{ match.homePenaltyScore }}-{{ match.awayPenaltyScore }} p)
                       </div>
-                      <div v-if="getMatchAggregate(match)" class="text-[9px] sm:text-[10px] font-bold text-emerald-500/80 mt-0.5 uppercase tracking-wider">
+                      <div v-if="getMatchAggregate(match)" class="text-[9px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 uppercase tracking-wider">
                         {{ getMatchAggregate(match) }}
                       </div>
                     </template>
@@ -382,7 +402,7 @@ function getMatchAggregate(match: Fixture) {
                       <span class="text-[10px] sm:text-xs text-red-500 font-bold">CANC</span>
                     </template>
                     <template v-else>
-                      <span class="text-gray-500 text-xs sm:text-sm font-bold">- : -</span>
+                      <span class="text-black dark:text-gray-400 text-xs sm:text-sm font-bold">- : -</span>
                     </template>
                   </div>
                   
@@ -390,9 +410,9 @@ function getMatchAggregate(match: Fixture) {
                   <div class="flex-1 flex justify-start items-center gap-1.5 sm:gap-3 min-w-0">
                     <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border bg-gray-100 border-gray-200 dark:bg-white/5 dark:border-white/5">
                       <img v-if="match.awayTeam?.logoUrl" :src="match.awayTeam.logoUrl" class="w-full h-full object-cover p-0.5" />
-                      <span v-else class="text-[10px] text-gray-500 font-bold">{{ (match.awayTeam?.customShortName || match.awayTeam?.customName || 'A').charAt(0) }}</span>
+                      <span v-else class="text-[10px] text-black dark:text-gray-400 font-bold">{{ (match.awayTeam?.customShortName || match.awayTeam?.customName || 'A').charAt(0) }}</span>
                     </div>
-                    <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="match.awayTeamId === participant?.id ? 'text-gray-900 dark:text-white' : 'text-gray-500'">
+                    <span class="text-xs sm:text-sm font-semibold transition-colors truncate" :class="match.awayTeamId === participant?.id ? 'text-black dark:text-white font-bold' : 'text-black dark:text-neutral-400 font-medium'">
                       {{ match.awayTeam?.customShortName || match.awayTeam?.customName || match.awayTeamPlaceholder || 'Away' }}
                     </span>
                   </div>
@@ -407,8 +427,8 @@ function getMatchAggregate(match: Fixture) {
           <div v-for="(groupStandings, groupName) in standingsByGroup" :key="groupName" class="mb-6 last:mb-0">
             <div :class="isDark ? 'bg-[#1a1a1a] border-white/[0.06]' : 'bg-white border-gray-200 shadow-sm'" class="border rounded-xl overflow-hidden">
               <!-- Group Header -->
-              <div class="px-5 py-3.5 border-b" :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'">
-                <h3 class="text-sm font-bold text-gray-500">
+              <div class="px-5 py-3.5 border-b" :class="isDark ? 'border-white/[0.06]' : 'border-gray-200'">
+                <h3 class="text-sm font-bold text-black dark:text-white">
                   Standings{{ groupName !== 'default' ? ` · ${groupName}` : '' }}
                 </h3>
               </div>
@@ -417,59 +437,59 @@ function getMatchAggregate(match: Fixture) {
               <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                   <thead>
-                    <tr :class="isDark ? 'border-white/[0.06]' : 'border-gray-100'" class="border-b">
-                      <th class="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 w-8">#</th>
-                      <th class="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">Team</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden sm:table-cell">P</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden sm:table-cell">W</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden sm:table-cell">D</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden sm:table-cell">L</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden md:table-cell">GF</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 hidden md:table-cell">GA</th>
-                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">GD</th>
-                      <th class="text-center px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">Pts</th>
+                    <tr :class="isDark ? 'border-white/[0.06]' : 'border-gray-200'" class="border-b bg-gray-50/50 dark:bg-white/[0.02]">
+                      <th class="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-black dark:text-gray-400 w-8">#</th>
+                      <th class="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-black dark:text-gray-400">Team</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-black dark:text-gray-400 hidden sm:table-cell">P</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-black dark:text-gray-400 hidden sm:table-cell">W</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-black dark:text-gray-400 hidden sm:table-cell">D</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-black dark:text-gray-400 hidden sm:table-cell">L</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-black dark:text-gray-400 hidden md:table-cell">GF</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-black dark:text-gray-400 hidden md:table-cell">GA</th>
+                      <th class="text-center px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-black dark:text-gray-400">GD</th>
+                      <th class="text-center px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-black dark:text-gray-400">Pts</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr
                       v-for="(row, index) in groupStandings"
                       :key="row.id"
-                      class="transition-colors border-b last:border-b-0 border-gray-50 dark:border-white/[0.03]"
+                      class="transition-colors border-b last:border-b-0 border-gray-100 dark:border-white/[0.03]"
                       :class="[
                         row.participant_id === participantId
                           ? 'bg-emerald-50 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:ring-emerald-500/20'
                           : (index % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-gray-50/50 dark:bg-white/[0.02]')
                       ]"
                     >
-                      <td class="px-4 py-3 text-center font-bold text-gray-500 text-xs">{{ row.position || index + 1 }}</td>
+                      <td class="px-4 py-3 text-center font-bold text-black dark:text-gray-400 text-xs">{{ row.position || index + 1 }}</td>
                       <td class="px-4 py-3">
                         <div class="flex items-center gap-2.5">
                           <div class="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border bg-gray-100 border-gray-200 dark:bg-white/5 dark:border-white/10">
                             <img v-if="row.participant?.logoUrl" :src="row.participant.logoUrl" class="w-full h-full object-cover" />
-                            <span v-else class="text-[9px] font-bold text-gray-400">{{ (row.participant?.customShortName || row.participant?.customName || '?').charAt(0) }}</span>
+                            <span v-else class="text-[9px] font-bold text-black dark:text-gray-400">{{ (row.participant?.customShortName || row.participant?.customName || '?').charAt(0) }}</span>
                           </div>
                           <span
                             class="font-semibold text-sm truncate max-w-[140px]"
                             :class="[
                               row.participant_id === participantId
-                                ? 'text-emerald-500 font-bold'
-                                : 'text-gray-800 dark:text-gray-200'
+                                ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                                : 'text-black dark:text-gray-200'
                             ]"
                           >
                             {{ row.participant?.customShortName || row.participant?.customName || 'Unknown' }}
                           </span>
                         </div>
                       </td>
-                       <td class="text-center px-2 py-3 hidden sm:table-cell text-gray-600 dark:text-gray-400">{{ row.played }}</td>
-                      <td class="text-center px-2 py-3 hidden sm:table-cell text-gray-600 dark:text-gray-400">{{ row.wins }}</td>
-                      <td class="text-center px-2 py-3 hidden sm:table-cell text-gray-600 dark:text-gray-400">{{ row.draws }}</td>
-                      <td class="text-center px-2 py-3 hidden sm:table-cell text-gray-600 dark:text-gray-400">{{ row.losses }}</td>
-                      <td class="text-center px-2 py-3 hidden md:table-cell text-gray-600 dark:text-gray-400">{{ row.goalsFor }}</td>
-                      <td class="text-center px-2 py-3 hidden md:table-cell text-gray-600 dark:text-gray-400">{{ row.goalsAgainst }}</td>
-                      <td class="text-center px-2 py-3 font-semibold" :class="row.goalDiff > 0 ? 'text-emerald-500' : row.goalDiff < 0 ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'">
+                       <td class="text-center px-2 py-3 hidden sm:table-cell text-black dark:text-gray-400 font-medium">{{ row.played }}</td>
+                      <td class="text-center px-2 py-3 hidden sm:table-cell text-black dark:text-gray-400 font-medium">{{ row.wins }}</td>
+                      <td class="text-center px-2 py-3 hidden sm:table-cell text-black dark:text-gray-400 font-medium">{{ row.draws }}</td>
+                      <td class="text-center px-2 py-3 hidden sm:table-cell text-black dark:text-gray-400 font-medium">{{ row.losses }}</td>
+                      <td class="text-center px-2 py-3 hidden md:table-cell text-black dark:text-gray-400 font-medium">{{ row.goalsFor }}</td>
+                      <td class="text-center px-2 py-3 hidden md:table-cell text-black dark:text-gray-400 font-medium">{{ row.goalsAgainst }}</td>
+                      <td class="text-center px-2 py-3 font-semibold" :class="row.goalDiff > 0 ? 'text-emerald-600 dark:text-emerald-400' : row.goalDiff < 0 ? 'text-red-500' : 'text-black dark:text-gray-500'">
                         {{ row.goalDiff > 0 ? '+' : '' }}{{ row.goalDiff }}
                       </td>
-                       <td class="text-center px-4 py-3 font-bold text-gray-900 dark:text-white">{{ row.points }}</td>
+                       <td class="text-center px-4 py-3 font-bold text-black dark:text-white">{{ row.points }}</td>
                     </tr>
                   </tbody>
                 </table>
