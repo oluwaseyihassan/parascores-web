@@ -24,8 +24,6 @@ type TabKey = 'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | '
 const activeTab = ref<TabKey>(
   (route.query.tab as any) || 'info'
 )
-const selectedParticipantId = ref<string | null>(null)
-
 function getFixtureUrl(fixtureId: string) {
   const tId = tournament.value?.customName || tournament.value?.id || tournamentId
   return toMain(`/t/${tId}/fixture/${fixtureId}`)
@@ -37,6 +35,22 @@ function openFixture(fixtureId: string) {
 }
 
 function onFixtureClick(e: MouseEvent) {
+  if (isDragging.value) {
+    e.preventDefault()
+  }
+}
+
+function getTeamUrl(participantId: string) {
+  const tId = tournament.value?.customName || tournament.value?.id || tournamentId
+  return toMain(`/t/${tId}/team/${participantId}`)
+}
+
+function openTeam(participantId: string) {
+  if (isDragging.value) return
+  navigateTo(getTeamUrl(participantId))
+}
+
+function onTeamClick(e: MouseEvent) {
   if (isDragging.value) {
     e.preventDefault()
   }
@@ -68,7 +82,6 @@ const loadPlayerStats = async () => {
 }
 
 watch(activeTab, (newTab) => {
-  selectedParticipantId.value = null
   router.replace({ query: { ...route.query, tab: newTab } })
   scrollActiveTabIntoView()
 }, { flush: 'post' })
@@ -455,10 +468,6 @@ function isInsideScrollableHorizontal(el: Element | null): boolean {
 }
 
 function onTouchStart(e: TouchEvent) {
-  if (selectedParticipantId.value) {
-    isTouchIgnored.value = true
-    return
-  }
   const touch = e.touches[0]
   if (!touch) return
 
@@ -1563,8 +1572,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :class="[
                 'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative shrink-0',
                 activeTab === 'info'
-                  ? 'font-bold text-gray-900 dark:text-white'
-                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
+                  ? 'font-bold text-black dark:text-white'
+                  : 'font-semibold text-black/70 hover:text-black dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
               Overview
@@ -1579,8 +1588,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :class="[
                 'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5 shrink-0',
                 activeTab === 'fixtures'
-                  ? 'font-bold text-gray-900 dark:text-white'
-                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
+                  ? 'font-bold text-black dark:text-white'
+                  : 'font-semibold text-black/70 hover:text-black dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
               <span>Fixtures</span>
@@ -1589,8 +1598,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 :class="[
                   'px-1.5 py-0.2 rounded-full text-[10px] font-semibold transition-colors',
                   activeTab === 'fixtures'
-                    ? 'bg-gray-200 text-gray-900 dark:bg-white/20 dark:text-white'
-                    : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-neutral-400'
+                    ? 'bg-gray-200 text-black dark:bg-white/20 dark:text-white font-bold'
+                    : 'bg-gray-100 text-black/80 dark:bg-white/10 dark:text-neutral-400'
                 ]"
               >{{ fixtures.length }}</span>
               <span v-if="activeTab === 'fixtures'" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 dark:bg-[#00e676] rounded-full"></span>
@@ -1605,8 +1614,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :class="[
                 'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative shrink-0',
                 activeTab === 'standings'
-                  ? 'font-bold text-gray-900 dark:text-white'
-                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
+                  ? 'font-bold text-black dark:text-white'
+                  : 'font-semibold text-black/70 hover:text-black dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
               Table
@@ -1622,8 +1631,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :class="[
                 'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative shrink-0',
                 activeTab === 'bracket'
-                  ? 'font-bold text-gray-900 dark:text-white'
-                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
+                  ? 'font-bold text-black dark:text-white'
+                  : 'font-semibold text-black/70 hover:text-black dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
               Knockout
@@ -1639,8 +1648,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :class="[
                 'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative shrink-0',
                 activeTab === 'stats'
-                  ? 'font-bold text-gray-900 dark:text-white'
-                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
+                  ? 'font-bold text-black dark:text-white'
+                  : 'font-semibold text-black/70 hover:text-black dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
               Player stats
@@ -1656,8 +1665,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :class="[
                 'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative shrink-0',
                 activeTab === 'participants'
-                  ? 'font-bold text-gray-900 dark:text-white'
-                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
+                  ? 'font-bold text-black dark:text-white'
+                  : 'font-semibold text-black/70 hover:text-black dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
               {{ participantsTabName }}
@@ -1673,8 +1682,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :class="[
                 'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5 shrink-0',
                 activeTab === 'chat'
-                  ? 'font-bold text-gray-900 dark:text-white'
-                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
+                  ? 'font-bold text-black dark:text-white'
+                  : 'font-semibold text-black/70 hover:text-black dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
               <UIcon name="i-heroicons-bolt" class="w-4 h-4 text-amber-500 dark:text-amber-400" />
@@ -1691,8 +1700,8 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :class="[
                 'py-3.5 text-sm transition-colors duration-150 cursor-pointer relative flex items-center gap-1.5 shrink-0',
                 activeTab === 'predictions'
-                  ? 'font-bold text-gray-900 dark:text-white'
-                  : 'font-medium text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white'
+                  ? 'font-bold text-black dark:text-white'
+                  : 'font-semibold text-black/70 hover:text-black dark:text-neutral-400 dark:hover:text-white'
               ]"
             >
               <span>Predictions</span>
@@ -1711,15 +1720,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
         @touchend="onTouchEnd"
       >
         
-        <div v-if="selectedParticipantId" class="animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <MarketingTeamDetails 
-            :tournamentId="tournamentId" 
-            :participantId="selectedParticipantId" 
-            @back="selectedParticipantId = null" 
-          />
-        </div>
-
-        <div v-show="!selectedParticipantId" class="w-full overflow-hidden">
+        <div class="w-full overflow-hidden">
           <div
             class="flex w-full items-start will-change-transform"
             :style="trackStyle"
@@ -2376,40 +2377,40 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 <table class="w-full text-sm">
                   <thead>
                     <tr class="border-b transition-colors border-gray-100 dark:border-white/[0.06]">
-                      <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-bold text-gray-500 sticky left-0 z-20 bg-white dark:bg-[#1a1a1a]">#</th>
-                      <th class="text-left w-1/2 px-3 py-3 text-[11px] font-bold text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">Team</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">P</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">W</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">D</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">L</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GF</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GA</th>
-                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-gray-500">GD</th>
-                      <th class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[11px] font-bold text-emerald-400">Pts</th>
+                      <th class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[11px] font-bold text-black dark:text-gray-500 sticky left-0 z-20 bg-white dark:bg-[#1a1a1a]">#</th>
+                      <th class="text-left w-1/2 px-3 py-3 text-[11px] font-bold text-black dark:text-gray-500 sticky left-[32px] md:left-[40px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">Team</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-black dark:text-gray-500">P</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-black dark:text-gray-500">W</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-black dark:text-gray-500">D</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-black dark:text-gray-500">L</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-black dark:text-gray-500">GF</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-black dark:text-gray-500">GA</th>
+                      <th class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[11px] font-bold text-black dark:text-gray-500">GD</th>
+                      <th class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[11px] font-bold text-emerald-500">Pts</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr 
                       v-for="(standing, index) in groupStandings" 
                       :key="standing.id"
-                      @click="selectedParticipantId = standing.participant_id"
+                      @click="standing.participant_id && openTeam(standing.participant_id)"
                       class="border-t transition-colors cursor-pointer border-gray-100 hover:bg-gray-100 dark:border-white/[0.04] dark:hover:bg-white/[0.04]"
                     >
-                      <td class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[13px] font-bold text-gray-500 sticky left-0 z-10 bg-white dark:bg-[#1a1a1a]">{{ standing.position || index + 1 }}</td>
+                      <td class="text-center w-8 md:w-10 min-w-[32px] md:min-w-[40px] px-2 py-3 text-[13px] font-bold text-black dark:text-gray-500 sticky left-0 z-10 bg-white dark:bg-[#1a1a1a]">{{ standing.position || index + 1 }}</td>
                       <td class="text-left w-[170px] md:w-auto min-w-[170px] px-3 py-3 sticky left-[32px] md:left-[40px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] md:shadow-none bg-white dark:bg-[#1a1a1a]">
                         <div class="flex items-center gap-2 md:gap-2.5">
                           <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
                             <img v-if="standing.participant?.logoUrl" :src="standing.participant.logoUrl" class="w-full h-full object-cover" />
-                            <span v-else class="flex items-center justify-center w-full h-full text-[8px] md:text-[9px] font-bold text-gray-500">
+                            <span v-else class="flex items-center justify-center w-full h-full text-[8px] md:text-[9px] font-bold text-black dark:text-gray-500">
                               {{ (standing.participant?.customShortName || standing.participant?.customName || 'T').charAt(0) }}
                             </span>
                           </div>
                           <div class="flex flex-col min-w-0">
-                            <span class="text-[12px] md:text-[13px] font-medium truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px] text-gray-800 dark:text-gray-200">{{ standing.participant?.customShortName || standing.participant?.customName || 'Unknown' }}</span>
+                            <span class="text-[12px] md:text-[13px] font-bold truncate max-w-[120px] sm:max-w-[150px] md:max-w-[200px] text-black dark:text-gray-200">{{ standing.participant?.customShortName || standing.participant?.customName || 'Unknown' }}</span>
                             <NuxtLink 
                               v-if="standing.participant?.team_id || standing.participant?.team?.id"
                               :to="`/team/${standing.participant?.team_id || standing.participant?.team?.id}`"
-                              class="text-[9px] text-emerald-500 font-black uppercase tracking-widest hover:underline mt-0.5"
+                              class="text-[9px] text-emerald-600 dark:text-emerald-500 font-black uppercase tracking-widest hover:underline mt-0.5"
                               @click.stop
                             >
                               Team History
@@ -2418,16 +2419,16 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
                         </div>
                       </td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.played }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.wins }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.draws }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.losses }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsFor }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-gray-400">{{ standing.goalsAgainst }}</td>
-                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px]" :class="standing.goalDiff > 0 ? 'text-emerald-400' : standing.goalDiff < 0 ? 'text-red-400' : 'text-gray-500'">
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-black dark:text-gray-400 font-medium">{{ standing.played }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-black dark:text-gray-400 font-medium">{{ standing.wins }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-black dark:text-gray-400 font-medium">{{ standing.draws }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-black dark:text-gray-400 font-medium">{{ standing.losses }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-black dark:text-gray-400 font-medium">{{ standing.goalsFor }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] text-black dark:text-gray-400 font-medium">{{ standing.goalsAgainst }}</td>
+                      <td class="text-center min-w-[44px] md:min-w-[50px] px-2 py-3 text-[12px] md:text-[13px] font-semibold" :class="standing.goalDiff > 0 ? 'text-emerald-600 dark:text-emerald-400' : standing.goalDiff < 0 ? 'text-red-500' : 'text-black dark:text-gray-500'">
                         {{ standing.goalDiff > 0 ? '+' : '' }}{{ standing.goalDiff }}
                       </td>
-                      <td class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[12px] md:text-[13px] font-bold text-gray-900 dark:text-white">{{ standing.points }}</td>
+                      <td class="text-center min-w-[50px] md:min-w-[56px] px-3 py-3 text-[12px] md:text-[13px] font-bold text-black dark:text-white">{{ standing.points }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2477,16 +2478,16 @@ function getTeamCards(fixture: any, isHome: boolean) {
               :class="activeTab === 'participants' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
             >
               <div v-if="participants.length === 0" class="text-center py-16">
-            <p class="text-sm text-gray-500">No {{ participantsTabName.toLowerCase() }} available yet.</p>
+            <p class="text-sm font-medium text-black dark:text-gray-500">No {{ participantsTabName.toLowerCase() }} available yet.</p>
           </div>
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <button
+            <NuxtLink
               v-for="participant in participants"
               :key="participant.id"
-              type="button"
-              @click="selectedParticipantId = participant.id"
-              :class="winnerId === participant.id ? 'border-amber-400 dark:border-amber-400/50' : 'border-gray-100 dark:border-white/[0.06] hover:border-emerald-500/30 dark:hover:border-emerald-500/50'"
-              class="bg-white shadow-sm hover:bg-gray-50 dark:bg-[#1a1a1a] dark:hover:bg-white/[0.02] border rounded-xl p-4 flex flex-col gap-4 transition-colors group text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50 relative overflow-hidden"
+              :to="getTeamUrl(participant.id)"
+              @click="onTeamClick"
+              :class="winnerId === participant.id ? 'border-amber-400 dark:border-amber-400/50' : 'border-gray-200 dark:border-white/[0.06] hover:border-emerald-500/30 dark:hover:border-emerald-500/50'"
+              class="bg-white shadow-sm hover:bg-gray-50 dark:bg-[#1a1a1a] dark:hover:bg-white/[0.02] border rounded-xl p-4 flex flex-col gap-4 transition-colors group text-left focus:outline-none focus:ring-2 focus:ring-emerald-500/50 relative overflow-hidden cursor-pointer"
             >
               <!-- Winner Indicator -->
               <div v-if="winnerId === participant.id" class="absolute -top-1 -right-1 z-10">
@@ -2498,18 +2499,18 @@ function getTeamCards(fixture: any, isHome: boolean) {
               <div class="flex items-center gap-4">
                 <div class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 transition-colors relative bg-gray-100 dark:bg-white/10">
                   <img v-if="participant.logoUrl" :src="participant.logoUrl" class="w-full h-full object-cover" />
-                  <span v-else class="flex items-center justify-center w-full h-full text-lg font-bold text-gray-500">
+                  <span v-else class="flex items-center justify-center w-full h-full text-lg font-bold text-black dark:text-gray-500">
                     {{ (participant.customShortName || participant.customName || 'P').charAt(0).toUpperCase() }}
                   </span>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <h4 class="text-base font-semibold truncate transition-colors text-gray-800 group-hover:text-gray-900 dark:text-gray-200 dark:group-hover:text-white">
+                  <h4 class="text-base font-bold truncate transition-colors text-black group-hover:text-black dark:text-gray-200 dark:group-hover:text-white">
                     {{ participant.customShortName || participant.customName || 'Unknown' }}
                   </h4>
                   <NuxtLink 
                     v-if="participant.team_id || participant.team?.id"
                     :to="`/team/${participant.team_id || participant.team?.id}`"
-                    class="text-[10px] text-emerald-500 font-bold hover:underline mt-1 inline-block"
+                    class="text-[10px] text-emerald-600 dark:text-emerald-500 font-bold hover:underline mt-1 inline-block"
                     @click.stop
                   >
                     View Global Profile
@@ -2517,7 +2518,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
                 </div>
               </div>
-            </button>
+            </NuxtLink>
           </div>
             </div>
 
