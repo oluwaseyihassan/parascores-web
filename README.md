@@ -1,147 +1,287 @@
-# Parascores Web Application
+<p align="center">
+  <img src="https://res.cloudinary.com/djsnerfzp/image/upload/q_auto/f_auto/v1780327900/parascores-logo.png" width="110" alt="ParaScores Logo" />
+</p>
 
-Welcome to the **Parascores Web** repository. This is the front-end application built with **Nuxt 4**, **Vue 3**, **Tailwind CSS v4**, and **Nuxt UI v4**. The platform delivers a premium, real-time user experience for tournament management, live scoreboards, brackets, standings, stats, team registration, public widgets, and shareable social graphic generation.
+<h1 align="center">ParaScores Web</h1>
+
+<p align="center">
+  Next-generation multi-tenant frontend for live tournament management, real-time scoreboards, dynamic brackets, fan predictions, community chat, and automated social graphics.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Nuxt-4.x-00DC82?logo=nuxt&logoColor=white" alt="Nuxt 4" />
+  <img src="https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs&logoColor=white" alt="Vue 3" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS v4" />
+  <img src="https://img.shields.io/badge/Nuxt_UI-v4-00DC82?logo=nuxt&logoColor=white" alt="Nuxt UI v4" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Pinia-3.x-FFD859?logo=pinia&logoColor=black" alt="Pinia" />
+  <img src="https://img.shields.io/badge/Socket.io_Client-4.x-010101?logo=socket.io&logoColor=white" alt="Socket.io" />
+  <img src="https://img.shields.io/badge/PWA-Enabled-orange?logo=pwa&logoColor=white" alt="PWA" />
+  <img src="https://img.shields.io/badge/Satori_%26_Resvg-Graphics_Engine-purple" alt="Satori & Resvg" />
+  <img src="https://img.shields.io/badge/License-Proprietary-blue" alt="License" />
+</p>
 
 ---
 
-## 🚀 Key Features
+## 📖 Overview
 
-*   **Multi-tenant Subdomain Routing:** Dynamically serves distinct applications (Public Marketing Site, Organizer Dashboard, System Admin Panel) from the same codebase depending on the hostname.
-*   **Real-time Scoring & Match Timers:** Live minute updates, event triggers, and state management for active fixtures.
-*   **Dynamic Social Graphics Generator:** Server-side API endpoints (`server/api/graphics/`) that render real-time brackets, standings, stats, and matchday results to PNG images using Satori and Resvg.
-*   **Embeddable Widgets:** Performance-tuned iframe widgets for displaying live tournament brackets, standings, and matches on third-party websites.
-*   **PWA Support:** Service worker precaching, install prompts, and push notifications via `@vite-pwa/nuxt` with a custom `app/sw.ts`.
+**ParaScores Web** is the official web client for [ParaScores](https://parascores.com). It provides a unified, high-performance interface for tournament organizers, athletes, and fans.
+
+Architected on top of **Nuxt 4**, **Vue 3**, **Tailwind CSS v4**, and **Nuxt UI v4**, the application uses dynamic **multi-tenant subdomain routing** to serve three isolated user experiences—**Public Fan Portal**, **Organizer Management Console**, and **Super Admin Dashboard**—plus embeddable third-party widgets, all from a single, maintainable codebase.
+
+Served alongside a separate [NestJS API backend](https://github.com/oluwaseyihassan/parascores-api) running on port `3000`.
+
+---
+
+## ✨ Key Features
+
+### 🏆 Multi-Format Tournament & Playoff Engine
+- **Versatile Competition Formats**: Single Elimination, Double Elimination, Round-Robin (single & double), Groups + Knockouts, Swiss System matchmaking, and UEFA Champions League-style Swiss league phases.
+- **Interactive Knockout Brackets**: Tactile visual brackets rendered with dynamic SVG connector paths, curved routing, compact/expanded modes, and champion trophy showcases.
+- **Hybrid Play-Offs & Two-Legged Ties**: Support for UEFA Champions League play-off rounds (seeded vs unseeded pairings), two-legged knockout ties with aggregate scores, and 3rd place consolation matches.
+- **Automated Scheduling**: One-click fixture generation with round-robin matrices, round steppers, and manual bracket pairing overrides.
+
+### ⚽ Pluggable Multi-Sport Scoring Engines (`app/engines/`)
+- Per-sport scoring logic unified behind a standardized `SportEngine` contract (`types.ts`, `registry.ts` with `resolveEngine(sport)`).
+- **Supported Sports & Modalities**:
+  - **Football & Futsal**: Full match clock, minute-by-minute timeline, goals, assists, yellow/red cards, substitutions, own goals, penalty shootouts, and match statistics.
+  - **Basketball, Handball & Rugby**: Increment scoring panels (+1, +2, +3 points), quarter/half clocks, fouls, and bonus trackers via `basketball/panel.vue`.
+  - **Tennis, Table Tennis, Volleyball & Badminton**: Set-based scoring engine (`_shared/SetScoringPanel.vue`), games/sets tallying, deuce/advantage, and tiebreakers.
+  - **Athletics, Swimming, Cycling & Weightlifting**: Placement & timed race control (`_shared/RaceControl.vue`) supporting high/low metric rankings.
+  - **Combat Sports (Boxing, Judo, Taekwondo, Wrestling)**: Rounds clock, points system, and stoppage/decision tracking.
+  - **Esports**: Dedicated game-mode presets and tournament formats.
+
+### 🔮 Fan Score Predictions & Tournament Leaderboard
+- Pre-match score prediction contest on football fixtures.
+- Interactive score stepper cards with quick 1X2 outcome buttons.
+- Kickoff lockout enforcement with countdown timers.
+- Live community consensus analytics (Home Win %, Draw %, Away Win %, most predicted score).
+- Automated point evaluation (Exact Score vs Correct Outcome) and tournament podiums & leaderboards with celebratory outcome badges.
+
+### ⏱️ Live Match Center & Real-Time Scoring
+- **Sub-Second Updates**: Live match events streamed over Server-Sent Events (SSE).
+- **Match Control Surface**: Dedicated organizer scoring console (`MatchControl.vue`) with synchronized match timers, period transitions (`1H`, `HT`, `2H`, `FT`, `ET`, `PEN`), quick-action scoring buttons, and state recovery.
+- **Live Match Timeline & Stats**: Minute-by-minute match logs and detailed team statistics.
+
+### 💬 Real-Time Tournament Chat & Match Pulse
+- **WebSocket Gateway**: Low-latency bi-directional chat powered by Socket.IO (`socket.io-client`).
+- **Interactive Community Chat**: Match and tournament chat rooms, @user mentions, emoji reactions, typing indicators, pinned organizer announcements, and moderation controls.
+- **Pulse**: Real-time spectator activity stream capturing match milestones, cheers, and social reactions.
+
+### 📅 Competitions & Multi-Season Management
+- Link tournaments across overarching competitions (e.g. Premier League 2024/25, 2025/26).
+- Public header season switcher dropdown with active season indicators.
+- Competition follower tracking and organizer season edition manager.
+
+### 📱 Touch-Optimized Continuous Swipe Navigation
+- Fluid, continuous finger-tracking swipeable tabs track on public tournament hubs.
+- Directional slide animations with auto-centering sticky tab navigation bar.
+
+### 🎨 Automated Social Graphics Studio (`server/api/graphics/`)
+- Server-side SVG rendering via **Satori** converted to ultra-sharp PNGs via **Resvg**.
+- On-the-fly shareable social cards for:
+  - Matchday schedules (`/api/graphics/matchday`)
+  - Live & Full-time match results (`/api/graphics/match-result`)
+  - Tournament brackets (`/api/graphics/bracket`)
+  - League tables & standings (`/api/graphics/standing`)
+  - Top scorers & assist stats (`/api/graphics/stats`)
+
+### 📺 Vertical Video Highlights Feed
+- Dedicated tournament highlights tab displaying a vertical video feed.
+- Automatic resolution of TikTok shortlinks (`vt.tiktok.com`, `vm.tiktok.com`) to canonical media.
+- Cloudinary video/image player and YouTube embed support.
+
+### 🧩 Embeddable Iframe Widgets (`/widget/*`)
+- Isolated, performance-tuned iframe widgets for third-party websites:
+  - `/widget/bracket` — Interactive tournament bracket
+  - `/widget/standings` — Real-time league table
+  - `/widget/fixtures` — Upcoming and live schedule
+  - `/widget/results` — Completed matchday scores
+- Responsive, dark-mode default, lightweight bundle footprint.
+
+### 💳 Monetization, Team Registration & Payouts
+- **Paystack Integration**: Secure online checkout for team tournament registration fees.
+- **Pro Subscriptions**: Monthly and annual organizer tier subscriptions.
+- **Automated Payouts**: Automated platform commission splits and instant organizer payouts via Paystack Transfers.
+- **Discount Codes**: Promotional percentage and fixed-amount coupon codes.
+
+### 📲 Progressive Web App (PWA) & Web Push
+- Configured via `@vite-pwa/nuxt` with custom service worker lifecycle (`app/sw.ts`).
+- Offline asset precaching, custom installation prompt (`PwaInstallBanner.vue`), and Web Push notifications for match alerts and tournament announcements.
+
+---
+
+## 🌐 Multi-Tenant Subdomain Routing
+
+Parascores Web uses hostname detection in [app/router.options.ts](file:///c:/Users/USER/Desktop/parascores-web/app/router.options.ts) to strip subdomain folder prefixes and dynamically route traffic, while [app/middleware/auth.global.ts](file:///c:/Users/USER/Desktop/parascores-web/app/middleware/auth.global.ts) enforces strict role-based access:
+
+| Subdomain (Local) | Production Subdomain | Source Directory | Access Level | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **`lvh.me:3001`** | `parascores.com` | `app/pages/_marketing/`<br>`app/pages/auth/` | Public (Guests & Users) | Landing page, explore feed, public tournament hubs (`/t/:id`), team pages, player profiles, predictions, and auth flows. |
+| **`manage.lvh.me:3001`** | `manage.parascores.com` | `app/pages/_manage/` | `ORGANIZER` or `OWNER` | Organizer dashboard: tournament wizard, fixture generators, score controls, season manager, billing, graphics studio, and widgets. |
+| **`admin.lvh.me:3001`** | `admin.parascores.com` | `app/pages/_admin/` | `SUPER_ADMIN` | Platform administration: global user/org management, payment auditing, system telemetry, and platform configurations. |
+| **All Domains** | Any host | `app/pages/widget/` | Public | Embeddable iframe views (`/widget/bracket`, `/widget/standings`, `/widget/fixtures`). |
+
+---
+
+## 📂 Codebase Layout
+
+```
+parascores-web/
+├── app/
+│   ├── assets/               # CSS styles (main.css, match-control.css) & fonts
+│   ├── components/           # Reusable Vue components
+│   │   ├── admin/            # Super-admin management tables and health metrics
+│   │   ├── dashboard/        # Organizer console cards, wizards, and controls
+│   │   ├── marketing/        # Public tournament tabs, predictions, chat, and headers
+│   │   ├── match/            # Match scoring controls, timer footers, and event panels
+│   │   ├── tournament/       # Brackets, fixtures, standings, and season pickers
+│   │   └── widget/           # Embeddable widget templates
+│   ├── composables/          # Vue composables (useApi, useHost, useTournament, etc.)
+│   │   └── match/            # Live timer controls, scoring actions, and SSE subscribers
+│   ├── engines/              # Pluggable sport scoring engines
+│   │   ├── football/         # Football match events, timer, statistics
+│   │   ├── basketball/       # Increment scoring (+1/+2/+3), fouls, quarters
+│   │   ├── combat/           # Boxing, Judo, Taekwondo, Wrestling rounds clocks
+│   │   ├── esports/          # Esports scoring and match hubs
+│   │   ├── _shared/          # SetScoringPanel, RaceControl, shared timers
+│   │   ├── registry.ts       # Sport registry and resolveEngine() resolver
+│   │   └── types.ts          # SportEngine interfaces & scoring contracts
+│   ├── layouts/              # Nuxt layouts (default, dashboard, admin, auth, widget, feed)
+│   ├── middleware/           # Route guards (auth.global.ts multi-tenant interceptor)
+│   ├── pages/                # Multi-tenant page directory
+│   │   ├── _admin/           # Routes served on admin.lvh.me
+│   │   ├── _manage/          # Routes served on manage.lvh.me
+│   │   ├── _marketing/       # Routes served on root lvh.me
+│   │   ├── auth/             # Shared login, signup, password reset routes
+│   │   └── widget/           # Embeddable iframe routes
+│   ├── stores/               # 17 Pinia stores (auth, fixture, prediction, tournament, etc.)
+│   ├── types/                # Strict TypeScript schemas (competition, match, user, etc.)
+│   ├── app.config.ts         # Nuxt UI styling and theme configuration
+│   ├── app.vue               # Root layout shell and hydration coordinator
+│   ├── router.options.ts     # Subdomain URL rewriting and route filtering
+│   └── sw.ts                 # Service worker definition for offline caching and web push
+├── docs/                     # Section-by-section engineering documentation
+│   ├── sections/             # Detailed architecture, engines, data layer, roles guides
+│   └── README.md             # Documentation directory index
+├── public/                   # Static assets, logos, and PWA manifest icons
+├── server/                   # Nuxt server endpoints
+│   ├── api/graphics/         # Satori + Resvg dynamic SVG-to-PNG social image renderers
+│   └── utils/                # Server-side image and font caching helpers
+├── nuxt.config.ts            # Nuxt 4 configuration, modules, PWA, and Vite build options
+└── package.json              # Project scripts and dependencies
+```
 
 ---
 
 ## 🛠️ Technology Stack
 
-*   **Core Framework:** [Nuxt 4](https://nuxt.com/) (Vue 3, Vite, SSR/CSR hybrid rendering)
-*   **Styling & UI:** [Tailwind CSS v4](https://tailwindcss.com/) & [Nuxt UI v4](https://ui.nuxt.com/)
-*   **State Management:** [Pinia](https://pinia.vuejs.org/) (`@pinia/nuxt`)
-*   **Authentication & API Client:** Custom fetch-wrapper (`$api`) with automatic token refresh (`/auth/refresh`) interceptors.
-*   **Service Worker / PWA:** `@vite-pwa/nuxt` (utilizing custom `sw.ts` lifecycle logic)
-*   **Graphics Engines:** [Satori](https://github.com/vercel/satori) (HTML/CSS to SVG) & [Resvg JS](https://github.com/yisibl/resvg-js) (SVG to PNG)
-*   **Data Validation:** [Zod](https://zod.dev/)
-*   **Spreadsheet Parsing:** [XLSX](https://github.com/SheetJS/sheetjs) for importing/exporting tournament and team lists
-*   **Maps & Venues:** [Leaflet](https://leafletjs.com/) for interactive venue mappings
-
----
-
-## 📂 Codebase Architecture
-
-The application is structured around Nuxt 4 conventions under the `app/` folder, alongside server-side assets and graphics rendering in the `server/` folder:
-
-```
-parascores-web/
-├── app/                      # Main client application code (Nuxt 4 structure)
-│   ├── assets/               # Tailwind stylesheets and global fonts
-│   ├── components/           # UI components (sub-divided by admin/dashboard/marketing/widget)
-│   ├── composables/          # Custom hooks (e.g. useApi, useMatchTimer, useGraphicShare)
-│   ├── layouts/              # Route layouts (admin, dashboard, default, widget, feed)
-│   ├── middleware/           # Route guards & auth checks (e.g. auth.global.ts)
-│   ├── pages/                # Multi-tenant page structure
-│   │   ├── _admin/           # Pages loaded only on admin.lvh.me
-│   │   ├── _manage/          # Pages loaded only on manage.lvh.me
-│   │   ├── _marketing/       # Pages loaded only on the root domain (lvh.me)
-│   │   ├── auth/             # Shareable authorization views (login, signup, reset, etc.)
-│   │   └── widget/           # Embeddable public iframe views
-│   ├── stores/               # Pinia store modules (auth, tournament, fixture, standings, etc.)
-│   ├── types/                # Core TypeScript interfaces & API schemas
-│   ├── app.vue               # Hydrates user & controls layout switching
-│   ├── app.config.ts         # Nuxt UI / app-level configuration
-│   ├── error.vue             # Global error boundary UI
-│   ├── router.options.ts     # Domain-based route router intercepts
-│   └── sw.ts                 # Service worker file for PWA
-├── public/                   # Static public assets (icons, PWA manifests, fallback screenshots)
-├── server/                   # Nuxt server engine endpoints
-│   ├── api/graphics/         # Server-side SVG/PNG template builders for social sharing
-│   └── utils/                # Cache and Satori image utilities
-├── scripts/                  # Administrative scripts (e.g. cache clearance utilities)
-├── nuxt.config.ts            # Core Nuxt modules, PWA, devServer, and runtime variables
-└── package.json              # Project dependencies and script execution definitions
-```
-
----
-
-## 🌐 Dynamic Routing & Domain Strategy
-
-Rather than deploying multiple separate apps, Parascores uses host detection in [router.options.ts](file:///c:/Users/USER/Desktop/parascores-web/app/router.options.ts) to map page requests, and route-guards in [auth.global.ts](file:///c:/Users/USER/Desktop/parascores-web/app/middleware/auth.global.ts) to enforce access control:
-
-| Target Subdomain | Page Directory Route | Accessible Users / Roles | Purpose |
-| :--- | :--- | :--- | :--- |
-| **`lvh.me`** | `app/pages/_marketing/` + `app/pages/auth/` | Public (Guests & Users) | Marketing homepage, auth, explore, public tournament/team/player pages, join links, widgets, and profiles. |
-| **`manage.lvh.me`** | `app/pages/_manage/` | `ORGANIZER` or `OWNER` | Tournament setups, bracket builders, live score editing, billing, widgets, and organizations. |
-| **`admin.lvh.me`** | `app/pages/_admin/` | `SUPER_ADMIN` | Global dashboard, user/organization/player editing, payments, and system health. |
-| **All domains** | `app/pages/widget/` | Public | Embeddable iframe widgets (bracket, standings, fixtures, stats). |
+| Layer | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Framework** | [Nuxt 4](https://nuxt.com/) (Vue 3.5) | Full-stack Vue framework with hybrid SSR/CSR and file-based routing |
+| **Styling** | [Tailwind CSS v4](https://tailwindcss.com/) & [Nuxt UI v4](https://ui.nuxt.com/) | Modern design system, HSL color tokens, and headless UI primitives |
+| **State Management** | [Pinia 3](https://pinia.vuejs.org/) | Centralized reactive stores for auth, tournaments, fixtures, and predictions |
+| **Real-Time Gateway** | [Socket.IO Client](https://socket.io/) | Low-latency WebSockets for tournament chat, typing status, and presence |
+| **Graphics Engine** | [Satori](https://github.com/vercel/satori) & [Resvg JS](https://github.com/yisibl/resvg-js) | Server-side HTML/CSS to SVG to PNG rendering pipeline |
+| **PWA & Offline** | [@vite-pwa/nuxt](https://vite-pwa-org.netlify.app/) | Service worker caching, install banner, and native push notifications |
+| **Spreadsheets** | [XLSX (SheetJS)](https://sheetjs.com/) | Client-side spreadsheet parsing for bulk team and fixture import/export |
+| **Geospatial Maps** | [Leaflet](https://leafletjs.com/) | Interactive venue discovery and tournament location maps |
+| **Validation** | [Zod](https://zod.dev/) | Type-safe runtime schema parsing and form validation |
+| **Testing** | [Playwright](https://playwright.dev/) | End-to-end browser automation testing across viewports |
 
 ---
 
 ## 💻 Local Development Setup
 
-To run this application locally, you must map the subdomains to your local loopback address and set up environment configs.
+### 1. Map Local Subdomains in `hosts`
+Parascores inspects the HTTP request hostname to serve the appropriate application. Add the local testing domains to your operating system's `hosts` file:
 
-### 1. Map Local Hosts
-Because the application routes dynamically based on the request host (server) or `window.location.host` (client), you must edit your computer's `hosts` file to resolve the local domains.
+- **Windows**: `C:\Windows\System32\drivers\etc\hosts` (run Notepad as Administrator)
+- **macOS / Linux**: `/etc/hosts` (`sudo nano /etc/hosts`)
 
-*   **Windows:** Open notepad as administrator and open `C:\Windows\System32\drivers\etc\hosts`.
-*   **macOS / Linux:** Open terminal and run `sudo nano /etc/hosts`.
-
-Add the following entry:
 ```hosts
 127.0.0.1  lvh.me manage.lvh.me admin.lvh.me
 ```
 
-### 2. Environment Configuration
-Create a `.env` file in the root directory:
+### 2. Configure Environment Variables
+Create a `.env` file in the root of `parascores-web`:
 
 ```env
-API_BASE_URL=http://lvh.me:3000/api
+# API Backend connection (runs on port 3000)
+API_BASE_URL=http://localhost:3000/api
+
+# Subdomain URLs (Web runs on port 3001)
+FRONTEND_URL=http://lvh.me:3001
 DASHBOARD_URL=http://manage.lvh.me:3001
-FRONT_END_URL=http://lvh.me:3001
 ADMIN_URL=http://admin.lvh.me:3001
-# Optional: Sentry is currently disabled in nuxt.config.ts
-SENTRY_DSN=your_sentry_dsn_here
+
+# Sentry APM (Optional)
+SENTRY_DSN=
 ```
 
-*(Note: The API Backend default runs on port `3000`, while this Web Frontend runs on port `3001`. The runtime config reads `FRONT_END_URL`.)*
-
 ### 3. Install Dependencies
-Ensure you have Node.js installed (v18+ recommended).
 ```bash
 npm install
 ```
 
-### 4. Start the Dev Server
+### 4. Start the Development Server
 ```bash
 npm run dev
 ```
-The server will start up on `http://lvh.me:3001` (host configuration: `0.0.0.0:3001`). 
 
-To test:
-*   Go to `http://lvh.me:3001` for the public site.
-*   Go to `http://manage.lvh.me:3001` to test the manager dashboard.
-*   Go to `http://admin.lvh.me:3001` to test the super-admin portal.
+The Vite dev server will start on port `3001` (bound to `0.0.0.0:3001`).
 
----
+Access the different portals in your browser:
+- **Public Fan Site**: [http://lvh.me:3001](http://lvh.me:3001)
+- **Organizer Dashboard**: [http://manage.lvh.me:3001](http://manage.lvh.me:3001)
+- **Super Admin Panel**: [http://admin.lvh.me:3001](http://admin.lvh.me:3001)
 
-## 🔐 Authentication & Session Flow
-
-1.  **Global Middleware Check:** [auth.global.ts](file:///c:/Users/USER/Desktop/parascores-web/app/middleware/auth.global.ts) runs on every route change. On initial load, it invokes the [auth store](file:///c:/Users/USER/Desktop/parascores-web/app/stores/auth.ts)'s `fetchUser` method, sending credentials to retrieve the user's profile from the NestJS API.
-2.  **API Client & Tokens:** The custom `$api` utility (`app/composables/useApi.ts`) includes cookies (`credentials: 'include'`). If an API call fails with a `401 Unauthorized` status code, `$api` catches the error, hits the `/auth/refresh` endpoint to renew the session cookie, and retries the original request seamlessly.
-3.  **Role Protection:**
-    *   `SUPER_ADMIN` roles can bypass subdomain checks and access the admin dashboard.
-    *   `ORGANIZER` role is required for most features in `manage.lvh.me`.
-    *   Standard `USER` role accounts attempting to access `manage.lvh.me` will be restricted to `/onboarding`, `/profile`, or `/`.
+> **Note**: Ensure the NestJS API backend (`parascores-api`) is running concurrently on port `3000` (`npm run start:dev`).
 
 ---
 
-## ⚡ Available Commands
+## 🔐 Authentication & Session Management
 
-| Command | Action |
+1. **Global Auth Guard**: [auth.global.ts](file:///c:/Users/USER/Desktop/parascores-web/app/middleware/auth.global.ts) executes on every client route transition. During initial app boot, it hydrates user credentials via `fetchUser()`.
+2. **Cookie Auth & Refresh Interceptor**: The custom `$api` composable (`app/composables/useApi.ts`) includes HTTP-only session cookies (`credentials: 'include'`). If an API call receives a `401 Unauthorized`, `$api` automatically calls `/auth/refresh` to renew tokens and retries the original request seamlessly.
+3. **Role Gating**:
+   - `SUPER_ADMIN`: Unrestricted access across all domains and admin tools.
+   - `ORGANIZER` / `OWNER`: Full access to `manage.lvh.me` features.
+   - `USER`: Restricted on `manage.lvh.me` to onboarding and profile settings; full access to public fan features.
+
+---
+
+## ⚡ Available NPM Scripts
+
+| Command | Description |
 | :--- | :--- |
-| `npm run dev` | Runs the local Vite dev server on port `3001` |
-| `npm run build` | Builds the production bundle inside `.output/` |
-| `npm run preview` | Runs a local preview of the production-built Nuxt application |
-| `npm run generate` | Generates a static-only build (if static target is desired) |
-| `npm run postinstall` | Automatically runs `nuxt prepare` to build temporary typing files |
+| `npm run dev` | Starts the Vite dev server with host binding (`0.0.0.0:3001`) |
+| `npm run build` | Builds the production Nuxt bundle into `.output/` |
+| `npm run preview` | Runs a local Node.js server previewing the `.output/` build |
+| `npm run generate` | Pre-renders routes to static HTML (for SSG deployment) |
+| `npm run postinstall` | Runs `nuxt prepare` to generate `.nuxt/` types and auto-imports |
+
+---
+
+## 📚 Documentation Index
+
+For in-depth architectural specifications and onboarding guides, refer to the [docs/](file:///c:/Users/USER/Desktop/parascores-web/docs) directory:
+
+- [Architecture & Subdomains](file:///c:/Users/USER/Desktop/parascores-web/docs/sections/01-architecture.md)
+- [Public Site & Fan Experience](file:///c:/Users/USER/Desktop/parascores-web/docs/sections/02-public-site.md)
+- [Organizer Dashboard](file:///c:/Users/USER/Desktop/parascores-web/docs/sections/03-organizer-dashboard.md)
+- [Super Admin Panel](file:///c:/Users/USER/Desktop/parascores-web/docs/sections/04-admin-panel.md)
+- [Live Scoring & Match Control](file:///c:/Users/USER/Desktop/parascores-web/docs/sections/05-live-scoring.md)
+- [Sport Engines Framework](file:///c:/Users/USER/Desktop/parascores-web/docs/sections/06-sport-engines.md)
+- [Embeddable Widgets](file:///c:/Users/USER/Desktop/parascores-web/docs/sections/07-widgets.md)
+- [Graphics Pipeline (Satori + Resvg)](file:///c:/Users/USER/Desktop/parascores-web/docs/sections/08-graphics-pipeline.md)
+- [Data Layer & Stores](file:///c:/Users/USER/Desktop/parascores-web/docs/sections/09-data-layer.md)
+- [Accounts & Authentication](file:///c:/Users/USER/Desktop/parascores-web/docs/sections/10-accounts-auth.md)
+- [Score Predictions & Leaderboards](file:///c:/Users/USER/Desktop/parascores-web/docs/sections/15-score-predictions.md)
+- [Platform Roles & Permissions](file:///c:/Users/USER/Desktop/parascores-web/docs/platform-roles.md)
+
+---
+
+## 📄 License
+
+Proprietary software. All rights reserved &copy; ParaScores.
