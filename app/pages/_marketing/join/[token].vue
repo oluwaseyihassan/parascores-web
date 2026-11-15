@@ -250,16 +250,17 @@ const formatDate = (dateStr: string) => {
           class="mb-4"
         />
         <UAlert
-          v-else-if="!invite.isValid && invite.isMaxedOut"
+          v-else-if="(!invite.isValid && invite.isMaxedOut) || (invite.maxUses && invite.usedCount >= invite.maxUses)"
           color="warning"
           variant="subtle"
           icon="i-heroicons-user-group"
-          title="This invite has reached its maximum number of uses"
+          title="This invite has been used up and cannot be used anymore"
+          description="This invite has reached its maximum number of uses."
           class="mb-4"
         />
 
         <!-- Join Form (only if invite is valid) -->
-        <template v-if="invite.isValid">
+        <template v-if="invite.isValid && !(invite.isMaxedOut || (invite.maxUses && invite.usedCount >= invite.maxUses))">
           <div class="space-y-4">
             <UAlert
               v-if="joinError"
