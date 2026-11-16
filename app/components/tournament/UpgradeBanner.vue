@@ -14,11 +14,15 @@ const { subscription, isPro } = storeToRefs(paymentStore);
 const tournamentId = computed(() => route.params.id as string);
 
 const showUpgradeBanner = computed(() => {
+  // Commented out for now
+  return false;
+  /*
   if (!tournament.value) return false;
   // Already premium (per-tournament or via org subscription)
   if (tournament.value.isPremium) return false;
   if (isPro.value) return false;
   return true;
+  */
 });
 
 const upgradePrice = computed(() => {
