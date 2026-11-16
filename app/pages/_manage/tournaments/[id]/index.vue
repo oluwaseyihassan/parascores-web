@@ -552,7 +552,7 @@ provide(SportEngineKey, computed(() => resolveEngine(tournament.value?.sport)));
       />
 
       <!-- Premium Upgrade Banner -->
-      <TournamentUpgradeBanner />
+      <!-- <TournamentUpgradeBanner /> -->
 
       <TournamentQrCodeModal v-model:open="showQRCodeModal" />
 
