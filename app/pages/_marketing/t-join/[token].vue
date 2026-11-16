@@ -142,6 +142,24 @@ onMounted(async () => {
 const invite = computed(() => inviteStore.currentInvite)
 const myTeams = computed(() => teamStore.teams)
 
+const isInviteUsedUp = computed(() => {
+  if (!invite.value) return false
+  if (invite.value.isMaxedOut) return true
+  if (invite.value.maxUses != null && invite.value.maxUses > 0 && Number(invite.value.usedCount) >= Number(invite.value.maxUses)) {
+    return true
+  }
+  return false
+})
+
+const isInviteExpired = computed(() => {
+  if (!invite.value) return false
+  if (invite.value.isExpired) return true
+  if (invite.value.expiresAt && new Date(invite.value.expiresAt).getTime() <= Date.now()) {
+    return true
+  }
+  return false
+})
+
 // Discount / waiver code
 const discountCodeInput = ref('')
 const appliedDiscount = ref<DiscountValidation | null>(null)
@@ -183,6 +201,14 @@ function removeDiscount() {
 }
 
 const handleJoin = async (event: FormSubmitEvent<Schema>) => {
+  if (isInviteUsedUp.value) {
+    error.value = 'This invite link has been used up and cannot be used anymore.'
+    return
+  }
+  if (isInviteExpired.value) {
+    error.value = 'This invite link has expired and cannot be used anymore.'
+    return
+  }
   if (!authStore.isAuthenticated) {
     router.push(`/login?redirect=/t-join/${token}`)
     return
@@ -305,8 +331,43 @@ const handleJoin = async (event: FormSubmitEvent<Schema>) => {
         <UButton to="/" class="mt-6" variant="ghost" color="neutral">Back to Home</UButton>
       </div>
 
+      <!-- Used Up / Inactive Invite State -->
+      <div v-else-if="invite && (!invite.isValid || isInviteUsedUp || isInviteExpired)" class="bg-white dark:bg-[#111] p-8 rounded-2xl border border-red-500/20 text-center shadow-sm">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+          <UIcon 
+            :name="isInviteUsedUp ? 'i-heroicons-no-symbol' : (isInviteExpired ? 'i-heroicons-clock' : 'i-heroicons-exclamation-circle')" 
+            class="w-8 h-8 text-red-500" 
+          />
+        </div>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+          {{ isInviteUsedUp ? 'Invite Link Used Up' : (isInviteExpired ? 'Invite Link Expired' : 'Invalid Invite') }}
+        </h2>
+        <p class="text-gray-500 dark:text-gray-400 mt-2 max-w-sm mx-auto">
+          <template v-if="isInviteUsedUp">
+            This invite link has reached its maximum number of uses and cannot be used anymore. Please contact the tournament organizer for a new invite link.
+          </template>
+          <template v-else-if="isInviteExpired">
+            This invite link has expired and cannot be used anymore. Please contact the tournament organizer for a new invite link.
+          </template>
+          <template v-else>
+            This invite link is inactive or has been revoked and cannot be used.
+          </template>
+        </p>
+        <div class="mt-6 flex items-center justify-center gap-3">
+          <UButton 
+            v-if="invite.tournament?.customName || invite.tournament?.id" 
+            :to="`/t/${invite.tournament.customName || invite.tournament.id}`" 
+            variant="solid" 
+            color="primary"
+          >
+            View Tournament
+          </UButton>
+          <UButton to="/" variant="ghost" color="neutral">Back to Home</UButton>
+        </div>
+      </div>
+
       <!-- Valid Invite State -->
-      <div v-else-if="invite && invite.isValid" class="space-y-6">
+      <div v-else-if="invite && invite.isValid && !isInviteUsedUp && !isInviteExpired" class="space-y-6">
         <!-- Tournament Header -->
         <div class="text-center">
           <UAvatar 

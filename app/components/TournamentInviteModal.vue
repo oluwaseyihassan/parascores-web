@@ -20,6 +20,24 @@ const newInviteSettings = ref({
   expiresInDays: null as number | null,
 })
 
+const isInviteUsedUp = (invite: any) => {
+  if (!invite) return false
+  if (invite.isMaxedOut) return true
+  if (invite.maxUses != null && invite.maxUses > 0 && Number(invite.usedCount) >= Number(invite.maxUses)) {
+    return true
+  }
+  return false
+}
+
+const isInviteExpired = (invite: any) => {
+  if (!invite) return false
+  if (invite.isExpired) return true
+  if (invite.expiresAt && new Date(invite.expiresAt).getTime() <= Date.now()) {
+    return true
+  }
+  return false
+}
+
 const activeInvites = computed(() => {
   return inviteStore.invites.filter(i => i.isActive)
 })
@@ -59,6 +77,22 @@ const getInviteUrl = (token: string) => {
 }
 
 const copyLink = async (invite: any) => {
+  if (isInviteUsedUp(invite)) {
+    toast.add({
+      title: 'Invite link is used up',
+      description: 'This link has reached its maximum uses and cannot be used anymore.',
+      color: 'warning'
+    })
+    return
+  }
+  if (isInviteExpired(invite)) {
+    toast.add({
+      title: 'Invite link expired',
+      description: 'This link has expired and cannot be used anymore.',
+      color: 'warning'
+    })
+    return
+  }
   const url = getInviteUrl(invite.token)
   try {
     await navigator.clipboard.writeText(url)
@@ -132,14 +166,48 @@ const revokeInvite = async (id: string) => {
               <div 
                 v-for="invite in activeInvites" 
                 :key="invite.id"
-                class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                class="flex items-center justify-between p-3 rounded-lg border transition-colors"
+                :class="[
+                  isInviteUsedUp(invite) 
+                    ? 'bg-red-500/5 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 opacity-75' 
+                    : isInviteExpired(invite)
+                      ? 'bg-amber-500/5 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40 opacity-75'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                ]"
               >
                 <div class="flex-1 min-w-0 pr-4">
-                  <div class="text-xs text-gray-500 truncate mb-1">
-                    {{ getInviteUrl(invite.token) }}
+                  <div class="flex items-center gap-2 mb-1 min-w-0">
+                    <span 
+                      class="text-xs truncate font-mono"
+                      :class="isInviteUsedUp(invite) || isInviteExpired(invite) ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-500 dark:text-gray-400'"
+                      :title="getInviteUrl(invite.token)"
+                    >
+                      {{ getInviteUrl(invite.token) }}
+                    </span>
+                    <UBadge 
+                      v-if="isInviteUsedUp(invite)" 
+                      color="error" 
+                      variant="subtle" 
+                      size="xs"
+                      class="shrink-0 font-medium"
+                    >
+                      Used up
+                    </UBadge>
+                    <UBadge 
+                      v-else-if="isInviteExpired(invite)" 
+                      color="warning" 
+                      variant="subtle" 
+                      size="xs"
+                      class="shrink-0 font-medium"
+                    >
+                      Expired
+                    </UBadge>
                   </div>
-                  <div class="flex gap-2 text-xs text-gray-400">
-                    <span v-if="invite.maxUses">
+                  <div class="flex flex-wrap items-center gap-1.5 text-xs text-gray-400">
+                    <span 
+                      v-if="invite.maxUses"
+                      :class="isInviteUsedUp(invite) ? 'text-red-500 dark:text-red-400 font-medium' : ''"
+                    >
                       {{ invite.usedCount }} / {{ invite.maxUses }} uses
                     </span>
                     <span v-else>
@@ -148,16 +216,29 @@ const revokeInvite = async (id: string) => {
                     <span v-if="invite.expiresAt">
                       • Expires {{ new Date(invite.expiresAt).toLocaleDateString() }}
                     </span>
+                    <span 
+                      v-if="isInviteUsedUp(invite)" 
+                      class="text-red-500 dark:text-red-400 font-medium"
+                    >
+                      • Cannot be used anymore
+                    </span>
+                    <span 
+                      v-else-if="isInviteExpired(invite)" 
+                      class="text-amber-500 dark:text-amber-400 font-medium"
+                    >
+                      • Expired
+                    </span>
                   </div>
                 </div>
-                <div class="flex items-center gap-1">
+                <div class="flex items-center gap-1 shrink-0">
                   <UButton 
                     size="xs" 
                     :color="copiedId === invite.id ? 'success' : 'neutral'" 
                     :variant="copiedId === invite.id ? 'solid' : 'ghost'"
                     :icon="copiedId === invite.id ? 'i-heroicons-check' : 'i-heroicons-clipboard-document'"
+                    :disabled="isInviteUsedUp(invite) || isInviteExpired(invite)"
+                    :title="isInviteUsedUp(invite) ? 'Invite link has been used up and cannot be used anymore' : isInviteExpired(invite) ? 'Invite link has expired and cannot be used anymore' : 'Copy link'"
                     @click="copyLink(invite)"
-                    title="Copy link"
                   />
                   <UButton 
                     size="xs" 
