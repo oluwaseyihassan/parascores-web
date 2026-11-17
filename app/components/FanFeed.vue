@@ -981,6 +981,18 @@ watch(selectedDateValue, (value) => {
   fetchMatches();
 });
 
+// Refetch followed tournaments and fixture dates when auth resolves
+watch(
+  () => authStore.isAuthenticated,
+  async (isAuth) => {
+    if (isAuth && tournamentStore.followedTournaments.length === 0) {
+      await tournamentStore.fetchFollowedTournaments();
+      fetchFixtureDates();
+    }
+  },
+  { immediate: true },
+);
+
 // Refetch fixture dates when followed tournaments change
 watch(
   () => tournamentStore.followedTournaments.map((t) => t.id).join(","),

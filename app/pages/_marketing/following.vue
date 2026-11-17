@@ -219,8 +219,18 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray
 }
 
+watch(
+  () => authStore.isAuthenticated,
+  (isAuth) => {
+    if (isAuth) {
+      tournamentStore.fetchFollowedTournaments()
+    }
+  },
+  { immediate: true }
+)
+
 onMounted(async () => {
-  if (authStore.isAuthenticated && tournamentStore.followedTournaments.length === 0) {
+  if (authStore.isAuthenticated) {
     tournamentStore.fetchFollowedTournaments()
   }
   if (typeof window !== 'undefined') {
@@ -372,7 +382,8 @@ async function toggleNotifications(val: boolean) {
 async function handleUnfollow(tournament: Tournament) {
   unfollowingId.value = tournament.id
   try {
-    await tournamentStore.unfollowTournament(tournament.id)
+    const compId = tournament.competition_id || tournament.competition?.id
+    await tournamentStore.unfollowTournament(tournament.id, compId)
   } catch (err) {
     console.error('Failed to unfollow:', err)
   } finally {

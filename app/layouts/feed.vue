@@ -16,6 +16,16 @@ const setTheme = (theme: 'light' | 'dark' | 'system') => {
 
 const sidebarCollapsed = ref(false)
 
+watch(
+  () => authStore.isAuthenticated,
+  (isAuth) => {
+    if (isAuth && tournamentStore.followedTournaments.length === 0) {
+      tournamentStore.fetchFollowedTournaments()
+    }
+  },
+  { immediate: true }
+)
+
 onMounted(() => {
   if (authStore.isAuthenticated && tournamentStore.followedTournaments.length === 0) {
     tournamentStore.fetchFollowedTournaments()

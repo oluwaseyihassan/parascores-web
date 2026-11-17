@@ -682,15 +682,16 @@ function notificationsEnabled(): boolean {
 watch([() => authStore.isAuthenticated, () => tournament.value?.id], async ([isAuth, tourneyId]) => {
   if (isAuth && tourneyId) {
     const compId = tournament.value?.competition_id || tournament.value?.competition?.id
-    if (compId) {
+    if (tournamentStore.followedTournaments.length === 0) {
+      await tournamentStore.fetchFollowedTournaments()
+    }
+    const isTourneyFollowed = tournamentStore.followedTournaments.some(t => t.id === tourneyId || t.customName === tourneyId)
+    if (isTourneyFollowed) {
+      isFollowing.value = true
+    } else if (compId) {
       isFollowing.value = await tournamentStore.checkCompetitionFollowStatus(compId)
     } else {
-      if (tournamentStore.followedTournaments.length > 0) {
-        isFollowing.value = tournamentStore.followedTournaments.some(t => t.id === tourneyId || t.customName === tourneyId)
-      } else {
-        await tournamentStore.fetchFollowedTournaments()
-        isFollowing.value = tournamentStore.followedTournaments.some(t => t.id === tourneyId || t.customName === tourneyId)
-      }
+      isFollowing.value = false
     }
   } else {
     isFollowing.value = false
@@ -709,22 +710,29 @@ async function toggleFollow() {
   togglingFollow.value = true
   try {
     const compId = tournament.value?.competition_id || tournament.value?.competition?.id
+    const tourneyId = tournament.value?.id || tournamentId
     if (wasFollowing) {
       if (compId) {
-        await tournamentStore.unfollowCompetition(compId)
-      } else {
-        await tournamentStore.unfollowTournament(tournament.value?.id || tournamentId)
+        try {
+          await tournamentStore.unfollowCompetition(compId)
+        } catch (e) {
+          console.error('Unfollow competition error:', e)
+        }
       }
+      await tournamentStore.unfollowTournament(tourneyId, compId)
       if (tournament.value && tournament.value.followerCount != null && tournament.value.followerCount > 0) {
         tournament.value.followerCount--
       }
       toast.add({ title: 'Unfollowed', description: 'You have unfollowed this tournament.', color: 'neutral' })
     } else {
       if (compId) {
-        await tournamentStore.followCompetition(compId)
-      } else {
-        await tournamentStore.followTournament(tournament.value?.id || tournamentId)
+        try {
+          await tournamentStore.followCompetition(compId)
+        } catch (e) {
+          console.error('Follow competition error:', e)
+        }
       }
+      await tournamentStore.followTournament(tourneyId, tournament.value)
       if (tournament.value) {
         tournament.value.followerCount = (tournament.value.followerCount ?? 0) + 1
       }
@@ -740,7 +748,7 @@ async function toggleFollow() {
     }
   } catch (err: any) {
     isFollowing.value = wasFollowing
-    handleError(err, { title: 'Error', report: true })
+    handleError(err, { title: 'Follow Action Failed', report: true })
   } finally {
     togglingFollow.value = false
   }
