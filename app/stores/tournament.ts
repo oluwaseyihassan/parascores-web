@@ -228,31 +228,47 @@ export const useTournamentStore = defineStore('tournament', () => {
     }
   }
 
-  async function followTournament(id: string) {
-    const t = tournaments.value.find(x => x.id === id || x.customName === id) || (currentTournament.value?.id === id || currentTournament.value?.customName === id ? currentTournament.value : null)
+  async function followTournament(id: string, tournamentObj?: Tournament | null) {
+    const t = tournamentObj || tournaments.value.find(x => x.id === id || x.customName === id) || (currentTournament.value?.id === id || currentTournament.value?.customName === id ? currentTournament.value : null)
     
+    // Optimistically add to followed list immediately so UI updates with zero lag
+    if (t && !followedTournaments.value.some(x => x.id === t.id || (t.customName && x.customName === t.customName))) {
+      followedTournaments.value.unshift(t)
+    }
+
     try {
       await $api(`/tournaments/${id}/follow`, { method: 'POST' })
+      // Sync fresh list with relations from backend
+      await fetchFollowedTournaments()
     } catch (err: any) {
       if (err.data?.message !== 'Tournament already followed') {
+        // Rollback optimistic add if failed
+        if (t) {
+          followedTournaments.value = followedTournaments.value.filter(x => x.id !== t.id && (!t.customName || x.customName !== t.customName))
+        }
         console.error('Follow tournament failed:', err)
         throw err
+      } else {
+        await fetchFollowedTournaments()
       }
-    }
-    
-    if (t && !followedTournaments.value.some(x => x.id === t.id)) {
-      followedTournaments.value.push(t)
-    } else if (!t) {
-      // Tournament not in local store (e.g. following from public page) — re-fetch to update sidebar
-      await fetchFollowedTournaments()
     }
   }
 
-  async function unfollowTournament(id: string) {
+  async function unfollowTournament(id: string, competitionId?: string | null) {
+    const previous = [...followedTournaments.value]
+    followedTournaments.value = followedTournaments.value.filter(t => t.id !== id && t.customName !== id)
+
     try {
       await $api(`/tournaments/${id}/unfollow`, { method: 'DELETE' })
-      followedTournaments.value = followedTournaments.value.filter(t => t.id !== id && t.customName !== id)
+      if (competitionId) {
+        try {
+          await unfollowCompetition(competitionId)
+        } catch (e) {
+          console.error('Unfollow competition error:', e)
+        }
+      }
     } catch (err: any) {
+      followedTournaments.value = previous
       console.error('Unfollow tournament failed:', err)
       throw err
     }
