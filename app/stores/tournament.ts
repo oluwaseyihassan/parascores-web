@@ -286,33 +286,15 @@ export const useTournamentStore = defineStore('tournament', () => {
   }
 
   async function followCompetition(competitionId: string) {
-    try {
-      await $api(`/competitions/${competitionId}/follow`, { method: 'POST' })
-    } catch (err: any) {
-      console.error('Follow competition failed:', err)
-      throw err
-    }
+    return useCompetitionStore().followCompetition(competitionId)
   }
 
   async function unfollowCompetition(competitionId: string) {
-    try {
-      await $api(`/competitions/${competitionId}/follow`, { method: 'DELETE' })
-    } catch (err: any) {
-      console.error('Unfollow competition failed:', err)
-      throw err
-    }
+    return useCompetitionStore().unfollowCompetition(competitionId)
   }
 
   async function checkCompetitionFollowStatus(competitionId: string): Promise<boolean> {
-    try {
-      const res = await $api<{ success: boolean; data: { isFollowing: boolean } }>(
-        `/competitions/${competitionId}/follow-status`,
-        { method: 'GET' },
-      )
-      return res.data?.isFollowing ?? false
-    } catch {
-      return false
-    }
+    return useCompetitionStore().checkCompetitionFollowStatus(competitionId)
   }
 
   async function setActiveSeason(tournamentId: string) {

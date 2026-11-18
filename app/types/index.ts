@@ -246,6 +246,19 @@ export interface Tournament {
   organization?: Organization | null;
 }
 
+export type CompetitionEditionStatus = 'upcoming' | 'live' | 'completed';
+
+export interface CompetitionChampion {
+  id: string;
+  name: string;
+  logoUrl?: string | null;
+}
+
+export interface CompetitionEdition extends Tournament {
+  status?: CompetitionEditionStatus;
+  champion?: CompetitionChampion | null;
+}
+
 export interface Competition {
   id: string;
   name: string;
@@ -256,8 +269,10 @@ export interface Competition {
   bannerUrl?: string | null;
   organization_id: string;
   organization?: Organization;
-  seasons?: Tournament[];
+  seasons?: CompetitionEdition[];
   followers?: CompetitionFollower[];
+  activeSeasonId?: string | null;
+  activeSeasonSlug?: string | null;
   _count?: {
     followers?: number;
     seasons?: number;

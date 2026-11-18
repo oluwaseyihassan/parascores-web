@@ -88,12 +88,22 @@ export const useHost = () => {
     return toMain(`/t/${slug}`)
   }
 
+  /**
+   * Returns a competition URL using slug.
+   * Always ensures it points to the main site /c/ route.
+   */
+  const toCompetition = (competition: { id: string, slug?: string | null }) => {
+    const slug = competition.slug || competition.id
+    return toMain(`/c/${slug}`)
+  }
+
   return {
     host,
     isManage,
     toMain,
     toManage,
     toTournament,
+    toCompetition,
     dashboardUrl: resolvedDashboardUrl,
     frontendUrl: resolvedFrontendUrl
   }

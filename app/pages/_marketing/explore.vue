@@ -97,6 +97,65 @@
     <section class="pb-24">
       <div class="max-w-7xl mx-auto px-6">
 
+        <!-- Competition Series Section -->
+        <div v-if="!nearbyMode && loadingCompetitions && competitions.length === 0" class="mb-8">
+          <div class="h-3.5 w-32 rounded bg-gray-200 dark:bg-white/5 mb-3 animate-pulse" />
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div v-for="i in 3" :key="i" class="h-20 rounded-2xl bg-white dark:bg-[#0A0A0A] border border-subtle animate-pulse" />
+          </div>
+        </div>
+
+        <div v-else-if="!nearbyMode && competitions.length > 0" class="mb-8">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-body">
+              Competition Series
+            </h2>
+            <span class="text-xs text-muted tabular-nums">
+              {{ competitions.length }} series
+            </span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <NuxtLink
+              v-for="comp in competitions"
+              :key="comp.id"
+              :to="toCompetition(comp)"
+              class="group flex items-center gap-3.5 bg-white dark:bg-[#0A0A0A] border border-subtle rounded-2xl p-3.5 hover:border-emerald-500/50 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            >
+              <div class="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 dark:bg-white/5 border border-subtle shrink-0 flex items-center justify-center p-1.5">
+                <img v-if="comp.logoUrl" :src="comp.logoUrl" :alt="comp.name" class="w-full h-full object-contain" />
+                <UIcon v-else name="i-heroicons-trophy" class="w-5 h-5 text-emerald-500" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <h3 class="text-sm font-bold text-heading truncate group-hover:text-emerald-500 transition-colors">
+                    {{ comp.name }}
+                  </h3>
+                  <UIcon
+                    v-if="comp.organization?.isVerified"
+                    name="i-heroicons-check-badge-solid"
+                    class="w-3.5 h-3.5 text-emerald-500 shrink-0"
+                    aria-label="Verified organization"
+                  />
+                </div>
+                <div class="flex items-center gap-2 mt-0.5 text-xs text-body tabular-nums">
+                  <span class="uppercase font-semibold text-emerald-600 dark:text-emerald-400 text-[10px]">{{ comp.sport }}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{{ comp._count?.seasons ?? 0 }} {{ (comp._count?.seasons ?? 0) === 1 ? 'edition' : 'editions' }}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{{ comp._count?.followers ?? 0 }} {{ (comp._count?.followers ?? 0) === 1 ? 'follower' : 'followers' }}</span>
+                </div>
+              </div>
+              <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-muted group-hover:text-emerald-500 shrink-0" />
+            </NuxtLink>
+          </div>
+        </div>
+
+        <div v-if="!nearbyMode && competitions.length > 0 && filteredTournaments.length > 0" class="flex items-center justify-between mb-3">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-body">
+            Tournaments
+          </h2>
+        </div>
+
         <!-- Loading State -->
         <div v-if="loading && tournaments.length === 0" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
           <div
@@ -115,7 +174,7 @@
 
         <!-- Empty State -->
         <div
-          v-else-if="!loading && filteredTournaments.length === 0"
+          v-else-if="!loading && filteredTournaments.length === 0 && (nearbyMode || competitions.length === 0)"
           class="flex flex-col items-center justify-center py-20 text-center"
         >
           <div class="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mb-6 shadow-sm">
@@ -142,7 +201,7 @@
         </div>
 
         <!-- Tournament Grid -->
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+        <div v-else-if="filteredTournaments.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
           <TournamentCard
             v-for="tournament in filteredTournaments"
             :key="tournament.id"
@@ -184,9 +243,9 @@
 </template>
 
 <script setup lang="ts">
-import type { Tournament } from '~/types'
+import type { Competition, Tournament } from '~/types'
 
-const { toMain } = useHost()
+const { toMain, toCompetition } = useHost()
 
 definePageMeta({
   layout: 'feed'
@@ -215,6 +274,8 @@ useSeoMeta({
 
 // State
 const tournaments = ref<Tournament[]>([])
+const competitions = ref<Competition[]>([])
+const loadingCompetitions = ref(false)
 const loading = ref(false)
 const searchQuery = ref('')
 const currentPage = ref(1)
@@ -234,6 +295,7 @@ watch(searchQuery, (val) => {
 watch(debouncedSearch, () => {
   if (nearbyMode.value) return
   fetchPublicTournaments(1)
+  fetchPublicCompetitions()
 })
 
 // Computed
@@ -307,6 +369,23 @@ watch(nearbyRadiusKm, () => {
 })
 
 // Fetch public tournaments — search & type are sent to the API
+async function fetchPublicCompetitions() {
+  loadingCompetitions.value = true
+  try {
+    const params = new URLSearchParams({ page: '1', limit: '6' })
+    if (debouncedSearch.value.trim()) params.set('search', debouncedSearch.value.trim())
+    const response = await $publicApi<PaginatedResponse<Competition>>(
+      `/competitions/public?${params}`,
+      { method: 'GET' }
+    )
+    competitions.value = response.data || []
+  } catch (err) {
+    console.error('Failed to fetch public competitions:', err)
+  } finally {
+    loadingCompetitions.value = false
+  }
+}
+
 async function fetchPublicTournaments(page = 1, append = false) {
   loading.value = true
   if (!append) tournaments.value = []
@@ -358,6 +437,7 @@ function setupObserver() {
 }
 
 onMounted(() => {
+  fetchPublicCompetitions()
   fetchPublicTournaments()
   setupObserver()
 })

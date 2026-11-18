@@ -7,20 +7,26 @@
 
         <!-- Headline -->
         <h1 class="text-3xl md:text-4xl font-extrabold leading-tight mb-2 tracking-tight">
-          Your <span class="text-emerald-500">Tournaments</span>
+          Your <span class="text-emerald-500">Following</span>
         </h1>
         <p class="text-base text-gray-600 dark:text-gray-400 max-w-lg mb-8">
-          Manage the tournaments you're following. Unfollow any you no longer need.
+          Manage the competitions and tournaments you're following. Unfollow any you no longer need.
         </p>
 
         <!-- Stats Bar -->
-        <div class="flex items-center gap-6 text-sm">
-          <div class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-            <UIcon name="i-heroicons-trophy" class="w-4 h-4 text-emerald-400" />
-            <span v-if="!tournamentStore.followedLoading" class="font-medium">
-              {{ tournamentStore.followedTournaments.length }} tournament{{ tournamentStore.followedTournaments.length === 1 ? '' : 's' }}
+        <div class="flex flex-wrap items-center gap-5 text-sm">
+          <div class="flex items-center gap-2 text-gray-600 dark:text-gray-400 tabular-nums">
+            <UIcon name="i-heroicons-squares-2x2" class="w-4 h-4 text-emerald-400" />
+            <span v-if="!initialLoading" class="font-medium">
+              {{ competitionStore.followedCompetitions.length }} competition{{ competitionStore.followedCompetitions.length === 1 ? '' : 's' }}
             </span>
             <span v-else class="font-medium">Loading...</span>
+          </div>
+          <div class="flex items-center gap-2 text-gray-600 dark:text-gray-400 tabular-nums">
+            <UIcon name="i-heroicons-trophy" class="w-4 h-4 text-emerald-400" />
+            <span v-if="!initialLoading" class="font-medium">
+              {{ tournamentStore.followedTournaments.length }} tournament{{ tournamentStore.followedTournaments.length === 1 ? '' : 's' }}
+            </span>
           </div>
         </div>
       </div>
@@ -31,7 +37,7 @@
       <div class="max-w-5xl mx-auto px-6">
         <!-- Live Notifications Banner -->
         <div 
-          v-if="authStore.isAuthenticated && !tournamentStore.followedLoading" 
+          v-if="authStore.isAuthenticated && !initialLoading" 
           class="mb-6 p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all"
           :class="isDark ? 'border-white/[0.06] bg-[#141414]/50' : 'border-gray-200 bg-gray-50/80'"
         >
@@ -64,7 +70,7 @@
         </div>
 
         <!-- Loading State -->
-        <div v-if="tournamentStore.followedLoading" class="space-y-3">
+        <div v-if="initialLoading" class="space-y-3">
           <div
             v-for="i in 4"
             :key="i"
@@ -91,7 +97,7 @@
           </div>
           <h3 class="text-xl font-bold mb-2">Sign in to see your followings</h3>
           <p class="text-gray-600 dark:text-gray-400 max-w-md mb-6">
-            Log in to follow tournaments and get personalized updates.
+            Log in to follow competitions and tournaments and get personalized updates.
           </p>
           <UButton :to="toMain('/login')" color="success" class="rounded-xl font-bold px-8 py-3">
             Log In
@@ -100,79 +106,174 @@
 
         <!-- Empty State -->
         <div
-          v-else-if="tournamentStore.followedTournaments.length === 0"
+          v-else-if="competitionStore.followedCompetitions.length === 0 && tournamentStore.followedTournaments.length === 0 && !competitionsError"
           class="flex flex-col items-center justify-center py-20 text-center"
         >
           <div class="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mb-6">
             <UIcon name="i-heroicons-heart" class="w-10 h-10 text-emerald-400" />
           </div>
-          <h3 class="text-xl font-bold mb-2">No followed tournaments</h3>
+          <h3 class="text-xl font-bold mb-2">No followings yet</h3>
           <p class="text-gray-600 dark:text-gray-400 max-w-md mb-6">
-            You haven't followed any tournaments yet. Explore public tournaments and follow the ones you love.
+            You haven't followed any competitions or tournaments yet. Explore public competitions and follow the ones you love.
           </p>
           <UButton :to="toMain('/explore')" color="success" class="rounded-xl font-bold px-8 py-3">
             Explore Tournaments
           </UButton>
         </div>
 
-        <!-- Tournament List -->
-        <div v-else class="space-y-3">
-          <TransitionGroup name="list">
-            <div
-              v-for="tournament in tournamentStore.followedTournaments"
-              :key="tournament.id"
-              class="group bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-white/[0.06] rounded-xl p-4 md:p-5 shadow-sm hover:border-emerald-500/30 transition-all duration-300"
-            >
-              <div class="flex items-center gap-4">
-                <!-- Tournament Logo -->
-                <NuxtLink :to="toTournament(tournament)" class="shrink-0">
-                  <div class="w-12 h-12 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center overflow-hidden border border-gray-100 dark:border-white/10 group-hover:border-emerald-500/30 transition-colors">
-                    <img
-                      v-if="tournament.logoUrl"
-                      :src="tournament.logoUrl"
-                      :alt="tournament.name"
-                      class="w-full h-full object-cover"
-                    />
-                    <span v-else class="text-base font-bold text-gray-400 dark:text-white/60">
-                      {{ tournament.name.charAt(0).toUpperCase() }}
-                    </span>
-                  </div>
-                </NuxtLink>
+        <!-- Followed Lists -->
+        <div v-else class="space-y-8">
+          <!-- Competition Fetch Error Banner -->
+          <div
+            v-if="competitionsError"
+            class="p-4 rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/5 flex items-center justify-between gap-4"
+          >
+            <span class="text-xs font-medium text-red-700 dark:text-red-300">
+              Couldn't load followed competitions.
+            </span>
+            <UButton size="xs" color="error" variant="soft" @click="loadFollowedCompetitions">
+              Retry
+            </UButton>
+          </div>
 
-                <!-- Tournament Info -->
-                <NuxtLink :to="toTournament(tournament)" class="flex-1 min-w-0">
-                  <h3 class="text-sm md:text-base font-bold text-gray-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors truncate">
-                    {{ tournament.name }}
-                  </h3>
-                  <div class="flex items-center gap-3 mt-1">
-                    <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400/80 uppercase tracking-wide">
-                      {{ tournament.sport }}
-                    </span>
-                    <span v-if="tournament.organization" class="text-xs text-gray-600 dark:text-gray-500 truncate max-w-[160px]">
-                      {{ tournament.organization.name }}
-                    </span>
-                  </div>
-                </NuxtLink>
+          <!-- Competitions Section -->
+          <div v-if="competitionStore.followedCompetitions.length > 0" class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400">
+                Competitions ({{ competitionStore.followedCompetitions.length }})
+              </h2>
+            </div>
 
-                <!-- Actions -->
-                <div class="flex items-center gap-2 shrink-0">
-                  <UButton
-                    :color="hoveredId === tournament.id ? 'error' : 'neutral'"
-                    :variant="hoveredId === tournament.id ? 'solid' : 'soft'"
-                    size="sm"
-                    class="rounded-full px-4 font-bold shadow-sm transition-all duration-200"
-                    :icon="hoveredId === tournament.id ? 'i-heroicons-x-mark' : 'i-heroicons-check'"
-                    :loading="unfollowingId === tournament.id"
-                    @mouseenter="hoveredId = tournament.id"
-                    @mouseleave="hoveredId = null"
-                    @click="handleUnfollow(tournament)"
-                  >
-                    {{ hoveredId === tournament.id ? 'Unfollow' : 'Following' }}
-                  </UButton>
+            <TransitionGroup name="list" tag="div" class="space-y-3">
+              <div
+                v-for="comp in competitionStore.followedCompetitions"
+                :key="comp.id"
+                class="group bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-white/[0.06] rounded-xl p-4 md:p-5 shadow-sm hover:border-emerald-500/30 transition-all duration-300"
+              >
+                <div class="flex items-center gap-4">
+                  <NuxtLink :to="toCompetition(comp)" class="shrink-0">
+                    <div class="w-12 h-12 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center overflow-hidden border border-gray-100 dark:border-white/10 group-hover:border-emerald-500/30 transition-colors p-1">
+                      <img
+                        v-if="comp.logoUrl"
+                        :src="comp.logoUrl"
+                        :alt="comp.name"
+                        class="w-full h-full object-contain"
+                      />
+                      <span v-else class="text-base font-bold text-gray-400 dark:text-white/60">
+                        {{ comp.name.charAt(0).toUpperCase() }}
+                      </span>
+                    </div>
+                  </NuxtLink>
+
+                  <NuxtLink :to="toCompetition(comp)" class="flex-1 min-w-0">
+                    <h3 class="text-sm md:text-base font-bold text-gray-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors truncate">
+                      {{ comp.name }}
+                    </h3>
+                    <div class="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-1 text-xs">
+                      <span class="font-bold text-emerald-600 dark:text-emerald-400/80 uppercase tracking-wide">
+                        {{ comp.sport }}
+                      </span>
+                      <span class="text-gray-400 dark:text-neutral-600">·</span>
+                      <span class="text-gray-600 dark:text-gray-400 tabular-nums">
+                        {{ comp._count?.seasons ?? 0 }} {{ (comp._count?.seasons ?? 0) === 1 ? 'edition' : 'editions' }}
+                      </span>
+                      <template v-if="comp.organization">
+                        <span class="text-gray-400 dark:text-neutral-600">·</span>
+                        <span class="text-gray-600 dark:text-gray-500 truncate max-w-[160px]">
+                          {{ comp.organization.name }}
+                        </span>
+                      </template>
+                    </div>
+                  </NuxtLink>
+
+                  <div class="flex items-center gap-2 shrink-0">
+                    <UButton
+                      :color="hoveredCompId === comp.id ? 'error' : 'neutral'"
+                      :variant="hoveredCompId === comp.id ? 'solid' : 'soft'"
+                      size="sm"
+                      class="rounded-full px-4 font-bold shadow-sm transition-all duration-200"
+                      :icon="hoveredCompId === comp.id ? 'i-heroicons-x-mark' : 'i-heroicons-check'"
+                      :aria-label="hoveredCompId === comp.id ? `Unfollow ${comp.name}` : `Following ${comp.name}`"
+                      :loading="unfollowingCompId === comp.id"
+                      @mouseenter="hoveredCompId = comp.id"
+                      @mouseleave="hoveredCompId = null"
+                      @focus="hoveredCompId = comp.id"
+                      @blur="hoveredCompId = null"
+                      @click="handleUnfollowCompetition(comp)"
+                    >
+                      {{ hoveredCompId === comp.id ? 'Unfollow' : 'Following' }}
+                    </UButton>
+                  </div>
                 </div>
               </div>
+            </TransitionGroup>
+          </div>
+
+          <!-- Tournaments Section -->
+          <div v-if="tournamentStore.followedTournaments.length > 0" class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400">
+                Tournaments ({{ tournamentStore.followedTournaments.length }})
+              </h2>
             </div>
-          </TransitionGroup>
+
+            <TransitionGroup name="list" tag="div" class="space-y-3">
+              <div
+                v-for="tournament in tournamentStore.followedTournaments"
+                :key="tournament.id"
+                class="group bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-white/[0.06] rounded-xl p-4 md:p-5 shadow-sm hover:border-emerald-500/30 transition-all duration-300"
+              >
+                <div class="flex items-center gap-4">
+                  <!-- Tournament Logo -->
+                  <NuxtLink :to="toTournament(tournament)" class="shrink-0">
+                    <div class="w-12 h-12 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center overflow-hidden border border-gray-100 dark:border-white/10 group-hover:border-emerald-500/30 transition-colors">
+                      <img
+                        v-if="tournament.logoUrl"
+                        :src="tournament.logoUrl"
+                        :alt="tournament.name"
+                        class="w-full h-full object-cover"
+                      />
+                      <span v-else class="text-base font-bold text-gray-400 dark:text-white/60">
+                        {{ tournament.name.charAt(0).toUpperCase() }}
+                      </span>
+                    </div>
+                  </NuxtLink>
+
+                  <!-- Tournament Info -->
+                  <NuxtLink :to="toTournament(tournament)" class="flex-1 min-w-0">
+                    <h3 class="text-sm md:text-base font-bold text-gray-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors truncate">
+                      {{ tournament.name }}
+                    </h3>
+                    <div class="flex items-center gap-3 mt-1">
+                      <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400/80 uppercase tracking-wide">
+                        {{ tournament.sport }}
+                      </span>
+                      <span v-if="tournament.organization" class="text-xs text-gray-600 dark:text-gray-500 truncate max-w-[160px]">
+                        {{ tournament.organization.name }}
+                      </span>
+                    </div>
+                  </NuxtLink>
+
+                  <!-- Actions -->
+                  <div class="flex items-center gap-2 shrink-0">
+                    <UButton
+                      :color="hoveredId === tournament.id ? 'error' : 'neutral'"
+                      :variant="hoveredId === tournament.id ? 'solid' : 'soft'"
+                      size="sm"
+                      class="rounded-full px-4 font-bold shadow-sm transition-all duration-200"
+                      :icon="hoveredId === tournament.id ? 'i-heroicons-x-mark' : 'i-heroicons-check'"
+                      :loading="unfollowingId === tournament.id"
+                      @mouseenter="hoveredId = tournament.id"
+                      @mouseleave="hoveredId = null"
+                      @click="handleUnfollow(tournament)"
+                    >
+                      {{ hoveredId === tournament.id ? 'Unfollow' : 'Following' }}
+                    </UButton>
+                  </div>
+                </div>
+              </div>
+            </TransitionGroup>
+          </div>
         </div>
 
       </div>
@@ -181,9 +282,9 @@
 </template>
 
 <script setup lang="ts">
-import type { Tournament } from '~/types'
+import type { Competition, Tournament } from '~/types'
 
-const { toMain, toTournament } = useHost()
+const { toMain, toTournament, toCompetition } = useHost()
 
 definePageMeta({
   layout: 'feed',
@@ -191,17 +292,27 @@ definePageMeta({
 
 useSeoMeta({
   title: 'Following | ParaScores',
-  description: 'Manage the tournaments you follow on ParaScores. View updates and unfollow tournaments you no longer need.',
+  description: 'Manage the competitions and tournaments you follow on ParaScores.',
 })
 
 const authStore = useAuthStore()
 const tournamentStore = useTournamentStore()
+const competitionStore = useCompetitionStore()
 const toast = useToast()
 const colorMode = useColorMode()
 const isDark = computed(() => colorMode.value === 'dark')
 
 const unfollowingId = ref<string | null>(null)
 const hoveredId = ref<string | null>(null)
+const unfollowingCompId = ref<string | null>(null)
+const hoveredCompId = ref<string | null>(null)
+const competitionsError = ref(false)
+const initialLoading = computed(
+  () =>
+    (tournamentStore.followedLoading || competitionStore.followedLoading) &&
+    tournamentStore.followedTournaments.length === 0 &&
+    competitionStore.followedCompetitions.length === 0,
+)
 const notificationsEnabled = ref(false)
 const notificationPermission = ref('default')
 const notificationsLoading = ref(false)
@@ -219,20 +330,27 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray
 }
 
+async function loadFollowedCompetitions() {
+  competitionsError.value = false
+  try {
+    await competitionStore.fetchFollowedCompetitions()
+  } catch {
+    competitionsError.value = true
+  }
+}
+
 watch(
   () => authStore.isAuthenticated,
   (isAuth) => {
     if (isAuth) {
       tournamentStore.fetchFollowedTournaments()
+      loadFollowedCompetitions()
     }
   },
   { immediate: true }
 )
 
 onMounted(async () => {
-  if (authStore.isAuthenticated) {
-    tournamentStore.fetchFollowedTournaments()
-  }
   if (typeof window !== 'undefined') {
     if ('Notification' in window) {
       notificationPermission.value = Notification.permission
@@ -388,6 +506,22 @@ async function handleUnfollow(tournament: Tournament) {
     console.error('Failed to unfollow:', err)
   } finally {
     unfollowingId.value = null
+  }
+}
+
+async function handleUnfollowCompetition(comp: Competition) {
+  unfollowingCompId.value = comp.id
+  try {
+    await competitionStore.unfollowCompetition(comp.id)
+  } catch (err) {
+    console.error('Failed to unfollow competition:', err)
+    toast.add({
+      title: 'Unfollow Failed',
+      description: 'Could not unfollow this competition. Please try again.',
+      color: 'error',
+    })
+  } finally {
+    unfollowingCompId.value = null
   }
 }
 </script>

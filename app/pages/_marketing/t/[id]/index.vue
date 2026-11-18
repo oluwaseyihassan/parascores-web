@@ -19,7 +19,7 @@ const { handleError, extractErrorMessage } = useErrors()
 
 // State — fetched via useAsyncData for SSR support (SEO meta tags)
 const selectedSponsor = ref<Sponsor | null>(null)
-const { toMain, toTournament } = useHost()
+const { toMain, toTournament, toCompetition } = useHost()
 type TabKey = 'fixtures' | 'standings' | 'bracket' | 'info' | 'participants' | 'stats' | 'chat' | 'predictions'
 const activeTab = ref<TabKey>(
   (route.query.tab as any) || 'info'
@@ -712,13 +712,6 @@ async function toggleFollow() {
     const compId = tournament.value?.competition_id || tournament.value?.competition?.id
     const tourneyId = tournament.value?.id || tournamentId
     if (wasFollowing) {
-      if (compId) {
-        try {
-          await tournamentStore.unfollowCompetition(compId)
-        } catch (e) {
-          console.error('Unfollow competition error:', e)
-        }
-      }
       await tournamentStore.unfollowTournament(tourneyId, compId)
       if (tournament.value && tournament.value.followerCount != null && tournament.value.followerCount > 0) {
         tournament.value.followerCount--
@@ -1483,18 +1476,23 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 <span>{{ seasonLabel }}</span>
               </div>
 
-              <button
-                type="button"
-                @click="toggleFollow"
-                :disabled="togglingFollow"
-                class="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-150 cursor-pointer disabled:opacity-50 shadow-sm"
-                :class="isFollowing
-                  ? 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200 dark:bg-neutral-800 dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-700 flex items-center gap-1.5'
-                  : 'bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200'"
+              <UTooltip
+                :text="tournament?.competition ? 'Follows this competition and all its editions' : 'Follow this tournament'"
               >
-                <UIcon v-if="isFollowing" name="i-heroicons-check" class="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-                <span>{{ isFollowing ? 'Following' : 'Follow' }}</span>
-              </button>
+                <button
+                  type="button"
+                  :aria-pressed="isFollowing"
+                  @click="toggleFollow"
+                  :disabled="togglingFollow"
+                  class="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-150 cursor-pointer disabled:opacity-50 shadow-sm"
+                  :class="isFollowing
+                    ? 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200 dark:bg-neutral-800 dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-700 flex items-center gap-1.5'
+                    : 'bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200'"
+                >
+                  <UIcon v-if="isFollowing" name="i-heroicons-check" class="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+                  <span>{{ isFollowing ? 'Following' : 'Follow' }}</span>
+                </button>
+              </UTooltip>
             </div>
           </div>
 
@@ -1515,6 +1513,16 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
             <!-- Title & Subtitle -->
             <div class="min-w-0 flex-1">
+              <NuxtLink
+                v-if="tournament.competition"
+                :to="toCompetition(tournament.competition)"
+                class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline max-w-full mb-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                <UIcon name="i-heroicons-squares-2x2" class="w-3.5 h-3.5 shrink-0" />
+                <span class="truncate">Part of {{ tournament.competition.name }}</span>
+                <span aria-hidden="true" class="text-gray-400 dark:text-neutral-500 shrink-0">·</span>
+                <span class="text-gray-500 dark:text-neutral-400 font-medium shrink-0">{{ seasonLabel }}</span>
+              </NuxtLink>
               <h1 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight leading-snug truncate">
                 {{ tournament.name }}
               </h1>

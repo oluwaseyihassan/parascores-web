@@ -8,6 +8,7 @@ const emit = defineEmits<{
 
 const tournamentStore = useTournamentStore();
 const { currentTournament: tournament } = storeToRefs(tournamentStore);
+const { toMain, toCompetition } = useHost();
 const toast = useToast();
 const { handleError } = useErrors();
 
@@ -159,14 +160,25 @@ const getStatusColor = (status?: string): "success" | "warning" | "neutral" | "i
             </h3>
           </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="soft"
+            icon="i-heroicons-trophy"
+            label="View Competition Page"
+            :to="toCompetition(tournament.competition)"
+            external
+            target="_blank"
+          />
           <UButton
             size="xs"
             color="neutral"
             variant="outline"
             icon="i-heroicons-arrow-top-right-on-square"
-            label="Public Series Link"
-            :to="'/t/' + tournament.competition.slug"
+            label="Active Edition Link"
+            :to="toMain('/t/' + tournament.competition.slug)"
+            external
             target="_blank"
           />
         </div>
