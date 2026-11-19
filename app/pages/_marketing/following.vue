@@ -152,12 +152,12 @@
               >
                 <div class="flex items-center gap-4">
                   <NuxtLink :to="toCompetition(comp)" class="shrink-0">
-                    <div class="w-12 h-12 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center overflow-hidden border border-gray-100 dark:border-white/10 group-hover:border-emerald-500/30 transition-colors p-1">
+                    <div class="w-12 h-12 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center overflow-hidden border border-gray-100 dark:border-white/10 group-hover:border-emerald-500/30 transition-colors">
                       <img
                         v-if="comp.logoUrl"
                         :src="comp.logoUrl"
                         :alt="comp.name"
-                        class="w-full h-full object-contain"
+                        class="w-full h-full object-cover"
                       />
                       <span v-else class="text-base font-bold text-gray-400 dark:text-white/60">
                         {{ comp.name.charAt(0).toUpperCase() }}

@@ -108,12 +108,12 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 pb-6">
           <div class="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 -mt-10 sm:-mt-12 relative z-10">
             <!-- Logo -->
-            <div class="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl border-4 border-white dark:border-[#121212] bg-white dark:bg-[#141414] shadow-xl overflow-hidden shrink-0 flex items-center justify-center p-2">
+            <div class="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl border-4 border-white dark:border-[#121212] bg-white dark:bg-[#141414] shadow-xl overflow-hidden shrink-0 flex items-center justify-center">
               <img
                 v-if="competition.logoUrl"
                 :src="competition.logoUrl"
                 :alt="competition.name"
-                class="w-full h-full object-contain"
+                class="w-full h-full object-cover"
               />
               <span v-else class="text-2xl sm:text-4xl font-black text-heading">
                 {{ competition.name.charAt(0).toUpperCase() }}
