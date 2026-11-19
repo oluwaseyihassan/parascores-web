@@ -57,6 +57,7 @@ const sideTournaments = computed(() => {
 const mainNav = computed(() => [
   { label: 'Overview', icon: 'i-heroicons-home', to: '/', exact: true },
   { label: 'Tournaments', icon: 'i-heroicons-trophy', to: '/tournaments', badge: totalCount.value || undefined },
+  { label: 'Competitions', icon: 'i-heroicons-rectangle-stack', to: '/competitions' },
   { label: 'Live Control', icon: 'i-heroicons-signal', to: '/live', live: true, badge: liveCount.value || undefined },
   { label: 'Widgets', icon: 'i-heroicons-squares-2x2', to: '/widgets' },
   { label: 'Organizations', icon: 'i-heroicons-building-office', to: '/organizations' },
@@ -71,6 +72,7 @@ const isActive = (link: any) => {
 const pageTitle = computed(() => {
   if (route.path === '/') return 'Overview'
   if (route.path === '/tournaments') return 'Tournaments'
+  if (route.path.startsWith('/competitions')) return 'Competitions'
   if (route.path.startsWith('/live')) return 'Live Control'
   if (route.path.startsWith('/widgets')) return 'Widgets'
   if (route.path.startsWith('/organizations')) return 'Organizations'
