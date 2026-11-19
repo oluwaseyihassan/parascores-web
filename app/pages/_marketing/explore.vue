@@ -121,8 +121,8 @@
               :to="toCompetition(comp)"
               class="group flex items-center gap-3.5 bg-white dark:bg-[#0A0A0A] border border-subtle rounded-2xl p-3.5 hover:border-emerald-500/50 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
-              <div class="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 dark:bg-white/5 border border-subtle shrink-0 flex items-center justify-center p-1.5">
-                <img v-if="comp.logoUrl" :src="comp.logoUrl" :alt="comp.name" class="w-full h-full object-contain" />
+              <div class="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 dark:bg-white/5 border border-subtle shrink-0 flex items-center justify-center">
+                <img v-if="comp.logoUrl" :src="comp.logoUrl" :alt="comp.name" class="w-full h-full object-cover" />
                 <UIcon v-else name="i-heroicons-trophy" class="w-5 h-5 text-emerald-500" />
               </div>
               <div class="min-w-0 flex-1">

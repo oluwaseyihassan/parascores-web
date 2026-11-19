@@ -634,12 +634,12 @@ function getEditionMenuItems(comp: Competition, season: CompetitionEdition) {
           <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <!-- Left Identity -->
             <div class="flex items-start gap-3.5 min-w-0 flex-1">
-              <div class="w-12 h-12 rounded-xl overflow-hidden bg-surface border border-subtle shrink-0 flex items-center justify-center p-1">
+              <div class="w-12 h-12 rounded-xl overflow-hidden bg-surface border border-subtle shrink-0 flex items-center justify-center">
                 <img
                   v-if="comp.logoUrl"
                   :src="comp.logoUrl"
                   :alt="comp.name"
-                  class="w-full h-full object-contain"
+                  class="w-full h-full object-cover"
                 />
                 <span v-else class="text-base font-black text-heading">
                   {{ comp.name.charAt(0).toUpperCase() }}
@@ -965,12 +965,12 @@ function getEditionMenuItems(comp: Competition, season: CompetitionEdition) {
               <div>
                 <span class="block text-xs font-semibold text-heading mb-2">Series Logo</span>
                 <div class="flex items-center gap-3">
-                  <div class="w-14 h-14 rounded-xl border border-subtle bg-surface overflow-hidden flex items-center justify-center shrink-0 p-1">
+                  <div class="w-14 h-14 rounded-xl border border-subtle bg-surface overflow-hidden flex items-center justify-center shrink-0">
                     <img
                       v-if="compForm.logoUrl"
                       :src="compForm.logoUrl"
                       alt="Logo preview"
-                      class="w-full h-full object-contain"
+                      class="w-full h-full object-cover"
                     />
                     <UIcon v-else name="i-heroicons-trophy" class="w-6 h-6 text-muted" />
                   </div>

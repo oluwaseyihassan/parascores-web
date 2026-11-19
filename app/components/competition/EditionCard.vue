@@ -8,13 +8,13 @@
       <div class="flex items-start justify-between gap-3">
         <div class="flex items-center gap-3.5 min-w-0">
           <div
-            class="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 dark:bg-neutral-800/90 border border-subtle shrink-0 flex items-center justify-center p-1"
+            class="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 dark:bg-neutral-800/90 border border-subtle shrink-0 flex items-center justify-center"
           >
             <img
               v-if="edition.logoUrl"
               :src="edition.logoUrl"
               :alt="editionTitle"
-              class="w-full h-full object-contain"
+              class="w-full h-full object-cover"
             />
             <span v-else class="text-base font-black text-heading">
               {{ editionTitle.charAt(0).toUpperCase() }}
