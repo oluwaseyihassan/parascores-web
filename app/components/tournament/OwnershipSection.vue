@@ -163,6 +163,14 @@ const getStatusColor = (status?: string): "success" | "warning" | "neutral" | "i
         <div class="flex items-center gap-2 flex-wrap">
           <UButton
             size="xs"
+            color="primary"
+            variant="soft"
+            icon="i-heroicons-rectangle-stack"
+            label="Manage in Competitions"
+            :to="`/competitions?highlight=${tournament.competition.id}`"
+          />
+          <UButton
+            size="xs"
             color="neutral"
             variant="soft"
             icon="i-heroicons-trophy"

@@ -2,15 +2,20 @@
 import { z } from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 
+const props = defineProps<{
+  sourceTournament?: { id: string; name?: string | null; seasonName?: string | null } | null;
+}>();
+
 const open = defineModel<boolean>("open", { default: false });
 
 const route = useRoute();
 const tournamentStore = useTournamentStore();
-const { currentTournament: tournament } = storeToRefs(tournamentStore);
+const { currentTournament } = storeToRefs(tournamentStore);
+const tournament = computed(() => props.sourceTournament || currentTournament.value);
 const { handleError } = useErrors();
 const toast = useToast();
 
-const tournamentId = computed(() => route.params.id as string);
+const tournamentId = computed(() => props.sourceTournament?.id || (route.params.id as string));
 
 // Start New Season logic
 const startingSeason = ref(false);
