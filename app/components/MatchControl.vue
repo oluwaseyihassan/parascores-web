@@ -182,6 +182,7 @@ const {
   confirmModalMessage,
   confirmModalConfirmLabel,
   confirmModalConfirmColor,
+  openConfirmModal,
   handleConfirmModal,
 } = confirmModalApi;
 
