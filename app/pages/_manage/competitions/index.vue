@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import type { Competition, CompetitionEdition, Tournament } from '~/types'
-import { formatEditionDateRange, getEditionLabel, getEditionStatusMeta } from '~/utils/competition'
+import {
+  formatEditionDateRange,
+  formatEditionMetadata,
+  getEditionLabel,
+  getEditionStatusMeta,
+} from '~/utils/competition'
 
 definePageMeta({
   middleware: ['require-organizer'],
@@ -436,6 +441,50 @@ function openStartNewSeason(comp: Competition) {
   }
   startSeasonOpen.value = true
 }
+
+function getCompetitionMenuItems(comp: Competition) {
+  return [
+    [
+      {
+        label: 'Attach Existing Tournament',
+        icon: 'i-heroicons-link',
+        onSelect: () => openAttachModal(comp),
+      },
+      {
+        label: 'View Public Page',
+        icon: 'i-heroicons-arrow-top-right-on-square',
+        to: toCompetition(comp),
+        external: true,
+        target: '_blank',
+      },
+      {
+        label: 'Copy /c/ URL',
+        icon: 'i-heroicons-clipboard-document',
+        onSelect: () => copyPublicSlugUrl(comp),
+      },
+    ],
+  ]
+}
+
+function getEditionMenuItems(comp: Competition, season: CompetitionEdition) {
+  return [
+    [
+      {
+        label: 'Edit season label',
+        icon: 'i-heroicons-tag',
+        onSelect: () => startEditSeasonLabel(season),
+      },
+    ],
+    [
+      {
+        label: 'Detach from competition',
+        icon: 'i-heroicons-link-slash',
+        color: 'error' as const,
+        onSelect: () => promptDetachSeason(comp, season),
+      },
+    ],
+  ]
+}
 </script>
 
 <template>
@@ -650,7 +699,7 @@ function openStartNewSeason(comp: Competition) {
             </div>
 
             <!-- Right Actions -->
-            <div class="flex items-center gap-2 flex-wrap shrink-0">
+            <div class="flex items-center gap-2 shrink-0 flex-nowrap">
               <UButton
                 size="xs"
                 color="neutral"
@@ -661,30 +710,21 @@ function openStartNewSeason(comp: Competition) {
               />
               <UButton
                 size="xs"
-                color="neutral"
-                variant="soft"
-                icon="i-heroicons-link"
-                label="Attach Tournament"
-                @click="openAttachModal(comp)"
-              />
-              <UButton
-                size="xs"
                 color="primary"
                 variant="soft"
                 icon="i-heroicons-document-duplicate"
-                :label="(comp.seasons?.length ?? 0) > 0 ? 'Start New Season' : 'Link First Edition'"
+                :label="(comp.seasons?.length ?? 0) > 0 ? 'Start New Season' : 'Link Edition'"
                 @click="openStartNewSeason(comp)"
               />
-              <UButton
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                icon="i-heroicons-arrow-top-right-on-square"
-                label="Public Page"
-                :to="toCompetition(comp)"
-                external
-                target="_blank"
-              />
+              <UDropdownMenu :items="getCompetitionMenuItems(comp)">
+                <UButton
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  icon="i-heroicons-ellipsis-vertical"
+                  :aria-label="`More actions for ${comp.name}`"
+                />
+              </UDropdownMenu>
             </div>
           </div>
 
@@ -736,15 +776,15 @@ function openStartNewSeason(comp: Competition) {
             <div
               v-for="season in comp.seasons"
               :key="season.id"
-              class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border transition-colors"
+              class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3.5 rounded-xl border transition-colors"
               :class="season.isCurrentSeason
                 ? 'bg-emerald-500/[0.04] border-emerald-500/25 dark:border-emerald-500/30'
-                : 'bg-white dark:bg-gray-900/70 border-subtle'"
+                : 'bg-default border-subtle'"
             >
               <!-- Edition Info -->
-              <div class="flex items-center gap-3 min-w-0 flex-1">
+              <div class="flex items-start sm:items-center gap-3 min-w-0 flex-1">
                 <span
-                  class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 sm:mt-0"
                   :class="season.isCurrentSeason
                     ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
                     : 'bg-surface text-muted'"
@@ -784,53 +824,46 @@ function openStartNewSeason(comp: Competition) {
                     />
                   </div>
 
-                  <!-- Display Mode -->
+                  <!-- Display Mode: Line 1 (Title + borderless status badges) -->
                   <div v-else class="flex items-center gap-2 flex-wrap">
-                    <span class="text-sm font-bold text-heading truncate">
+                    <span class="text-sm font-semibold text-heading truncate">
                       {{ getEditionLabel(season) }}
-                    </span>
-                    <span
-                      v-if="season.name !== getEditionLabel(season)"
-                      class="text-xs text-body truncate"
-                    >
-                      · {{ season.name }}
                     </span>
                     <UBadge
                       v-if="season.isCurrentSeason"
                       color="success"
-                      variant="subtle"
+                      variant="soft"
                       size="xs"
-                      label="Active Season"
+                      label="Active"
                     />
-                    <span
-                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border"
-                      :class="getEditionStatusMeta(season.status).badgeClass"
-                    >
-                      {{ getEditionStatusMeta(season.status).label }}
-                    </span>
-                    <span
-                      class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-surface border border-subtle text-muted"
-                    >
-                      {{ season.visibility }}
-                    </span>
+                    <UBadge
+                      :color="getEditionStatusMeta(season.status).badgeColor"
+                      variant="soft"
+                      size="xs"
+                      :label="getEditionStatusMeta(season.status).label"
+                    />
                   </div>
 
-                  <p class="text-xs text-muted mt-0.5 tabular-nums">
-                    {{ formatEditionDateRange(season.start_date, season.end_date) }}
-                    <template v-if="season._count?.participants != null">
-                      · {{ season._count.participants }} participants
+                  <!-- Line 2: Unified clean metadata -->
+                  <p class="text-xs text-muted mt-1 tabular-nums flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                    <template v-for="(part, pIdx) in formatEditionMetadata(season)" :key="pIdx">
+                      <span v-if="pIdx > 0" aria-hidden="true">·</span>
+                      <span>{{ part }}</span>
                     </template>
                   </p>
                 </div>
               </div>
 
               <!-- Edition Actions -->
-              <div class="flex items-center gap-1.5 flex-wrap shrink-0">
+              <div
+                v-if="editingSeasonId !== season.id"
+                class="flex items-center gap-1.5 shrink-0 flex-nowrap pt-2.5 border-t border-subtle sm:pt-0 sm:border-t-0"
+              >
                 <UButton
                   v-if="!season.isCurrentSeason"
                   size="xs"
                   color="primary"
-                  variant="subtle"
+                  variant="soft"
                   icon="i-heroicons-star"
                   label="Set Active"
                   :loading="settingActiveEditionId === season.id"
@@ -839,29 +872,21 @@ function openStartNewSeason(comp: Competition) {
                 <UButton
                   size="xs"
                   color="neutral"
-                  variant="ghost"
-                  icon="i-heroicons-tag"
-                  title="Edit season label"
-                  aria-label="Edit season label"
-                  @click="startEditSeasonLabel(season)"
-                />
-                <UButton
-                  size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  icon="i-heroicons-arrow-top-right-on-square"
+                  variant="outline"
+                  trailing-icon="i-heroicons-arrow-top-right-on-square"
                   label="Open"
                   :to="`/tournaments/${season.customName || season.id}`"
                 />
-                <UButton
-                  size="xs"
-                  color="error"
-                  variant="ghost"
-                  icon="i-heroicons-link-slash"
-                  title="Detach from competition"
-                  aria-label="Detach edition from competition"
-                  @click="promptDetachSeason(comp, season)"
-                />
+                <UDropdownMenu :items="getEditionMenuItems(comp, season)">
+                  <UButton
+                    size="xs"
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-heroicons-ellipsis-vertical"
+                    class="ml-auto sm:ml-0"
+                    :aria-label="`Actions for ${getEditionLabel(season)}`"
+                  />
+                </UDropdownMenu>
               </div>
             </div>
           </div>
