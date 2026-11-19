@@ -37,6 +37,12 @@ const emit = defineEmits<{
 const highlightMode = ref<"url" | "existing">("url");
 const showPreview = ref(false);
 
+watch(playerId, (id) => {
+  if (!id) {
+    relatedPlayerId.value = undefined;
+  }
+});
+
 const isGoalEvent = computed(() => {
   return ["GOAL", "PENALTY", "OWN_GOAL"].includes(props.event?.type || "");
 });
@@ -168,12 +174,10 @@ watch(selectedHighlightId, (id) => {
                 : 'Player'
             "
           >
-            <USelect
+            <MatchPlayerSelect
               v-model="playerId"
               :items="playerOptions"
               placeholder="Select player..."
-              value-key="value"
-              class="w-full"
             />
           </UFormField>
 
@@ -186,13 +190,11 @@ watch(selectedHighlightId, (id) => {
                 : 'Related Player / Assist (optional)'
             "
           >
-            <USelect
+            <MatchPlayerSelect
               v-model="relatedPlayerId"
               :items="relatedOptions"
               placeholder="Select related player..."
-              value-key="value"
               :disabled="!playerId"
-              class="w-full"
             />
           </UFormField>
 

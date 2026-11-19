@@ -129,14 +129,12 @@ const {
             class="text-[10px] font-bold uppercase tracking-wider text-gray-500 text-center"
             >Home</span
           >
-          <USelect
+          <MatchPlayerSelect
             v-if="homePenaltyPlayerOptions.length > 0"
             v-model="homePenaltyPlayerId"
             :items="homePenaltyPlayerOptions"
             placeholder="Select shooter…"
-            value-key="value"
             size="xs"
-            class="w-full"
           />
           <div class="flex gap-2 justify-center">
             <button
@@ -167,14 +165,12 @@ const {
             class="text-[10px] font-bold uppercase tracking-wider text-gray-500 text-center"
             >Away</span
           >
-          <USelect
+          <MatchPlayerSelect
             v-if="awayPenaltyPlayerOptions.length > 0"
             v-model="awayPenaltyPlayerId"
             :items="awayPenaltyPlayerOptions"
             placeholder="Select shooter…"
-            value-key="value"
             size="xs"
-            class="w-full"
           />
           <div class="flex gap-2 justify-center">
             <button
