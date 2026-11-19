@@ -105,6 +105,12 @@ watch(
   { immediate: true },
 );
 
+watch(scorerId, (id) => {
+  if (!id) {
+    assisterId.value = undefined;
+  }
+});
+
 watch(selectedHighlightId, (id) => {
   if (id) {
     const found = (props.highlights || []).find((h) => h.id === id);
@@ -182,12 +188,10 @@ watch(selectedHighlightId, (id) => {
 
           <!-- Scorer -->
           <UFormField label="Goal Scorer (optional)">
-            <USelect
+            <MatchPlayerSelect
               v-model="scorerId"
               :items="scorerOptions"
               placeholder="Select scorer..."
-              value-key="value"
-              class="w-full"
             />
           </UFormField>
 
@@ -196,13 +200,11 @@ watch(selectedHighlightId, (id) => {
             v-if="type !== 'OWN_GOAL'"
             label="Assist By (optional)"
           >
-            <USelect
+            <MatchPlayerSelect
               v-model="assisterId"
               :items="assisterOptions"
               placeholder="Select assister..."
-              value-key="value"
               :disabled="!scorerId"
-              class="w-full"
             />
           </UFormField>
 

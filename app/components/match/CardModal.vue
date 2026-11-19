@@ -99,12 +99,10 @@ const playerOptions = computed(() => {
 
           <!-- Player -->
           <UFormField label="Player">
-            <USelect
+            <MatchPlayerSelect
               v-model="playerId"
               :items="playerOptions"
               placeholder="Select player..."
-              value-key="value"
-              class="w-full"
             />
           </UFormField>
 

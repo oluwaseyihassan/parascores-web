@@ -51,12 +51,10 @@ const {
       </div>
       <div v-else class="space-y-4">
         <UFormField label="Select Man of the Match">
-          <USelect
+          <MatchPlayerSelect
             v-model="selectedMotmModel"
             :items="motmPlayerOptions"
             placeholder="Choose a player..."
-            value-key="value"
-            class="w-full"
           />
         </UFormField>
         <div class="flex items-center justify-end gap-2">

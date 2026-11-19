@@ -19,6 +19,12 @@ const emit = defineEmits<{
   confirm: [];
 }>();
 
+watch(playerOutId, (id) => {
+  if (!id) {
+    playerInId.value = undefined;
+  }
+});
+
 const teamName = computed(() => {
   return props.team === "home"
     ? props.fixture?.homeTeam?.customShortName ||
@@ -81,24 +87,20 @@ const teamName = computed(() => {
 
           <!-- Player Out -->
           <UFormField label="Player Out (Leaving)">
-            <USelect
+            <MatchPlayerSelect
               v-model="playerOutId"
               :items="outOptions"
               placeholder="Select player leaving..."
-              value-key="value"
-              class="w-full"
             />
           </UFormField>
 
           <!-- Player In -->
           <UFormField label="Player In (Entering)">
-            <USelect
+            <MatchPlayerSelect
               v-model="playerInId"
               :items="inOptions"
               placeholder="Select player entering..."
-              value-key="value"
               :disabled="!playerOutId"
-              class="w-full"
             />
           </UFormField>
 

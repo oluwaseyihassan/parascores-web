@@ -26,9 +26,15 @@ const STORAGE_KEY = `gsw-progress-${props.tournament.id}`
 
 const isHybrid = computed(() => props.tournament.type === TournamentType.HYBRID)
 
+const isSingleTableFormat = computed(
+  () =>
+    props.tournament.type === TournamentType.ROUND_ROBIN ||
+    props.tournament.type === TournamentType.LEAGUE,
+)
+
 const config = reactive({
   assignmentMethod: 'auto' as 'existing' | 'auto',
-  numberOfGroups: props.tournament.type === TournamentType.ROUND_ROBIN ? 1 : (props.tournament.numberOfGroups || 2),
+  numberOfGroups: isSingleTableFormat.value ? 1 : (props.tournament.numberOfGroups || 2),
   shuffleParticipants: false,
   schedulingMethod: 'auto' as 'auto' | 'manual',
   generateKnockout: props.tournament.type === TournamentType.HYBRID,
@@ -430,10 +436,12 @@ const resetWizardState = (showToast = false, keepStorage = false) => {
     config.numberOfGroups = 1
   } else if (existingGroups.length > 0) {
     config.assignmentMethod = 'existing'
-    config.numberOfGroups = existingGroups.length
+    config.numberOfGroups = props.tournament.type === TournamentType.LEAGUE ? 1 : existingGroups.length
   } else {
     config.assignmentMethod = 'auto'
-    if (!props.tournament.numberOfGroups) {
+    if (props.tournament.type === TournamentType.LEAGUE) {
+      config.numberOfGroups = 1
+    } else if (!props.tournament.numberOfGroups) {
       config.numberOfGroups = props.participants.length <= 4 ? 1 : Math.ceil(props.participants.length / 4)
     } else {
       config.numberOfGroups = props.tournament.numberOfGroups
@@ -574,6 +582,13 @@ watch(() => props.tournament.hasKnockoutPlayoffs, (val) => {
 watch([step, config, groupAssignments, manualFixtures, knockoutMatchups], () => {
   if (props.open && !isResetting.value) saveProgress()
 }, { deep: true })
+
+// Always preselect 1 group when switching to auto-generate in League format
+watch(() => config.assignmentMethod, (method) => {
+  if (method === 'auto' && props.tournament.type === TournamentType.LEAGUE) {
+    config.numberOfGroups = 1
+  }
+})
 
 // Clear manual fixtures and discard draft if user toggles schedulingMethod back to auto
 watch(() => config.schedulingMethod, (newMethod) => {
