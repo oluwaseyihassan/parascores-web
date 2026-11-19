@@ -16,23 +16,36 @@ definePageMeta({
 useSeoMeta({ title: 'Overview — ParaScores' })
 
 const tournamentStore = useTournamentStore()
+const competitionStore = useCompetitionStore()
 const fixtureStore = useFixtureStore()
 const authStore = useAuthStore()
 const { handleError } = useErrors()
 const { frontendUrl } = useHost()
 
 const { tournaments, loading, totalCount } = storeToRefs(tournamentStore)
+const { orgCompetitions, orgLoading: competitionsLoading } = storeToRefs(competitionStore)
 const { liveFixtures, loading: liveLoading } = storeToRefs(fixtureStore)
 
 // Realtime score updates (same SSE hook as live.vue)
 useLiveStream()
 
 onMounted(async () => {
+  const orgId = authStore.activeOrganizationId || authStore.currentOrganization?.id
   await Promise.all([
     tournamentStore.fetchTournaments({ limit: 50 }),
-    fixtureStore.fetchLiveFixtures(authStore.activeOrganizationId || undefined)
+    fixtureStore.fetchLiveFixtures(authStore.activeOrganizationId || undefined),
+    orgId ? competitionStore.fetchOrgCompetitions(orgId).catch(() => {}) : Promise.resolve(),
   ])
 })
+
+watch(
+  () => authStore.activeOrganizationId,
+  (orgId) => {
+    if (orgId) {
+      competitionStore.fetchOrgCompetitions(orgId).catch(() => {})
+    }
+  },
+)
 
 const userFirstName = computed(() => {
   if (!authStore.user?.name) return 'there'
@@ -371,13 +384,56 @@ const copyFanLink = async () => {
           </header>
           <div class="grid grid-cols-2 gap-2.5 p-4">
             <UButton variant="outline" color="neutral" icon="i-heroicons-trophy" class="justify-start" to="/tournaments/new">New tournament</UButton>
+            <UButton variant="outline" color="neutral" icon="i-heroicons-rectangle-stack" class="justify-start" to="/competitions">Competitions</UButton>
             <UButton variant="outline" color="neutral" icon="i-heroicons-beaker" class="justify-start" :loading="creatingPractice" @click="handleCreatePractice">Practice</UButton>
             <UButton variant="outline" color="neutral" icon="i-heroicons-photo" class="justify-start" to="/widgets">Widgets</UButton>
-            <UButton variant="outline" color="neutral" icon="i-heroicons-link" class="justify-start" @click="copyFanLink">Copy fan link</UButton>
+            <UButton variant="outline" color="neutral" icon="i-heroicons-link" class="justify-start col-span-2" @click="copyFanLink">Copy fan link</UButton>
           </div>
         </section>
       </div>
     </div>
+
+    <!-- Competition series -->
+    <section v-if="competitionsLoading || orgCompetitions.length > 0">
+      <div class="flex items-center justify-between gap-3 mb-4">
+        <div class="flex items-center gap-2">
+          <h2 class="text-base font-bold text-gray-900 dark:text-white">Competition series</h2>
+          <UBadge v-if="orgCompetitions.length > 0" color="neutral" variant="soft" size="xs">{{ orgCompetitions.length }}</UBadge>
+        </div>
+        <NuxtLink to="/competitions" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+          Manage series →
+        </NuxtLink>
+      </div>
+
+      <div v-if="competitionsLoading && orgCompetitions.length === 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 animate-pulse">
+        <div v-for="i in 3" :key="i" class="h-24 bg-gray-100 dark:bg-white/5 rounded-2xl"></div>
+      </div>
+
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <NuxtLink
+          v-for="comp in orgCompetitions.slice(0, 6)"
+          :key="comp.id"
+          :to="`/competitions?highlight=${comp.id}`"
+          class="group flex items-center gap-3.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-2xl p-4 hover:border-emerald-500/40 dark:hover:border-emerald-500/30 hover:-translate-y-0.5 hover:shadow-md transition-all"
+        >
+          <UAvatar :src="comp.logoUrl || undefined" :text="comp.name.charAt(0).toUpperCase()" size="lg" class="rounded-xl shrink-0" />
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-bold text-gray-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                {{ comp.name }}
+              </h3>
+              <UBadge color="success" variant="soft" size="xs" class="capitalize shrink-0">{{ comp.sport }}</UBadge>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 tabular-nums truncate">
+              {{ comp.seasons?.length ?? comp._count?.seasons ?? 0 }} {{ (comp.seasons?.length ?? comp._count?.seasons ?? 0) === 1 ? 'edition' : 'editions' }}
+              <span aria-hidden="true">·</span>
+              {{ comp._count?.followers ?? 0 }} {{ (comp._count?.followers ?? 0) === 1 ? 'follower' : 'followers' }}
+            </p>
+          </div>
+          <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 shrink-0 transition-colors" />
+        </NuxtLink>
+      </div>
+    </section>
 
     <!-- Tournaments -->
     <section>

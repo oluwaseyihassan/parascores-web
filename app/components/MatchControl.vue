@@ -182,6 +182,7 @@ const {
   confirmModalMessage,
   confirmModalConfirmLabel,
   confirmModalConfirmColor,
+  openConfirmModal,
   handleConfirmModal,
 } = confirmModalApi;
 
@@ -1242,6 +1243,27 @@ const downloadGraphic = async () => {
                 @fixture-updated="(f: Fixture) => emit('fixture-updated', f)"
               />
             </div>
+
+            <!-- Walkover: quiet one-liner, not a collapsible -->
+            <div
+              v-if="selectedFixture.status !== 'COMPLETED'"
+              class="mc-quiet-row"
+            >
+              <UIcon
+                name="i-heroicons-flag"
+                class="w-4 h-4 text-amber-500 shrink-0"
+              />
+              <span class="mc-quiet-row__text">
+                Team no-show? Skip the match flow and record the result directly.
+              </span>
+              <button
+                class="mc-walkover-btn mc-walkover-btn--inline"
+                :disabled="updatingMatch"
+                @click="() => { showWalkoverModal = true }"
+              >
+                Record walkover
+              </button>
+            </div>
           </div>
 
           <!-- Setup Tab -->
@@ -1267,27 +1289,6 @@ const downloadGraphic = async () => {
               :away-players="awayPlayers"
               :loading-players="loadingPlayers"
             />
-
-            <!-- Walkover: quiet one-liner, not a collapsible -->
-            <div
-              v-if="selectedFixture.status !== 'COMPLETED'"
-              class="mc-quiet-row"
-            >
-              <UIcon
-                name="i-heroicons-flag"
-                class="w-4 h-4 text-amber-500 shrink-0"
-              />
-              <span class="mc-quiet-row__text">
-                Team no-show? Skip the match flow and record the result directly.
-              </span>
-              <button
-                class="mc-walkover-btn mc-walkover-btn--inline"
-                :disabled="updatingMatch"
-                @click="() => { showWalkoverModal = true }"
-              >
-                Record walkover
-              </button>
-            </div>
           </div>
 
           <!-- Events Tab -->

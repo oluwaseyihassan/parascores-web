@@ -1037,9 +1037,9 @@ const showAddEventModal = ref(false);
     <UCard v-else class="mt-4">
       <template #header>
         <div
-          class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 min-w-0"
         >
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 shrink-0">
             <UIcon
               name="i-heroicons-calendar-days"
               class="w-5 h-5 text-indigo-500"
@@ -1049,25 +1049,25 @@ const showAddEventModal = ref(false);
               {{ displayedFixturesCount }}
             </UBadge>
           </div>
-          <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
+          <div class="flex items-center gap-2 flex-wrap justify-between lg:justify-end min-w-0">
             <!-- Team Filter -->
             <div
               v-if="!showTodayOnly && teamOptions.length > 2"
-              class="flex items-center"
+              class="flex items-center flex-1 sm:flex-none min-w-[130px]"
             >
               <USelect
                 v-model="selectedTeam"
                 :items="teamOptions"
                 value-key="value"
                 size="xs"
-                class="w-32 sm:w-40"
+                class="w-full sm:w-36"
               />
             </div>
 
             <!-- Round Selector & Navigation -->
             <div
               v-if="!showTodayOnly && roundOptions.length > 2"
-              class="flex items-center gap-1"
+              class="flex items-center gap-1 flex-1 sm:flex-none min-w-0"
             >
               <UButton
                 size="xs"
@@ -1076,6 +1076,7 @@ const showAddEventModal = ref(false);
                 icon="i-heroicons-chevron-left"
                 :disabled="isPrevRoundDisabled"
                 aria-label="Previous round"
+                class="shrink-0"
                 @click="goToPrevRound"
               />
               <USelect
@@ -1083,7 +1084,7 @@ const showAddEventModal = ref(false);
                 :items="roundOptions"
                 value-key="value"
                 size="xs"
-                class="w-36 sm:w-44"
+                class="flex-1 min-w-[125px] sm:w-40 sm:flex-none"
                 @update:model-value="userSelectedRound = true"
               />
               <UButton
@@ -1093,11 +1094,12 @@ const showAddEventModal = ref(false);
                 icon="i-heroicons-chevron-right"
                 :disabled="isNextRoundDisabled"
                 aria-label="Next round"
+                class="shrink-0"
                 @click="goToNextRound"
               />
             </div>
 
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
               <UDropdownMenu
                 :items="fixtureMenuItems"
                 :content="{ align: 'end' }"
