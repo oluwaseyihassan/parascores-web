@@ -1497,14 +1497,14 @@ function getTeamCards(fixture: any, isHome: boolean) {
           </div>
 
           <!-- Tournament Identity Row -->
-          <div class="flex items-center gap-3.5 sm:gap-4 pt-4 pb-2">
+          <div class="flex items-start sm:items-center gap-4 pt-5 pb-3">
             <!-- Logo -->
-            <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-100 dark:bg-neutral-800/90 border border-gray-200 dark:border-neutral-700/60 shrink-0 flex items-center justify-center p-1.5 shadow-md">
+            <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-100 dark:bg-neutral-800/90 border border-gray-200 dark:border-neutral-700/60 shrink-0 flex items-center justify-center shadow-md">
               <img
                 v-if="tournament.logoUrl"
                 :src="tournament.logoUrl"
                 :alt="tournament.name"
-                class="w-full h-full object-contain"
+                class="w-full h-full object-cover"
               />
               <span v-else class="text-xl sm:text-2xl font-black text-gray-700 dark:text-white/80">
                 {{ tournament.name.charAt(0).toUpperCase() }}
@@ -1512,22 +1512,22 @@ function getTeamCards(fixture: any, isHome: boolean) {
             </div>
 
             <!-- Title & Subtitle -->
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-1 space-y-1.5">
               <NuxtLink
                 v-if="tournament.competition"
                 :to="toCompetition(tournament.competition)"
-                class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline max-w-full mb-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline max-w-full rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <UIcon name="i-heroicons-squares-2x2" class="w-3.5 h-3.5 shrink-0" />
                 <span class="truncate">Part of {{ tournament.competition.name }}</span>
-                <span aria-hidden="true" class="text-gray-400 dark:text-neutral-500 shrink-0">·</span>
-                <span class="text-gray-500 dark:text-neutral-400 font-medium shrink-0">{{ seasonLabel }}</span>
               </NuxtLink>
-              <h1 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight leading-snug truncate">
+
+              <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight leading-tight truncate">
                 {{ tournament.name }}
               </h1>
+
               <!-- Organization & Location Row -->
-              <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs sm:text-sm font-medium text-gray-500 dark:text-neutral-400">
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm font-medium text-gray-500 dark:text-neutral-400">
                 <NuxtLink
                   v-if="tournament.organization"
                   :to="toMain(`/org/${tournament.organization.slug}`)"
@@ -1537,7 +1537,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                     v-if="tournament.organization.logoUrl"
                     :src="tournament.organization.logoUrl"
                     :alt="tournament.organization.name"
-                    class="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                    class="w-4 h-4 rounded-full object-cover shrink-0"
                   />
                   <span class="group-hover:underline">{{ tournament.organization.name }}</span>
                   <UIcon
@@ -1556,13 +1556,15 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 </template>
               </div>
 
-              <!-- Winner Row (Moved under organization name) -->
+              <!-- Winner Badge -->
               <div
                 v-if="winnerParticipant"
-                class="mt-1 flex items-center gap-1.5 text-xs sm:text-sm font-medium text-amber-600 dark:text-amber-400"
+                class="pt-0.5"
               >
-                <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 shrink-0" />
-                <span>Winner: <strong class="font-semibold text-amber-700 dark:text-amber-300">{{ winnerParticipant.customName }}</strong></span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-medium text-amber-600 dark:text-amber-400">
+                  <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 shrink-0" />
+                  <span>Winner: <strong class="font-semibold text-amber-700 dark:text-amber-300">{{ winnerParticipant.customName }}</strong></span>
+                </span>
               </div>
             </div>
           </div>
