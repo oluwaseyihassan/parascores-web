@@ -253,7 +253,7 @@ useSeoMeta({
               color="neutral" 
               variant="soft" 
               size="sm"
-              class="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" 
+              class="rounded-xl" 
               @click="openClaim(team)" 
               title="Link to Tournament"
             />
@@ -261,8 +261,10 @@ useSeoMeta({
               icon="i-heroicons-pencil-square" 
               color="neutral" 
               variant="ghost" 
-              class="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" 
+              size="sm"
+              class="rounded-xl" 
               @click="openEdit(team)" 
+              title="Edit Team"
             />
           </div>
         </div>

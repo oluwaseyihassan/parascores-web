@@ -1572,7 +1572,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 <img
                   v-if="winnerParticipant.logoUrl"
                   :src="winnerParticipant.logoUrl"
-                  :alt="winnerParticipant.customName"
+                  :alt="winnerParticipant.customName || 'Winner'"
                   class="w-4 h-4 rounded-full object-cover shrink-0 ring-1 ring-amber-500/40"
                 />
                 <span
