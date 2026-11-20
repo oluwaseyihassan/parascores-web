@@ -73,16 +73,23 @@
     <div class="mt-4 pt-3.5 border-t border-subtle flex items-center justify-between gap-3">
       <div
         v-if="edition.champion"
-        class="inline-flex items-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400 min-w-0"
+        class="inline-flex items-center gap-1.5 text-xs min-w-0"
       >
-        <UIcon name="i-heroicons-trophy" class="w-4 h-4 shrink-0" />
         <img
           v-if="edition.champion.logoUrl"
           :src="edition.champion.logoUrl"
           :alt="edition.champion.name"
-          class="w-4 h-4 rounded-full object-cover shrink-0"
+          class="w-5 h-5 rounded-full object-cover shrink-0 ring-1 ring-amber-500/40"
         />
-        <span class="truncate">Champion: <strong class="font-bold text-amber-700 dark:text-amber-300">{{ edition.champion.name }}</strong></span>
+        <span
+          v-else
+          class="w-5 h-5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold flex items-center justify-center shrink-0 ring-1 ring-amber-500/30"
+        >
+          {{ edition.champion.name.charAt(0).toUpperCase() }}
+        </span>
+        <span class="text-muted font-medium shrink-0">Winner:</span>
+        <span class="font-bold text-heading truncate">{{ edition.champion.name }}</span>
+        <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
       </div>
       <span v-else class="text-xs font-medium text-muted capitalize">
         {{ formattedType }}
