@@ -326,7 +326,15 @@ const stats = computed(() => {
                     <span class="text-xs font-mono font-bold text-black dark:text-gray-400 w-6 text-center">{{ player.number || '—' }}</span>
                     <span class="text-sm font-semibold text-black dark:text-white flex-1 truncate">{{ player.name }}</span>
                     <span class="text-[10px] font-bold text-black dark:text-gray-400 uppercase">{{ player.position || '' }}</span>
-                    <UBadge :color="playerStatusColor(player.status)" variant="subtle" size="xs">{{ player.status }}</UBadge>
+                    <UBadge
+                      v-if="player.status && player.status !== 'APPROVED'"
+                      :color="playerStatusColor(player.status)"
+                      variant="subtle"
+                      size="xs"
+                      class="rounded-full capitalize"
+                    >
+                      {{ player.status.toLowerCase() }}
+                    </UBadge>
                     <UButton
                       icon="i-heroicons-trash"
                       size="xs"
