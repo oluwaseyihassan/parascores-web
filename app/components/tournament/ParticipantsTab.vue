@@ -237,6 +237,52 @@ const downloadTeamExcelTemplate = async () => {
   xlsx.writeFile(wb, "Parascores_Team_Upload_Template.xlsx");
 };
 
+const exportingPlayers = ref(false);
+
+const exportPlayersSpreadsheet = async () => {
+  if (exportingPlayers.value || !participants.value.length) return;
+  exportingPlayers.value = true;
+  try {
+    const isIndividual =
+      tournament.value?.participantType === ParticipantType.INDIVIDUAL;
+    let sourceParticipants = participants.value;
+
+    if (!isIndividual) {
+      sourceParticipants = await Promise.all(
+        participants.value.map(async (p) => {
+          if (Array.isArray(p.players)) return p;
+          const players = await participantStore.fetchParticipantPlayers(p.id);
+          return { ...p, players };
+        }),
+      );
+    }
+
+    const exportedCount = await exportTournamentPlayersToExcel(
+      tournament.value?.name || "Tournament",
+      sourceParticipants,
+      tournament.value?.participantType,
+    );
+
+    if (exportedCount === 0) {
+      useToast().add({
+        title: "No players to export yet",
+        description: "Add players to your participants before exporting.",
+        color: "neutral",
+      });
+      return;
+    }
+
+    useToast().add({
+      title: `Exported ${exportedCount} ${exportedCount === 1 ? "player" : "players"}`,
+      color: "success",
+    });
+  } catch (err: any) {
+    handleError(err, { title: "Failed to export players" });
+  } finally {
+    exportingPlayers.value = false;
+  }
+};
+
 // Status badge colors
 const statusColors: Record<
   ParticipantStatus,
@@ -307,6 +353,18 @@ const statusColors: Record<
               @click="showTournamentInviteModal = true"
             >
               <span class="hidden sm:inline">Invite</span>
+            </UButton>
+            <UButton
+              v-if="participants.length"
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-arrow-down-tray"
+              :loading="exportingPlayers"
+              title="Download players spreadsheet (.xlsx)"
+              @click="exportPlayersSpreadsheet"
+            >
+              <span class="hidden sm:inline">Export Players</span>
             </UButton>
             <UDropdownMenu
               :items="[

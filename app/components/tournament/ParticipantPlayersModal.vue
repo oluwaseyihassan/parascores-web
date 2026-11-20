@@ -130,6 +130,30 @@ const downloadExcelTemplate = async () => {
   xlsx.writeFile(wb, "Parascores_Player_Upload_Template.xlsx");
 };
 
+const exportingPlayers = ref(false);
+
+const exportTeamPlayers = async () => {
+  if (exportingPlayers.value || !props.participant) return;
+  const players = props.participant.players || [];
+  if (!players.length) return;
+  exportingPlayers.value = true;
+  try {
+    const teamName =
+      props.participant.customName ||
+      props.participant.team?.name ||
+      "Team";
+    const count = await exportTeamPlayersToExcel(teamName, players);
+    useToast().add({
+      title: `Exported ${count} ${count === 1 ? "player" : "players"}`,
+      color: "success",
+    });
+  } catch (err: any) {
+    handleError(err, { title: "Failed to export players" });
+  } finally {
+    exportingPlayers.value = false;
+  }
+};
+
 const positions = ["GK", "DEF", "MID", "FWD", "COACH"];
 
 // Fetch players and reset the form whenever the modal opens
@@ -529,12 +553,27 @@ const handleUnlinkPlayerProfile = async (player: any) => {
 
             <!-- Approved Players -->
             <div class="space-y-2">
-              <h4
-                v-if="pendingPlayers.length > 0"
-                class="text-xs font-bold text-gray-500 uppercase tracking-wider"
+              <div
+                v-if="approvedPlayers.length || pendingPlayers.length"
+                class="flex items-center justify-between gap-2"
               >
-                Active Players ({{ approvedPlayers.length }})
-              </h4>
+                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  {{
+                    pendingPlayers.length > 0
+                      ? `Active Players (${approvedPlayers.length})`
+                      : `Squad (${approvedPlayers.length})`
+                  }}
+                </h4>
+                <UButton
+                  size="xs"
+                  color="neutral"
+                  variant="soft"
+                  icon="i-heroicons-arrow-down-tray"
+                  label="Export Players"
+                  :loading="exportingPlayers"
+                  @click="exportTeamPlayers"
+                />
+              </div>
               <div
                 v-if="!approvedPlayers.length && !pendingPlayers.length"
                 class="text-center py-8 text-gray-400"
