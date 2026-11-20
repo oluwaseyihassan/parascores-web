@@ -2,6 +2,7 @@
 import { ParticipantStatus, ParticipantType } from "~/types";
 import type { Participant } from "~/types";
 import { ModalDialogsKey } from "~/composables/useModalDialogs";
+import { exportTournamentPlayersToExcel } from "~/utils/exportPlayers";
 
 const route = useRoute();
 const tournamentStore = useTournamentStore();

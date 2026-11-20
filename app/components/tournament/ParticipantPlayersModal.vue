@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Participant } from "~/types";
 import { ModalDialogsKey } from "~/composables/useModalDialogs";
+import { exportTeamPlayersToExcel } from "~/utils/exportPlayers";
 
 const props = defineProps<{
   participant: Participant | null;
@@ -347,7 +348,7 @@ const handleUnlinkPlayerProfile = async (player: any) => {
                 variant="ghost"
                 color="neutral"
                 size="sm"
-                @click="open = false"
+                @click="() => { open = false }"
               />
             </div>
           </div>
