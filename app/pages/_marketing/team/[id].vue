@@ -26,6 +26,14 @@ const rosterLoading = ref<string | null>(null)
 const addForms = ref<Record<string, { name: string; number?: number; position: string }>>({})
 const addingTo = ref<string | null>(null)
 const removingPlayerId = ref<string | null>(null)
+const editingPlayer = ref<{ participantId: string; player: any } | null>(null)
+const editPlayerForm = ref<{ name: string; number?: number; position: string }>({
+  name: '',
+  number: undefined,
+  position: '',
+})
+const savingEditPlayer = ref(false)
+const pendingRemovePlayer = ref<{ participantId: string; player: any } | null>(null)
 
 const rosterPositionOptions = [
   { label: 'Goalkeeper', value: 'GK' },
@@ -107,6 +115,57 @@ async function removeRosterPlayer(participantId: string, playerId: string) {
   } finally {
     removingPlayerId.value = null
   }
+}
+
+function openEditPlayer(participantId: string, player: any) {
+  editingPlayer.value = { participantId, player }
+  editPlayerForm.value = {
+    name: player.name || '',
+    number: player.number ?? undefined,
+    position: player.position || '',
+  }
+}
+
+async function saveEditPlayer() {
+  if (!editingPlayer.value || !editPlayerForm.value.name.trim() || savingEditPlayer.value) return
+  const { participantId, player } = editingPlayer.value
+  savingEditPlayer.value = true
+  try {
+    const res = await $api<ApiResponse<any>>(`/players/${player.id}`, {
+      method: 'PATCH',
+      body: {
+        name: editPlayerForm.value.name.trim(),
+        number: editPlayerForm.value.number || undefined,
+        position: editPlayerForm.value.position || undefined,
+      },
+    })
+    const updated = res.data || {
+      ...player,
+      name: editPlayerForm.value.name.trim(),
+      number: editPlayerForm.value.number || null,
+      position: editPlayerForm.value.position || null,
+    }
+    rosterPlayers.value[participantId] = (rosterPlayers.value[participantId] || []).map((p) =>
+      p.id === player.id ? { ...p, ...updated } : p,
+    )
+    editingPlayer.value = null
+    toast.add({ title: 'Player Updated', color: 'success' })
+  } catch (err: any) {
+    handleError(err, { title: 'Could not update player' })
+  } finally {
+    savingEditPlayer.value = false
+  }
+}
+
+function confirmRemovePlayer(participantId: string, player: any) {
+  pendingRemovePlayer.value = { participantId, player }
+}
+
+async function executeRemovePlayer() {
+  if (!pendingRemovePlayer.value) return
+  const { participantId, player } = pendingRemovePlayer.value
+  await removeRosterPlayer(participantId, player.id)
+  pendingRemovePlayer.value = null
 }
 
 function playerStatusColor(status: string) {
@@ -335,14 +394,33 @@ const stats = computed(() => {
                     >
                       {{ player.status.toLowerCase() }}
                     </UBadge>
-                    <UButton
-                      icon="i-heroicons-trash"
-                      size="xs"
-                      variant="ghost"
-                      color="error"
-                      :loading="removingPlayerId === player.id"
-                      @click="removeRosterPlayer(p.id, player.id)"
-                    />
+                    <UDropdownMenu
+                      :items="[
+                        [
+                          {
+                            label: 'Edit',
+                            icon: 'i-heroicons-pencil-square',
+                            onSelect: () => openEditPlayer(p.id, player),
+                          },
+                          {
+                            label: 'Delete',
+                            icon: 'i-heroicons-trash',
+                            color: 'error',
+                            onSelect: () => confirmRemovePlayer(p.id, player),
+                          },
+                        ],
+                      ]"
+                      :content="{ align: 'end' }"
+                    >
+                      <UButton
+                        icon="i-heroicons-ellipsis-vertical"
+                        size="xs"
+                        color="neutral"
+                        variant="ghost"
+                        :loading="removingPlayerId === player.id"
+                        aria-label="Player actions"
+                      />
+                    </UDropdownMenu>
                   </div>
                 </div>
                 <p v-else class="text-xs font-medium text-black dark:text-gray-400 py-1">No players yet — add your squad below.</p>
@@ -389,5 +467,125 @@ const stats = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- Edit Roster Player Modal -->
+    <UModal
+      :open="!!editingPlayer"
+      @update:open="(val) => { if (!val) editingPlayer = null }"
+    >
+      <template #content>
+        <UCard class="bg-white dark:bg-[#111] border-gray-200 dark:border-white/10">
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-bold text-black dark:text-white">Edit Player</h3>
+              <UButton
+                color="neutral"
+                variant="ghost"
+                icon="i-heroicons-x-mark"
+                size="xs"
+                @click="editingPlayer = null"
+              />
+            </div>
+          </template>
+
+          <form class="space-y-4" @submit.prevent="saveEditPlayer">
+            <UFormField label="Player Name" required>
+              <UInput
+                v-model="editPlayerForm.name"
+                placeholder="Player name"
+                size="md"
+              />
+            </UFormField>
+
+            <div class="grid grid-cols-2 gap-3">
+              <UFormField label="Jersey No.">
+                <UInput
+                  v-model.number="editPlayerForm.number"
+                  type="number"
+                  placeholder="No."
+                  size="md"
+                  :min="1"
+                  :max="99"
+                />
+              </UFormField>
+
+              <UFormField label="Position">
+                <USelect
+                  v-model="editPlayerForm.position"
+                  :items="rosterPositionOptions"
+                  value-key="value"
+                  placeholder="Position"
+                  size="md"
+                />
+              </UFormField>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+              <UButton
+                type="button"
+                color="neutral"
+                variant="ghost"
+                label="Cancel"
+                @click="editingPlayer = null"
+              />
+              <UButton
+                type="submit"
+                color="primary"
+                label="Save Changes"
+                :loading="savingEditPlayer"
+                :disabled="!editPlayerForm.name.trim()"
+              />
+            </div>
+          </form>
+        </UCard>
+      </template>
+    </UModal>
+
+    <!-- Confirm Delete Roster Player Modal -->
+    <UModal
+      :open="!!pendingRemovePlayer"
+      @update:open="(val) => { if (!val) pendingRemovePlayer = null }"
+    >
+      <template #content>
+        <UCard class="bg-white dark:bg-[#111] border-gray-200 dark:border-white/10">
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-bold text-black dark:text-white">Remove Player</h3>
+              <UButton
+                color="neutral"
+                variant="ghost"
+                icon="i-heroicons-x-mark"
+                size="xs"
+                @click="pendingRemovePlayer = null"
+              />
+            </div>
+          </template>
+
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            Are you sure you want to remove
+            <strong class="font-semibold text-black dark:text-white">{{ pendingRemovePlayer?.player?.name }}</strong>
+            from the squad?
+          </p>
+
+          <template #footer>
+            <div class="flex justify-end gap-2">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                label="Cancel"
+                :disabled="!!removingPlayerId"
+                @click="pendingRemovePlayer = null"
+              />
+              <UButton
+                color="error"
+                label="Remove"
+                :loading="removingPlayerId === pendingRemovePlayer?.player?.id"
+                @click="executeRemovePlayer"
+              />
+            </div>
+          </template>
+        </UCard>
+      </template>
+    </UModal>
   </div>
 </template>
