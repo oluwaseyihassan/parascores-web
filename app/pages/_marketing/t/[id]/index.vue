@@ -592,25 +592,42 @@ function switchSeason(s: { id: string; customName?: string | null }) {
 
 const seasonMenuItems = computed(() => {
   const list = tournament.value?.seasons || []
-  if (list.length <= 1) return []
+  const comp = tournament.value?.competition
+  if (list.length <= 1 && !comp) return []
 
-  return [
-    list.map((s) => {
-      const isCurrent = s.id === tournament.value?.id
-      const baseLabel = s.seasonName || getSeasonFallbackYear(s)
-      const label = s.isCurrentSeason ? `${baseLabel} (Current)` : baseLabel
-      return {
-        label,
-        icon: isCurrent ? 'i-heroicons-check' : undefined,
-        active: isCurrent,
-        onSelect: () => {
-          if (!isCurrent) {
-            switchSeason(s)
-          }
-        },
-      }
-    }),
-  ]
+  const groups: any[][] = []
+
+  if (list.length > 0) {
+    groups.push(
+      list.map((s) => {
+        const isCurrent = s.id === tournament.value?.id
+        const baseLabel = s.seasonName || getSeasonFallbackYear(s)
+        const label = s.isCurrentSeason ? `${baseLabel} (Current)` : baseLabel
+        return {
+          label,
+          icon: isCurrent ? 'i-heroicons-check' : undefined,
+          active: isCurrent,
+          onSelect: () => {
+            if (!isCurrent) {
+              switchSeason(s)
+            }
+          },
+        }
+      }),
+    )
+  }
+
+  if (comp) {
+    groups.push([
+      {
+        label: 'View all editions',
+        icon: 'i-heroicons-squares-2x2',
+        to: toCompetition(comp),
+      },
+    ])
+  }
+
+  return groups
 })
 
 const shareTournament = async () => {
@@ -1497,7 +1514,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
           </div>
 
           <!-- Tournament Identity Row -->
-          <div class="flex items-start sm:items-center gap-4 pt-5 pb-3">
+          <div class="flex items-center gap-4 pt-5 pb-3">
             <!-- Logo -->
             <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-100 dark:bg-neutral-800/90 border border-gray-200 dark:border-neutral-700/60 shrink-0 flex items-center justify-center shadow-md">
               <img
@@ -1513,15 +1530,6 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
             <!-- Title & Subtitle -->
             <div class="min-w-0 flex-1 space-y-1.5">
-              <NuxtLink
-                v-if="tournament.competition"
-                :to="toCompetition(tournament.competition)"
-                class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline max-w-full rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-              >
-                <UIcon name="i-heroicons-squares-2x2" class="w-3.5 h-3.5 shrink-0" />
-                <span class="truncate">Part of {{ tournament.competition.name }}</span>
-              </NuxtLink>
-
               <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight leading-tight truncate">
                 {{ tournament.name }}
               </h1>
