@@ -1564,15 +1564,26 @@ function getTeamCards(fixture: any, isHome: boolean) {
                 </template>
               </div>
 
-              <!-- Winner Badge -->
+              <!-- Winner Row -->
               <div
                 v-if="winnerParticipant"
-                class="pt-0.5"
+                class="inline-flex items-center gap-1.5 text-xs sm:text-sm min-w-0 max-w-full"
               >
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-medium text-amber-600 dark:text-amber-400">
-                  <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 shrink-0" />
-                  <span>Winner: <strong class="font-semibold text-amber-700 dark:text-amber-300">{{ winnerParticipant.customName }}</strong></span>
+                <img
+                  v-if="winnerParticipant.logoUrl"
+                  :src="winnerParticipant.logoUrl"
+                  :alt="winnerParticipant.customName"
+                  class="w-4 h-4 rounded-full object-cover shrink-0 ring-1 ring-amber-500/40"
+                />
+                <span
+                  v-else
+                  class="w-4 h-4 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] font-bold flex items-center justify-center shrink-0 ring-1 ring-amber-500/30"
+                >
+                  {{ winnerParticipant.customName?.charAt(0).toUpperCase() }}
                 </span>
+                <span class="text-gray-500 dark:text-neutral-400 font-medium shrink-0">Winner:</span>
+                <span class="font-bold text-gray-900 dark:text-white truncate">{{ winnerParticipant.customName }}</span>
+                <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
               </div>
             </div>
           </div>
