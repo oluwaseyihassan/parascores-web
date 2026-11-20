@@ -412,12 +412,6 @@
                     <dt class="text-body">Followers</dt>
                     <dd class="font-semibold text-heading tabular-nums">{{ formatCount(followerCount) }}</dd>
                   </div>
-                  <div v-if="competition.created_at" class="flex items-center justify-between gap-2">
-                    <dt class="text-body">Established</dt>
-                    <dd class="font-semibold text-heading tabular-nums">
-                      {{ new Date(competition.created_at).getFullYear() }}
-                    </dd>
-                  </div>
                 </dl>
               </div>
             </div>
