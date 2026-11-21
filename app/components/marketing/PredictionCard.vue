@@ -6,6 +6,10 @@ import {
   isFixturePredictionLocked,
   calculatePredictionPoints,
   getTournamentPredictionConfig,
+  getFixtureRoundKey,
+  getFixtureRoundLabel,
+  getRoundLockTimestamp,
+  formatPredictionCountdown,
 } from '~/stores/prediction'
 
 const props = withDefaults(
@@ -14,11 +18,17 @@ const props = withDefaults(
     tournament: Tournament
     prediction?: Prediction
     stats?: FixturePredictionStats
+    allFixtures?: Fixture[]
+    groupedByRound?: boolean
+    nowMs?: number
     compact?: boolean
   }>(),
   {
     prediction: undefined,
     stats: undefined,
+    allFixtures: undefined,
+    groupedByRound: false,
+    nowMs: undefined,
     compact: false,
   },
 )
@@ -31,18 +41,19 @@ const predictionStore = usePredictionStore()
 const toast = useToast()
 
 const config = computed(() => getTournamentPredictionConfig(props.tournament))
-const nowMs = ref<number>(Date.now())
+const localNowMs = ref<number>(Date.now())
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
+const activeNowMs = computed(() => props.nowMs ?? localNowMs.value)
+
 const isLocked = computed(() => {
-  void nowMs.value
-  return isFixturePredictionLocked(props.fixture)
+  return isFixturePredictionLocked(props.fixture, props.allFixtures, activeNowMs.value)
 })
 
 onMounted(() => {
-  if (isLocked.value) return
+  if (props.nowMs !== undefined || isLocked.value) return
   countdownTimer = setInterval(() => {
-    nowMs.value = Date.now()
+    localNowMs.value = Date.now()
     if (isLocked.value && countdownTimer) {
       clearInterval(countdownTimer)
       countdownTimer = null
@@ -92,30 +103,33 @@ function adjustScore(team: 'home' | 'away', delta: number) {
   }
 }
 
-// Countdown / Kickoff display
+// Round & fixture kickoff displays
+const roundLockMs = computed(() => {
+  if (props.allFixtures?.length) {
+    const key = getFixtureRoundKey(props.fixture)
+    const roundFixtures = props.allFixtures.filter((f) => getFixtureRoundKey(f) === key)
+    if (roundFixtures.length) {
+      return getRoundLockTimestamp(roundFixtures)
+    }
+  }
+  if (!props.fixture.startTime) return null
+  const ts = new Date(props.fixture.startTime).getTime()
+  return Number.isNaN(ts) ? null : ts
+})
+
 const kickoffText = computed(() => {
+  if (isLocked.value) {
+    if (props.fixture.status === FixtureStatus.COMPLETED) return 'Full Time'
+    if (props.fixture.status === FixtureStatus.LIVE) return 'Match Live'
+    return 'Round Locked'
+  }
+  return formatPredictionCountdown(roundLockMs.value, activeNowMs.value)
+})
+
+const matchKickoffLabel = computed(() => {
   if (!props.fixture.startTime) return 'Time TBA'
   const date = new Date(props.fixture.startTime)
   if (Number.isNaN(date.getTime())) return 'Time TBA'
-
-  const diff = date.getTime() - nowMs.value
-
-  if (diff <= 0) {
-    if (props.fixture.status === FixtureStatus.COMPLETED) return 'Full Time'
-    if (props.fixture.status === FixtureStatus.LIVE) return 'Match Live'
-    return 'Started'
-  }
-
-  const totalSeconds = Math.floor(diff / 1000)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  const pad = (n: number) => String(n).padStart(2, '0')
-
-  if (hours < 24) {
-    return `Locks in ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
-  }
-
   return date.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -163,7 +177,7 @@ async function handleSavePrediction() {
       props.fixture,
       homeScore.value,
       awayScore.value,
-      [props.fixture],
+      props.allFixtures?.length ? props.allFixtures : [props.fixture],
     )
 
     if (res.success) {
@@ -206,7 +220,9 @@ async function handleSavePrediction() {
     <div
       class="flex items-center justify-between px-4 py-2.5 bg-gray-50/70 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/[0.05] text-xs text-gray-500 dark:text-gray-400"
     >
-      <span class="font-medium truncate">{{ fixture.roundName || `Round ${fixture.round}` }}</span>
+      <span class="font-medium truncate">
+        {{ groupedByRound ? matchKickoffLabel : getFixtureRoundLabel(fixture) }}
+      </span>
 
       <div>
         <span
@@ -223,9 +239,14 @@ async function handleSavePrediction() {
           Full Time
         </span>
         <span
-          v-else
-          class="text-[11px] font-medium tabular-nums"
-          :class="isLocked ? 'text-gray-400' : 'text-emerald-500 dark:text-emerald-400'"
+          v-else-if="isLocked"
+          class="text-[11px] font-medium text-gray-400"
+        >
+          Round Locked
+        </span>
+        <span
+          v-else-if="!groupedByRound"
+          class="text-[11px] font-medium tabular-nums text-emerald-500 dark:text-emerald-400"
         >
           {{ kickoffText }}
         </span>

@@ -9,7 +9,18 @@ const props = defineProps<{
 }>()
 
 const predictionStore = usePredictionStore()
+const fixtureStore = useFixtureStore()
 const { toTournament } = useHost()
+
+const fetchedFixtures = ref<Fixture[]>([])
+const tournamentFixtures = computed<Fixture[]>(() => {
+  const fromProp = (props.tournament as any)?.fixtures
+  if (Array.isArray(fromProp) && fromProp.length) return fromProp
+  const fromStore = fixtureStore.fixtures.filter((f) => f.tournament_id === props.tournament.id)
+  if (fromStore.length) return fromStore
+  if (fetchedFixtures.value.length) return fetchedFixtures.value
+  return [props.fixture]
+})
 
 const config = computed(() => getTournamentPredictionConfig(props.tournament))
 const isFootball = computed(
@@ -19,7 +30,24 @@ const isEnabled = computed(() => isFootball.value && config.value.enabled)
 
 onMounted(async () => {
   if (isEnabled.value && props.tournament) {
-    await predictionStore.loadPredictions(props.tournament, [props.fixture])
+    if (
+      !((props.tournament as any)?.fixtures?.length) &&
+      !fixtureStore.fixtures.some((f) => f.tournament_id === props.tournament.id)
+    ) {
+      try {
+        const res = await $publicApi<{
+          data?: { rounds?: { fixtures: Fixture[] }[] } | Fixture[]
+        }>(`/fixtures/tournaments/${props.tournament.id}`)
+        if (res?.data && 'rounds' in res.data && Array.isArray(res.data.rounds)) {
+          fetchedFixtures.value = res.data.rounds.flatMap((r) => r.fixtures || [])
+        } else if (Array.isArray(res?.data)) {
+          fetchedFixtures.value = res.data
+        }
+      } catch {
+        // Fallback to single fixture
+      }
+    }
+    await predictionStore.loadPredictions(props.tournament, tournamentFixtures.value)
   }
 })
 
@@ -56,6 +84,7 @@ function goToTournamentPredictions() {
       :tournament="tournament"
       :prediction="prediction"
       :stats="stats"
+      :all-fixtures="tournamentFixtures"
     />
   </div>
 </template>

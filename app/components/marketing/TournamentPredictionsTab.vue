@@ -6,6 +6,8 @@ import PredictionLeaderboard from '~/components/marketing/PredictionLeaderboard.
 import {
   isFixturePredictionLocked,
   getTournamentPredictionConfig,
+  groupFixturesByRound,
+  formatPredictionCountdown,
 } from '~/stores/prediction'
 
 const props = defineProps<{
@@ -22,13 +24,26 @@ const authStore = useAuthStore()
 const { toMain } = useHost()
 
 const activeSubTab = ref<'predict' | 'my' | 'leaderboard'>('predict')
+const nowMs = ref<number>(Date.now())
+let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 const config = computed(() => getTournamentPredictionConfig(props.tournament))
 
 // Load predictions on mount or when tournament changes
 onMounted(async () => {
+  countdownTimer = setInterval(() => {
+    nowMs.value = Date.now()
+  }, 1000)
+
   if (props.tournament) {
     await predictionStore.loadPredictions(props.tournament, props.fixtures)
+  }
+})
+
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
   }
 })
 
@@ -51,12 +66,24 @@ const footballFixtures = computed(() => {
 })
 
 const openFixtures = computed(() => {
-  return footballFixtures.value.filter((f) => !isFixturePredictionLocked(f))
+  return footballFixtures.value.filter((f) =>
+    !isFixturePredictionLocked(f, footballFixtures.value, nowMs.value),
+  )
 })
 
 const closedOrCompletedFixtures = computed(() => {
-  return footballFixtures.value.filter((f) => isFixturePredictionLocked(f))
+  return footballFixtures.value.filter((f) =>
+    isFixturePredictionLocked(f, footballFixtures.value, nowMs.value),
+  )
 })
+
+const openRounds = computed(() =>
+  groupFixturesByRound(openFixtures.value, footballFixtures.value, nowMs.value),
+)
+
+const closedRounds = computed(() =>
+  groupFixturesByRound(closedOrCompletedFixtures.value, footballFixtures.value, nowMs.value).reverse(),
+)
 
 // User's predictions
 const userPredictions = computed(() => {
@@ -79,6 +106,10 @@ const myPredictedFixtures = computed(() => {
     userPredictedFixtureIds.value.has(f.id),
   )
 })
+
+const myPredictionRounds = computed(() =>
+  groupFixturesByRound(myPredictedFixtures.value, footballFixtures.value, nowMs.value),
+)
 
 // Unpredicted open fixtures
 const unpredictedOpenFixtures = computed(() => {
@@ -225,51 +256,95 @@ const userEntry = computed(() => {
     </div>
 
     <!-- 1. PREDICT MATCHES VIEW -->
-    <div v-if="activeSubTab === 'predict'" class="space-y-4">
-      <div v-if="openFixtures.length === 0" class="p-12 text-center rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06]">
+    <div v-if="activeSubTab === 'predict'" class="space-y-6">
+      <div v-if="openRounds.length === 0" class="p-12 text-center rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06]">
         <UIcon name="i-heroicons-clock" class="w-10 h-10 mx-auto text-gray-400 mb-2" />
-        <h3 class="font-bold text-gray-900 dark:text-white text-base">No Open Matches to Predict</h3>
+        <h3 class="font-bold text-gray-900 dark:text-white text-base">No Open Rounds to Predict</h3>
         <p class="text-xs text-gray-500 max-w-md mx-auto mt-1">
-          All upcoming matches are either currently underway, completed, or awaiting scheduling. Check back soon for the next round of fixtures!
+          Rounds lock once their first match kicks off. Check back soon for the next round of fixtures!
         </p>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PredictionCard
-          v-for="fixture in openFixtures"
-          :key="fixture.id"
-          :fixture="fixture"
-          :tournament="tournament"
-          :prediction="predictionStore.getUserPrediction(tournament.id, fixture.id)"
-          :stats="predictionStore.getFixtureStats(fixture.id)"
-          @saved="() => {}"
-        />
+      <div v-else class="space-y-6">
+        <section
+          v-for="roundGroup in openRounds"
+          :key="roundGroup.key"
+          class="space-y-3"
+        >
+          <div class="flex items-center justify-between gap-3 px-1">
+            <div class="flex items-center gap-2 min-w-0">
+              <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">
+                {{ roundGroup.label }}
+              </h3>
+              <span class="text-xs font-medium text-gray-400 dark:text-gray-500 shrink-0">
+                {{ roundGroup.fixtures.length }} {{ roundGroup.fixtures.length === 1 ? 'match' : 'matches' }}
+              </span>
+            </div>
+            <span class="text-xs font-semibold tabular-nums text-emerald-500 dark:text-emerald-400 shrink-0">
+              {{ formatPredictionCountdown(roundGroup.lockTimeMs, nowMs) }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <PredictionCard
+              v-for="fixture in roundGroup.fixtures"
+              :key="fixture.id"
+              :fixture="fixture"
+              :tournament="tournament"
+              :prediction="predictionStore.getUserPrediction(tournament.id, fixture.id)"
+              :stats="predictionStore.getFixtureStats(fixture.id)"
+              :all-fixtures="footballFixtures"
+              :grouped-by-round="true"
+              :now-ms="nowMs"
+              @saved="() => {}"
+            />
+          </div>
+        </section>
       </div>
 
-      <!-- Closed/Completed Section if any -->
-      <div v-if="closedOrCompletedFixtures.length > 0" class="pt-6">
-        <div class="flex items-center gap-2 mb-3">
+      <!-- Closed/Completed Rounds Section -->
+      <div v-if="closedRounds.length > 0" class="pt-4 space-y-5">
+        <div class="flex items-center gap-2 px-1">
           <UIcon name="i-heroicons-lock-closed" class="w-4 h-4 text-gray-400" />
           <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">
-            Locked &amp; Completed Matches
+            Locked &amp; Completed Rounds
           </h4>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <PredictionCard
-            v-for="fixture in closedOrCompletedFixtures.slice(0, 4)"
-            :key="fixture.id"
-            :fixture="fixture"
-            :tournament="tournament"
-            :prediction="predictionStore.getUserPrediction(tournament.id, fixture.id)"
-            :stats="predictionStore.getFixtureStats(fixture.id)"
-          />
-        </div>
+
+        <section
+          v-for="roundGroup in closedRounds"
+          :key="`closed-${roundGroup.key}`"
+          class="space-y-3"
+        >
+          <div class="flex items-center justify-between gap-3 px-1">
+            <h5 class="text-sm font-bold text-gray-700 dark:text-gray-300 truncate">
+              {{ roundGroup.label }}
+            </h5>
+            <span class="text-[11px] font-medium text-gray-400 shrink-0">
+              Round Locked
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <PredictionCard
+              v-for="fixture in roundGroup.fixtures"
+              :key="fixture.id"
+              :fixture="fixture"
+              :tournament="tournament"
+              :prediction="predictionStore.getUserPrediction(tournament.id, fixture.id)"
+              :stats="predictionStore.getFixtureStats(fixture.id)"
+              :all-fixtures="footballFixtures"
+              :grouped-by-round="true"
+              :now-ms="nowMs"
+            />
+          </div>
+        </section>
       </div>
     </div>
 
     <!-- 2. MY PREDICTIONS VIEW -->
-    <div v-else-if="activeSubTab === 'my'" class="space-y-4">
-      <div v-if="myPredictedFixtures.length === 0" class="p-12 text-center rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06]">
+    <div v-else-if="activeSubTab === 'my'" class="space-y-6">
+      <div v-if="myPredictionRounds.length === 0" class="p-12 text-center rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06]">
         <UIcon name="i-heroicons-pencil-square" class="w-10 h-10 mx-auto text-gray-400 mb-2" />
         <h3 class="font-bold text-gray-900 dark:text-white text-base">No Predictions Made Yet</h3>
         <p class="text-xs text-gray-500 max-w-md mx-auto mt-1 mb-4">
@@ -284,16 +359,39 @@ const userEntry = computed(() => {
         />
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PredictionCard
-          v-for="fixture in myPredictedFixtures"
-          :key="fixture.id"
-          :fixture="fixture"
-          :tournament="tournament"
-          :prediction="predictionStore.getUserPrediction(tournament.id, fixture.id)"
-          :stats="predictionStore.getFixtureStats(fixture.id)"
-        />
-      </div>
+      <template v-else>
+        <section
+          v-for="roundGroup in myPredictionRounds"
+          :key="`my-${roundGroup.key}`"
+          class="space-y-3"
+        >
+          <div class="flex items-center justify-between gap-3 px-1">
+            <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">
+              {{ roundGroup.label }}
+            </h3>
+            <span
+              class="text-xs font-semibold tabular-nums shrink-0"
+              :class="roundGroup.isLocked ? 'text-gray-400' : 'text-emerald-500 dark:text-emerald-400'"
+            >
+              {{ roundGroup.isLocked ? 'Round Locked' : formatPredictionCountdown(roundGroup.lockTimeMs, nowMs) }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <PredictionCard
+              v-for="fixture in roundGroup.fixtures"
+              :key="fixture.id"
+              :fixture="fixture"
+              :tournament="tournament"
+              :prediction="predictionStore.getUserPrediction(tournament.id, fixture.id)"
+              :stats="predictionStore.getFixtureStats(fixture.id)"
+              :all-fixtures="footballFixtures"
+              :grouped-by-round="true"
+              :now-ms="nowMs"
+            />
+          </div>
+        </section>
+      </template>
     </div>
 
     <!-- 3. LEADERBOARD VIEW -->
