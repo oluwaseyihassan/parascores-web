@@ -280,6 +280,16 @@ const isTeams = computed(() => tournament.value?.participantType === Participant
 const participantsTabName = computed(() => isTeams.value ? 'Teams' : 'Participants')
 
 const isHybrid = computed(() => tournament.value?.type === TournamentType.HYBRID)
+const showStandingsTab = computed(() => {
+  if (!tournament.value) return false
+  if (standings.value.length > 0) return true
+  return [
+    TournamentType.LEAGUE,
+    TournamentType.ROUND_ROBIN,
+    TournamentType.GROUP,
+    TournamentType.HYBRID,
+  ].includes(tournament.value.type)
+})
 const showBracketTab = computed(() => {
   if (!tournament.value) return false
   return tournament.value.type === TournamentType.KNOCKOUT || tournament.value.type === TournamentType.HYBRID
@@ -297,7 +307,7 @@ const showPredictionsTab = computed(() => {
 // Visible tabs in exact visual order as rendered in the sticky header nav
 const visibleTabs = computed<TabKey[]>(() => {
   const tabs: TabKey[] = ['info', 'fixtures']
-  if (standings.value.length > 0) {
+  if (showStandingsTab.value) {
     tabs.push('standings')
   }
   if (showBracketTab.value) {
@@ -656,7 +666,7 @@ watchEffect(() => {
   }
 
   if (activeTab.value === 'bracket' && !showBracketTab.value) activeTab.value = 'info'
-  else if (activeTab.value === 'standings' && standings.value.length === 0) activeTab.value = 'info'
+  else if (activeTab.value === 'standings' && !showStandingsTab.value) activeTab.value = 'info'
   else if (activeTab.value === 'participants' && participants.value.length === 0) activeTab.value = 'info'
   else if (activeTab.value === 'stats' && !isTeams.value) activeTab.value = 'info'
   else if (activeTab.value === 'chat' && !showMatchHub.value) activeTab.value = 'info'
@@ -1136,16 +1146,106 @@ const currentRoundDateGroups = computed(() => {
   return getRoundDateGroups(currentRound.value.fixtures)
 })
 
+// Build standings fallback from active participants (and any completed league/group fixtures)
+// when backend standings haven't been initialized yet (e.g. manual fixtures before first kickoff)
+const effectiveStandings = computed<Standing[]>(() => {
+  if (standings.value.length > 0) return standings.value
+  if (!showStandingsTab.value || !participants.value.length) return []
+
+  const activeParticipants = participants.value.filter(
+    (p) => p.status !== ParticipantStatus.DECLINED && p.status !== ParticipantStatus.DISQUALIFIED,
+  )
+  if (!activeParticipants.length) return []
+
+  const winPts = Number(tournament.value?.scoringRules?.pointsPerWin ?? 3)
+  const drawPts = Number(tournament.value?.scoringRules?.pointsPerDraw ?? 1)
+  const lossPts = Number(tournament.value?.scoringRules?.pointsPerLoss ?? 0)
+  const isUnified = !!tournament.value?.unifiedStandings
+
+  const map = new Map<string, Standing>()
+  for (const p of activeParticipants) {
+    map.set(p.id, {
+      id: `fallback-${p.id}`,
+      tournament_id: tournament.value?.id || tournamentId,
+      participant_id: p.id,
+      group: isUnified ? null : (p.group?.name || null),
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDiff: 0,
+      points: 0,
+      position: 0,
+      created_at: p.created_at,
+      updated_at: p.updated_at,
+      participant: p,
+    })
+  }
+
+  for (const f of fixtures.value) {
+    if (f.status !== FixtureStatus.COMPLETED || f.stage === FixtureStage.KNOCKOUT) continue
+    if (!f.homeTeamId || !f.awayTeamId) continue
+    const homeRow = map.get(f.homeTeamId)
+    const awayRow = map.get(f.awayTeamId)
+    if (!homeRow || !awayRow) continue
+
+    const hs = f.homeScore ?? 0
+    const as = f.awayScore ?? 0
+    homeRow.played += 1
+    awayRow.played += 1
+    homeRow.goalsFor += hs
+    homeRow.goalsAgainst += as
+    awayRow.goalsFor += as
+    awayRow.goalsAgainst += hs
+    homeRow.goalDiff = homeRow.goalsFor - homeRow.goalsAgainst
+    awayRow.goalDiff = awayRow.goalsFor - awayRow.goalsAgainst
+
+    if (hs > as) {
+      homeRow.wins += 1
+      homeRow.points += winPts
+      awayRow.losses += 1
+      awayRow.points += lossPts
+    } else if (as > hs) {
+      awayRow.wins += 1
+      awayRow.points += winPts
+      homeRow.losses += 1
+      homeRow.points += lossPts
+    } else {
+      homeRow.draws += 1
+      awayRow.draws += 1
+      homeRow.points += drawPts
+      awayRow.points += drawPts
+    }
+  }
+
+  return Array.from(map.values())
+})
+
 // Standings grouped by group
 const standingsByGroup = computed(() => {
   const grouped: Record<string, Standing[]> = {}
-  standings.value.forEach(s => {
+  effectiveStandings.value.forEach((s) => {
     const group = s.group || 'default'
     if (!grouped[group]) grouped[group] = []
-    grouped[group].push(s)
+    grouped[group].push({ ...s })
   })
-  Object.keys(grouped).forEach(key => {
-    grouped[key]!.sort((a, b) => (a.position || 0) - (b.position || 0))
+  Object.keys(grouped).forEach((key) => {
+    grouped[key]!.sort((a, b) => {
+      if ((a.position || 0) > 0 && (b.position || 0) > 0 && a.position !== b.position) {
+        return a.position - b.position
+      }
+      if (b.points !== a.points) return b.points - a.points
+      if (b.goalDiff !== a.goalDiff) return b.goalDiff - a.goalDiff
+      if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor
+      const nameA = a.participant?.customShortName || a.participant?.customName || ''
+      const nameB = b.participant?.customShortName || b.participant?.customName || ''
+      return nameA.localeCompare(nameB)
+    })
+    grouped[key]!.forEach((row, idx) => {
+      if (!row.position) row.position = idx + 1
+    })
   })
   return grouped
 })
@@ -1644,7 +1744,7 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
             <!-- Table (formerly Standings) -->
             <button
-              v-if="standings.length > 0"
+              v-if="showStandingsTab"
               id="tab-btn-standings"
               @click="handleTabClick('standings')"
               type="button"
@@ -2396,11 +2496,11 @@ function getTeamCards(fixture: any, isHome: boolean) {
 
             <!-- ====== STANDINGS TAB ====== -->
             <div
-              v-if="standings.length > 0"
+              v-if="showStandingsTab"
               class="w-full shrink-0 min-w-full"
               :class="activeTab === 'standings' || isDragging || isAnimating ? 'h-auto overflow-visible' : 'h-0 overflow-hidden'"
             >
-              <div v-if="standings.length === 0" class="text-center py-16">
+              <div v-if="effectiveStandings.length === 0" class="text-center py-16">
             <p class="text-sm text-gray-500">No standings available yet.</p>
           </div>
           <div v-else class="space-y-6 w-full mx-auto">
