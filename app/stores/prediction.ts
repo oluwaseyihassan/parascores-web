@@ -57,17 +57,161 @@ export function calculatePredictionPoints(
   return { points: 0, status: 'INCORRECT' }
 }
 
-export function isFixturePredictionLocked(fixture: Fixture): boolean {
+export function getFixtureRoundKey(fixture: Fixture): string {
+  const stageKey = fixture.stage || ''
+  const labelKey = fixture.roundName?.trim() || `Round ${fixture.round}`
+  return `${stageKey}::${fixture.round}::${labelKey}`
+}
+
+export function getFixtureRoundLabel(fixture: Fixture): string {
+  return fixture.roundName?.trim() || `Round ${fixture.round}`
+}
+
+export function getRoundLockTimestamp(roundFixtures: Fixture[]): number | null {
+  let earliest: number | null = null
+  for (const f of roundFixtures) {
+    if (f.status === FixtureStatus.CANCELLED || f.status === FixtureStatus.POSTPONED) {
+      continue
+    }
+    if (!f.startTime) continue
+    const ts = new Date(f.startTime).getTime()
+    if (!Number.isNaN(ts) && (earliest === null || ts < earliest)) {
+      earliest = ts
+    }
+  }
+  return earliest
+}
+
+export function isRoundPredictionLocked(
+  roundFixtures: Fixture[],
+  nowMs: number = Date.now(),
+): boolean {
+  if (!roundFixtures.length) return false
+
+  let hasScheduled = false
+  for (const f of roundFixtures) {
+    if (f.status === FixtureStatus.LIVE || f.status === FixtureStatus.COMPLETED) {
+      return true
+    }
+    if (f.status === FixtureStatus.SCHEDULED) {
+      hasScheduled = true
+      if (f.startTime) {
+        const start = new Date(f.startTime).getTime()
+        if (!Number.isNaN(start) && start <= nowMs) {
+          return true
+        }
+      }
+    }
+  }
+
+  return !hasScheduled
+}
+
+export function isFixturePredictionLocked(
+  fixture: Fixture,
+  allFixtures?: Fixture[],
+  nowMs: number = Date.now(),
+): boolean {
   if (fixture.status !== FixtureStatus.SCHEDULED) {
     return true
   }
   if (fixture.startTime) {
     const start = new Date(fixture.startTime).getTime()
-    if (!Number.isNaN(start) && start <= Date.now()) {
+    if (!Number.isNaN(start) && start <= nowMs) {
+      return true
+    }
+  }
+  if (allFixtures?.length) {
+    const targetKey = getFixtureRoundKey(fixture)
+    const roundFixtures = allFixtures.filter((f) => getFixtureRoundKey(f) === targetKey)
+    if (roundFixtures.length && isRoundPredictionLocked(roundFixtures, nowMs)) {
       return true
     }
   }
   return false
+}
+
+export function formatPredictionCountdown(
+  targetMs: number | null,
+  nowMs: number = Date.now(),
+): string {
+  if (targetMs === null || Number.isNaN(targetMs)) return 'Time TBA'
+  const diff = targetMs - nowMs
+  if (diff <= 0) return 'Locked'
+
+  const totalSeconds = Math.floor(diff / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+
+  if (hours < 24) {
+    return `Locks in ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+  }
+
+  const days = Math.floor(hours / 24)
+  if (days < 7) {
+    return `Locks in ${days}d ${pad(hours % 24)}h ${pad(minutes)}m`
+  }
+
+  return `Locks ${new Date(targetMs).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`
+}
+
+export interface FixtureRoundGroup {
+  key: string
+  label: string
+  round: number
+  fixtures: Fixture[]
+  lockTimeMs: number | null
+  isLocked: boolean
+}
+
+export function groupFixturesByRound(
+  fixtures: Fixture[],
+  allTournamentFixtures: Fixture[] = fixtures,
+  nowMs: number = Date.now(),
+): FixtureRoundGroup[] {
+  const byKeyAll = new Map<string, Fixture[]>()
+  for (const f of allTournamentFixtures) {
+    const key = getFixtureRoundKey(f)
+    const arr = byKeyAll.get(key)
+    if (arr) arr.push(f)
+    else byKeyAll.set(key, [f])
+  }
+
+  const groupsMap = new Map<string, FixtureRoundGroup>()
+  for (const f of fixtures) {
+    const key = getFixtureRoundKey(f)
+    let group = groupsMap.get(key)
+    if (!group) {
+      const roundFixtures = byKeyAll.get(key) || [f]
+      group = {
+        key,
+        label: getFixtureRoundLabel(f),
+        round: f.round,
+        fixtures: [],
+        lockTimeMs: getRoundLockTimestamp(roundFixtures),
+        isLocked: isRoundPredictionLocked(roundFixtures, nowMs),
+      }
+      groupsMap.set(key, group)
+    }
+    group.fixtures.push(f)
+  }
+
+  return Array.from(groupsMap.values()).sort((a, b) => {
+    if (a.lockTimeMs !== null && b.lockTimeMs !== null && a.lockTimeMs !== b.lockTimeMs) {
+      return a.lockTimeMs - b.lockTimeMs
+    }
+    if (a.lockTimeMs !== null && b.lockTimeMs === null) return -1
+    if (a.lockTimeMs === null && b.lockTimeMs !== null) return 1
+    return a.round - b.round
+  })
 }
 
 export const usePredictionStore = defineStore('prediction', () => {
@@ -328,8 +472,8 @@ export const usePredictionStore = defineStore('prediction', () => {
     awayScore: number,
     allFixtures: Fixture[],
   ): Promise<{ success: boolean; error?: string }> {
-    if (isFixturePredictionLocked(fixture)) {
-      return { success: false, error: 'Predictions are locked because the match has already started.' }
+    if (isFixturePredictionLocked(fixture, allFixtures)) {
+      return { success: false, error: 'Predictions for this round are locked because the first match has started.' }
     }
 
     submitting.value = true
