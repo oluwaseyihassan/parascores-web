@@ -31,7 +31,31 @@ const predictionStore = usePredictionStore()
 const toast = useToast()
 
 const config = computed(() => getTournamentPredictionConfig(props.tournament))
-const isLocked = computed(() => isFixturePredictionLocked(props.fixture))
+const nowMs = ref<number>(Date.now())
+let countdownTimer: ReturnType<typeof setInterval> | null = null
+
+const isLocked = computed(() => {
+  void nowMs.value
+  return isFixturePredictionLocked(props.fixture)
+})
+
+onMounted(() => {
+  if (isLocked.value) return
+  countdownTimer = setInterval(() => {
+    nowMs.value = Date.now()
+    if (isLocked.value && countdownTimer) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
+  }, 1000)
+})
+
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+})
 
 // Score input states
 const homeScore = ref<number>(props.prediction?.homeScore ?? 1)
@@ -74,8 +98,7 @@ const kickoffText = computed(() => {
   const date = new Date(props.fixture.startTime)
   if (Number.isNaN(date.getTime())) return 'Time TBA'
 
-  const now = Date.now()
-  const diff = date.getTime() - now
+  const diff = date.getTime() - nowMs.value
 
   if (diff <= 0) {
     if (props.fixture.status === FixtureStatus.COMPLETED) return 'Full Time'
@@ -83,12 +106,14 @@ const kickoffText = computed(() => {
     return 'Started'
   }
 
-  const hours = Math.floor(diff / 3600000)
-  const minutes = Math.floor((diff % 3600000) / 60000)
+  const totalSeconds = Math.floor(diff / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
 
   if (hours < 24) {
-    if (hours === 0) return `Locks in ${minutes}m`
-    return `Locks in ${hours}h ${minutes}m`
+    return `Locks in ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
   }
 
   return date.toLocaleDateString('en-US', {
@@ -181,11 +206,7 @@ async function handleSavePrediction() {
     <div
       class="flex items-center justify-between px-4 py-2.5 bg-gray-50/70 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/[0.05] text-xs text-gray-500 dark:text-gray-400"
     >
-      <div class="flex items-center gap-1.5 font-medium truncate">
-        <span>{{ fixture.roundName || `Round ${fixture.round}` }}</span>
-        <span class="opacity-40">·</span>
-        <span class="font-mono">#{{ fixture.matchNumber }}</span>
-      </div>
+      <span class="font-medium truncate">{{ fixture.roundName || `Round ${fixture.round}` }}</span>
 
       <div>
         <span
@@ -203,7 +224,7 @@ async function handleSavePrediction() {
         </span>
         <span
           v-else
-          class="text-[11px] font-medium"
+          class="text-[11px] font-medium tabular-nums"
           :class="isLocked ? 'text-gray-400' : 'text-emerald-500 dark:text-emerald-400'"
         >
           {{ kickoffText }}
