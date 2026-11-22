@@ -138,14 +138,14 @@
             <img
               v-if="item.tournament?.logoUrl"
               :src="item.tournament.logoUrl"
-              class="w-4 h-4 object-contain"
+              class="w-4 h-4 rounded-full object-cover shrink-0"
               :alt="item.tournament?.name || 'Tournament'"
             />
           </template>
           <template #default="{ item }">
             <span
               class="cursor-pointer hover:text-gray-900 dark:hover:text-white transition-colors"
-              @click.stop="navigateToTournament(item.tournament)"
+              @click.stop="navigateToTournament(item.tournament || { id: item.tournamentId })"
             >
               {{ item.label }}
             </span>
@@ -162,7 +162,7 @@
                 :key="match.id"
                 :to="
                   toMain(
-                    `/t/${match.tournament?.customName || match.tournament?.id}/fixture/${match.id}`,
+                    `/t/${match.tournament?.customName || match.tournament?.id || match.tournament_id}/fixture/${match.id}`,
                   )
                 "
                 class="group flex flex-col px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-100 dark:border-white/[0.05] last:border-b-0 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors"
@@ -675,6 +675,8 @@ const matchTimer = useMatchTimer();
 
 // State
 const matches = ref<Fixture[]>([]);
+const resolvedTournaments = ref<Record<string, Tournament>>({});
+const hydratingTournamentIds = new Set<string>();
 const trendingTournaments = ref<Tournament[]>([]);
 const fixtureDates = ref<string[]>([]);
 const loadingMatches = ref(false);
@@ -707,15 +709,39 @@ const followedIds = computed(
   () => new Set(tournamentStore.followedTournaments.map((t) => t.id)),
 );
 
+const knownTournamentsById = computed<Record<string, Tournament>>(() => {
+  const map: Record<string, Tournament> = { ...resolvedTournaments.value };
+  for (const t of trendingTournaments.value) {
+    if (t?.id) map[t.id] = t;
+  }
+  for (const t of tournamentStore.followedTournaments) {
+    if (t?.id) map[t.id] = t;
+  }
+  for (const m of matches.value) {
+    if (m.tournament?.id && m.tournament?.name) {
+      map[m.tournament.id] = m.tournament;
+    }
+  }
+  return map;
+});
+
 function groupFixturesByTournament(list: any[]) {
-  const grouped: Record<string, { tournament: any; fixtures: any[] }> = {};
+  const grouped: Record<string, { tournamentId: string; tournament: any; fixtures: any[] }> = {};
   for (const match of list) {
-    const tournamentId = match.tournament_id || "unknown";
+    const tournamentId = match.tournament_id || match.tournament?.id || "unknown";
+    const resolvedTournament =
+      (match.tournament?.name ? match.tournament : null) ||
+      knownTournamentsById.value[tournamentId] ||
+      match.tournament ||
+      null;
     if (!grouped[tournamentId]) {
       grouped[tournamentId] = {
-        tournament: match.tournament,
+        tournamentId,
+        tournament: resolvedTournament,
         fixtures: [],
       };
+    } else if (!grouped[tournamentId].tournament?.name && resolvedTournament) {
+      grouped[tournamentId].tournament = resolvedTournament;
     }
     grouped[tournamentId].fixtures.push(match);
   }
@@ -759,7 +785,11 @@ const matchesByTournament = computed(() =>
 
 const accordionItems = computed(() =>
   matchesByTournament.value.map((group, index) => ({
-    label: group.tournament?.name || "Tournament",
+    label:
+      group.tournament?.name ||
+      group.tournament?.competition?.name ||
+      group.tournament?.customName ||
+      "Tournament",
     value: `tournament-${index}`,
     slot: `tournament-${index}`,
     class:
@@ -772,6 +802,7 @@ const accordionItems = computed(() =>
       content:
         "border-t border-gray-100 dark:border-white/[0.05] overflow-visible",
     },
+    tournamentId: group.tournamentId,
     tournament: group.tournament,
     fixtures: group.fixtures,
   })),
@@ -848,6 +879,42 @@ function navigateToTournament(tournament: any) {
   navigateTo(toMain(`/t/${tournament.customName || tournament.id}`));
 }
 
+async function hydrateMissingTournaments(list: Fixture[]) {
+  const missingIds = Array.from(
+    new Set(
+      list
+        .map((m) => m.tournament_id)
+        .filter(
+          (id): id is string =>
+            Boolean(id) &&
+            !knownTournamentsById.value[id]?.name &&
+            !hydratingTournamentIds.has(id),
+        ),
+    ),
+  );
+  if (!missingIds.length) return;
+
+  for (const id of missingIds) hydratingTournamentIds.add(id);
+  try {
+    await Promise.allSettled(
+      missingIds.map(async (id) => {
+        try {
+          const res = await $publicApi<{ data?: { tournament?: Tournament } }>(
+            `/tournaments/${id}/overview`,
+          );
+          if (res?.data?.tournament) {
+            resolvedTournaments.value[id] = res.data.tournament;
+          }
+        } finally {
+          hydratingTournamentIds.delete(id);
+        }
+      }),
+    );
+  } catch {
+    for (const id of missingIds) hydratingTournamentIds.delete(id);
+  }
+}
+
 // Fetching
 async function fetchMatches() {
   loadingMatches.value = true;
@@ -856,6 +923,7 @@ async function fetchMatches() {
       `/fixtures/by-date?date=${selectedDate.value}`,
     );
     matches.value = res.data || [];
+    hydrateMissingTournaments(matches.value);
   } catch (err) {
     console.error("Failed to fetch matches:", err);
   } finally {
@@ -961,15 +1029,34 @@ function formatMatchClock(dateStr?: string | null) {
 // SSE: Listen for live match updates and hot-swap data
 function handleLiveUpdate(event: Event) {
   const payload = (event as CustomEvent).detail;
-  if (!payload?.data) return;
+  if (payload?.type !== "fixture_updated" || !payload?.data) return;
 
   const updatedFixture = payload.data as Fixture;
   const idx = matches.value.findIndex((m) => m.id === updatedFixture.id);
 
   if (idx !== -1) {
-    matches.value[idx] = updatedFixture;
+    const existing = matches.value[idx]!;
+    matches.value[idx] = {
+      ...existing,
+      ...updatedFixture,
+      tournament:
+        updatedFixture.tournament ||
+        existing.tournament ||
+        knownTournamentsById.value[updatedFixture.tournament_id] ||
+        null,
+      homeTeam: updatedFixture.homeTeam || existing.homeTeam,
+      awayTeam: updatedFixture.awayTeam || existing.awayTeam,
+    };
   } else if (getMatchDateKey(updatedFixture.startTime) === selectedDate.value) {
-    matches.value.push(updatedFixture);
+    const withTournament: Fixture = {
+      ...updatedFixture,
+      tournament:
+        updatedFixture.tournament ||
+        knownTournamentsById.value[updatedFixture.tournament_id] ||
+        null,
+    };
+    matches.value.push(withTournament);
+    hydrateMissingTournaments([withTournament]);
   }
 }
 
