@@ -207,10 +207,6 @@
                   class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold border"
                   :class="featuredStatusMeta.badgeClass"
                 >
-                  <span
-                    v-if="featuredEdition.status === 'live'"
-                    class="w-1.5 h-1.5 rounded-full bg-rose-500 motion-safe:animate-pulse"
-                  />
                   {{ featuredStatusMeta.label }}
                 </span>
               </div>

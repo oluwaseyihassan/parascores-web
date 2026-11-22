@@ -38,13 +38,13 @@ export function formatEditionDateRange(start?: string | null, end?: string | nul
 export function getEditionStatusMeta(status?: CompetitionEditionStatus): {
   label: string
   badgeClass: string
-  badgeColor: 'error' | 'info' | 'neutral'
+  badgeColor: 'success' | 'info' | 'neutral'
 } {
   if (status === 'live') {
     return {
-      label: 'Live',
-      badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
-      badgeColor: 'error',
+      label: 'Ongoing',
+      badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+      badgeColor: 'success',
     }
   }
   if (status === 'upcoming') {
